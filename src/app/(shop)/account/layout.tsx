@@ -14,6 +14,7 @@ import AccountLoading from './loading';
 // import { useUserMock, useMockAuth } from '@/hooks/use-auth-mock'; // DELETE THIS LINE
 import { useAuth } from '@/hooks/use-auth'; // ADD THIS LINE
 
+// hello this is commit message
 const sidebarNavItems = [
   {
     title: 'Profile',

@@ -193,7 +193,7 @@ export default function PrivacyPolicyPage() {
               <p>
                 Bumba's Kitchen<br />
                 Address: Janai , Garbagan , Hooghly<br />
-                Email: info@bumbaskitchen.app<br />
+                Email: info.bumbaskitchen@gmail.com<br />
                 Phone: +91 82406 90254
               </p>
             </div>

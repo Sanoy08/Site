@@ -23,7 +23,7 @@ export function Footer() {
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>Address: Janai, Garbagan, Hooghly</li>
               <li>Phone: +91 912406 80234</li>
-              <li>Email: info@bumbaskitchen.app</li>
+              <li>Email: info.bumbaskitchen@gmail.com</li>
               <li>Operating hours: Mon-Sun (11 AM to 10 PM IST)</li>
             </ul>
           </div>

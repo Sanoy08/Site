@@ -11,7 +11,7 @@ const NOTIFICATIONS_COLLECTION = 'notifications';
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 webpush.setVapidDetails(
-  'mailto:info@bumbaskitchen.com',
+  'mailto:info.bumbaskitchen@gmail.com',
   process.env.VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );

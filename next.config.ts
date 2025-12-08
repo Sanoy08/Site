@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     // ছবি সরাসরি Cloudinary থেকে লোড হবে (ব্যান্ডউইথ Cloudinary-র খরচ হবে)।
     unoptimized: true, 
     
+    
     remotePatterns: [
       {
         protocol: 'https',

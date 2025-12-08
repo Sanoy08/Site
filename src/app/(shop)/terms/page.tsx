@@ -142,7 +142,7 @@ export default function TermsPage() {
                 </p>
 
                 <p>
-                    <strong>Email:</strong> info@bumbaskitchen.com<br/>
+                    <strong>Email:</strong> info@bumbaskitchen.app<br/>
                     <strong>Phone:</strong> (+91) 8240-690-254
                 </p>
             </CardContent>

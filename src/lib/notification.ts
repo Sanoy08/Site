@@ -4,7 +4,7 @@ import webpush from 'web-push';
 import { MongoClient, ObjectId } from 'mongodb';
 
 webpush.setVapidDetails(
-  'mailto:info@bumbaskitchen.com',
+  'mailto:info@bumbaskitchen.app',
   process.env.VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );

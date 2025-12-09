@@ -1,13 +1,12 @@
 // src/app/layout.tsx
-
-import type { Metadata, Viewport } from 'next';
-import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google'; // Pacifico ইমপোর্ট
+import type { Metadata } from 'next';
+import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
-import { ServiceWorkerRegister } from '@/components/providers/ServiceWorkerRegister';
+import { AppInitializer } from '@/components/AppInitializer';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -45,19 +44,10 @@ const pacifico = Pacifico({
 export const metadata: Metadata = {
   title: "Bumba's Kitchen",
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
-  manifest: '/manifest.json',
+  // Removed manifest link
 };
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
-};
+
 
 export default function RootLayout({
   children,
@@ -76,7 +66,7 @@ export default function RootLayout({
       )}>
           <CartProvider>
             <RealtimeMenuUpdater />
-            <ServiceWorkerRegister />
+            <AppInitializer />
             {children}
             <Toaster />
           </CartProvider>

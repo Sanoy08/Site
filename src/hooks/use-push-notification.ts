@@ -1,80 +1,85 @@
 // src/hooks/use-push-notification.ts
 
-import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import { useEffect } from 'react';
+import { PushNotifications, ActionPerformed } from '@capacitor/push-notifications';
+import { FCM } from '@capacitor-community/fcm';
+import { Capacitor } from '@capacitor/core';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 
-// Helper function to convert VAPID key
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
- 
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
- 
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-export function usePushNotification() {
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+export const usePushNotification = () => {
+  const router = useRouter();
+  const { user, token } = useAuth(); 
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      // সার্ভিস ওয়ার্কার রেজিস্টার করা
-      navigator.serviceWorker.register('/sw.js').then(registration => {
-        registration.pushManager.getSubscription().then(sub => {
-          if (sub) {
-            setSubscription(sub);
-            setIsSubscribed(true);
-          }
+    if (!Capacitor.isNativePlatform()) return;
+
+    const init = async () => {
+      let permStatus = await PushNotifications.checkPermissions();
+      if (permStatus.receive === 'prompt') {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+      if (permStatus.receive !== 'granted') return;
+
+      await PushNotifications.register();
+
+      // ★★★ FIX: (PushNotifications as any) ব্যবহার করা হয়েছে যাতে লাল দাগ না আসে ★★★
+      try {
+        await (PushNotifications as any).registerActionTypes({
+            types: [
+            {
+                id: 'ORDER_UPDATE',
+                actions: [
+                { id: 'view', title: 'View Order', foreground: true },
+                { id: 'dismiss', title: 'Dismiss', destructive: true },
+                ],
+            },
+            ]
         });
-      });
-    }
-  }, []);
+      } catch (err) {
+          console.warn("Action types registration failed", err);
+      }
 
-  const subscribeToPush = async () => {
-    setIsLoading(true);
-    try {
-      // ১. পাবলিক VAPID কি আনা
-      const response = await fetch('/api/notifications/vapid-key');
-      const { publicKey } = await response.json();
+      await PushNotifications.removeAllDeliveredNotifications();
+    };
 
-      const registration = await navigator.serviceWorker.ready;
+    init();
+
+    // Listeners
+    PushNotifications.addListener('registration', async (fcmToken) => {
+      console.log('FCM Token:', fcmToken.value);
       
-      // ২. ব্রাউজারে সাবস্ক্রাইব করা
-      const sub = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
+      try {
+          await FCM.subscribeTo({ topic: 'all_users' });
+          if(user?.role === 'admin') await FCM.subscribeTo({ topic: 'admin_updates' });
+      } catch(e) { console.error('Topic sub failed', e); }
 
-      // ৩. সার্ভারে সাবস্ক্রিপশন পাঠানো
-      const token = localStorage.getItem('token');
-      await fetch('/api/notifications/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            subscription: sub,
-            token: token // লগইন করা থাকলে ইউজার আইডি সেভ হবে
-        }),
-      });
+      if (token) {
+        await fetch('/api/notifications/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: fcmToken.value, jwtToken: token }),
+        });
+      }
+    });
 
-      setSubscription(sub);
-      setIsSubscribed(true);
-      toast.success("Notifications enabled!");
+    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('Push received:', notification);
+    });
 
-    } catch (error) {
-      console.error("Subscription failed:", error);
-      toast.error("Failed to enable notifications.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
+      const data = notification.notification.data;
+      const actionId = notification.actionId;
 
-  return { isSubscribed, isLoading, subscribeToPush };
-}
+      if (actionId === 'view' && data?.url) {
+        router.push(data.url);
+      } else if (data?.url) {
+        router.push(data.url);
+      }
+    });
+
+    return () => {
+      PushNotifications.removeAllListeners();
+    };
+  }, [user, token, router]);
+};

@@ -19,11 +19,14 @@ export type User = {
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null); // ★ টোকেন স্টেট
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token'); // ★ টোকেন লোড
+
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
@@ -33,23 +36,30 @@ export function useAuth() {
         localStorage.removeItem('token');
       }
     }
+    
+    if (storedToken) {
+        setToken(storedToken); // ★ টোকেন সেট
+    }
+
     setIsLoading(false);
   }, []);
 
-  // ★★★ FIX: useCallback যোগ করা হয়েছে যাতে Google Callback লুপে না পড়ে ★★★
-  const login = useCallback((userData: User, token: string) => {
+  const login = useCallback((userData: User, newToken: string) => {
     localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', token);
+    localStorage.setItem('token', newToken);
     setUser(userData);
+    setToken(newToken); // ★ লগইনে টোকেন আপডেট
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     setUser(null);
+    setToken(null); // ★ লগআউটে টোকেন রিমুভ
     router.push('/login');
     router.refresh();
   }, [router]);
 
-  return { user, isLoading, login, logout };
+  // ★ এই রিটার্নে 'token' থাকা বাধ্যতামূলক
+  return { user, token, isLoading, login, logout };
 }

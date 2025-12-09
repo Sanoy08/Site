@@ -1,29 +1,74 @@
 // src/hooks/use-push-notification.ts
 
-import { useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PushNotifications, ActionPerformed } from '@capacitor/push-notifications';
 import { FCM } from '@capacitor-community/fcm';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { toast } from 'sonner';
 
 export const usePushNotification = () => {
   const router = useRouter();
-  const { user, token } = useAuth(); 
+  const { user, token } = useAuth();
+  
+  // State for UI components
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // 1. Check Permission Status
+  const checkPermission = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    
+    try {
+      const status = await PushNotifications.checkPermissions();
+      setIsSubscribed(status.receive === 'granted');
+    } catch (e) {
+      console.error('Error checking permissions:', e);
+    }
+  }, []);
+
+  // 2. Request Permission (Manually triggered by button)
+  const subscribeToPush = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    setIsLoading(true);
+    
+    try {
+      let permStatus = await PushNotifications.checkPermissions();
+      
+      if (permStatus.receive === 'prompt') {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+      
+      if (permStatus.receive === 'granted') {
+        await PushNotifications.register();
+        setIsSubscribed(true);
+        toast.success("Notifications enabled!");
+      } else {
+        toast.error("Permission denied. Please enable from settings.");
+      }
+    } catch (e) {
+      console.error("Subscription failed:", e);
+      toast.error("Failed to enable notifications.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 3. Initial Setup & Listeners (Auto-run on mount)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const init = async () => {
-      let permStatus = await PushNotifications.checkPermissions();
-      if (permStatus.receive === 'prompt') {
-        permStatus = await PushNotifications.requestPermissions();
+      await checkPermission();
+      
+      // Auto-register logic is handled here (optional: only if already granted)
+      const status = await PushNotifications.checkPermissions();
+      if (status.receive === 'granted') {
+          await PushNotifications.register();
       }
-      if (permStatus.receive !== 'granted') return;
 
-      await PushNotifications.register();
-
-      // ★★★ FIX: (PushNotifications as any) ব্যবহার করা হয়েছে যাতে লাল দাগ না আসে ★★★
+      // Fix for Action Types (TypeScript workaround)
       try {
         await (PushNotifications as any).registerActionTypes({
             types: [
@@ -39,15 +84,16 @@ export const usePushNotification = () => {
       } catch (err) {
           console.warn("Action types registration failed", err);
       }
-
+      
       await PushNotifications.removeAllDeliveredNotifications();
     };
 
     init();
 
     // Listeners
-    PushNotifications.addListener('registration', async (fcmToken) => {
+    const registrationListener = PushNotifications.addListener('registration', async (fcmToken) => {
       console.log('FCM Token:', fcmToken.value);
+      setIsSubscribed(true);
       
       try {
           await FCM.subscribeTo({ topic: 'all_users' });
@@ -63,11 +109,11 @@ export const usePushNotification = () => {
       }
     });
 
-    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    const notificationListener = PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log('Push received:', notification);
     });
 
-    PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
+    const actionListener = PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
       const data = notification.notification.data;
       const actionId = notification.actionId;
 
@@ -79,7 +125,16 @@ export const usePushNotification = () => {
     });
 
     return () => {
-      PushNotifications.removeAllListeners();
+      registrationListener.then(l => l.remove());
+      notificationListener.then(l => l.remove());
+      actionListener.then(l => l.remove());
     };
-  }, [user, token, router]);
-};
+  }, [user, token, router, checkPermission]);
+
+  // ★ Return values so NotificationPermission.tsx doesn't crash
+  return { 
+    isSubscribed, 
+    isLoading, 
+    subscribeToPush 
+  };
+};  

@@ -1,4 +1,5 @@
 // src/app/(shop)/layout.tsx
+
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 
@@ -8,8 +9,8 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    // ★★★ FIX: প্যাডিং সরিয়ে সাধারণ লেআউট রাখা হয়েছে ★★★
-    <div className="flex flex-col min-h-screen">
+    // ★ ফিক্স: 'pt-[env(safe-area-inset-top)]' সরিয়ে দেওয়া হয়েছে কারণ আমরা নেটিভলি এটা হ্যান্ডেল করছি
+    <div className="flex flex-col min-h-[100dvh] pb-[env(safe-area-inset-bottom)]">
       <Header />
       <main className="flex-grow">{children}</main>
       <Footer />

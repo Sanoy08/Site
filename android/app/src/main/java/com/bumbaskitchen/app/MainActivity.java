@@ -3,12 +3,19 @@ package com.bumbaskitchen.app;
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
 
+// ১. এই ইম্পোর্টগুলো যোগ করুন
+import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
+import com.capacitorjs.plugins.app.AppPlugin;
+import com.getcapacitor.community.fcm.FCMPlugin; 
+
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Latest version a manual registerPlugin lage na.
-        // Capacitor automatic sob plugin khuje ney 'cap sync' korle.
-        // Tai amra ekhane kichu likhbo na, just super.onCreate thakbe.
+        // ২. এই লাইনগুলো যোগ করুন (Super এর আগে বা পরে)
+        registerPlugin(AppPlugin.class);
+        registerPlugin(PushNotificationsPlugin.class);
+        registerPlugin(FCMPlugin.class);
+
         super.onCreate(savedInstanceState);
     }
 }

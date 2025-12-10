@@ -3,14 +3,13 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.bumbaskitchen.app',
   appName: "Bumba's Kitchen",
-  webDir: 'public', // Next.js static output usually, but for Vercel live reload we point to URL
+  webDir: 'public',
   server: {
-    url: 'https://bumbaskitchen.app', // ★ REPLACE THIS WITH YOUR ACTUAL VERCEL URL
+    url: 'https://bumbaskitchen.app', // ★ EKHANE TOMAR LIVE URL DAO
     cleartext: true,
     allowNavigation: [
       'your-vercel-domain.com',
-      '*.bumbaskitchen.app',
-      'accounts.google.com' // If you use Google Auth
+      '*.bumbaskitchen.app'
     ]
   },
   plugins: {

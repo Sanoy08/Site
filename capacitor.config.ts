@@ -5,10 +5,11 @@ const config: CapacitorConfig = {
   appName: "Bumba's Kitchen",
   webDir: 'public',
   server: {
-    url: 'https://bumbaskitchen.app', // ★ EKHANE TOMAR LIVE URL DAO
+    url: 'https://www.bumbaskitchen.app', // ★ এই লাইনটি আবার চালু করুন
     cleartext: true,
     allowNavigation: [
-      'your-vercel-domain.com',
+      'www.bumbaskitchen.app',
+      'bumbaskitchen.app',
       '*.bumbaskitchen.app'
     ]
   },

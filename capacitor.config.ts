@@ -16,12 +16,6 @@ const config: CapacitorConfig = {
   plugins: {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
-    },
-    // ★ এটি যোগ করুন
-    StatusBar: {
-      style: "light",
-      overlaysWebView: true, // আমরা CSS দিয়ে হ্যান্ডেল করবো
-      backgroundColor: "#ffffffff"
     }
   }
 };

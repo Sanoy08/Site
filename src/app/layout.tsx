@@ -1,5 +1,6 @@
 // src/app/layout.tsx
-import type { Metadata, Viewport } from 'next';
+
+import type { Metadata, Viewport } from 'next'; // ★ Viewport ইম্পোর্ট করুন
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -45,14 +46,15 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
+// ★★★ ফিক্স: ভিউপোর্ট সেটিংস যোগ করা হয়েছে ★★★
+// এটি অ্যাপ এবং মোবাইল ব্রাউজারে লেআউট শিফটিং বন্ধ করবে
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  // ★★★ FIX: 'cover' এর বদলে 'auto' ব্যবহার করুন ★★★
-  // এটি অ্যাপকে নচ বা স্ট্যাটাস বারের নিচে নামিয়ে দেবে
-  viewportFit: 'auto', 
+  // 'cover' দিলে অ্যাপটি স্ট্যাটাস বারের নিচ পর্যন্ত পুরো স্ক্রিন পাবে
+  viewportFit: 'cover', 
 };
 
 export default function RootLayout({

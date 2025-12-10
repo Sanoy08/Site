@@ -78,3 +78,11 @@ img {
   max-width: 100%;
   height: auto;
 }
+
+
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  header, .fixed.top-0, .sticky.top-0 {
+    top: env(safe-area-inset-top) !important;
+  }
+}

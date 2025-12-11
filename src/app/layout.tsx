@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -34,7 +34,6 @@ const anekBangla = Anek_Bangla({
   weight: ['500'] 
 });
 
-// ★ নতুন ফন্ট: Pacifico
 const pacifico = Pacifico({
   subsets: ['latin'],
   variable: '--font-pacifico',
@@ -44,10 +43,16 @@ const pacifico = Pacifico({
 export const metadata: Metadata = {
   title: "Bumba's Kitchen",
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
-  // Removed manifest link
 };
 
-
+// ★ FIX: Viewport settings to prevent zooming and handle safe areas
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
 
 export default function RootLayout({
   children,
@@ -57,12 +62,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(
-          'font-sans antialiased', 
+          'font-sans antialiased min-h-screen flex flex-col', 
           poppins.variable, 
           amarante.variable,
           montserrat.variable,
           anekBangla.variable,
-          pacifico.variable // ★ যোগ করা হয়েছে
+          pacifico.variable
       )}>
           <CartProvider>
             <RealtimeMenuUpdater />

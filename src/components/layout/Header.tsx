@@ -87,14 +87,18 @@ export function Header() {
 
   return (
     <>
-       
-
-        <header className={cn(
+        <header 
+          className={cn(
             "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
             isScrolled 
-                ? "bg-background/80 backdrop-blur-xl shadow-sm border-border/60 py-1" 
-                : "bg-background/0 border-transparent py-3"
-        )}>
+                ? "bg-background/80 backdrop-blur-xl shadow-sm border-border/60 pb-1" // Changed py to pb
+                : "bg-background/0 border-transparent pb-3" // Changed py to pb
+          )}
+          // ★ FIX: Dynamic padding top to respect Status Bar (Safe Area) + Design Spacing
+          style={{ 
+            paddingTop: `calc(env(safe-area-inset-top) + ${isScrolled ? '0.25rem' : '0.75rem'})` 
+          }}
+        >
         <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
             
             {/* Left Side: Mobile Menu & Logo */}
@@ -113,9 +117,12 @@ export function Header() {
 
                         {/* Mobile Header Profile Section */}
                         <div className="relative overflow-hidden p-6 pb-8 bg-gradient-to-br from-primary/90 to-primary text-primary-foreground">
+                            {/* FIX: Status bar padding for mobile menu header */}
+                            <div className="absolute top-0 left-0 right-0 h-[env(safe-area-inset-top)] bg-black/10"></div>
+                            
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
                             
-                            <div className="relative z-10">
+                            <div className="relative z-10 pt-[env(safe-area-inset-top)]">
                                 <div className="text-white mb-6 brightness-200">
                                     <Logo />
                                 </div>

@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 84 34% 45%; 
+    --primary: 84 34% 45%; /* আপনার ওয়েবসাইটের সবুজ থিম */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -24,7 +24,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 45 93% 47%; 
+    --accent: 45 93% 47%; /* আপনার ওয়েবসাইটের হলুদ/অ্যাম্বার থিম */
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -69,26 +69,13 @@
 }
 
 @layer base {
-  html {
-    /* ★ FIX: Prevents layout shift from scrollbar toggling */
-    scrollbar-gutter: stable;
-    /* ★ FIX: Prevents horizontal scroll at root level */
-    overflow-x: hidden;
-    width: 100%;
-    /* ★ FIX: Standardizes text size on mobile */
-    -webkit-text-size-adjust: 100%;
+  * {
+    @apply border-border;
   }
-  
   body {
     @apply bg-background text-foreground;
-    /* ★ FIX: Ensures body takes full width but no more */
-    width: 100vw;
-    min-height: 100vh;
-    /* ★ FIX: Prevents horizontal scroll */
+    /* এই লাইনটি হরাইজন্টাল স্ক্রল ফিক্স করবে */
     overflow-x: hidden; 
-    /* ★ FIX: Prevents mobile bounce/rubber-banding */
-    overscroll-behavior-y: none;
-    position: relative;
   }
 }
 

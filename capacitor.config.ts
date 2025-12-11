@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Bumba's Kitchen",
   webDir: 'public',
   server: {
-    url: 'https://www.bumbaskitchen.app', // ★ এই লাইনটি আবার চালু করুন
+    url: 'https://www.bumbaskitchen.app',
     cleartext: true,
     allowNavigation: [
       'www.bumbaskitchen.app',
@@ -17,6 +17,7 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     }
+    // ★ StatusBar ব্লকটি এখান থেকে মুছে ফেলা হয়েছে কারণ আমরা এটি কোড দিয়ে হ্যান্ডেল করছি
   }
 };
 

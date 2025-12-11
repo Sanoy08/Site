@@ -92,7 +92,7 @@ export function Header() {
                         </Button>
                     </SheetTrigger>
                     
-                    {/* ★ ফিক্স: মোবাইল মেনুতেও pt-[env(...)] দেওয়া হয়েছে যাতে লোগো ঢাকা না পড়ে */}
+                    
                     <SheetContent side="left" className="w-[85vw] sm:w-[380px] p-0 flex flex-col border-r-0 gap-0 pt-[env(safe-area-inset-top)]">
                         <SheetHeader className="sr-only">
                             <SheetTitle>Navigation</SheetTitle>

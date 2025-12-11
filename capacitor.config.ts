@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Bumba's Kitchen",
   webDir: 'public',
   server: {
-    url: 'https://www.bumbaskitchen.app',
+    url: 'https://www.bumbaskitchen.app', // আপনার লাইভ URL
     cleartext: true,
     allowNavigation: [
       'www.bumbaskitchen.app',
@@ -16,8 +16,13 @@ const config: CapacitorConfig = {
   plugins: {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
-    }
-    // ★ StatusBar ব্লকটি এখান থেকে মুছে ফেলা হয়েছে কারণ আমরা এটি কোড দিয়ে হ্যান্ডেল করছি
+    },
+    // ★ ফিক্স: কিবোর্ড ওপেন হলেও স্ট্যাটাস বার ট্রান্সপারেন্ট থাকবে
+    Keyboard: {
+      resize: 'body', // বডি রিসাইজ হবে, কিন্তু ভিউপোর্ট নয়
+      style: 'dark',
+      resizeOnFullScreen: true, // ★ এটিই মূল সমাধান (Android এর জন্য)
+    },
   }
 };
 

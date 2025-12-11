@@ -72,14 +72,21 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-background text-foreground;
-    /* এই লাইনটি হরাইজন্টাল স্ক্রল ফিক্স করবে */
+    /* ডানে-বামে নড়াচড়া বন্ধ */
     overflow-x: hidden; 
+    /* রাবার ব্যান্ড এফেক্ট বন্ধ */
+    overscroll-behavior-y: none; 
   }
 }
 
-/* ইমেজ রেসপন্সিভনেস */
+/* ইমেজ ফিক্স */
 img {
   max-width: 100%;
   height: auto;

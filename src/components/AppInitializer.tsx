@@ -8,14 +8,11 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { usePushNotification } from '@/hooks/use-push-notification';
 
 export function AppInitializer() {
-  // নোটিফিকেশন হুক কল করা
   usePushNotification();
 
   useEffect(() => {
-    // শুধুমাত্র নেটিভ অ্যাপের জন্য রান হবে
     if (!Capacitor.isNativePlatform()) return;
 
-    // ১. ব্যাক বাটন হ্যান্ডেল করা
     App.addListener('backButton', ({ canGoBack }) => {
       if (!canGoBack) {
         App.exitApp();
@@ -24,26 +21,24 @@ export function AppInitializer() {
       }
     });
 
-    // ২. স্ট্যাটাস বার কনফিগারেশন (সবচেয়ে গুরুত্বপূর্ণ পার্ট)
-    const configureStatusBar = async () => {
+    const init = async () => {
       try {
-        // অ্যাপ পুরো স্ক্রিন জুড়ে থাকবে (নচ সহ)
+        // ১. অ্যাপ স্ট্যাটাস বারের নিচ পর্যন্ত বিস্তৃত হবে (Overlay)
         await StatusBar.setOverlaysWebView({ overlay: true });
         
-        // স্ট্যাটাস বারের আইকন কালো হবে (Light Style)
+        // ২. স্ট্যাটাস বারের আইকন কালো হবে (সাদা ব্যাকগ্রাউন্ডের জন্য)
         await StatusBar.setStyle({ style: Style.Light });
-
-        // অ্যান্ড্রয়েডের জন্য স্ট্যাটাস বারের ব্যাকগ্রাউন্ড ট্রান্সপারেন্ট
-        // (যাতে আমাদের CSS এর সাদা রঙ দেখা যায়)
+        
+        // ৩. স্ট্যাটাস বার ট্রান্সপারেন্ট হবে (যাতে আমাদের CSS কালার দেখা যায়)
         if (Capacitor.getPlatform() === 'android') {
-           await StatusBar.setBackgroundColor({ color: '#00000000' });
+            await StatusBar.setBackgroundColor({ color: '#00000000' });
         }
       } catch (e) {
-        console.warn('Status bar error:', e);
+        console.error('Status bar error:', e);
       }
     };
 
-    configureStatusBar();
+    init();
 
     return () => {
       App.removeAllListeners();

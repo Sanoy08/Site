@@ -1,5 +1,3 @@
-// src/components/layout/Header.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,21 +11,19 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetClose
 } from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuGroup
+  DropdownMenuGroup,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
-  Wallet, X, ChevronRight, Sparkles, 
+  Wallet, ChevronRight, Sparkles, 
   Instagram, Facebook, Heart, Settings, UtensilsCrossed
 } from 'lucide-react';
 import { Logo } from '@/components/shared/Logo';
@@ -43,22 +39,11 @@ const navLinks = [
 ];
 
 export function Header() {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showTopBanner, setShowTopBanner] = useState(true);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      // Small threshold to prevent jitter
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -86,16 +71,9 @@ export function Header() {
   };
 
   return (
-    <>
-       
-
-        <header className={cn(
-            "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
-            isScrolled 
-                ? "bg-background/80 backdrop-blur-xl shadow-sm border-border/60 py-1" 
-                : "bg-background/0 border-transparent py-3"
-        )}>
-        <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
+    // Note: Removed 'sticky' and 'top-0' from here because the Parent Layout handles it
+    <header className="w-full bg-background/95 backdrop-blur-xl border-b border-border/40 py-2">
+        <div className="container flex h-14 items-center justify-between gap-4">
             
             {/* Left Side: Mobile Menu & Logo */}
             <div className="flex items-center gap-3">
@@ -187,7 +165,6 @@ export function Header() {
                     </Sheet>
                 </div>
                 
-                {/* Logo Wrapper */}
                 <div 
                     className="hover:scale-105 transition-transform duration-300 cursor-pointer active:scale-95" 
                     onClick={() => router.push('/')}
@@ -221,7 +198,6 @@ export function Header() {
             {/* Right Side: Actions */}
             <div className="flex items-center gap-1.5 sm:gap-3">
             
-            {/* Search Bar - Expandable */}
             <div 
                 className={cn(
                     "hidden sm:flex relative transition-all duration-300 ease-out",
@@ -235,7 +211,7 @@ export function Header() {
                     )} />
                     <Input
                         readOnly
-                        placeholder="Search for delicious food..."
+                        placeholder="Search..."
                         onClick={handleSearchClick}
                         onFocus={() => setIsSearchFocused(true)}
                         onBlur={() => setIsSearchFocused(false)}
@@ -246,18 +222,13 @@ export function Header() {
                             "focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-background focus-visible:border-primary/30 focus-visible:w-full"
                         )}
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 pointer-events-none">
-                        <kbd className="text-[10px] font-mono text-muted-foreground/60 border border-border/50 px-1.5 py-0.5 rounded bg-background/50 shadow-sm">⌘ K</kbd>
-                    </div>
                 </div>
             </div>
 
-            {/* Mobile Search Icon */}
             <Button variant="ghost" size="icon" className="sm:hidden rounded-full" onClick={handleSearchClick}>
                 <Search className="h-5 w-5" />
             </Button>
 
-            {/* Notifications */}
             <Button asChild variant="ghost" size="icon" className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary">
                 <Link href="/notifications">
                     <Bell className="h-5 w-5 transition-transform group-hover:rotate-[15deg] origin-top" />
@@ -265,12 +236,10 @@ export function Header() {
                 </Link>
             </Button>
 
-            {/* Cart Sheet */}
             <div className="relative">
                 <CartSheet />
             </div>
 
-            {/* User Dropdown / Login Button */}
             {user ? (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -336,7 +305,6 @@ export function Header() {
             )}
             </div>
         </div>
-        </header>
-    </>
+    </header>
   );
 }

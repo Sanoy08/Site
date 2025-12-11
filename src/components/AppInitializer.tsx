@@ -12,7 +12,7 @@ export function AppInitializer() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // ১. ব্যাক বাটন হ্যান্ডেল করা
+    // Handle Hardware Back Button
     App.addListener('backButton', ({ canGoBack }) => {
       if (!canGoBack) {
         App.exitApp();
@@ -21,25 +21,26 @@ export function AppInitializer() {
       }
     });
 
-    // ২. স্ট্যাটাস বার সেটআপ (সবচেয়ে জরুরি)
-    const setupStatusBar = async () => {
+    // ★ FIX 2: Status Bar Configuration
+    const initStatusBar = async () => {
       try {
-        // অ্যাপকে ফুল স্ক্রিন করা (যাতে Safe Area কাজ করে)
+        // 1. Enable Overlay (So app takes full height)
         await StatusBar.setOverlaysWebView({ overlay: true });
         
-        // স্ট্যাটাস বারের লেখা কালো করা (ব্যাটারি, সময়)
+        // 2. Set Icons to Dark (for light background)
         await StatusBar.setStyle({ style: Style.Light });
-
-        // অ্যান্ড্রয়েডে স্ট্যাটাস বার স্বচ্ছ করা
+        
+        // 3. Set Background to Transparent (Android Only)
+        // This allows our CSS background to show through the status bar area
         if (Capacitor.getPlatform() === 'android') {
-            await StatusBar.setBackgroundColor({ color: '#00000000' });
+          await StatusBar.setBackgroundColor({ color: '#00000000' });
         }
-      } catch (error) {
-        console.error('Status bar setup failed:', error);
+      } catch (e) {
+        console.warn('Status bar setup failed', e);
       }
     };
 
-    setupStatusBar();
+    initStatusBar();
 
     return () => {
       App.removeAllListeners();

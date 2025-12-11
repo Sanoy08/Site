@@ -6,47 +6,62 @@
 
 @layer base {
   :root {
-    /* ... আপনার আগের ভেরিয়েবলগুলো (কোনো পরিবর্তন নেই) ... */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
+
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 84 34% 45%;
+
+    --primary: 84 34% 45%; /* আপনার ওয়েবসাইটের সবুজ থিম */
     --primary-foreground: 210 40% 98%;
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 45 93% 47%;
+
+    --accent: 45 93% 47%; /* আপনার ওয়েবসাইটের হলুদ/অ্যাম্বার থিম */
     --accent-foreground: 222.2 47.4% 11.2%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 84 34% 45%;
+
     --radius: 0.5rem;
   }
 
   .dark {
-    /* ... আপনার ডার্ক মোড ভেরিয়েবলগুলো ... */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
+
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
+
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
+
     --primary: 84 34% 45%;
     --primary-foreground: 210 40% 98%;
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
+
     --accent: 45 93% 47%;
     --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 84 34% 45%;
@@ -57,17 +72,10 @@
   * {
     @apply border-border;
   }
-  
-  html {
-    /* ট্যাপ হাইলাইট রিমুভ করে (মোবাইলে) */
-    -webkit-tap-highlight-color: transparent;
-  }
-
-body {
+  body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
-    /* অ্যাপের মতো ফিল */
-    overscroll-behavior-y: none;
+    /* এই লাইনটি হরাইজন্টাল স্ক্রল ফিক্স করবে */
+    overflow-x: hidden; 
   }
 }
 
@@ -76,6 +84,3 @@ img {
   max-width: 100%;
   height: auto;
 }
-
-
-

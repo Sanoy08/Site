@@ -10,7 +10,8 @@ const config: CapacitorConfig = {
     allowNavigation: [
       'www.bumbaskitchen.app',
       'bumbaskitchen.app',
-      '*.bumbaskitchen.app'
+      '*.bumbaskitchen.app',
+      'accounts.google.com'
     ]
   },
   plugins: {

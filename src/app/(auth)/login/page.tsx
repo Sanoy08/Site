@@ -1,3 +1,5 @@
+// src/app/(auth)/login/page.tsx
+
 'use client';
 
 import { useState } from 'react';
@@ -13,7 +15,7 @@ import { z } from "zod";
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-// ★ New Imports
+// ★ Imports for Mobile Native Login
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
@@ -41,11 +43,18 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
       login(data.user, data.token);
+
       toast.success(data.message || "Logged in successfully!");
       router.push('/account');
+
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "An unexpected error occurred.");
@@ -54,16 +63,21 @@ export default function LoginPage() {
     }
   }
 
-  // ★ Updated Google Login Handler
+  // ★ FIXED Google Login Handler
   const handleGoogleLogin = async () => {
-      // Check if running on Mobile App (Android/iOS)
+      // 1. Check if running on Mobile App (Android/iOS)
       if (Capacitor.isNativePlatform()) {
         try {
           setIsLoading(true);
-          // 1. Native Sign-In
+          
+          // ★ CRITICAL FIX: Initialize the plugin before signing in
+          // This prevents the "NullPointerException" crash
+          await GoogleAuth.initialize();
+
+          // Native Sign-In Dialog
           const googleUser = await GoogleAuth.signIn();
           
-          // 2. Send Token to Backend
+          // Send ID token to backend to create session
           const res = await fetch('/api/auth/google/mobile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -73,24 +87,28 @@ export default function LoginPage() {
           const data = await res.json();
 
           if (data.success && data.user) {
+             // Login user in the app state
              login(data.user, data.token || ''); 
+             
              toast.success("Logged in with Google!");
+             
+             // Force navigation to ensure state updates
              router.replace('/account');
              router.refresh();
           } else {
-             throw new Error(data.error || "Google login failed");
+             throw new Error(data.error || "Google login verification failed");
           }
         } catch (error: any) {
           console.error("Native Google Login Error:", error);
-          // Don't show error if user just cancelled
+          // Only show error if it wasn't a user cancellation
           if (error?.message !== 'User cancelled') {
-             toast.error("Google Sign-In failed");
+             toast.error("Google Sign-In failed. Please try again.");
           }
         } finally {
           setIsLoading(false);
         }
       } else {
-        // Fallback for Website
+        // 2. Standard Web Redirect for Browser
         window.location.href = '/api/auth/google';
       }
   };
@@ -125,14 +143,25 @@ export default function LoginPage() {
                   <FormItem>
                     <div className="flex items-center justify-between">
                         <FormLabel>Password</FormLabel>
-                        <Link href="/forgot-password" className="ml-auto inline-block text-sm underline text-muted-foreground hover:text-primary transition-colors">
+                        <Link 
+                            href="/forgot-password" 
+                            className="ml-auto inline-block text-sm underline text-muted-foreground hover:text-primary transition-colors"
+                        >
                             Forgot your password?
                         </Link>
                     </div>
                     <FormControl>
                       <div className="relative">
-                          <Input type={showPassword ? "text" : "password"} {...field} className="pr-10" />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          <Input 
+                            type={showPassword ? "text" : "password"} 
+                            {...field} 
+                            className="pr-10" 
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
                       </div>
@@ -149,17 +178,30 @@ export default function LoginPage() {
               </Button>
               
               <div className="relative w-full">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue with</span></div>
+                  <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                  </div>
               </div>
 
-              <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+              >
                 <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
                 Sign in with Google
               </Button>
 
               <div className="text-center text-sm">
-                Don't have an account? <Link href="/register" className="underline hover:text-primary transition-colors">Sign up</Link>
+                Don't have an account?{" "}
+                <Link href="/register" className="underline hover:text-primary transition-colors">
+                  Sign up
+                </Link>
               </div>
             </CardFooter>
           </form>

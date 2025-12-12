@@ -4,17 +4,17 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, ShoppingBag, MapPin, Wallet, LogOut } from 'lucide-react'; // Removed Heart
+// ★ Added TicketPercent to imports
+import { User, ShoppingBag, MapPin, Wallet, LogOut, TicketPercent } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect } from 'react';
 import AccountLoading from './loading';
-// import { useUserMock, useMockAuth } from '@/hooks/use-auth-mock'; // DELETE THIS LINE
-import { useAuth } from '@/hooks/use-auth'; // ADD THIS LINE
+import { useAuth } from '@/hooks/use-auth';
 
-// hello this is commit message
+// ★ Added "Coupons" to navigation items
 const sidebarNavItems = [
   {
     title: 'Profile',
@@ -26,13 +26,20 @@ const sidebarNavItems = [
     href: '/account/orders',
     icon: ShoppingBag,
   },
-  { title: 'Wallet',
+  { 
+    title: 'Wallet',
     href: '/account/wallet',
-    icon: Wallet },
+    icon: Wallet 
+  },
   {
     title: 'Addresses',
     href: '/account/addresses',
     icon: MapPin,
+  },
+  {
+    title: 'Coupons',
+    href: '/account/coupons',
+    icon: TicketPercent,
   },
 ];
 
@@ -42,7 +49,7 @@ interface AccountLayoutProps {
 
 export default function AccountLayout({ children }: AccountLayoutProps) {
   const pathname = usePathname();
-  const { user, isLoading, logout } = useAuth(); // UPDATED: useAuth hook
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -53,9 +60,8 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
 
   const handleLogout = async () => {
     try {
-      logout(); // UPDATED: use real logout function
+      logout();
       toast.success('Logged out successfully');
-      // router.push('/login'); // logout function handles redirect
     } catch (error: any) {
       toast.error('Failed to log out');
     }

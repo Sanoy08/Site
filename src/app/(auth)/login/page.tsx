@@ -13,8 +13,11 @@ import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from 'sonner';
-import { Loader2, Eye, EyeOff } from 'lucide-react'; // আইকন ইমপোর্ট
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+// ★ New Imports for Mobile Native Login
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -23,7 +26,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // পাসওয়ার্ড দেখার স্টেট
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
 
@@ -60,9 +63,49 @@ export default function LoginPage() {
     }
   }
 
-  // গুগল লগইন হ্যান্ডলার
-  const handleGoogleLogin = () => {
-      window.location.href = '/api/auth/google';
+  // ★ Updated Google Login Handler
+  const handleGoogleLogin = async () => {
+      // 1. Check if running on Mobile App (Android/iOS)
+      if (Capacitor.isNativePlatform()) {
+        try {
+          setIsLoading(true);
+          // Native Sign-In Dialog
+          const googleUser = await GoogleAuth.signIn();
+          
+          // Send ID token to backend to create session
+          const res = await fetch('/api/auth/google/mobile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken: googleUser.authentication.idToken })
+          });
+
+          const data = await res.json();
+
+          if (data.success && data.user) {
+             // We don't usually get a JWT token back in this flow unless the API sends it, 
+             // but the cookie is set. We can rely on the cookie.
+             // If your login() function needs a token for localStorage, 
+             // ensure your /api/auth/google/mobile route returns it.
+             login(data.user, data.token || ''); 
+             
+             toast.success("Logged in with Google!");
+             
+             // Force navigation to ensure state updates
+             router.replace('/account');
+             router.refresh();
+          } else {
+             throw new Error(data.error || "Google login verification failed");
+          }
+        } catch (error: any) {
+          console.error("Native Google Login Error:", error);
+          toast.error("Google Sign-In cancelled or failed");
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        // 2. Standard Web Redirect for Browser
+        window.location.href = '/api/auth/google';
+      }
   };
 
   return (
@@ -107,7 +150,7 @@ export default function LoginPage() {
                           <Input 
                             type={showPassword ? "text" : "password"} 
                             {...field} 
-                            className="pr-10" // আইকনের জন্য ডানদিকে জায়গা রাখা
+                            className="pr-10" 
                           />
                           <button
                             type="button"
@@ -143,6 +186,7 @@ export default function LoginPage() {
                 variant="outline" 
                 className="w-full" 
                 onClick={handleGoogleLogin}
+                disabled={isLoading}
               >
                 <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
                 Sign in with Google

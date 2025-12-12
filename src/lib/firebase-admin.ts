@@ -1,6 +1,6 @@
+// src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
 
-// Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -13,19 +13,3 @@ if (!admin.apps.length) {
 }
 
 export const messaging = admin.messaging();
-export const auth = admin.auth();
-
-// ★ HELPER: Verify User Token from Request Headers
-export async function verifyAuth(request: Request) {
-  const token = request.headers.get('authorization')?.split('Bearer ')[1];
-  
-  if (!token) return null;
-
-  try {
-    const decodedToken = await auth.verifyIdToken(token);
-    return decodedToken; // Returns object with uid, email, etc.
-  } catch (error) {
-    console.error("Auth verification failed:", error);
-    return null;
-  }
-}

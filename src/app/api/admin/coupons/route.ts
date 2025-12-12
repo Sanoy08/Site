@@ -2,26 +2,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import { verifyAuth } from '@/lib/firebase-admin';
+import jwt from 'jsonwebtoken';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'coupons';
+const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 async function isAdmin(request: NextRequest) {
-  const decodedToken = await verifyAuth(request);
-  if (!decodedToken) return false;
-
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
   try {
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    // Find user by Firebase UID or Email to check role
-    const user = await db.collection('users').findOne({
-      $or: [{ uid: decodedToken.uid }, { email: decodedToken.email }]
-    });
-    return user?.role === 'admin';
-  } catch {
-    return false;
-  }
+    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    return decoded.role === 'admin';
+  } catch { return false; }
 }
 
 export async function GET(request: NextRequest) {
@@ -65,7 +58,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Coupon code already exists' }, { status: 400 });
     }
 
-    // Unlimited logic
+    // আনলিমিটেড লজিক
     const usageLimit = body.usageLimit ? parseInt(body.usageLimit) : 0; // 0 means unlimited
     const expiryDate = body.expiryDate ? body.expiryDate : null; // null means unlimited time
 
@@ -79,7 +72,7 @@ export async function POST(request: NextRequest) {
       startDate: body.startDate,
       expiryDate: expiryDate,
       isActive: body.isActive ?? true,
-      timesUsed: 0,
+      timesUsed: 0, // শুরু ০ দিয়ে
       createdAt: new Date()
     };
 

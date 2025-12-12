@@ -1,4 +1,4 @@
-// src/app/api/orders/user/route.ts
+// src/app/api/auth/me/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
@@ -6,12 +6,11 @@ import { ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
 
 const DB_NAME = 'BumbasKitchenDB';
-const ORDERS_COLLECTION = 'orders';
+const COLLECTION_NAME = 'users';
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. টোকেন চেক করা (বাধ্যতামূলক)
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -27,19 +26,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid Token' }, { status: 401 });
     }
 
-    // ২. ডেটাবেস থেকে অর্ডার আনা
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    const orders = await db.collection(ORDERS_COLLECTION)
-      .find({ userId: new ObjectId(userId) })
-      .sort({ Timestamp: -1 }) // নতুন অর্ডার আগে দেখাবে
-      .toArray();
+    // পাসওয়ার্ড বাদে সব তথ্য আনা হচ্ছে
+    const user = await db.collection(COLLECTION_NAME).findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { password: 0, otp: 0, otpExpires: 0 } }
+    );
 
-    return NextResponse.json({ success: true, orders }, { status: 200 });
+    if (!user) {
+        return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        address: user.address,
+        picture: user.picture,
+        dob: user.dob,             
+        anniversary: user.anniversary
+      }
+    });
 
   } catch (error: any) {
-    console.error("Get User Orders Error:", error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch orders' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

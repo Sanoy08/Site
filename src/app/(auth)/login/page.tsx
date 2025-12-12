@@ -1,76 +1,68 @@
+// src/app/(auth)/login/page.tsx
+
 'use client';
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { signInWithEmailAndPassword, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter } from 'next/navigation';
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { toast } from 'sonner';
-import { Capacitor } from '@capacitor/core';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
-import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react'; // আইকন ইমপোর্ট
+import { useAuth } from '@/hooks/use-auth';
+
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(1, { message: "Password is required." }),
+});
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // পাসওয়ার্ড দেখার স্টেট
   const router = useRouter();
+  const { login } = useAuth();
 
-  // 1. Email/Password Login
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Welcome back!");
-      router.push('/account');
-    } catch (error: any) {
-      // Improve error messages based on error.code if needed
-      toast.error("Login failed: " + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
 
-  // 2. Google Login (Handles Mobile & Web)
-  const handleGoogleLogin = async () => {
-    try {
-      setIsLoading(true);
-      
-      if (Capacitor.isNativePlatform()) {
-        // --- MOBILE FLOW ---
-        await GoogleAuth.initialize();
-        const nativeUser = await GoogleAuth.signIn();
-        
-        // Create a Firebase credential from the native ID token
-        const credential = GoogleAuthProvider.credential(nativeUser.authentication.idToken);
-        
-        // Sign in to Firebase with that credential
-        await signInWithCredential(auth, credential);
-      } else {
-        // --- WEB FLOW ---
-        // For web, we can simply redirect or use popup
-        // Note: For simplicity in this example, we aren't implementing the 
-        // full web popup here, but standard Firebase web logic applies.
-        // You can add: await signInWithPopup(auth, googleProvider);
-        toast.error("Please use the mobile app for Google Sign-In or implement Web Popup.");
-        return; 
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
       }
 
-      toast.success("Logged in with Google!");
+      login(data.user, data.token);
+
+      toast.success(data.message || "Logged in successfully!");
       router.push('/account');
+
     } catch (error: any) {
       console.error(error);
-      if (error?.message !== 'User cancelled') {
-        toast.error("Google Sign-In failed");
-      }
+      toast.error(error.message || "An unexpected error occurred.");
     } finally {
       setIsLoading(false);
     }
+  }
+
+  // গুগল লগইন হ্যান্ডলার
+  const handleGoogleLogin = () => {
+      window.location.href = '/api/auth/google';
   };
 
   return (
@@ -78,51 +70,93 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>Enter your email to sign in.</CardDescription>
+          <CardDescription>Enter your email below to login to your account.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="m@example.com" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required 
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="m@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link href="/reset-password" className="text-sm underline">Forgot?</Link>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                        <FormLabel>Password</FormLabel>
+                        <Link 
+                            href="/forgot-password" 
+                            className="ml-auto inline-block text-sm underline text-muted-foreground hover:text-primary transition-colors"
+                        >
+                            Forgot your password?
+                        </Link>
+                    </div>
+                    <FormControl>
+                      <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"} 
+                            {...field} 
+                            className="pr-10" // আইকনের জন্য ডানদিকে জায়গা রাখা
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign in
+              </Button>
+              
+              <div className="relative w-full">
+                  <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                  </div>
               </div>
-              <Input 
-                id="password" 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required 
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Sign In
-            </Button>
+
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleGoogleLogin}
+              >
+                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
+                Sign in with Google
+              </Button>
+
+              <div className="text-center text-sm">
+                Don't have an account?{" "}
+                <Link href="/register" className="underline hover:text-primary transition-colors">
+                  Sign up
+                </Link>
+              </div>
+            </CardFooter>
           </form>
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2">Or</span></div>
-          </div>
-          <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
-            Sign in with Google
-          </Button>
-        </CardContent>
-        <CardFooter className="justify-center">
-          <p className="text-sm text-muted-foreground">
-            Don't have an account? <Link href="/register" className="underline">Sign up</Link>
-          </p>
-        </CardFooter>
+        </Form>
       </Card>
     </div>
   );

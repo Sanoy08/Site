@@ -12,20 +12,7 @@
           "package_name": "com.bumbaskitchen.app"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "42402664604-vrqr0nssha9jqhusr7uonebt5ccrhm4j.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.bumbaskitchen.app",
-            "certificate_hash": "8ddd7451044c9ddea0f3f14458a4b7824b22d755"
-          }
-        },
-        {
-          "client_id": "42402664604-s7ekkg9btmp5bqq6cs9k5h7283a12mlf.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
           "current_key": "AIzaSyCVLqpMkOXWtKeA3azVFs16RfdRxZerwJQ"
@@ -33,12 +20,7 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "42402664604-s7ekkg9btmp5bqq6cs9k5h7283a12mlf.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

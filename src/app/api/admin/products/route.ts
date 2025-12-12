@@ -2,22 +2,28 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAuth } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
-import { pusherServer } from '@/lib/pusher'; // রিয়েল-টাইম আপডেটের জন্য
-import { sendNotificationToAllUsers } from '@/lib/notification'; // পুশ নোটিফিকেশনের জন্য
+import { pusherServer } from '@/lib/pusher';
+import { sendNotificationToAllUsers } from '@/lib/notification';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+  const decodedToken = await verifyAuth(request);
+  if (!decodedToken) return false;
+
   try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const user = await db.collection('users').findOne({
+      $or: [{ uid: decodedToken.uid }, { email: decodedToken.email }]
+    });
+    return user?.role === 'admin';
+  } catch {
+    return false;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -32,7 +38,6 @@ export async function GET(request: NextRequest) {
       description: item.Description,
       price: item.Price,
       category: { name: item.Category, id: item.Category?.toLowerCase() },
-      // ইমেজ অ্যারে হ্যান্ডেলিং
       images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: item.Name })) || [],
       stock: item.InStock ? 100 : 0,
       featured: item.Bestseller === "true" || item.Bestseller === true,
@@ -53,13 +58,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, description, price, category, imageUrls, featured, inStock } = body;
 
-    // নতুন প্রোডাক্ট অবজেক্ট
     const newProduct = {
       Name: name,
       Description: description,
       Price: parseFloat(price),
       Category: category,
-      // ইমেজ অ্যারে সঠিকভাবে সেভ করা হচ্ছে
       ImageURLs: Array.isArray(imageUrls) ? imageUrls : (imageUrls ? [imageUrls] : []),
       Bestseller: featured,
       InStock: inStock,
@@ -72,19 +75,17 @@ export async function POST(request: NextRequest) {
 
     if (result.acknowledged) {
       
-      // ১. সার্ভার সাইড ক্যাশ রিফ্রেশ (On-Demand Revalidation)
+      // 1. Refresh Server Cache
       revalidatePath('/menus');
       revalidatePath('/');
 
-      // ২. ক্লায়েন্ট সাইড রিয়েল-টাইম আপডেট (Pusher)
-      // এটি বর্তমানে ব্রাউজ করছেন এমন ইউজারদের পেজ রিফ্রেশ করবে
+      // 2. Realtime Update (Pusher)
       await pusherServer.trigger('menu-updates', 'product-changed', {
         message: `New dish "${name}" added to the menu!`,
         type: 'add'
       });
 
-      // ৩. পুশ নোটিফিকেশন ব্রডকাস্ট (New Arrival)
-      // এটি সব সাবস্ক্রাইব করা ইউজারের ডিভাইসে নোটিফিকেশন পাঠাবে
+      // 3. Broadcast Notification
       try {
           await sendNotificationToAllUsers(
               client,

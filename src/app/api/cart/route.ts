@@ -3,20 +3,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAuth } from '@/lib/firebase-admin';
 import { pusherServer } from '@/lib/pusher';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
+// Helper to get MongoDB User ID from Firebase Token
 async function getUserId(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const decodedToken = await verifyAuth(request);
+  if (!decodedToken) return null;
+
   try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded._id;
-  } catch { return null; }
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    // Find the user document to get the MongoDB _id
+    const user = await db.collection(COLLECTION_NAME).findOne({
+      $or: [{ uid: decodedToken.uid }, { email: decodedToken.email }]
+    });
+    return user?._id.toString();
+  } catch {
+    return null;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -50,19 +58,19 @@ export async function POST(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // ১. ডাটাবেস আপডেট (Timestamp সহ)
+    // 1. Update Database
     await db.collection(COLLECTION_NAME).updateOne(
         { _id: new ObjectId(userId) },
         { 
             $set: { 
                 cart: items,
-                cartUpdatedAt: new Date(), // ★ সময় সেভ করা হচ্ছে
-                abandonedCartNotified: false // ★ নোটিফিকেশন ফ্ল্যাগ রিসেট
+                cartUpdatedAt: new Date(),
+                abandonedCartNotified: false
             } 
         }
     );
 
-    // ২. Pusher ট্রিগার
+    // 2. Trigger Pusher
     await pusherServer.trigger(`user-${userId}`, 'cart-updated', {
         items: items
     });

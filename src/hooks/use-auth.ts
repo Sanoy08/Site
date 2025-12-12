@@ -1,35 +1,22 @@
-'use client';
+import { User } from 'firebase/auth';
 
-import { useState, useEffect } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-
-export function useAuth() {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    // This listener automatically updates when user logs in/out
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      toast.success("Logged out successfully");
-      router.push('/login');
-    } catch (error) {
-      toast.error("Failed to log out");
-    }
-  };
-
-  return { user, isLoading, logout };
+// Add this inside your useAuth hook or login component
+const syncUser = async (firebaseUser: User) => {
+  const token = await firebaseUser.getIdToken();
+  const res = await fetch('/api/auth/sync', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      name: firebaseUser.displayName,
+      picture: firebaseUser.photoURL
+    })
+  });
+  const data = await res.json();
+  // Save MongoDB User Data to State/Storage
+  localStorage.setItem('mongoUser', JSON.stringify(data.user));
 }

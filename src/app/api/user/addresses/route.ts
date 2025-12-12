@@ -3,19 +3,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAuth } from '@/lib/firebase-admin';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
+// Helper to get MongoDB User ID
 async function getUserId(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const decodedToken = await verifyAuth(request);
+  if (!decodedToken) return null;
+
   try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded._id;
-  } catch { return null; }
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const user = await db.collection(COLLECTION_NAME).findOne({
+      $or: [{ uid: decodedToken.uid }, { email: decodedToken.email }]
+    });
+    return user?._id.toString();
+  } catch {
+    return null;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -80,7 +87,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ★★★ নতুন PUT মেথড (এডিট করার জন্য) ★★★
+// PUT Method (Edit)
 export async function PUT(request: NextRequest) {
     const userId = await getUserId(request);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -96,7 +103,6 @@ export async function PUT(request: NextRequest) {
         const client = await clientPromise;
         const db = client.db(DB_NAME);
 
-        // যদি এই অ্যাড্রেসটি ডিফল্ট করা হয়, তবে বাকিগুলোর ডিফল্ট ফলস করা হবে
         if (isDefault) {
             await db.collection(COLLECTION_NAME).updateOne(
                 { _id: new ObjectId(userId), "savedAddresses.isDefault": true },
@@ -105,7 +111,6 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        // নির্দিষ্ট অ্যাড্রেসটি আপডেট করা
         await db.collection(COLLECTION_NAME).updateOne(
             { _id: new ObjectId(userId), "savedAddresses.id": id },
             { 

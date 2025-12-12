@@ -3,24 +3,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
-import { sendNotificationToUser } from '@/lib/notification'; // নোটিফিকেশন ইউটিলিটি
+import { verifyAuth } from '@/lib/firebase-admin';
+import { sendNotificationToUser } from '@/lib/notification';
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
-// অ্যাডমিন চেক হেল্পার
+// Helper to check Admin role via Firebase + MongoDB
 async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+  const decodedToken = await verifyAuth(request);
+  if (!decodedToken) return false;
+
   try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const user = await db.collection('users').findOne({
+      $or: [{ uid: decodedToken.uid }, { email: decodedToken.email }]
+    });
+    return user?.role === 'admin';
+  } catch {
+    return false;
+  }
 }
 
-// ১. সব অর্ডার লোড করা (GET)
+// 1. Load all orders (GET)
 export async function GET(request: NextRequest) {
   try {
     if (!await isAdmin(request)) {
@@ -30,7 +36,7 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // লেটেস্ট অর্ডার সবার আগে দেখাবে
+    // Show latest orders first
     const orders = await db.collection(ORDERS_COLLECTION)
       .find({})
       .sort({ Timestamp: -1 }) 
@@ -44,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ২. অর্ডার স্ট্যাটাস আপডেট করা (PATCH)
+// 2. Update order status (PATCH)
 export async function PATCH(request: NextRequest) {
   try {
     if (!await isAdmin(request)) {
@@ -60,20 +66,20 @@ export async function PATCH(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // অর্ডারটি প্রথমে খুঁজে বের করা (ইউজার আইডি পাওয়ার জন্য)
+    // Find order to get User ID
     const order = await db.collection(ORDERS_COLLECTION).findOne({ _id: new ObjectId(orderId) });
     
     if (!order) {
         return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
     }
 
-    // স্ট্যাটাস আপডেট করা
+    // Update status
     await db.collection(ORDERS_COLLECTION).updateOne(
         { _id: new ObjectId(orderId) },
         { $set: { Status: status } }
     );
 
-    // ★★★ কাস্টমারকে নোটিফিকেশন পাঠানো ★★★
+    // ★★★ Send Notification to Customer ★★★
     if (order.userId) {
         let message = `Your order #${order.OrderNumber} status updated to: ${status}`;
         let title = "Order Update 📦";
@@ -89,13 +95,12 @@ export async function PATCH(request: NextRequest) {
              title = "Cooking Started";
         }
 
-        // ব্যাকগ্রাউন্ডে নোটিফিকেশন পাঠানো (await না করলেও চলবে, তবে এরর হ্যান্ডলিংয়ের জন্য রাখা ভালো)
         await sendNotificationToUser(
             client,
             order.userId.toString(),
             title,
             message,
-            '/account/orders' // ক্লিক করলে এই লিংকে যাবে
+            '/account/orders'
         );
     }
 

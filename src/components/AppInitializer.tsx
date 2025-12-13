@@ -5,7 +5,7 @@
 import { useEffect } from 'react';
 import { usePushNotification } from '@/hooks/use-push-notification';
 import { useBackButton } from '@/hooks/use-back-button';
-import { App, URLOpenListenerEvent } from '@capacitor/app';
+import { App as CapacitorApp, URLOpenListenerEvent } from '@capacitor/app'; // নাম পরিবর্তন করা হয়েছে সংঘর্ষ এড়াতে
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -14,45 +14,57 @@ export function AppInitializer() {
   const { login } = useAuth();
   const router = useRouter();
 
-  // Initialize existing hooks
+  // হুকগুলো কল করা হচ্ছে
   usePushNotification();
   useBackButton();
 
   useEffect(() => {
     // Listener for Deep Links (Custom URL Scheme)
     const setupAppListener = async () => {
-      App.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
-        const url = new URL(event.url);
+      CapacitorApp.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
+        // ইভেন্ট ইউআরএল লগ করা হচ্ছে ডিবাগিংয়ের জন্য
+        console.log("Deep link triggered:", event.url); 
         
-        // Check if this is the Google Callback URL
-        if (url.protocol.includes('bumbaskitchen') && url.pathname.includes('google-callback')) {
-          
-          const token = url.searchParams.get('token');
-          const userStr = url.searchParams.get('user');
+        try {
+            const url = new URL(event.url);
+            
+            // ★★★ FIX: Host অথবা Pathname চেক করা হচ্ছে ★★★
+            // bumbaskitchen://google-callback এর ক্ষেত্রে 'google-callback' হলো host
+            const isGoogleCallback = 
+                url.protocol.includes('bumbaskitchen') && 
+                (url.host.includes('google-callback') || url.pathname.includes('google-callback'));
 
-          if (token && userStr) {
-            try {
-              const user = JSON.parse(decodeURIComponent(userStr));
-              // Login via useAuth
-              login(user, decodeURIComponent(token));
+            if (isGoogleCallback) {
               
-              toast.success(`Welcome back, ${user.name}!`);
-              router.push('/');
-              router.refresh();
-            } catch (error) {
-              console.error("Deep link parsing error:", error);
-              toast.error("Failed to process login.");
+              const token = url.searchParams.get('token');
+              const userStr = url.searchParams.get('user');
+
+              if (token && userStr) {
+                  const user = JSON.parse(decodeURIComponent(userStr));
+                  
+                  // লগইন ফাংশন কল করা
+                  login(user, decodeURIComponent(token));
+                  
+                  toast.success(`Welcome back, ${user.name}!`);
+                  
+                  // লগইন শেষে হোমপেজে রিডাইরেক্ট
+                  router.push('/');
+                  router.refresh();
+              } else {
+                  console.error("Token or User data missing in deep link");
+              }
             }
-          }
+        } catch (error) {
+            console.error("Deep link parsing error:", error);
         }
       });
     };
 
     setupAppListener();
 
-    // Cleanup listener on unmount
+    // ক্লিনআপ
     return () => {
-        App.removeAllListeners();
+        CapacitorApp.removeAllListeners();
     };
   }, [login, router]);
 

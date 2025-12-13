@@ -15,7 +15,8 @@ import { z } from "zod";
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { Capacitor } from '@capacitor/core'; // Import Capacitor
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser'; // ★ Import Browser Plugin
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -61,14 +62,30 @@ export default function LoginPage() {
     }
   }
 
-  // Updated Google Login Handler
-  const handleGoogleLogin = () => {
-    // Detect if running as a native app (Android/iOS)
+  // ★ Updated Google Login Handler
+  const handleGoogleLogin = async () => {
     const isNative = Capacitor.isNativePlatform();
     const platform = isNative ? 'app' : 'web';
     
-    // Redirect with platform flag
-    window.location.href = `/api/auth/google?platform=${platform}`;
+    try {
+      if (isNative) {
+        // ★ Native: Open in In-App Browser to keep App alive in background
+        const origin = window.location.origin; // e.g., https://www.bumbaskitchen.app
+        const targetUrl = `${origin}/api/auth/google?platform=${platform}`;
+        
+        await Browser.open({ 
+          url: targetUrl,
+          windowName: '_self', // Helps with some OAuth flows
+          presentationStyle: 'popover' // iOS style, ignored on Android but good practice
+        });
+      } else {
+        // Web: Standard redirect
+        window.location.href = `/api/auth/google?platform=${platform}`;
+      }
+    } catch (error) {
+      console.error("Failed to open browser:", error);
+      toast.error("Could not initiate Google Login");
+    }
   };
 
   return (

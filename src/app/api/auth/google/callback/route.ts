@@ -13,26 +13,44 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const stateParam = searchParams.get('state'); // Retrieve state
+  const stateParam = searchParams.get('state'); 
   const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
   const REDIRECT_URI = `${APP_URL}/api/auth/google/callback`;
 
+  // 1. Platform Detection
+  let platform = 'web';
+  try {
+      if (stateParam) {
+          const parsedState = JSON.parse(stateParam);
+          platform = parsedState.platform || 'web';
+      }
+  } catch (e) {
+      console.warn("Failed to parse state", e);
+  }
+
+  // Helper function for redirecting
+  const redirect = (url: string, error?: string) => {
+      if (platform === 'app') {
+          // If App: Redirect to Custom Scheme
+           // If error, append it
+          const finalUrl = error 
+            ? `bumbaskitchen://google-callback?error=${encodeURIComponent(error)}`
+            : url;
+          return NextResponse.redirect(finalUrl);
+      } else {
+          // If Web: Redirect to HTTPS
+          const finalUrl = error 
+            ? `${APP_URL}/login?error=${encodeURIComponent(error)}`
+            : url;
+          return NextResponse.redirect(finalUrl);
+      }
+  };
+
   if (!code) {
-    return NextResponse.json({ error: 'No code provided' }, { status: 400 });
+    return redirect('', 'No code provided');
   }
 
   try {
-    // 1. Decode State to determine platform
-    let platform = 'web';
-    try {
-        if (stateParam) {
-            const parsedState = JSON.parse(stateParam);
-            platform = parsedState.platform || 'web';
-        }
-    } catch (e) {
-        console.warn("Failed to parse state", e);
-    }
-
     // 2. Exchange Code for Token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -47,9 +65,9 @@ export async function GET(request: NextRequest) {
     });
 
     const tokenData = await tokenRes.json();
-    if (tokenData.error) throw new Error(tokenData.error_description);
+    if (tokenData.error) throw new Error(tokenData.error_description || 'Token exchange failed');
 
-    // 3. Get User Info from Google
+    // 3. Get User Info
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
@@ -79,8 +97,7 @@ export async function GET(request: NextRequest) {
       user.picture = googleUser.picture;
     }
 
-    // 5. Generate App Token & Payload
-    // Note: Mapping _id to id for consistency with frontend types
+    // 5. Generate Token
     const userPayload = {
         id: user._id.toString(), 
         email: user.email,
@@ -98,17 +115,15 @@ export async function GET(request: NextRequest) {
     const encodedToken = encodeURIComponent(appToken);
     const encodedUser = encodeURIComponent(JSON.stringify(userPayload));
 
-    // 6. Conditional Redirect based on Platform
+    // 6. Success Redirect
     if (platform === 'app') {
-        // Redirect to Custom Scheme for Capacitor App
-        return NextResponse.redirect(`bumbaskitchen://google-callback?token=${encodedToken}&user=${encodedUser}`);
+         return NextResponse.redirect(`bumbaskitchen://google-callback?token=${encodedToken}&user=${encodedUser}`);
     } else {
-        // Redirect to Website URL
-        return NextResponse.redirect(`${APP_URL}/google-callback?token=${encodedToken}&user=${encodedUser}`);
+         return NextResponse.redirect(`${APP_URL}/google-callback?token=${encodedToken}&user=${encodedUser}`);
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Google Login Error:", error);
-    return NextResponse.redirect(`${APP_URL}/login?error=GoogleLoginFailed`);
+    return redirect('', error.message || 'Login failed');
   }
 }

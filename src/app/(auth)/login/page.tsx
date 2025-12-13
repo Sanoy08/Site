@@ -13,8 +13,10 @@ import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from 'sonner';
-import { Loader2, Eye, EyeOff } from 'lucide-react'; // আইকন ইমপোর্ট
-import { useAuth } from '@/hooks/use-auth';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext'; // ★ নতুন AuthContext ইমপোর্ট
+import { signInWithEmailAndPassword } from 'firebase/auth'; // ★ Firebase মেথড
+import { auth } from '@/lib/firebase'; // ★ Firebase কনফিগারেশন
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -23,54 +25,66 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // পাসওয়ার্ড দেখার স্টেট
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  
+  // আমাদের নতুন AuthContext থেকে গুগল লগইন মেথড আনা হলো
+  const { signInWithGoogle } = useAuth(); 
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "", password: "" },
   });
 
+  // ১. ইমেইল/পাসওয়ার্ড দিয়ে লগইন হ্যান্ডলার
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
+      // Firebase SDK ব্যবহার করে সরাসরি লগইন
+      await signInWithEmailAndPassword(auth, values.email, values.password);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      login(data.user, data.token);
-
-      toast.success(data.message || "Logged in successfully!");
+      // নোট: আমাদের AuthContext এর 'onIdTokenChanged' লিসেনার অটোমেটিক
+      // ব্যাকএন্ডে সেশন কুকি তৈরি করবে। তাই এখানে আলাদা API কল করার দরকার নেই।
+      
+      toast.success("Logged in successfully!");
       router.push('/account');
+      router.refresh(); // রাউটার রিফ্রেশ করা যাতে মিডলওয়্যার নতুন কুকি ডিটেক্ট করতে পারে
 
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "An unexpected error occurred.");
+      let message = "Login failed. Please try again.";
+      
+      // Firebase এর সাধারণ এরর মেসেজ হ্যান্ডলিং
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        message = "Invalid email or password.";
+      } else if (error.code === 'auth/too-many-requests') {
+        message = "Too many failed attempts. Please try again later.";
+      }
+
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
   }
 
-  // গুগল লগইন হ্যান্ডলার
-  const handleGoogleLogin = () => {
-      window.location.href = '/api/auth/google';
+  // ২. গুগল লগইন হ্যান্ডলার
+  const handleGoogleLogin = async () => {
+      try {
+        await signInWithGoogle();
+        // গুগল লগইন সফল হলে রিডাইরেক্ট
+        router.push('/account');
+        router.refresh();
+      } catch (error) {
+        // এরর টোস্ট হ্যান্ডেল করা আছে AuthContext এর ভেতরেই
+      }
   };
 
   return (
     <div className="flex items-center justify-center min-h-[80vh] px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>Enter your email below to login to your account.</CardDescription>
+          <CardTitle className="text-2xl text-center">Login</CardTitle>
+          <CardDescription className="text-center">Enter your email below to login to your account.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -107,7 +121,7 @@ export default function LoginPage() {
                           <Input 
                             type={showPassword ? "text" : "password"} 
                             {...field} 
-                            className="pr-10" // আইকনের জন্য ডানদিকে জায়গা রাখা
+                            className="pr-10" 
                           />
                           <button
                             type="button"

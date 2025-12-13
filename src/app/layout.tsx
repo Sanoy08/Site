@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
+import { AuthProvider } from '@/context/AuthContext'; // ★ নতুন ইমপোর্ট
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -44,10 +45,8 @@ const pacifico = Pacifico({
 export const metadata: Metadata = {
   title: "Bumba's Kitchen",
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
-  // Removed manifest link
+  // Removed manifest link as per your original code
 };
-
-
 
 export default function RootLayout({
   children,
@@ -62,14 +61,17 @@ export default function RootLayout({
           amarante.variable,
           montserrat.variable,
           anekBangla.variable,
-          pacifico.variable // ★ যোগ করা হয়েছে
+          pacifico.variable 
       )}>
-          <CartProvider>
-            <RealtimeMenuUpdater />
-            <AppInitializer />
-            {children}
-            <Toaster />
-          </CartProvider>
+          {/* ★ AuthProvider সবার উপরে রাখা হলো যাতে অথ স্টেট পুরো অ্যাপে পাওয়া যায় */}
+          <AuthProvider>
+            <CartProvider>
+              <RealtimeMenuUpdater />
+              <AppInitializer />
+              {children}
+              <Toaster />
+            </CartProvider>
+          </AuthProvider>
       </body>
     </html>
   );

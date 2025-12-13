@@ -1,5 +1,3 @@
-// src/app/(auth)/login/page.tsx
-
 'use client';
 
 import { useState } from 'react';
@@ -14,9 +12,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext'; // ★ নতুন AuthContext ইমপোর্ট
-import { signInWithEmailAndPassword } from 'firebase/auth'; // ★ Firebase মেথড
-import { auth } from '@/lib/firebase'; // ★ Firebase কনফিগারেশন
+import { useAuth } from '@/context/AuthContext';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -27,56 +25,58 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  
-  // আমাদের নতুন AuthContext থেকে গুগল লগইন মেথড আনা হলো
-  const { signInWithGoogle } = useAuth(); 
+  const { signInWithGoogle } = useAuth(); // AuthContext থেকে setUser নেওয়ার দরকার নেই, অটো আপডেট হবে
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "", password: "" },
   });
 
-  // ১. ইমেইল/পাসওয়ার্ড দিয়ে লগইন হ্যান্ডলার
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Firebase SDK ব্যবহার করে সরাসরি লগইন
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-
-      // নোট: আমাদের AuthContext এর 'onIdTokenChanged' লিসেনার অটোমেটিক
-      // ব্যাকএন্ডে সেশন কুকি তৈরি করবে। তাই এখানে আলাদা API কল করার দরকার নেই।
+      // ১. Firebase দিয়ে লগইন
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       
+      // ২. টোকেন সংগ্রহ করা
+      const idToken = await userCredential.user.getIdToken();
+
+      // ৩. ★★★ ম্যানুয়ালি সেশন তৈরি করা (এটিই আপনার সমস্যার সমাধান) ★★★
+      // আমরা এখানে অপেক্ষা করব যেন কুকি সেট হয়
+      const res = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!res.ok) throw new Error('Session creation failed');
+
+      // ৪. সব ঠিক থাকলে রিডাইরেক্ট
       toast.success("Logged in successfully!");
       router.push('/account');
-      router.refresh(); // রাউটার রিফ্রেশ করা যাতে মিডলওয়্যার নতুন কুকি ডিটেক্ট করতে পারে
+      router.refresh(); // নতুন কুকি পড়ার জন্য রিফ্রেশ
 
     } catch (error: any) {
       console.error(error);
       let message = "Login failed. Please try again.";
-      
-      // Firebase এর সাধারণ এরর মেসেজ হ্যান্ডলিং
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         message = "Invalid email or password.";
-      } else if (error.code === 'auth/too-many-requests') {
-        message = "Too many failed attempts. Please try again later.";
       }
-
       toast.error(message);
     } finally {
       setIsLoading(false);
     }
   }
 
-  // ২. গুগল লগইন হ্যান্ডলার
   const handleGoogleLogin = async () => {
-      try {
+    try {
         await signInWithGoogle();
-        // গুগল লগইন সফল হলে রিডাইরেক্ট
-        router.push('/account');
-        router.refresh();
-      } catch (error) {
-        // এরর টোস্ট হ্যান্ডেল করা আছে AuthContext এর ভেতরেই
-      }
+        // Google Login এর ক্ষেত্রে AuthContext এর লজিক কাজ করবে, 
+        // তবে ভালো হয় যদি সেখানেও রিডাইরেক্টের আগে লোডিং দেখানো হয়।
+        // router.push('/account'); // এটি AuthContext বা Google Callback পেজে হ্যান্ডেল করা ভালো
+    } catch (error) {
+        // Error handling
+    }
   };
 
   return (

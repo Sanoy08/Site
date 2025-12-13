@@ -1,3 +1,5 @@
+// src/app/(auth)/login/page.tsx
+
 'use client';
 
 import { useState } from 'react';
@@ -11,10 +13,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from 'sonner';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { Loader2, Eye, EyeOff } from 'lucide-react'; // আইকন ইমপোর্ট
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -23,9 +23,9 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // পাসওয়ার্ড দেখার স্টেট
   const router = useRouter();
-  const { signInWithGoogle } = useAuth(); // AuthContext থেকে setUser নেওয়ার দরকার নেই, অটো আপডেট হবে
+  const { login } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,56 +35,42 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // ১. Firebase দিয়ে লগইন
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      
-      // ২. টোকেন সংগ্রহ করা
-      const idToken = await userCredential.user.getIdToken();
-
-      // ৩. ★★★ ম্যানুয়ালি সেশন তৈরি করা (এটিই আপনার সমস্যার সমাধান) ★★★
-      // আমরা এখানে অপেক্ষা করব যেন কুকি সেট হয়
-      const res = await fetch('/api/auth/session', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify(values),
       });
 
-      if (!res.ok) throw new Error('Session creation failed');
+      const data = await res.json();
 
-      // ৪. সব ঠিক থাকলে রিডাইরেক্ট
-      toast.success("Logged in successfully!");
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      login(data.user, data.token);
+
+      toast.success(data.message || "Logged in successfully!");
       router.push('/account');
-      router.refresh(); // নতুন কুকি পড়ার জন্য রিফ্রেশ
 
     } catch (error: any) {
       console.error(error);
-      let message = "Login failed. Please try again.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        message = "Invalid email or password.";
-      }
-      toast.error(message);
+      toast.error(error.message || "An unexpected error occurred.");
     } finally {
       setIsLoading(false);
     }
   }
 
-  const handleGoogleLogin = async () => {
-    try {
-        await signInWithGoogle();
-        // Google Login এর ক্ষেত্রে AuthContext এর লজিক কাজ করবে, 
-        // তবে ভালো হয় যদি সেখানেও রিডাইরেক্টের আগে লোডিং দেখানো হয়।
-        // router.push('/account'); // এটি AuthContext বা Google Callback পেজে হ্যান্ডেল করা ভালো
-    } catch (error) {
-        // Error handling
-    }
+  // গুগল লগইন হ্যান্ডলার
+  const handleGoogleLogin = () => {
+      window.location.href = '/api/auth/google';
   };
 
   return (
     <div className="flex items-center justify-center min-h-[80vh] px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Login</CardTitle>
-          <CardDescription className="text-center">Enter your email below to login to your account.</CardDescription>
+          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardDescription>Enter your email below to login to your account.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -121,7 +107,7 @@ export default function LoginPage() {
                           <Input 
                             type={showPassword ? "text" : "password"} 
                             {...field} 
-                            className="pr-10" 
+                            className="pr-10" // আইকনের জন্য ডানদিকে জায়গা রাখা
                           />
                           <button
                             type="button"

@@ -3,35 +3,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { getSession } from '@/lib/session'; // নতুন সেশন লজিক
+import jwt from 'jsonwebtoken';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
+const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. কুকি থেকে সেশন চেক করা (আগের মতো হেডার পার্স করার দরকার নেই)
-    const session = await getSession();
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // যদি সেশন না থাকে, তবে 401 বা null ইউজার রিটার্ন করি
-    if (!session || !session.userId) {
-      return NextResponse.json({ success: false, error: 'Unauthorized', user: null }, { status: 401 });
+    const token = authHeader.split(' ')[1];
+    let userId;
+    
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      userId = decoded._id;
+    } catch (e) {
+      return NextResponse.json({ success: false, error: 'Invalid Token' }, { status: 401 });
     }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // ২. ডাটাবেস থেকে ইউজার খুঁজে বের করা
+    // পাসওয়ার্ড বাদে সব তথ্য আনা হচ্ছে
     const user = await db.collection(COLLECTION_NAME).findOne(
-        { _id: new ObjectId(session.userId as string) },
-        { projection: { password: 0, otp: 0, otpExpires: 0 } } // সেন্সিটিভ ডাটা বাদ
+        { _id: new ObjectId(userId) },
+        { projection: { password: 0, otp: 0, otpExpires: 0 } }
     );
 
     if (!user) {
         return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    // ৩. ইউজারের তথ্য রিটার্ন করা
     return NextResponse.json({
       success: true,
       user: {
@@ -43,13 +50,11 @@ export async function GET(request: NextRequest) {
         address: user.address,
         picture: user.picture,
         dob: user.dob,             
-        anniversary: user.anniversary,
-        wallet: user.wallet // ওয়ালেট ইনফো অ্যাড করা হলো
+        anniversary: user.anniversary
       }
     });
 
   } catch (error: any) {
-    console.error("Auth Me API Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

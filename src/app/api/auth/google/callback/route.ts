@@ -13,45 +13,15 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const stateParam = searchParams.get('state'); 
   const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
   const REDIRECT_URI = `${APP_URL}/api/auth/google/callback`;
 
-  // 1. Platform Detection
-  let platform = 'web';
-  try {
-      if (stateParam) {
-          const parsedState = JSON.parse(stateParam);
-          platform = parsedState.platform || 'web';
-      }
-  } catch (e) {
-      console.warn("Failed to parse state", e);
-  }
-
-  // Helper function for redirecting
-  const redirect = (url: string, error?: string) => {
-      if (platform === 'app') {
-          // If App: Redirect to Custom Scheme
-           // If error, append it
-          const finalUrl = error 
-            ? `bumbaskitchen://google-callback?error=${encodeURIComponent(error)}`
-            : url;
-          return NextResponse.redirect(finalUrl);
-      } else {
-          // If Web: Redirect to HTTPS
-          const finalUrl = error 
-            ? `${APP_URL}/login?error=${encodeURIComponent(error)}`
-            : url;
-          return NextResponse.redirect(finalUrl);
-      }
-  };
-
   if (!code) {
-    return redirect('', 'No code provided');
+    return NextResponse.json({ error: 'No code provided' }, { status: 400 });
   }
 
   try {
-    // 2. Exchange Code for Token
+    // ১. কোড দিয়ে টোকেন আনা
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,15 +35,15 @@ export async function GET(request: NextRequest) {
     });
 
     const tokenData = await tokenRes.json();
-    if (tokenData.error) throw new Error(tokenData.error_description || 'Token exchange failed');
+    if (tokenData.error) throw new Error(tokenData.error_description);
 
-    // 3. Get User Info
+    // ২. টোকেন দিয়ে ইউজারের তথ্য আনা
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
     const googleUser = await userRes.json();
 
-    // 4. Database Logic
+    // ৩. ডাটাবেসে চেক বা সেভ করা
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const usersCollection = db.collection(COLLECTION_NAME);
@@ -81,10 +51,11 @@ export async function GET(request: NextRequest) {
     let user = await usersCollection.findOne({ email: googleUser.email.toLowerCase() });
 
     if (!user) {
+      // নতুন ইউজার
       const newUser = {
         name: googleUser.name,
         email: googleUser.email.toLowerCase(),
-        isVerified: true,
+        isVerified: true, // গুগল মানেই ভেরিফাইড
         createdAt: new Date(),
         role: "customer",
         picture: googleUser.picture,
@@ -93,37 +64,29 @@ export async function GET(request: NextRequest) {
       const result = await usersCollection.insertOne(newUser);
       user = { ...newUser, _id: result.insertedId };
     } else {
+      // পুরনো ইউজার - ছবি আপডেট করা যেতে পারে
       await usersCollection.updateOne({ _id: user._id }, { $set: { picture: googleUser.picture } });
       user.picture = googleUser.picture;
     }
 
-    // 5. Generate Token
+    // ৪. আমাদের অ্যাপের টোকেন তৈরি করা
     const userPayload = {
-        id: user._id.toString(), 
+        _id: user._id.toString(),
         email: user.email,
         name: user.name,
         role: user.role,
         picture: user.picture
     };
 
-    const appToken = jwt.sign(
-        { _id: user._id.toString(), email: user.email, role: user.role }, 
-        JWT_SECRET, 
-        { expiresIn: '30d' }
-    );
+    const appToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '30d' });
 
-    const encodedToken = encodeURIComponent(appToken);
-    const encodedUser = encodeURIComponent(JSON.stringify(userPayload));
+    // ৫. লগইন শেষে ফ্রন্টএন্ডে পাঠানো
+    const redirectUrl = `${APP_URL}/google-callback?token=${encodeURIComponent(appToken)}&user=${encodeURIComponent(JSON.stringify(userPayload))}`;
+    
+    return NextResponse.redirect(redirectUrl);
 
-    // 6. Success Redirect
-    if (platform === 'app') {
-         return NextResponse.redirect(`bumbaskitchen://google-callback?token=${encodedToken}&user=${encodedUser}`);
-    } else {
-         return NextResponse.redirect(`${APP_URL}/google-callback?token=${encodedToken}&user=${encodedUser}`);
-    }
-
-  } catch (error: any) {
+  } catch (error) {
     console.error("Google Login Error:", error);
-    return redirect('', error.message || 'Login failed');
+    return NextResponse.redirect(`${APP_URL}/login?error=GoogleLoginFailed`);
   }
 }

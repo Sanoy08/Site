@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -16,7 +16,8 @@ import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser'; // ★ Import Browser Plugin
+// Import the native plugin
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -28,6 +29,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
+
+  // Initialize Native Google Auth
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      GoogleAuth.initialize({
+        clientId: 'YOUR_WEB_CLIENT_ID_FROM_GOOGLE_CONSOLE.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+      });
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,29 +74,41 @@ export default function LoginPage() {
     }
   }
 
-  // ★ Updated Google Login Handler
+  // ★ NEW: Native Google Login Handler
   const handleGoogleLogin = async () => {
-    const isNative = Capacitor.isNativePlatform();
-    const platform = isNative ? 'app' : 'web';
-    
     try {
-      if (isNative) {
-        // ★ Native: Open in In-App Browser to keep App alive in background
-        const origin = window.location.origin; // e.g., https://www.bumbaskitchen.app
-        const targetUrl = `${origin}/api/auth/google?platform=${platform}`;
-        
-        await Browser.open({ 
-          url: targetUrl,
-          windowName: '_self', // Helps with some OAuth flows
-          presentationStyle: 'popover' // iOS style, ignored on Android but good practice
+      if (Capacitor.isNativePlatform()) {
+        // 1. Native Flow
+        const googleUser = await GoogleAuth.signIn();
+        const idToken = googleUser.authentication.idToken;
+
+        if (!idToken) throw new Error("No ID token received");
+
+        // 2. Send token to our new Backend API
+        const res = await fetch('/api/auth/google/native-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
         });
+
+        const data = await res.json();
+
+        if (data.success) {
+          toast.success(`Welcome back, ${data.user.name}!`);
+          login(data.user, data.token);
+          router.push('/');
+          router.refresh();
+        } else {
+          toast.error(data.error || "Google login failed on server");
+        }
+
       } else {
-        // Web: Standard redirect
-        window.location.href = `/api/auth/google?platform=${platform}`;
+        // 3. Web Flow (Fallback)
+        window.location.href = `/api/auth/google?platform=web`;
       }
-    } catch (error) {
-      console.error("Failed to open browser:", error);
-      toast.error("Could not initiate Google Login");
+    } catch (error: any) {
+      console.error("Google Auth Error:", error);
+      toast.error(error.message || "Google Sign-In cancelled or failed");
     }
   };
 

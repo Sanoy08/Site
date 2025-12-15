@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1071253759706-c1fvgbuj6kjdr38nrk5pefgqc9sbpjd8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bumbaskitchen.app",
+            "certificate_hash": "7af409f4598251b49c839cf18da045f9516dd206"
+          }
+        },
+        {
           "client_id": "1071253759706-k2sdmhlv0bao4osb3m6fnnsemvftigq9.apps.googleusercontent.com",
           "client_type": 3
         }

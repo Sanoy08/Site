@@ -11,19 +11,20 @@ const config: CapacitorConfig = {
       'www.bumbaskitchen.app',
       'bumbaskitchen.app',
       '*.bumbaskitchen.app',
-      'accounts.google.com' // Allow Google Auth navigation
+      'accounts.google.com' // Required for Google Auth to work smoothly
     ]
   },
   plugins: {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
-    // [ADD THIS SECTION]
+    // ★★★ ADD THIS BLOCK ★★★
     GoogleAuth: {
-      scopes: ['profile', 'email'],
-      // IMPORTANT: Use your "Web Client ID" here, not Android/iOS ID
-      serverClientId: process.env.GOOGLE_CLIENT_ID || '1071253759706-k2sdmhlv0bao4osb3m6fnnsemvftigq9.apps.googleusercontent.com',
-      forceCodeForRefreshToken: true,
+      scopes: ["profile", "email"],
+      // Replace with your actual "Web Client ID" from Google Cloud Console
+      // Do NOT use the Android Client ID here.
+      serverClientId: "1071253759706-k2sdmhlv0bao4osb3m6fnnsemvftigq9.apps.googleusercontent.com",
+      forceCodeForRefreshToken: true
     }
   }
 };

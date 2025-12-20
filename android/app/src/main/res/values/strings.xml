@@ -4,4 +4,5 @@
     <string name="title_activity_main">Bumbas Kitchen</string>
     <string name="package_name">com.bumbaskitchen.app</string>
     <string name="custom_url_scheme">com.bumbaskitchen.app</string>
+    <string name="default_web_client_id">842980954048-3jccrleardu3pd3472dskqn5o26g40vr.apps.googleusercontent.com</string>
 </resources>

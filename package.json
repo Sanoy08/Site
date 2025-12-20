@@ -22,7 +22,6 @@
     "@capacitor/keyboard": "^8.0.0",
     "@capacitor/push-notifications": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
-    "@codetrix-studio/capacitor-google-auth": "3.4.0-rc.4",
     "@genkit-ai/google-genai": "^1.20.0",
     "@genkit-ai/next": "^1.20.0",
     "@hookform/resolvers": "^4.1.3",

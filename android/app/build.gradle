@@ -1,5 +1,5 @@
 apply plugin: 'com.android.application'
-apply plugin: 'com.google.gms.google-services' // ★ এই লাইনটা যোগ করতে হবে
+
 android {
     namespace = "com.bumbaskitchen.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -40,12 +40,15 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
-    implementation platform('com.google.firebase:firebase-bom:33.7.0') // ★ থাকলে ভালো, ভার্সন কন্ট্রোলের জন্য
-    implementation 'com.google.firebase:firebase-auth' // ★ অথেন্টিকেশনের জন্য
+    
+    // Firebase Dependencies
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-auth'
 }
 
 apply from: 'capacitor.build.gradle'
 
+// Google Services Plugin (Only apply once at the bottom)
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
@@ -54,6 +57,3 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
-
-
-apply plugin: 'com.google.gms.google-services'

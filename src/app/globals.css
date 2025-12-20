@@ -72,10 +72,12 @@
   * {
     @apply border-border;
   }
-  body {
+  
+  /* ★★★ ফিক্স: html এবং body উভয়কেই কন্ট্রোল করা হচ্ছে ★★★ */
+  html, body {
     @apply bg-background text-foreground;
-    /* এই লাইনটি হরাইজন্টাল স্ক্রল ফিক্স করবে */
-    overflow-x: hidden; 
+    overflow-x: hidden; /* হরাইজন্টাল স্ক্রল বন্ধ */
+    max-width: 100vw;   /* স্ক্রিনের বাইরে যাওয়া আটকাবে */
   }
 }
 

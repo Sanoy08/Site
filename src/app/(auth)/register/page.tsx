@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/use-auth'; // ★ Updated hook import
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { GoogleLogo } from '@/components/icons/GoogleLogo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -174,19 +175,20 @@ export default function RegisterPage() {
               </div>
 
               <Button
-                variant="outline"
-                type="button"
-                className="w-full"
-                onClick={handleGoogleSignUp}
-                disabled={isLoading || isGoogleLoading}
-              >
-                {isGoogleLoading ? (
-                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Image src="/icons/google.png" alt="Google" width={20} height={20} className="mr-2"/>
-                )}
-                Google
-              </Button>
+  variant="outline"
+  type="button"
+  className="w-full flex items-center justify-center gap-2" // স্টাইল ঠিক করা হলো
+  onClick={handleGoogleSignUp}
+  disabled={isLoading || isGoogleLoading}
+>
+  {isGoogleLoading ? (
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+  ) : (
+    // ইমেজ সরিয়ে আমাদের নতুন লোগো বসানো হলো
+    <GoogleLogo className="h-5 w-5" />
+  )}
+  Google
+</Button>
             </>
           )}
 

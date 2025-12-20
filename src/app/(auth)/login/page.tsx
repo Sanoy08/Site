@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { GoogleLogo } from '@/components/icons/GoogleLogo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 
 export default function LoginPage() {
@@ -160,25 +161,20 @@ export default function LoginPage() {
 
           {/* New Google Login Button */}
           <Button
-            variant="outline"
-            type="button"
-            className="w-full"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading || isGoogleLoading}
-          >
-            {isGoogleLoading ? (
-               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Image 
-                src="/icons/google.png" 
-                alt="Google" 
-                width={20} 
-                height={20} 
-                className="mr-2"
-              />
-            )}
-            Google
-          </Button>
+  variant="outline"
+  type="button"
+  className="w-full flex items-center justify-center gap-2" // স্টাইল ঠিক করা হলো
+  onClick={handleGoogleSignIn}
+  disabled={isLoading || isGoogleLoading}
+>
+  {isGoogleLoading ? (
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+  ) : (
+    // ইমেজ সরিয়ে আমাদের নতুন লোগো বসানো হলো
+    <GoogleLogo className="h-5 w-5" />
+  )}
+  Google
+</Button>
 
         </CardContent>
         

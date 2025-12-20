@@ -1,5 +1,4 @@
 // next.config.ts
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -10,13 +9,15 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    // ★★★ এই লাইনটি যোগ করুন ★★★
-    // এটি Vercel-কে ইমেজ প্রসেস করতে বাধা দেবে, ফলে লিমিট শেষ হবে না।
-    // ছবি সরাসরি Cloudinary থেকে লোড হবে (ব্যান্ডউইথ Cloudinary-র খরচ হবে)।
-    unoptimized: true, 
-    
-    
+    // Vercel-কে ইমেজ প্রসেস করতে বাধা দেবে, ফলে লিমিট শেষ হবে না।
+    unoptimized: true,
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com', // ★ Google Profile Image (Added)
+        port: '',
+        pathname: '/**',
+      },
       {
         protocol: 'https',
         hostname: 'placehold.co',

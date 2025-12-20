@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Bumba's Kitchen",
   webDir: 'public',
   server: {
-    url: 'https://www.bumbaskitchen.app', // ★ এই লাইনটি আবার চালু করুন
+    url: 'https://www.bumbaskitchen.app',
     cleartext: true,
     allowNavigation: [
       'www.bumbaskitchen.app',
@@ -16,7 +16,12 @@ const config: CapacitorConfig = {
   plugins: {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
-    }
+    },
+    // ★★★ এই অংশটি মিসিং ছিল, যার কারণে ক্র্যাশ করছে ★★★
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ["google.com"],
+    },
   }
 };
 

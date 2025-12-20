@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase"; // Ensure Step 7 file exists
+import { auth, googleProvider } from "@/lib/firebase"; 
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
@@ -81,16 +81,24 @@ export function useAuth() {
       let idToken = "";
 
       if (Capacitor.isNativePlatform()) {
-        // 1. NATIVE MOBILE FLOW (Capacitor Plugin)
-        const result = await FirebaseAuthentication.signInWithGoogle();
-        idToken = result.credential?.idToken || "";
+        // ★★★ MOBILE FIX ★★★
+        
+        // 1. Google সাইন-ইন পপ-আপ ওপেন করুন এবং নেটিভ লেয়ারে অথেন্টিকেট করুন
+        await FirebaseAuthentication.signInWithGoogle();
+
+        // 2. এরপর সরাসরি Firebase থেকে কারেন্ট ইউজার-এর টোকেনটি চান।
+        // এটি সেই টোকেন রিটার্ন করবে যার 'aud' (audience) হবে আপনার Firebase Project ID.
+        // আগের কোডে 'result.credential.idToken' নিচ্ছিলেন যা ছিল Google-এর টোকেন।
+        const result = await FirebaseAuthentication.getIdToken();
+        idToken = result.token;
+
       } else {
         // 2. WEB FLOW (Firebase JS SDK)
         const result = await signInWithPopup(auth, googleProvider);
         idToken = await result.user.getIdToken();
       }
 
-      if (!idToken) throw new Error("Failed to get ID token from Google");
+      if (!idToken) throw new Error("Failed to retrieve Firebase ID Token");
 
       // 3. Send Token to Backend "Bridge" API
       const response = await fetch('/api/auth/firebase-login', {

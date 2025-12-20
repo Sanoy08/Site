@@ -75,22 +75,18 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
               <CarouselContent>
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
-                    {/* ★★★ FIX: Fixed Height বাদ দেওয়া হয়েছে, এখন 'w-full' এবং 'h-auto' থাকবে ★★★ */}
                     <Link href={slide.clickUrl} className="block w-full relative">
                       <Image 
                         src={slide.imageUrl} 
                         alt="Hero Slide" 
-                        // width/height=0 এবং sizes="100vw" দিলে ইমেজটি কন্টেইনারের সাইজ নেবে
                         width={0}
                         height={0}
                         sizes="100vw"
-                        // style={{ width: '100%', height: 'auto' }} -> এটি নিশ্চিত করে ইমেজ কখনো ক্রপ হবে না
                         style={{ width: '100%', height: 'auto' }}
                         className="object-contain" 
                         priority 
                         unoptimized={true} 
                       />
-                      {/* Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
                     </Link>
                   </CarouselItem>
@@ -98,7 +94,6 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
               </CarouselContent>
             </Carousel>
             
-            {/* Dots */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
               {Array.from({ length: count }).map((_, index) => (
                 <button key={index} onClick={() => api?.scrollTo(index)} className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${current === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} />
@@ -215,7 +210,8 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
             <Carousel opts={{ align: "start", loop: true }} className="w-full">
             <CarouselContent>
                 {offers.map((offer) => (
-                <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
+                // ★ FIX: মোবাইলে 'basis-[85%]' দেওয়া হয়েছে যাতে পরের কার্ডের কিছু অংশ দেখা যায় ★
+                <CarouselItem key={offer.id} className="basis-[85%] md:basis-1/2 lg:basis-1/3 pl-4">
                     <div className="p-1 h-full">
                     <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
                         <CardContent className="p-0 relative aspect-[16/9]">
@@ -250,7 +246,8 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
             <Carousel opts={{ align: "start", loop: true }} className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
               <CarouselContent>
                 {bestsellers.map((product) => (
-                  <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
+                  // ★ FIX: মোবাইলে 'basis-1/2' (2 products) করে দেওয়া হয়েছে ★
+                  <CarouselItem key={product.id} className="basis-1/2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
                     <div className="p-1 h-full"><ProductCard product={product} /></div>
                   </CarouselItem>
                 ))}

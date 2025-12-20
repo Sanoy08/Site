@@ -44,6 +44,9 @@ dependencies {
     // Firebase Dependencies
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-auth'
+
+    // ★★★ এই লাইনটি যোগ করা হয়েছে (Google Login Fix) ★★★
+    implementation 'com.google.android.gms:play-services-auth:21.2.0'
 }
 
 apply from: 'capacitor.build.gradle'

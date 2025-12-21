@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
-    // ★★★ এই অংশটি মিসিং ছিল, যার কারণে ক্র্যাশ করছে ★★★
+    // ★ আপডেট: Firebase Authentication প্লাগিন কনফিগ
     FirebaseAuthentication: {
       skipNativeAuth: false,
       providers: ["google.com"],

@@ -19,7 +19,6 @@ export async function sendNotificationToUser(
   try {
     const db = client.db(DB_NAME);
     
-    // ডাটাবেসে সেভ
     await db.collection(NOTIFICATIONS_COLLECTION).insertOne({
         userId: new ObjectId(userId),
         title,
@@ -37,17 +36,15 @@ export async function sendNotificationToUser(
     const tokens = tokensDocs.map(doc => doc.token);
     if (tokens.length === 0) return;
 
-    // ★ আপডেট: imageUrl ব্যবহার করা হচ্ছে এবং data-তেও পাঠানো হচ্ছে
     await messaging.sendEachForMulticast({
       tokens,
       notification: { 
           title, 
           body,
-          ...(imageUrl && { imageUrl: imageUrl }) // Node.js SDK তে 'imageUrl' সঠিক
+          ...(imageUrl && { imageUrl: imageUrl }) 
       },
       data: { 
           url,
-          // Capacitor বা কাস্টম হ্যান্ডলারের জন্য data-তেও ইমেজ পাঠানো হলো
           ...(imageUrl && { image: imageUrl }),
           ...(imageUrl && { picture: imageUrl }) 
       },
@@ -55,13 +52,13 @@ export async function sendNotificationToUser(
         priority: 'high',
         ttl: 86400 * 1000,
         notification: {
-          // আপনার অ্যাপে যদি 'ic_stat_icon' না থাকে তবে নিচের লাইনটি কমেন্ট করে দিন
-          // icon: 'ic_stat_icon', 
+          icon: 'ic_stat_icon',
           color: '#f97316',
-          channelId: 'default',
+          // ★★★ ফিক্স: চ্যানেল আইডি পরিবর্তন করা হয়েছে ★★★
+          channelId: 'pop_notifications', 
           defaultSound: true,
           defaultVibrateTimings: true,
-          ...(imageUrl && { imageUrl: imageUrl }) // অ্যান্ড্রয়েড স্পেসিফিক কনফিগ
+          ...(imageUrl && { imageUrl: imageUrl })
         }
       }
     });
@@ -98,7 +95,6 @@ export async function sendNotificationToAllUsers(
             await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
         }
 
-        // ★ আপডেট
         await messaging.send({
             topic: 'all_users',
             notification: { 
@@ -115,9 +111,10 @@ export async function sendNotificationToAllUsers(
                 priority: 'high',
                 ttl: 86400 * 1000,
                 notification: {
-                    // icon: 'ic_stat_icon',
+                    icon: 'ic_stat_icon',
                     color: '#f97316',
-                    channelId: 'default',
+                    // ★★★ ফিক্স: চ্যানেল আইডি পরিবর্তন করা হয়েছে ★★★
+                    channelId: 'pop_notifications', 
                     defaultSound: true,
                     defaultVibrateTimings: true,
                     ...(imageUrl && { imageUrl: imageUrl }) 
@@ -164,9 +161,12 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
             android: {
                 priority: 'high',
                 notification: {
-                    // icon: 'ic_stat_icon',
+                    icon: 'ic_stat_icon',
                     color: '#f97316',
-                    channelId: 'default'
+                    // ★★★ ফিক্স: চ্যানেল আইডি পরিবর্তন করা হয়েছে ★★★
+                    channelId: 'pop_notifications',
+                    defaultSound: true,
+                    defaultVibrateTimings: true
                 }
             }
         });

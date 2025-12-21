@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { PushNotifications, ActionPerformed } from '@capacitor/push-notifications';
-import { LocalNotifications } from '@capacitor/local-notifications'; // ★ নতুন ইম্পোর্ট
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { FCM } from '@capacitor-community/fcm';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
@@ -13,14 +13,11 @@ export const usePushNotification = () => {
   const router = useRouter();
   const { user, token } = useAuth();
   
-  // State for UI components
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 1. Check Permission Status
   const checkPermission = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) return;
-    
     try {
       const status = await PushNotifications.checkPermissions();
       setIsSubscribed(status.receive === 'granted');
@@ -29,7 +26,6 @@ export const usePushNotification = () => {
     }
   }, []);
 
-  // 2. Request Permission (Manually triggered by button)
   const subscribeToPush = async () => {
     if (!Capacitor.isNativePlatform()) return;
     setIsLoading(true);
@@ -56,20 +52,31 @@ export const usePushNotification = () => {
     }
   };
 
-  // 3. Initial Setup & Listeners (Auto-run on mount)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const init = async () => {
       await checkPermission();
       
-      // Auto-register logic
       const status = await PushNotifications.checkPermissions();
       if (status.receive === 'granted') {
           await PushNotifications.register();
       }
 
-      // Register Action Types (Optional)
+      // ★★★ ফিক্স: পপ-আপ (Heads-up) এর জন্য হাই ইম্পর্টেন্স চ্যানেল তৈরি ★★★
+      if (Capacitor.getPlatform() === 'android') {
+        await PushNotifications.createChannel({
+          id: 'pop_notifications', // এই আইডি মনে রাখবেন, সার্ভারে লাগবে
+          name: 'Popup Notifications',
+          description: 'High priority notifications',
+          importance: 5, // 5 = Max Importance (Pops up on screen)
+          visibility: 1, // 1 = Public (Show on lock screen)
+          lights: true,
+          vibration: true,
+          sound: 'default'
+        });
+      }
+
       try {
         await (PushNotifications as any).registerActionTypes({
             types: [
@@ -86,13 +93,11 @@ export const usePushNotification = () => {
           console.warn("Action types registration failed", err);
       }
       
-      // পুরোনো ডেলিভার হওয়া নোটিফিকেশন ক্লিয়ার করা (অপশনাল)
       await PushNotifications.removeAllDeliveredNotifications();
     };
 
     init();
 
-    // Listeners
     const registrationListener = PushNotifications.addListener('registration', async (fcmToken) => {
       console.log('FCM Token:', fcmToken.value);
       setIsSubscribed(true);
@@ -113,32 +118,30 @@ export const usePushNotification = () => {
       }
     });
 
-    // ★ ফোরগ্রাউন্ড নোটিফিকেশন হ্যান্ডলার (ছবি দেখানোর জন্য ফিক্স)
+    // ★ অ্যাপ খোলা থাকলে ম্যানুয়ালি পপ-আপ দেখানো
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
       console.log('Push received in foreground:', notification);
       
-      // ডাটা থেকে ইমেজ লিঙ্ক বের করা (বিভিন্ন নামের হতে পারে)
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
 
-      // লোকাল নোটিফিকেশন তৈরি করা যাতে সিস্টেম ট্রে-তে ছবিসহ আসে
       await LocalNotifications.schedule({
         notifications: [
           {
             title: notification.title || "New Notification",
             body: notification.body || "",
             id: new Date().getTime(),
-            schedule: { at: new Date(Date.now() + 100) }, // ১০০ মিলি সেকেন্ড পরে দেখাবে
+            schedule: { at: new Date(Date.now() + 100) },
             sound: "default",
-            attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [], // ★ এই লাইনটি ছবি দেখাবে
-            extra: notification.data, // ক্লিক করলে যাতে ইউআরএল পাওয়া যায়
-            smallIcon: "ic_stat_icon", // আপনার আইকন নাম (res/drawable ফোল্ডারে থাকতে হবে)
+            attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
+            extra: notification.data,
+            smallIcon: "ic_stat_icon",
+            channelId: 'pop_notifications', // লোকাল নোটিফিকেশনেও একই চ্যানেল ব্যবহার করছি
             actionTypeId: "ORDER_UPDATE"
           }
         ]
       });
     });
 
-    // ★ ব্যাকগ্রাউন্ড নোটিফিকেশন ক্লিক হ্যান্ডলার
     const actionListener = PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
       const data = notification.notification.data;
       if (data?.url) {
@@ -146,7 +149,6 @@ export const usePushNotification = () => {
       }
     });
 
-    // ★ লোকাল নোটিফিকেশন (ফোরগ্রাউন্ড) ক্লিক হ্যান্ডলার
     const localActionListener = LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
         const data = notification.notification.extra;
         if (data?.url) {

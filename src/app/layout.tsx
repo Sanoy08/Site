@@ -1,4 +1,5 @@
 // src/app/layout.tsx
+
 import type { Metadata, Viewport } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
@@ -7,6 +8,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
+import { StatusBarBackground } from '@/components/ui/StatusBarBackground'; // নতুন কম্পোনেন্ট ইমপোর্ট
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -45,15 +47,14 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
-// ★★★ ভিউপোর্ট কনফিগারেশন (মোবাইলের জন্য অত্যন্ত জরুরি) ★★★
+// ★★★ ভিউপোর্ট কনফিগারেশন ★★★
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  // viewportFit=cover মানে পুরো স্ক্রিন জুড়ে অ্যাপ থাকবে, কিন্তু আমরা CSS দিয়ে প্যাডিং দেব
-  viewportFit: 'cover', 
-  themeColor: '#ffffff', // স্ট্যাটাস বারের ব্যাকগ্রাউন্ড কালার (সাদা)
+  viewportFit: 'cover', // পুরো স্ক্রিন জুড়ে অ্যাপ থাকবে
+  themeColor: '#ffffff', // ব্রাউজার বা সিস্টেম বারের কালার
 };
 
 export default function RootLayout({
@@ -73,8 +74,13 @@ export default function RootLayout({
       )}>
           <CartProvider>
             <RealtimeMenuUpdater />
-            {/* ইনিশিয়ালাইজার সবার আগে লোড হবে */}
+            
+            {/* অ্যাপ এবং স্ট্যাটাস বার কনফিগারেশন */}
             <AppInitializer />
+            
+            {/* ★ ফিক্সড সাদা বার (iOS এর জন্য) */}
+            <StatusBarBackground />
+            
             {children}
             <Toaster />
           </CartProvider>

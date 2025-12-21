@@ -8,30 +8,29 @@ const NOTIFICATIONS_COLLECTION = 'notifications';
 const USERS_COLLECTION = 'users';
 
 // ১. নির্দিষ্ট ইউজারকে পাঠানো
-// ★ আপডেট: imageUrl প্যারামিটার যোগ করা হয়েছে
 export async function sendNotificationToUser(
     client: MongoClient, 
     userId: string, 
     title: string, 
     body: string, 
-    imageUrl: string = '', // নতুন প্যারামিটার (ফাঁকা হতে পারে)
+    imageUrl: string = '', 
     url: string = '/'
 ) {
   try {
     const db = client.db(DB_NAME);
     
-    // ডাটাবেসে সেভ করা (হিস্ট্রির জন্য)
+    // ডাটাবেসে সেভ (Image URL সহ)
     await db.collection(NOTIFICATIONS_COLLECTION).insertOne({
         userId: new ObjectId(userId),
         title,
         message: body,
-        image: imageUrl, // ★ ইমেজ লিংক সেভ করা হলো
+        image: imageUrl, // অ্যাপের নোটিফিকেশন পেজের জন্য
         link: url,
         isRead: false,
         createdAt: new Date()
     });
 
-    // টোকেন খুঁজে বের করা
+    // টোকেন খোঁজা
     const tokensDocs = await db.collection(SUBSCRIPTIONS_COLLECTION).find({ 
         userId: new ObjectId(userId) 
     }).toArray();
@@ -39,13 +38,13 @@ export async function sendNotificationToUser(
     const tokens = tokensDocs.map(doc => doc.token);
     if (tokens.length === 0) return;
 
-    // ★ ইমেজ সহ পাঠানো
+    // ★ ফিক্স: 'imageUrl' এর বদলে 'image' ব্যবহার করা হয়েছে
     await messaging.sendEachForMulticast({
       tokens,
       notification: { 
           title, 
           body,
-          ...(imageUrl && { imageUrl: imageUrl }) // iOS/Web এর জন্য
+          ...(imageUrl && { image: imageUrl }) // ★ এটিই আসল ফিক্স
       },
       data: { url },
       android: {
@@ -57,7 +56,7 @@ export async function sendNotificationToUser(
           channelId: 'default',
           defaultSound: true,
           defaultVibrateTimings: true,
-          ...(imageUrl && { imageUrl: imageUrl }) // ★ অ্যান্ড্রয়েডে ছবি দেখানোর জন্য এটা মাস্ট
+          ...(imageUrl && { image: imageUrl }) // ★ অ্যান্ড্রয়েডেও 'image' দিতে হয়
         }
       }
     });
@@ -70,25 +69,24 @@ export async function sendNotificationToUser(
 }
 
 // ২. সবাইকে পাঠানো (ব্রডকাস্ট)
-// ★ আপডেট: imageUrl প্যারামিটার যোগ করা হয়েছে
 export async function sendNotificationToAllUsers(
     client: MongoClient, 
     title: string, 
     body: string, 
-    imageUrl: string = '', // নতুন প্যারামিটার
+    imageUrl: string = '', 
     url: string = '/'
 ) {
     try {
         const db = client.db(DB_NAME);
         
-        // হিস্ট্রিতে সেভ করা
+        // সব ইউজারের জন্য ইনবক্সে সেভ (অপ্টিমাইজড)
         const users = await db.collection(USERS_COLLECTION).find({}, { projection: { _id: 1 } }).toArray();
         if (users.length > 0) {
              const notificationsToSave = users.map(u => ({
                 userId: u._id,
                 title,
                 message: body,
-                image: imageUrl, // ★ ইমেজ লিংক সেভ করা হলো
+                image: imageUrl,
                 link: url,
                 isRead: false,
                 createdAt: new Date()
@@ -96,13 +94,13 @@ export async function sendNotificationToAllUsers(
             await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
         }
 
-        // ★ ইমেজ সহ ব্রডকাস্ট পাঠানো
+        // ★ ফিক্স: 'imageUrl' এর বদলে 'image'
         await messaging.send({
             topic: 'all_users',
             notification: { 
                 title, 
                 body,
-                ...(imageUrl && { imageUrl: imageUrl }) 
+                ...(imageUrl && { image: imageUrl }) 
             },
             data: { url },
             android: {
@@ -114,7 +112,7 @@ export async function sendNotificationToAllUsers(
                     channelId: 'default',
                     defaultSound: true,
                     defaultVibrateTimings: true,
-                    ...(imageUrl && { imageUrl: imageUrl }) // ★ অ্যান্ড্রয়েডে ছবি দেখানোর জন্য
+                    ...(imageUrl && { image: imageUrl }) 
                 }
             }
         });
@@ -126,7 +124,7 @@ export async function sendNotificationToAllUsers(
     }
 }
 
-// ৩. অ্যাডমিনদের পাঠানো (এখানে সাধারণত ইমেজ লাগে না, তাই আগের মতোই রাখা হলো)
+// ৩. অ্যাডমিন নোটিফিকেশন (সাধারণত ইমেজ লাগে না)
 export async function sendNotificationToAdmins(client: MongoClient, title: string, body: string, url: string = '/admin/orders') {
   try {
     const db = client.db(DB_NAME);
@@ -135,7 +133,6 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
 
     if (adminIds.length === 0) return;
 
-    // হিস্ট্রিতে সেভ
     const notificationsToSave = adminIds.map(id => ({
         userId: id,
         title,
@@ -146,7 +143,6 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
     }));
     await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
 
-    // টোকেন আনা
     const tokenDocs = await db.collection(SUBSCRIPTIONS_COLLECTION).find({ 
         userId: { $in: adminIds } 
     }).toArray();

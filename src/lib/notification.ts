@@ -19,7 +19,7 @@ export async function sendNotificationToUser(
   try {
     const db = client.db(DB_NAME);
     
-    // ডাটাবেসে সেভ (Image URL সহ)
+    // ডাটাবেসে সেভ
     await db.collection(NOTIFICATIONS_COLLECTION).insertOne({
         userId: new ObjectId(userId),
         title,
@@ -37,25 +37,31 @@ export async function sendNotificationToUser(
     const tokens = tokensDocs.map(doc => doc.token);
     if (tokens.length === 0) return;
 
-    // ★ ফিক্স: 'image' এর বদলে 'imageUrl' ব্যবহার করা হয়েছে (Admin SDK রিকোয়ারমেন্ট)
+    // ★ আপডেট: imageUrl ব্যবহার করা হচ্ছে এবং data-তেও পাঠানো হচ্ছে
     await messaging.sendEachForMulticast({
       tokens,
       notification: { 
           title, 
           body,
-          ...(imageUrl && { imageUrl: imageUrl }) // ★ এটিই আসল ফিক্স
+          ...(imageUrl && { imageUrl: imageUrl }) // Node.js SDK তে 'imageUrl' সঠিক
       },
-      data: { url },
+      data: { 
+          url,
+          // Capacitor বা কাস্টম হ্যান্ডলারের জন্য data-তেও ইমেজ পাঠানো হলো
+          ...(imageUrl && { image: imageUrl }),
+          ...(imageUrl && { picture: imageUrl }) 
+      },
       android: {
         priority: 'high',
         ttl: 86400 * 1000,
         notification: {
-          icon: 'ic_stat_icon',
+          // আপনার অ্যাপে যদি 'ic_stat_icon' না থাকে তবে নিচের লাইনটি কমেন্ট করে দিন
+          // icon: 'ic_stat_icon', 
           color: '#f97316',
           channelId: 'default',
           defaultSound: true,
           defaultVibrateTimings: true,
-          ...(imageUrl && { imageUrl: imageUrl }) // ★ অ্যান্ড্রয়েডেও 'imageUrl'
+          ...(imageUrl && { imageUrl: imageUrl }) // অ্যান্ড্রয়েড স্পেসিফিক কনফিগ
         }
       }
     });
@@ -92,7 +98,7 @@ export async function sendNotificationToAllUsers(
             await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
         }
 
-        // ★ ফিক্স: 'image' এর বদলে 'imageUrl'
+        // ★ আপডেট
         await messaging.send({
             topic: 'all_users',
             notification: { 
@@ -100,12 +106,16 @@ export async function sendNotificationToAllUsers(
                 body,
                 ...(imageUrl && { imageUrl: imageUrl }) 
             },
-            data: { url },
+            data: { 
+                url,
+                ...(imageUrl && { image: imageUrl }),
+                ...(imageUrl && { picture: imageUrl })
+            },
             android: {
                 priority: 'high',
                 ttl: 86400 * 1000,
                 notification: {
-                    icon: 'ic_stat_icon',
+                    // icon: 'ic_stat_icon',
                     color: '#f97316',
                     channelId: 'default',
                     defaultSound: true,
@@ -154,7 +164,7 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
             android: {
                 priority: 'high',
                 notification: {
-                    icon: 'ic_stat_icon',
+                    // icon: 'ic_stat_icon',
                     color: '#f97316',
                     channelId: 'default'
                 }

@@ -1,5 +1,3 @@
-// src/components/layout/MobileNav.tsx
-
 'use client';
 
 import Link from 'next/link';
@@ -18,12 +16,8 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <div className={cn(
-      "md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-t-lg z-50",
-      // ★ আপডেট: নিচের সেফ এরিয়া প্যাডিং যোগ করা হয়েছে
-      "pb-[var(--safe-bottom)]"
-    )}>
-      <nav className="flex justify-around items-center h-16">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border shadow-t-lg z-50">
+      <nav className="flex justify-around items-center h-full">
         {navLinks.map((link) => {
           const isActive = pathname.startsWith(link.href) && (link.href !== '/' || pathname === '/');
           return (

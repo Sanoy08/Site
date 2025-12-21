@@ -33,7 +33,6 @@ export async function PUT(request: NextRequest) {
             const order = await db.collection(ORDERS_COLLECTION).findOne({ _id: new ObjectId(orderId) }, { session });
             
             if (!order) {
-                console.error("[API] Order not found in DB");
                 throw new Error("Order not found");
             }
 
@@ -78,7 +77,6 @@ export async function PUT(request: NextRequest) {
 
             // --- লজিক: Earning (Delivered) ---
             if (status === 'Delivered') {
-                
                 if (userId && !order.coinsAwarded) {
                     const user = await db.collection(USERS_COLLECTION).findOne({ _id: userId }, { session });
                     
@@ -121,16 +119,15 @@ export async function PUT(request: NextRequest) {
                                 { session }
                             );
 
-                            // ★★★ ফিক্স ১: Coins Earned Notification ★★★
-                            // format: (client, userId, title, message, imageUrl, link)
-                            sendNotificationToUser(
+                            // ★★★ ফিক্স ১: 'await' যোগ করা হয়েছে ★★★
+                            await sendNotificationToUser(
                                 client, 
                                 userId.toString(), 
                                 "🎉 Coins Earned!", 
                                 `You earned ${coinsEarned} coins!`, 
-                                "", // Image URL (Empty)
-                                "/account/wallet" // Link
-                            ).catch(e => console.error("Notif Error", e));
+                                "", 
+                                "/account/wallet"
+                            );
                         }
                     }
                 }
@@ -138,7 +135,6 @@ export async function PUT(request: NextRequest) {
 
             // --- লজিক: Refund (Cancelled) ---
             if (status === 'Cancelled' && userId && order.CoinsRedeemed > 0 && !order.coinsRefunded) {
-                
                 await db.collection(USERS_COLLECTION).updateOne(
                     { _id: userId },
                     { 
@@ -162,28 +158,28 @@ export async function PUT(request: NextRequest) {
                     { session }
                 );
                 
-                // ★★★ ফিক্স ২: Coins Refund Notification ★★★
-                sendNotificationToUser(
+                // ★★★ ফিক্স ২: 'await' যোগ করা হয়েছে ★★★
+                await sendNotificationToUser(
                     client, 
                     userId.toString(), 
                     "Coins Refunded", 
                     `${order.CoinsRedeemed} coins refunded.`, 
-                    "", // Image URL (Empty)
-                    "/account/wallet" // Link
-                ).catch(console.error);
+                    "", 
+                    "/account/wallet"
+                );
             }
 
             // --- লজিক: General Status Update Notification ---
             if (userId) {
-                // ★★★ ফিক্স ৩: Order Status Notification ★★★
-                sendNotificationToUser(
+                // ★★★ ফিক্স ৩: 'await' যোগ করা হয়েছে এবং ইমেজ প্যারামিটার ঠিক করা হয়েছে ★★★
+                await sendNotificationToUser(
                     client, 
                     userId.toString(), 
                     `Order ${status}`, 
                     `Order #${order.OrderNumber} is now ${status}.`, 
-                    "", // Image URL (Empty)
+                    "", // Image URL (Empty) - আগে এখানে ভুল ছিল
                     "/account/orders" // Link
-                ).catch(console.error);
+                );
             }
         });
 

@@ -21,15 +21,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { title, message, link, userId } = await request.json(); // userId is optional (for specific targeting)
+    // ★ আপডেট: 'image' রিসিভ করা হচ্ছে
+    const { title, message, link, userId, image } = await request.json(); 
     const client = await clientPromise;
 
     if (userId) {
-        // Send to specific user
-        await sendNotificationToUser(client, userId, title, message, link);
+        // Send to specific user (image পাস করা হলো)
+        await sendNotificationToUser(client, userId, title, message, image, link);
     } else {
-        // Broadcast to 'all_users' topic
-        await sendNotificationToAllUsers(client, title, message, link);
+        // Broadcast to 'all_users' (image পাস করা হলো)
+        await sendNotificationToAllUsers(client, title, message, image, link);
     }
 
     return NextResponse.json({ success: true, message: 'Notification queued' });

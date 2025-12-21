@@ -17,8 +17,7 @@ const config: CapacitorConfig = {
     // @ts-ignore
     adjustMarginsForEdgeToEdge: 'disable',
     zoomEnabled: false,
-    // ব্যাকগ্রাউন্ড কালার সাদা বা সবুজ দিন যাতে কালো স্ক্রিন না আসে
-    backgroundColor: "#ffffff" 
+    backgroundColor: "#ffffff"
   },
   plugins: {
     PushNotifications: {
@@ -32,14 +31,14 @@ const config: CapacitorConfig = {
       overlaysWebView: false,
       style: 'DARK' 
     },
-    // ★ এই অংশটি নতুন যোগ করুন (ব্ল্যাক স্ক্রিন ফিক্স) ★
+    // ★ আপডেট করা অংশ: অটো হাইড বন্ধ করে দিন
     SplashScreen: {
-      launchShowDuration: 2000,
-      launchAutoHide: true,
-      launchFadeOutDuration: 200,
-      backgroundColor: "#ffffff", // অথবা আপনার সবুজ কালার "#7D9A4D"
+      launchShowDuration: 0,    // আমরা কোড দিয়ে কন্ট্রোল করব, তাই টাইম ম্যাটার না
+      launchAutoHide: false,    // অটোমেটিক বন্ধ হবে না
+      backgroundColor: "#ffffff",
       androidSplashResourceName: "splash",
-      showSpinner: false, // লোডিং স্পিনার বন্ধ রাখতে চাইলে false দিন
+      androidScaleType: "CENTER_CROP",
+      showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
     }

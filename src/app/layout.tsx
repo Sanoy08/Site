@@ -1,6 +1,5 @@
 // src/app/layout.tsx
-
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -8,7 +7,6 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
-import { StatusBarBackground } from '@/components/ui/StatusBarBackground'; // নতুন কম্পোনেন্ট ইমপোর্ট
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -36,6 +34,7 @@ const anekBangla = Anek_Bangla({
   weight: ['500'] 
 });
 
+// ★ নতুন ফন্ট: Pacifico
 const pacifico = Pacifico({
   subsets: ['latin'],
   variable: '--font-pacifico',
@@ -45,17 +44,10 @@ const pacifico = Pacifico({
 export const metadata: Metadata = {
   title: "Bumba's Kitchen",
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
+  // Removed manifest link
 };
 
-// ★★★ ভিউপোর্ট কনফিগারেশন ★★★
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: 'cover', // পুরো স্ক্রিন জুড়ে অ্যাপ থাকবে
-  themeColor: '#ffffff', // ব্রাউজার বা সিস্টেম বারের কালার
-};
+
 
 export default function RootLayout({
   children,
@@ -70,17 +62,11 @@ export default function RootLayout({
           amarante.variable,
           montserrat.variable,
           anekBangla.variable,
-          pacifico.variable
+          pacifico.variable // ★ যোগ করা হয়েছে
       )}>
           <CartProvider>
             <RealtimeMenuUpdater />
-            
-            {/* অ্যাপ এবং স্ট্যাটাস বার কনফিগারেশন */}
             <AppInitializer />
-            
-            {/* ★ ফিক্সড সাদা বার (iOS এর জন্য) */}
-            <StatusBarBackground />
-            
             {children}
             <Toaster />
           </CartProvider>

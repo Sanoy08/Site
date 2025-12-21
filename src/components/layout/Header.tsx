@@ -8,15 +8,26 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose
 } from '@/components/ui/sheet';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
-  Wallet, ChevronRight, Sparkles, 
+  Wallet, X, ChevronRight, Sparkles, 
   Instagram, Facebook, Heart, Settings, UtensilsCrossed
 } from 'lucide-react';
 import { Logo } from '@/components/shared/Logo';
@@ -34,6 +45,7 @@ const navLinks = [
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showTopBanner, setShowTopBanner] = useState(true);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -41,17 +53,21 @@ export function Header() {
 
   useEffect(() => {
     const handleScroll = () => {
+      // Small threshold to prevent jitter
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  const handleSearchClick = () => { router.push('/search'); };
+  const handleSearchClick = () => {
+    router.push('/search');
+  };
 
   const handleLogout = () => {
       logout();
@@ -71,21 +87,14 @@ export function Header() {
 
   return (
     <>
-        <header 
-            className={cn(
-                "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
-                isScrolled 
-                    ? "bg-background/80 backdrop-blur-xl shadow-sm border-border/60" 
-                    : "bg-background/0 border-transparent"
-            )}
-            style={{
-                // ★★★ ফিক্স: হেডারকে সেইফ এরিয়ার নিচে নামানো হলো ★★★
-                // যদি StatusBarBackground থাকে, তবে হেডার তার নিচে শুরু হবে
-                top: 'env(safe-area-inset-top)',
-                paddingTop: isScrolled ? '0.25rem' : '0.75rem',
-                paddingBottom: isScrolled ? '0.25rem' : '0.75rem',
-            }}
-        >
+       
+
+        <header className={cn(
+            "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
+            isScrolled 
+                ? "bg-background/80 backdrop-blur-xl shadow-sm border-border/60 py-1" 
+                : "bg-background/0 border-transparent py-3"
+        )}>
         <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
             
             {/* Left Side: Mobile Menu & Logo */}
@@ -106,7 +115,7 @@ export function Header() {
                         <div className="relative overflow-hidden p-6 pb-8 bg-gradient-to-br from-primary/90 to-primary text-primary-foreground">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
                             
-                            <div className="relative z-10" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+                            <div className="relative z-10">
                                 <div className="text-white mb-6 brightness-200">
                                     <Logo />
                                 </div>
@@ -154,7 +163,7 @@ export function Header() {
                         </nav>
 
                         {/* Mobile Footer Area */}
-                        <div className="p-6 bg-muted/20 border-t space-y-5" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+                        <div className="p-6 bg-muted/20 border-t space-y-5">
                             <div className="flex gap-3">
                                 <a href="https://instagram.com" className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-background rounded-lg border hover:border-pink-500/30 hover:bg-pink-50/50 transition-all text-xs font-medium text-muted-foreground hover:text-pink-600">
                                     <Instagram className="h-4 w-4" /> Instagram

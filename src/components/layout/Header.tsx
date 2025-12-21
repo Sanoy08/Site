@@ -87,10 +87,10 @@ export function Header() {
 
   return (
     <>
-       
-
         <header className={cn(
-            "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
+            "sticky z-50 w-full transition-all duration-500 ease-in-out border-b",
+            // ★ আপডেট: স্ট্যাটাস বারের ঠিক নিচে স্টিক করবে
+            "top-[var(--safe-top)]", 
             isScrolled 
                 ? "bg-background/80 backdrop-blur-xl shadow-sm border-border/60 py-1" 
                 : "bg-background/0 border-transparent py-3"
@@ -106,7 +106,8 @@ export function Header() {
                             <Menu className="h-6 w-6" />
                         </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-[85vw] sm:w-[380px] p-0 flex flex-col border-r-0 gap-0">
+                    {/* ★ আপডেট: মোবাইল মেনুর উপরেও প্যাডিং যোগ করা হয়েছে */}
+                    <SheetContent side="left" className="w-[85vw] sm:w-[380px] p-0 flex flex-col border-r-0 gap-0 pt-[var(--safe-top)]">
                         <SheetHeader className="sr-only">
                             <SheetTitle>Navigation</SheetTitle>
                         </SheetHeader>

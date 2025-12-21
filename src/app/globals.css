@@ -6,6 +6,12 @@
 
 @layer base {
   :root {
+    /* ★ নতুন: Safe Area Variables with fallback */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -76,6 +82,13 @@
     @apply bg-background text-foreground;
     /* এই লাইনটি হরাইজন্টাল স্ক্রল ফিক্স করবে */
     overflow-x: hidden; 
+    
+    /* ★ নতুন: Global Safe Area Fix */
+    /* স্ট্যাটাস বারের সমান উপরে জায়গা ছাড়বে */
+    padding-top: var(--safe-top);
+    
+    /* পুরো স্ক্রিন হাইট নিশ্চিত করা */
+    min-height: 100dvh;
   }
 }
 
@@ -83,4 +96,4 @@
 img {
   max-width: 100%;
   height: auto;
-} 
+}

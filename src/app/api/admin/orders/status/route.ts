@@ -11,7 +11,7 @@ const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'coinTransactions';
 const COUPONS_COLLECTION = 'coupons'; 
 
-const SUCCESS_STATUSES = ['Received', 'Delivered']; // কুপন ব্যবহারের জন্য সফল স্ট্যাটাস
+const SUCCESS_STATUSES = ['Received', 'Delivered']; 
 
 export async function PUT(request: NextRequest) {
   try {
@@ -48,7 +48,6 @@ export async function PUT(request: NextRequest) {
             // --- কুপন ব্যবহারের লজিক ---
             if (couponCode) {
                 if (isSuccessStatus && !orderCouponIncremented) {
-                    // ১. যদি স্ট্যাটাস 'Received' বা 'Delivered' হয় এবং কুপন ব্যবহার এখনো গণনা না করা হয়ে থাকে 
                     await db.collection(COUPONS_COLLECTION).updateOne(
                         { code: couponCode },
                         { $inc: { timesUsed: 1 } },
@@ -56,7 +55,6 @@ export async function PUT(request: NextRequest) {
                     );
                     orderUpdate.couponUsageTracked = true;
                 } else if (isCancelled && orderCouponIncremented) {
-                    // ২. যদি 'Cancelled' হয় এবং আগে একবার গণনা করা হয়ে থাকে 
                     await db.collection(COUPONS_COLLECTION).updateOne(
                         { code: couponCode },
                         { $inc: { timesUsed: -1 } },
@@ -65,9 +63,8 @@ export async function PUT(request: NextRequest) {
                     orderUpdate.couponUsageTracked = false;
                 }
             }
-            // --- কুপন ব্যবহারের লজিক শেষ ---
             
-            // অর্ডারের স্ট্যাটাস এবং কুপন ট্র্যাকিং ফ্ল্যাগ আপডেট করা হলো
+            // স্ট্যাটাস আপডেট
             await db.collection(ORDERS_COLLECTION).updateOne(
                 { _id: new ObjectId(orderId) },
                 { $set: orderUpdate },
@@ -89,7 +86,6 @@ export async function PUT(request: NextRequest) {
                         const orderTotal = parseFloat(order.FinalPrice) || 0;
                         const currentTotalSpent = (user.totalSpent || 0) + orderTotal;
                         
-                        // টায়ার লজিক
                         let newTier = "Bronze";
                         let earnRate = 2; 
 
@@ -99,7 +95,6 @@ export async function PUT(request: NextRequest) {
                         const coinsEarned = Math.floor((orderTotal * earnRate) / 100);
 
                         if (coinsEarned > 0) {
-                            // lastTransactionDate আপডেট করা হচ্ছে
                             await db.collection(USERS_COLLECTION).updateOne(
                                 { _id: userId },
                                 { 
@@ -126,7 +121,16 @@ export async function PUT(request: NextRequest) {
                                 { session }
                             );
 
-                            sendNotificationToUser(client, userId.toString(), "🎉 Coins Earned!", `You earned ${coinsEarned} coins!`, '/account/wallet').catch(e => console.error("Notif Error", e));
+                            // ★★★ ফিক্স ১: Coins Earned Notification ★★★
+                            // format: (client, userId, title, message, imageUrl, link)
+                            sendNotificationToUser(
+                                client, 
+                                userId.toString(), 
+                                "🎉 Coins Earned!", 
+                                `You earned ${coinsEarned} coins!`, 
+                                "", // Image URL (Empty)
+                                "/account/wallet" // Link
+                            ).catch(e => console.error("Notif Error", e));
                         }
                     }
                 }
@@ -135,7 +139,6 @@ export async function PUT(request: NextRequest) {
             // --- লজিক: Refund (Cancelled) ---
             if (status === 'Cancelled' && userId && order.CoinsRedeemed > 0 && !order.coinsRefunded) {
                 
-                // Refund এর সময়ও lastTransactionDate আপডেট করা হচ্ছে
                 await db.collection(USERS_COLLECTION).updateOne(
                     { _id: userId },
                     { 
@@ -159,11 +162,28 @@ export async function PUT(request: NextRequest) {
                     { session }
                 );
                 
-                sendNotificationToUser(client, userId.toString(), "Coins Refunded", `${order.CoinsRedeemed} coins refunded.`, '/account/wallet').catch(console.error);
+                // ★★★ ফিক্স ২: Coins Refund Notification ★★★
+                sendNotificationToUser(
+                    client, 
+                    userId.toString(), 
+                    "Coins Refunded", 
+                    `${order.CoinsRedeemed} coins refunded.`, 
+                    "", // Image URL (Empty)
+                    "/account/wallet" // Link
+                ).catch(console.error);
             }
 
+            // --- লজিক: General Status Update Notification ---
             if (userId) {
-                sendNotificationToUser(client, userId.toString(), `Order ${status}`, `Order #${order.OrderNumber} is now ${status}.`, '/account/orders').catch(console.error);
+                // ★★★ ফিক্স ৩: Order Status Notification ★★★
+                sendNotificationToUser(
+                    client, 
+                    userId.toString(), 
+                    `Order ${status}`, 
+                    `Order #${order.OrderNumber} is now ${status}.`, 
+                    "", // Image URL (Empty)
+                    "/account/orders" // Link
+                ).catch(console.error);
             }
         });
 

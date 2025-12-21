@@ -3,16 +3,29 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { messaging } from './firebase-admin';
 
 const DB_NAME = 'BumbasKitchenDB';
-const SUBSCRIPTIONS_COLLECTION = 'subscriptions'; // Now stores FCM Tokens
+const SUBSCRIPTIONS_COLLECTION = 'subscriptions';
 const NOTIFICATIONS_COLLECTION = 'notifications';
 const USERS_COLLECTION = 'users';
+
+// ★ ফিক্স: অফলাইন ডেলিভারির জন্য কনফিগ
+const ANDROID_CONFIG = {
+  priority: 'high' as const, // ব্যাটারি সেভার মোডেও নোটিফিকেশন ঢুকবে
+  ttl: 86400 * 1000, // ১ দিন (24 ঘণ্টা) পর্যন্ত মেসেজ সার্ভারে জমা থাকবে
+  notification: {
+    icon: 'ic_stat_icon',
+    color: '#f97316',
+    channelId: 'default', // চ্যানেল আইডি নিশ্চিত করা হলো
+    defaultSound: true,
+    defaultVibrateTimings: true
+  }
+};
 
 // ১. নির্দিষ্ট ইউজারকে পাঠানো
 export async function sendNotificationToUser(client: MongoClient, userId: string, title: string, body: string, url: string = '/') {
   try {
     const db = client.db(DB_NAME);
     
-    // ডাটাবেসে সেভ করা
+    // ডাটাবেসে সেভ করা (হিস্ট্রির জন্য)
     await db.collection(NOTIFICATIONS_COLLECTION).insertOne({
         userId: new ObjectId(userId),
         title,
@@ -30,19 +43,15 @@ export async function sendNotificationToUser(client: MongoClient, userId: string
     const tokens = tokensDocs.map(doc => doc.token);
     if (tokens.length === 0) return;
 
-    // ★ ফিক্স: clickAction সরিয়ে দেওয়া হয়েছে
+    // ★ ফিক্স: হাই প্রায়োরিটি কনফিগ যোগ করা হয়েছে
     await messaging.sendEachForMulticast({
       tokens,
       notification: { title, body },
-      data: { url }, // অ্যাপ এই URL ব্যবহার করে পেজ ওপেন করবে
-      android: {
-        notification: {
-          icon: 'ic_stat_icon',
-          color: '#f97316'
-          // clickAction লাইনটি ডিলিট করা হয়েছে
-        }
-      }
+      data: { url },
+      android: ANDROID_CONFIG // এখানে আমাদের নতুন কনফিগ ব্যবহার করছি
     });
+
+    console.log(`Notification sent to user ${userId}: ${title}`);
 
   } catch (error) {
     console.error("Error sending user notification:", error);
@@ -54,7 +63,7 @@ export async function sendNotificationToAllUsers(client: MongoClient, title: str
     try {
         const db = client.db(DB_NAME);
         
-        // হিস্ট্রিতে সেভ করা (অপশনাল - ইউজার সংখ্যা বেশি হলে এটা অপ্টিমাইজ করতে হতে পারে)
+        // হিস্ট্রিতে সেভ করা
         const users = await db.collection(USERS_COLLECTION).find({}, { projection: { _id: 1 } }).toArray();
         if (users.length > 0) {
              const notificationsToSave = users.map(u => ({
@@ -68,17 +77,15 @@ export async function sendNotificationToAllUsers(client: MongoClient, title: str
             await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
         }
 
-        // ★ ফিক্স: clickAction সরিয়ে দেওয়া হয়েছে
+        // ★ ফিক্স: টপিক মেসেজেও হাই প্রায়োরিটি
         await messaging.send({
             topic: 'all_users',
             notification: { title, body },
             data: { url },
-            android: {
-                notification: {
-                    // clickAction ডিলিট করা হয়েছে
-                }
-            }
+            android: ANDROID_CONFIG
         });
+
+        console.log(`Broadcast notification sent: ${title}`);
 
     } catch (error) {
         console.error("Error broadcasting notification:", error);
@@ -112,11 +119,12 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
     const tokens = tokenDocs.map(t => t.token);
 
     if (tokens.length > 0) {
-        // ★ ফিক্স: clickAction সরিয়ে দেওয়া হয়েছে
+        // ★ ফিক্স: অ্যাডমিনদের জন্যও হাই প্রায়োরিটি
         await messaging.sendEachForMulticast({
             tokens,
             notification: { title, body },
-            data: { url }
+            data: { url },
+            android: ANDROID_CONFIG
         });
     }
   } catch (error) {

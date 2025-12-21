@@ -14,11 +14,8 @@ const config: CapacitorConfig = {
     ]
   },
   android: {
-    // @ts-ignore
-    adjustMarginsForEdgeToEdge: 'disable',
-    
-    // ★ ADD THIS LINE (Disables WebView Zooming) ★
-    zoomEnabled: false
+    // @ts-ignore - This property exists in the native platform but is missing from types
+    adjustMarginsForEdgeToEdge: 'disable'
   },
   plugins: {
     PushNotifications: {
@@ -29,6 +26,7 @@ const config: CapacitorConfig = {
       providers: ["google.com"],
     },
     StatusBar: {
+      // critical: prevent the plugin from trying to overlap
       overlaysWebView: false,
       style: 'DARK' 
     }

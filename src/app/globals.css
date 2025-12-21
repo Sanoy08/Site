@@ -69,26 +69,10 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
-  /* ★ UPDATE THIS BLOCK ★ */
-  html, body {
+  body {
     @apply bg-background text-foreground;
-    
-    /* 1. Prevent Horizontal Scroll */
-    overflow-x: hidden;
-    width: 100%;
-    
-    /* 2. Prevent "Rubber Banding" / Layout Shifting */
-    overscroll-behavior: none;
-    
-    /* 3. Disable Pinch Zoom gestures in CSS */
-    touch-action: pan-y; /* Only allow vertical scrolling */
-    
-    /* 4. Fix for iOS/Android click highlight */
-    -webkit-tap-highlight-color: transparent;
+    /* Ensure the web app is opaque */
+    background-color: hsl(var(--background)); 
   }
 }
 

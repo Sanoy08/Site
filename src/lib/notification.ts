@@ -1,4 +1,5 @@
 // src/lib/notification.ts
+
 import { MongoClient, ObjectId } from 'mongodb';
 import { messaging } from './firebase-admin';
 
@@ -19,12 +20,12 @@ export async function sendNotificationToUser(
   try {
     const db = client.db(DB_NAME);
     
-    // ডাটাবেসে সেভ (Image URL সহ)
+    // ডাটাবেসে সেভ (যেমন আছে তেমনই থাকবে)
     await db.collection(NOTIFICATIONS_COLLECTION).insertOne({
         userId: new ObjectId(userId),
         title,
         message: body,
-        image: imageUrl,
+        image: imageUrl, 
         link: url,
         isRead: false,
         createdAt: new Date()
@@ -37,53 +38,33 @@ export async function sendNotificationToUser(
     const tokens = tokensDocs.map(doc => doc.token);
     if (tokens.length === 0) return;
 
-    // ★★★ এই অংশটিই আসল ফিক্স (Universal Image Payload) ★★★
-    const messagePayload: any = {
+    // ★ ফিক্সড কোড: 'imageUrl' এর বদলে 'image' ব্যবহার করা হলো
+    await messaging.sendEachForMulticast({
       tokens,
-      // 1. Basic Notification (iOS/Web)
       notification: { 
           title, 
           body,
+          ...(imageUrl && { image: imageUrl }) // ★ ফিক্স
       },
-      // 2. Data Payload (Capacitor & Custom Handlers)
-      // আমরা ইমেজ লিংকটি data-তেও পাঠাচ্ছি, কারণ অনেক প্লাগিন এখান থেকে ছবি লোড করে
       data: { 
-        url,
-        title,
-        body,
-        // ইমেজের জন্য সব ধরণের কি-ওয়ার্ড ব্যবহার করছি যাতে মিস না হয়
-        image: imageUrl || "",
-        imageUrl: imageUrl || "", 
-        picture: imageUrl || "",
-        style: "picture", // কিছু প্লাগিন এই স্টাইল চেক করে
-        picture_url: imageUrl || ""
+          url,
+          ...(imageUrl && { image: imageUrl }) // ব্যাকগ্রাউন্ড হ্যান্ডলিংয়ের জন্য
       },
-      // 3. Android Specific (System Tray)
       android: {
         priority: 'high',
         ttl: 86400 * 1000,
         notification: {
-          icon: 'ic_stat_icon', // এই আইকনটি res/drawable ফোল্ডারে থাকতে হবে
+          icon: 'ic_stat_icon',
           color: '#f97316',
           channelId: 'default',
           defaultSound: true,
           defaultVibrateTimings: true,
-          priority: 'high',
-          visibility: 'public',
+          ...(imageUrl && { image: imageUrl }) // ★ অ্যান্ড্রয়েড নোটিফিকেশন ট্রে-তে ছবি দেখানোর জন্য
         }
       }
-    };
+    });
 
-    // যদি ইমেজ থাকে, তবেই Android নোটিফিকেশনে অ্যাড করব
-    if (imageUrl) {
-        messagePayload.notification.imageUrl = imageUrl; // For basic support
-        messagePayload.android.notification.imageUrl = imageUrl; // For Android System
-        messagePayload.android.notification.image = imageUrl; // Backup key
-    }
-
-    await messaging.sendEachForMulticast(messagePayload);
-
-    console.log(`Notification sent to user ${userId} with image: ${imageUrl}`);
+    console.log(`Notification sent to user ${userId}: ${title}`);
 
   } catch (error) {
     console.error("Error sending user notification:", error);
@@ -101,7 +82,6 @@ export async function sendNotificationToAllUsers(
     try {
         const db = client.db(DB_NAME);
         
-        // হিস্ট্রি সেভ (অপ্টিমাইজড)
         const users = await db.collection(USERS_COLLECTION).find({}, { projection: { _id: 1 } }).toArray();
         if (users.length > 0) {
              const notificationsToSave = users.map(u => ({
@@ -116,21 +96,17 @@ export async function sendNotificationToAllUsers(
             await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
         }
 
-        // ★★★ ব্রডকাস্টের জন্যও একই ফিক্স ★★★
-        const messagePayload: any = {
+        // ★ ফিক্সড কোড: 'imageUrl' এর বদলে 'image'
+        await messaging.send({
             topic: 'all_users',
             notification: { 
                 title, 
                 body,
+                ...(imageUrl && { image: imageUrl }) // ★ ফিক্স
             },
             data: { 
-                url, 
-                title, 
-                body,
-                image: imageUrl || "",
-                imageUrl: imageUrl || "",
-                picture: imageUrl || "",
-                style: "picture"
+                url,
+                ...(imageUrl && { image: imageUrl }) 
             },
             android: {
                 priority: 'high',
@@ -141,19 +117,10 @@ export async function sendNotificationToAllUsers(
                     channelId: 'default',
                     defaultSound: true,
                     defaultVibrateTimings: true,
-                    priority: 'high',
-                    visibility: 'public'
+                    ...(imageUrl && { image: imageUrl }) // ★ ফিক্স
                 }
             }
-        };
-
-        if (imageUrl) {
-            messagePayload.notification.imageUrl = imageUrl;
-            messagePayload.android.notification.imageUrl = imageUrl;
-            messagePayload.android.notification.image = imageUrl;
-        }
-
-        await messaging.send(messagePayload);
+        });
 
         console.log(`Broadcast notification sent: ${title}`);
 
@@ -171,7 +138,6 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
 
     if (adminIds.length === 0) return;
 
-    // হিস্ট্রিতে সেভ
     const notificationsToSave = adminIds.map(id => ({
         userId: id,
         title,

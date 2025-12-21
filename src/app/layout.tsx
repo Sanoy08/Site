@@ -8,7 +8,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
-import { StatusBarBackground } from '@/components/ui/StatusBarBackground';
+import { StatusBarBackground } from '@/components/ui/StatusBarBackground'; // নতুন কম্পোনেন্ট ইমপোর্ট
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -47,13 +47,14 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
+// ★★★ ভিউপোর্ট কনফিগারেশন ★★★
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  viewportFit: 'cover',
-  themeColor: '#ffffff',
+  viewportFit: 'cover', // পুরো স্ক্রিন জুড়ে অ্যাপ থাকবে
+  themeColor: '#ffffff', // ব্রাউজার বা সিস্টেম বারের কালার
 };
 
 export default function RootLayout({
@@ -73,15 +74,14 @@ export default function RootLayout({
       )}>
           <CartProvider>
             <RealtimeMenuUpdater />
+            
+            {/* অ্যাপ এবং স্ট্যাটাস বার কনফিগারেশন */}
             <AppInitializer />
             
-            {/* ১. ফিক্সড সাদা বার (সবার উপরে থাকবে) */}
+            {/* ★ ফিক্সড সাদা বার (iOS এর জন্য) */}
             <StatusBarBackground />
             
-            {/* ২. মেইন অ্যাপ কন্টেন্ট */}
-            {/* globals.css এর কারণে body তে প্যাডিং আছে, তাই children অটোমেটিক নিচে থাকবে */}
             {children}
-            
             <Toaster />
           </CartProvider>
       </body>

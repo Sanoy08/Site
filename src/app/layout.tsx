@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata, Viewport } from 'next'; // Viewport import করুন
+import type { Metadata, Viewport } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -45,13 +45,15 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
-// ★ ভিউপোর্ট সেটিংস (খুবই গুরুত্বপূর্ণ লেআউটের জন্য)
+// ★★★ ভিউপোর্ট কনফিগারেশন (মোবাইলের জন্য অত্যন্ত জরুরি) ★★★
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // ইউজার জুম করতে পারবে না (অ্যাপের মতো ফিলিংস)
-  viewportFit: 'cover', // নচ বা স্ট্যাটাস বারের এরিয়া হ্যান্ডেল করার জন্য
+  userScalable: false,
+  // viewportFit=cover মানে পুরো স্ক্রিন জুড়ে অ্যাপ থাকবে, কিন্তু আমরা CSS দিয়ে প্যাডিং দেব
+  viewportFit: 'cover', 
+  themeColor: '#ffffff', // স্ট্যাটাস বারের ব্যাকগ্রাউন্ড কালার (সাদা)
 };
 
 export default function RootLayout({
@@ -71,6 +73,7 @@ export default function RootLayout({
       )}>
           <CartProvider>
             <RealtimeMenuUpdater />
+            {/* ইনিশিয়ালাইজার সবার আগে লোড হবে */}
             <AppInitializer />
             {children}
             <Toaster />

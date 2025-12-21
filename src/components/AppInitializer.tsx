@@ -14,25 +14,28 @@ export function AppInitializer() {
   useBackButton();
 
   useEffect(() => {
-    const configureStatusBar = async () => {
-      // শুধুমাত্র মোবাইল অ্যাপে রান করবে
-      if (Capacitor.isNativePlatform()) {
+    // শুধুমাত্র নেটিভ অ্যাপে (Android/iOS) রান করবে
+    if (Capacitor.isNativePlatform()) {
+      const configureStatusBar = async () => {
         try {
-          // ১. স্ট্যাটাস বার অ্যাপের কন্টেন্টের ওপর ভাসবে না (Overlap বন্ধ করা)
-          await StatusBar.setOverlaysWebView({ overlay: false });
-
-          // ২. স্ট্যাটাস বারের ব্যাকগ্রাউন্ড কালার সাদা করা
-          await StatusBar.setBackgroundColor({ color: '#ffffff' });
-
-          // ৩. স্ট্যাটাস বারের আইকনগুলো কালো (Dark) করা
-          await StatusBar.setStyle({ style: Style.Light });
+          // ১. স্ট্যাটাস বারের আইকনগুলো কালো (Dark) হবে কারণ ব্যাকগ্রাউন্ড সাদা
+          await StatusBar.setStyle({ style: Style.Light }); 
+          
+          // ২. অ্যান্ড্রয়েডের জন্য স্ট্যাটাস বারের ব্যাকগ্রাউন্ড কালার সাদা করে দেওয়া
+          if (Capacitor.getPlatform() === 'android') {
+            await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+            
+            // ৩. ওভারলে বন্ধ রাখা (যাতে কন্টেন্ট স্ট্যাটাস বারের নিচে না ঢুকে যায়)
+            // তবে আমরা CSS দিয়ে padding হ্যান্ডেল করছি, তাই এটি false রাখাই সেফ
+            await StatusBar.setOverlaysWebView({ overlay: false });
+          }
         } catch (e) {
-          console.error("Status bar config error:", e);
+          console.error('Error configuring status bar:', e);
         }
-      }
-    };
+      };
 
-    configureStatusBar();
+      configureStatusBar();
+    }
   }, []);
 
   return null; 

@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 84 34% 45%; 
+    --primary: 84 34% 45%; /* আপনার ওয়েবসাইটের সবুজ থিম */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -24,7 +24,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 45 93% 47%; 
+    --accent: 45 93% 47%; /* আপনার ওয়েবসাইটের হলুদ/অ্যাম্বার থিম */
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -74,16 +74,12 @@
   }
   body {
     @apply bg-background text-foreground;
-    
     overflow-x: hidden;
     
-    /* ★★★ Status Bar Fix (Safe Area) ★★★ */
-    /* আইফোনের নচ বা অ্যান্ড্রয়েডের স্ট্যাটাস বারের জন্য প্যাডিং */
+    /* ★★★ স্ট্যাটাস বার ওভারল্যাপ ফিক্স ★★★ */
+    /* আইফোনের নচ এবং অ্যান্ড্রয়েড স্ট্যাটাস বারের নিচে থেকে শুরু হবে */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    
     min-height: 100vh;
   }
 }

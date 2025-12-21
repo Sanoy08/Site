@@ -24,13 +24,12 @@ export async function sendNotificationToUser(
         userId: new ObjectId(userId),
         title,
         message: body,
-        image: imageUrl, // অ্যাপের নোটিফিকেশন পেজের জন্য
+        image: imageUrl, 
         link: url,
         isRead: false,
         createdAt: new Date()
     });
 
-    // টোকেন খোঁজা
     const tokensDocs = await db.collection(SUBSCRIPTIONS_COLLECTION).find({ 
         userId: new ObjectId(userId) 
     }).toArray();
@@ -38,13 +37,13 @@ export async function sendNotificationToUser(
     const tokens = tokensDocs.map(doc => doc.token);
     if (tokens.length === 0) return;
 
-    // ★ ফিক্স: 'imageUrl' এর বদলে 'image' ব্যবহার করা হয়েছে
+    // ★ ফিক্স: 'image' এর বদলে 'imageUrl' ব্যবহার করা হয়েছে (Admin SDK রিকোয়ারমেন্ট)
     await messaging.sendEachForMulticast({
       tokens,
       notification: { 
           title, 
           body,
-          ...(imageUrl && { image: imageUrl }) // ★ এটিই আসল ফিক্স
+          ...(imageUrl && { imageUrl: imageUrl }) // ★ এটিই আসল ফিক্স
       },
       data: { url },
       android: {
@@ -56,7 +55,7 @@ export async function sendNotificationToUser(
           channelId: 'default',
           defaultSound: true,
           defaultVibrateTimings: true,
-          ...(imageUrl && { image: imageUrl }) // ★ অ্যান্ড্রয়েডেও 'image' দিতে হয়
+          ...(imageUrl && { imageUrl: imageUrl }) // ★ অ্যান্ড্রয়েডেও 'imageUrl'
         }
       }
     });
@@ -79,7 +78,6 @@ export async function sendNotificationToAllUsers(
     try {
         const db = client.db(DB_NAME);
         
-        // সব ইউজারের জন্য ইনবক্সে সেভ (অপ্টিমাইজড)
         const users = await db.collection(USERS_COLLECTION).find({}, { projection: { _id: 1 } }).toArray();
         if (users.length > 0) {
              const notificationsToSave = users.map(u => ({
@@ -94,13 +92,13 @@ export async function sendNotificationToAllUsers(
             await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
         }
 
-        // ★ ফিক্স: 'imageUrl' এর বদলে 'image'
+        // ★ ফিক্স: 'image' এর বদলে 'imageUrl'
         await messaging.send({
             topic: 'all_users',
             notification: { 
                 title, 
                 body,
-                ...(imageUrl && { image: imageUrl }) 
+                ...(imageUrl && { imageUrl: imageUrl }) 
             },
             data: { url },
             android: {
@@ -112,7 +110,7 @@ export async function sendNotificationToAllUsers(
                     channelId: 'default',
                     defaultSound: true,
                     defaultVibrateTimings: true,
-                    ...(imageUrl && { image: imageUrl }) 
+                    ...(imageUrl && { imageUrl: imageUrl }) 
                 }
             }
         });
@@ -124,7 +122,7 @@ export async function sendNotificationToAllUsers(
     }
 }
 
-// ৩. অ্যাডমিন নোটিফিকেশন (সাধারণত ইমেজ লাগে না)
+// ৩. অ্যাডমিন নোটিফিকেশন
 export async function sendNotificationToAdmins(client: MongoClient, title: string, body: string, url: string = '/admin/orders') {
   try {
     const db = client.db(DB_NAME);

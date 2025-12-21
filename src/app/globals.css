@@ -80,15 +80,21 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     min-height: 100vh;
-
-    /* ★ প্যাডিং টপ: 
-      iOS-এ StatusBarBackground ফিক্সড থাকবে, কিন্তু কন্টেন্ট যাতে তার নিচে চাপা না পড়ে 
-      তাই env(safe-area-inset-top) দিয়ে বডিকে নিচে নামানো হচ্ছে।
-      Android-এ overlay: false থাকলে সিস্টেম নিজেই স্পেস দেবে, আর CSS প্যাডিং তখন এডজাস্ট হবে।
-    */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    
+    /* ★ ২. বডি প্যাডিং: পুরো অ্যাপের কন্টেন্ট নিচে নেমে যাবে */
+    padding-top: var(--safe-top); 
+    padding-bottom: var(--safe-bottom);
   }
+}
+
+/* ★ ৩. ফিক্সড হেডার সলিউশন */
+/* আপনার ন্যাভবার যদি 'fixed' এবং 'top-0' হয়, তবে সেটা সাদা বারের নিচে চাপা পড়ে। 
+   তাই আমরা জোর করে সেটাকে var(--safe-top) দিয়ে নিচে নামিয়ে দিচ্ছি। */
+
+header.fixed, 
+nav.fixed,
+.fixed-top-safe {
+  top: var(--safe-top) !important;
 }
 
 /* ইমেজ রেসপন্সিভনেস */

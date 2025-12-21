@@ -4,11 +4,10 @@
 export function StatusBarBackground() {
   return (
     <div 
-      className="fixed top-0 left-0 right-0 bg-white z-[9999]"
+      className="fixed top-0 left-0 right-0 bg-white z-[99999]"
       style={{
-        // আইফোনের নচ এর সমান হাইট নেবে
-        height: 'env(safe-area-inset-top)',
-        // এন্ড্রয়েডে যদি ওভারলে ফলস থাকে, তাহলে এটার হাইট ০ হবে (অটোমেটিক হ্যান্ডেল হবে)
+        // আমরা globals.css এ ডিফাইন করা ভেরিয়েবল ব্যবহার করছি
+        height: 'var(--safe-top)',
       }}
     />
   );

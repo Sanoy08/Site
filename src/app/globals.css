@@ -74,17 +74,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    
-    /* ★ GLOBAL STATUS BAR FIX START ★ */
-    /* This reads the device's actual status bar height and pushes content down */
-    padding-top: env(safe-area-inset-top); 
-    
-    /* Ensures the app still fills the screen */
-    min-height: 100vh;
-    
-    /* Prevents horizontal scrolling */
+    /* এই লাইনটি হরাইজন্টাল স্ক্রল ফিক্স করবে */
     overflow-x: hidden; 
-    /* ★ GLOBAL STATUS BAR FIX END ★ */
   }
 }
 
@@ -92,4 +83,4 @@
 img {
   max-width: 100%;
   height: auto;
-}
+} 

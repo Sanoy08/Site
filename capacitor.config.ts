@@ -22,12 +22,6 @@ const config: CapacitorConfig = {
       skipNativeAuth: false,
       providers: ["google.com"],
     },
-    // ★ NEW: Global Status Bar Fix
-    StatusBar: {
-      overlaysWebView: true,       // Required to calculate safe area
-      style: 'DARK',               // Makes time/battery icons white (use 'LIGHT' for black icons)
-      backgroundColor: '#7D9A4D',  // Matches your splash screen green
-    },
   }
 };
 

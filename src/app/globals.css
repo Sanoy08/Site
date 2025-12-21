@@ -69,13 +69,10 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
   body {
     @apply bg-background text-foreground;
-    /* এই লাইনটি হরাইজন্টাল স্ক্রল ফিক্স করবে */
-    overflow-x: hidden; 
+    /* Ensure the web app is opaque */
+    background-color: hsl(var(--background)); 
   }
 }
 

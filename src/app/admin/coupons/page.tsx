@@ -1,10 +1,8 @@
-// src/app/admin/coupons/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -12,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Trash2, Pencil, TicketPercent, Search, Calendar } from 'lucide-react';
+import { Loader2, Plus, Trash2, Pencil, TicketPercent, Search, Calendar, Infinity } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
 import { FloatingInput } from '@/components/ui/floating-input';
@@ -26,7 +24,7 @@ type Coupon = {
   minOrder: number;
   usageLimit?: number;
   startDate?: string;
-  expiryDate: string;
+  expiryDate: string | null; // null হতে পারে
   isActive: boolean;
 };
 
@@ -83,12 +81,13 @@ export default function AdminCouponsPage() {
       setFormData({
         code: coupon.code,
         description: coupon.description || '',
-        discountType: coupon.discountType,
+        discountType: coupon.discountType as 'percentage' | 'flat',
         value: coupon.value.toString(),
         minOrder: coupon.minOrder.toString(),
         usageLimit: coupon.usageLimit?.toString() || '',
         startDate: coupon.startDate ? new Date(coupon.startDate).toISOString().split('T')[0] : '',
-        expiryDate: new Date(coupon.expiryDate).toISOString().split('T')[0],
+        // ★ ফিক্স: null থাকলে ফাঁকা স্ট্রিং, নাহলে ডেট
+        expiryDate: coupon.expiryDate ? new Date(coupon.expiryDate).toISOString().split('T')[0] : '',
         isActive: coupon.isActive,
       });
     } else {
@@ -104,11 +103,17 @@ export default function AdminCouponsPage() {
     const method = editingCoupon ? 'PUT' : 'POST';
     const url = editingCoupon ? `/api/admin/coupons/${editingCoupon.id}` : '/api/admin/coupons';
     
+    // ★ ফিক্স: ফর্ম থেকে আসা ফাঁকা স্ট্রিং-কে null পাঠানো
+    const payload = {
+        ...formData,
+        expiryDate: formData.expiryDate || null 
+    };
+
     try {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       
       if (res.ok) {
@@ -139,8 +144,16 @@ export default function AdminCouponsPage() {
     } catch (e) { toast.error('Delete failed'); }
   };
 
-  const isExpired = (expiryDate: string) => {
+  // ★ ফিক্স: isExpired লজিক আপডেট (null মানে আনলিমিটেড)
+  const isExpired = (expiryDate: string | null) => {
+      if (!expiryDate) return false; // নাল হলে মেয়াদ শেষ হয়নি
       return new Date(expiryDate) < new Date();
+  }
+
+  // ★ হেল্পার: ডেট দেখানোর জন্য
+  const displayDate = (date: string | null) => {
+      if (!date) return <span className="flex items-center gap-1"><Infinity className="h-3 w-3" /> Lifetime</span>;
+      return new Date(date).toLocaleDateString('en-GB');
   }
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -171,6 +184,7 @@ export default function AdminCouponsPage() {
         </div>
       </div>
 
+      {/* MOBILE VIEW */}
       <div className="grid grid-cols-1 md:hidden gap-4">
         {filteredCoupons.map((coupon) => {
             const expired = isExpired(coupon.expiryDate);
@@ -202,8 +216,7 @@ export default function AdminCouponsPage() {
                         <div className="flex justify-between items-center pt-1">
                             <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
                                 <Calendar className="h-3 w-3" />
-                                {/* ★★★ FIX: DD/MM/YYYY ফরম্যাট ★★★ */}
-                                Expires: {new Date(coupon.expiryDate).toLocaleDateString('en-GB')}
+                                Expires: {displayDate(coupon.expiryDate)}
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 bg-blue-50 hover:bg-blue-100" onClick={() => handleOpenDialog(coupon)}><Pencil className="h-4 w-4"/></Button>
@@ -216,6 +229,7 @@ export default function AdminCouponsPage() {
         })}
       </div>
 
+      {/* DESKTOP VIEW */}
       <Card className="hidden md:block overflow-hidden border-0 shadow-md">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -250,8 +264,7 @@ export default function AdminCouponsPage() {
                             </TableCell>
                             <TableCell className="hidden sm:table-cell">{formatPrice(coupon.minOrder)}</TableCell>
                             <TableCell className="hidden md:table-cell text-muted-foreground">
-                                {/* ★★★ FIX: DD/MM/YYYY ফরম্যাট ★★★ */}
-                                {new Date(coupon.expiryDate).toLocaleDateString('en-GB')}
+                                {displayDate(coupon.expiryDate)}
                             </TableCell>
                             <TableCell>
                                 <Badge variant={coupon.isActive && !expired ? "default" : "secondary"} className={coupon.isActive && !expired ? "bg-green-100 text-green-700 hover:bg-green-100 border-green-200" : ""}>
@@ -304,7 +317,16 @@ export default function AdminCouponsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                     <FloatingInput label="Start Date" type="date" value={formData.startDate} onChange={(e) => setFormData({...formData, startDate: e.target.value})} />
-                    <FloatingInput label="Expiry Date" type="date" value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} />
+                    {/* ★★★ এখানে অপশনাল করা হয়েছে ★★★ */}
+                    <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground ml-1">Expiry Date (Optional)</Label>
+                        <Input 
+                            type="date" 
+                            className="h-12 pt-3 pb-1"
+                            value={formData.expiryDate} 
+                            onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} 
+                        />
+                    </div>
                 </div>
                 
                 <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg border">

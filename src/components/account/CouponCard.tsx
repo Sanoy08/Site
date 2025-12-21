@@ -1,11 +1,8 @@
-// src/components/account/CouponCard.tsx
-
 'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Copy, Check, Ticket, Percent } from 'lucide-react';
+import { Copy, Check, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -24,61 +21,110 @@ export function CouponCard({ coupon }: CouponCardProps) {
   };
 
   const isFlat = coupon.discountType === 'flat';
+  const expiryDate = coupon.expiryDate ? new Date(coupon.expiryDate) : null;
+  const isLifetime = !expiryDate;
+  
+  // ইউনিক আইডি জেনারেট করা যাতে এক পেজে মাল্টিপল কুপন থাকলে SVG ক্লিপিং না ভাঙে
+  const clipId = `ticket-cut-${coupon._id || coupon.code}`;
 
   return (
-    <div className="relative flex flex-col sm:flex-row bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow group">
-      {/* Left Side (Decor) */}
-      <div className="bg-primary/5 p-6 flex flex-col items-center justify-center sm:w-32 border-b sm:border-b-0 sm:border-r border-dashed border-primary/20 relative">
-        <div className="p-3 bg-white rounded-full shadow-sm mb-2">
-            {isFlat ? <Ticket className="h-6 w-6 text-primary" /> : <Percent className="h-6 w-6 text-primary" />}
-        </div>
-        <span className="font-bold text-lg text-primary">
-            {isFlat ? `₹${coupon.value}` : `${coupon.value}%`}
-        </span>
-        <span className="text-xs uppercase font-medium text-primary/60">OFF</span>
+    <div className="relative w-full drop-shadow-md hover:drop-shadow-xl transition-all duration-300 group">
+      
+      {/* SVG MASK DEFINITION (Hidden) */}
+      <svg width="0" height="0" className="absolute">
+        <defs>
+          <clipPath id={clipId} clipPathUnits="objectBoundingBox">
+            <path
+              d="M0,0.08 
+                 Q0.03,0.08 0.03,0 
+                 H0.97 
+                 Q0.97,0.08 1,0.08 
+                 V0.45 
+                 Q0.96,0.5 1,0.55 
+                 V0.92 
+                 Q0.97,0.92 0.97,1 
+                 H0.03 
+                 Q0.03,0.92 0,0.92 
+                 V0.55 
+                 Q0.04,0.5 0,0.45 
+                 Z"
+            />
+          </clipPath>
+        </defs>
+      </svg>
+
+      {/* ACTUAL TICKET CARD */}
+      <div
+        className="relative flex bg-white h-40 sm:h-44 w-full"
+        style={{ clipPath: `url(#${clipId})` }}
+      >
         
-        {/* Cutout Circles */}
-        <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-50 rounded-full sm:hidden" />
-        <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-50 rounded-full sm:hidden" />
-        <div className="absolute left-1/2 -top-2 -translate-x-1/2 w-4 h-4 bg-gray-50 rounded-full hidden sm:block" />
-        <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-4 h-4 bg-gray-50 rounded-full hidden sm:block" />
-      </div>
+        {/* --- LEFT STRIP (Theme Color) --- */}
+        <div className="w-12 sm:w-16 bg-primary flex items-center justify-center shrink-0">
+           {/* Vertical Text */}
+           <span className="-rotate-90 text-white text-[10px] sm:text-xs tracking-[0.35em] font-bold uppercase whitespace-nowrap opacity-90">
+             Official Coupon
+           </span>
+        </div>
 
-      {/* Right Side (Content) */}
-      <div className="flex-1 p-5 flex flex-col justify-between">
-        <div>
-            <div className="flex justify-between items-start mb-2">
-                <Badge variant="outline" className="font-mono text-sm tracking-wide bg-gray-50 border-gray-200 text-gray-700">
-                    {coupon.code}
-                </Badge>
-                {coupon.expiryDate && (
-                    <span className="text-[10px] text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
-                        Exp: {new Date(coupon.expiryDate).toLocaleDateString()}
+        {/* --- MAIN CONTENT AREA --- */}
+        <div className="flex-1 px-5 py-4 flex justify-between items-center bg-white relative">
+            
+            {/* Left Content: Value & Info */}
+            <div className="flex flex-col justify-center h-full space-y-1">
+                <div className="flex items-center gap-2 mb-1">
+                     <span className="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-0.5 rounded border border-orange-100 uppercase tracking-wide">
+                        Promo
+                     </span>
+                </div>
+
+                <div className="flex items-baseline">
+                    <span className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tighter">
+                        {isFlat ? '₹' : ''}{coupon.value}{!isFlat && '%'}
                     </span>
-                )}
+                    <span className="text-xl sm:text-2xl font-bold text-gray-900 ml-1">OFF</span>
+                </div>
+
+                <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
+                   Min order ₹{coupon.minOrder}
+                </p>
+                
+                <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-2">
+                    <Clock className="h-3 w-3" />
+                    {isLifetime ? "Lifetime Validity" : `Exp: ${expiryDate?.toLocaleDateString('en-GB')}`}
+                </div>
             </div>
-            <p className="text-sm text-gray-600 mb-1 font-medium">
-                {coupon.description || `Save flat ₹${coupon.value} on your order`}
-            </p>
-            <p className="text-xs text-muted-foreground">
-                Min Order: <span className="font-semibold text-gray-900">₹{coupon.minOrder || 0}</span>
-            </p>
+
+            {/* Right Content: Code & Button */}
+            <div className="flex flex-col items-end justify-center gap-3 pl-2 sm:pl-4 border-l border-dashed border-gray-200 h-[80%] my-auto">
+                <div className="text-right">
+                    <p className="text-[10px] uppercase text-gray-400 font-bold mb-1 tracking-wider">Use Code</p>
+                    <div className="border-2 border-dashed border-primary/40 bg-primary/5 px-3 py-1.5 rounded-lg font-mono text-sm sm:text-base font-bold text-primary select-all">
+                        {coupon.code}
+                    </div>
+                </div>
+
+                <Button
+                    size="sm"
+                    onClick={handleCopy}
+                    className={cn(
+                        "rounded-full px-5 text-xs font-bold transition-all shadow-none h-8",
+                        copied
+                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        : "bg-gray-900 hover:bg-primary text-white"
+                    )}
+                >
+                    {copied ? (
+                        <span className="flex items-center gap-1"><Check className="h-3 w-3"/> COPIED</span>
+                    ) : (
+                        <span className="flex items-center gap-1"><Copy className="h-3 w-3"/> COPY</span>
+                    )}
+                </Button>
+            </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
-            <Button 
-                size="sm" 
-                variant="ghost" 
-                className={cn("text-primary hover:text-primary hover:bg-primary/5 gap-2", copied && "text-green-600 hover:text-green-600 hover:bg-green-50")}
-                onClick={handleCopy}
-            >
-                {copied ? (
-                    <><Check className="h-4 w-4" /> Copied</>
-                ) : (
-                    <><Copy className="h-4 w-4" /> Copy Code</>
-                )}
-            </Button>
-        </div>
+        {/* Subtle Inner Shadow for Realism */}
+        <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.02)]" />
       </div>
     </div>
   );

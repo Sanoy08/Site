@@ -10,6 +10,22 @@ import { Loader2, Send, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 
+// ★ হেল্পার ফাংশন: ছবির সাইজ ১০০ কেবির নিচে আনার জন্য URL মডিফাই
+const getOptimizedNotificationImage = (url: string) => {
+  if (!url) return '';
+  
+  // যদি Cloudinary ব্যবহার করেন (বেশিরভাগ Next.js অ্যাপ এটাই করে)
+  if (url.includes('cloudinary.com')) {
+    // w_600: প্রস্থ ৬০০ পিক্সেল (নোটিফিকেশনের জন্য যথেষ্ট)
+    // q_auto:low: কোয়ালিটি কমিয়ে সাইজ অপ্টিমাইজ করবে
+    // f_auto: সেরা ফরম্যাট (webp/avif) বেছে নেবে
+    return url.replace('/upload/', '/upload/w_600,q_auto:low,f_auto/');
+  }
+  
+  // অন্য কোনো স্টোরেজ হলে অরিজিনাল ইউআরএল রিটার্ন করবে
+  return url;
+};
+
 export default function AdminNotificationsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -28,6 +44,12 @@ export default function AdminNotificationsPage() {
     setIsLoading(true);
     const token = localStorage.getItem('token');
 
+    // ★ এখানে ইমেজ অপ্টিমাইজ করা হচ্ছে পাঠানোর আগে
+    const optimizedData = {
+        ...formData,
+        image: getOptimizedNotificationImage(formData.image)
+    };
+
     try {
       const res = await fetch('/api/admin/notifications/send', {
         method: 'POST',
@@ -35,7 +57,7 @@ export default function AdminNotificationsPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` 
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(optimizedData), // অপ্টিমাইজড ডাটা পাঠানো হচ্ছে
       });
       
       const data = await res.json();
@@ -89,11 +111,15 @@ export default function AdminNotificationsPage() {
             
             <div className="space-y-2">
                 <Label>Notification Image (Optional)</Label>
+                {/* ImageUpload কম্পোনেন্ট যেমন আছে তেমনই থাকবে, আমরা পাঠানোর সময় সাইজ কমাবো */}
                 <ImageUpload 
                     value={formData.image ? [formData.image] : []}
                     onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
                     maxFiles={1}
                 />
+                <p className="text-xs text-muted-foreground">
+                    * Image will be automatically optimized for notifications (approx 100kb).
+                </p>
             </div>
 
             <div className="space-y-2">

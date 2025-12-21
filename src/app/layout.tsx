@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata, Viewport } from 'next';
+import type { Metadata, Viewport } from 'next'; // Added Viewport
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -34,7 +34,6 @@ const anekBangla = Anek_Bangla({
   weight: ['500'] 
 });
 
-// ★ নতুন ফন্ট: Pacifico
 const pacifico = Pacifico({
   subsets: ['latin'],
   variable: '--font-pacifico',
@@ -46,12 +45,13 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
-// ★ NEW: Global Viewport Config for Safe Areas
+// ★ ADDED: Strict Viewport Settings to fix Zoom/Scroll issues
 export const viewport: Viewport = {
+  width: "device-width",
   initialScale: 1,
-  width: 'device-width',
   maximumScale: 1,
-  viewportFit: 'cover', // Critical: Activates safe-area-inset detection
+  userScalable: false,
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({

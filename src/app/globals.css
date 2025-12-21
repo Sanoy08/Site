@@ -69,22 +69,10 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
   body {
     @apply bg-background text-foreground;
-    
-    /* ★ GLOBAL STATUS BAR FIX START ★ */
-    /* This reads the device's actual status bar height and pushes content down */
-    padding-top: env(safe-area-inset-top); 
-    
-    /* Ensures the app still fills the screen */
-    min-height: 100vh;
-    
-    /* Prevents horizontal scrolling */
-    overflow-x: hidden; 
-    /* ★ GLOBAL STATUS BAR FIX END ★ */
+    /* Ensure the web app is opaque */
+    background-color: hsl(var(--background)); 
   }
 }
 
@@ -92,4 +80,4 @@
 img {
   max-width: 100%;
   height: auto;
-}
+} 

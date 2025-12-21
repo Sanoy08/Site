@@ -1,28 +1,31 @@
 'use client';
 
 import { useEffect } from 'react';
-import { SplashScreen } from '@capacitor/splash-screen';
 import { usePushNotification } from '@/hooks/use-push-notification';
 import { useBackButton } from '@/hooks/use-back-button';
+// ১. প্লাগিন ইম্পোর্ট করুন
+import { SplashScreen } from '@capacitor/splash-screen'; 
 
 export function AppInitializer() {
-  // আপনার আগের হুকগুলো
+  // আপনার বর্তমান হুকগুলো
   usePushNotification();
   useBackButton();
 
-  // ★ নতুন: স্প্ল্যাশ স্ক্রিন হাইড করার লজিক
+  // ২. অ্যাপ লোড হওয়ার পর স্প্ল্যাশ স্ক্রিন হাইড করার লজিক
   useEffect(() => {
     const hideSplash = async () => {
-      // ৫০০ মিলিসেকেন্ড অপেক্ষা করা হচ্ছে যাতে অ্যাপ পুরোপুরি রেন্ডার হতে সময় পায়
-      // আপনি চাইলে এই সময়টা (500) বাড়াতে বা কমাতে পারেন
+      // সেফটির জন্য ৫০০ms অপেক্ষা, যাতে অ্যাপ রেন্ডার হতে সময় পায়
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // স্প্ল্যাশ স্ক্রিন সরিয়ে ফেলা
-      await SplashScreen.hide();
+      try {
+        await SplashScreen.hide();
+      } catch (e) {
+        console.error('Error hiding splash screen:', e);
+      }
     };
 
     hideSplash();
   }, []);
 
-  return null;
+  return null; 
 }

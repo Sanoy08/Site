@@ -4,17 +4,16 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, ShoppingBag, MapPin, Wallet, LogOut } from 'lucide-react'; // Removed Heart
+// ★ TicketPercent ইমপোর্ট করা হলো
+import { User, ShoppingBag, MapPin, Wallet, LogOut, TicketPercent } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect } from 'react';
 import AccountLoading from './loading';
-// import { useUserMock, useMockAuth } from '@/hooks/use-auth-mock'; // DELETE THIS LINE
-import { useAuth } from '@/hooks/use-auth'; // ADD THIS LINE
+import { useAuth } from '@/hooks/use-auth';
 
-// hello this is commit message
 const sidebarNavItems = [
   {
     title: 'Profile',
@@ -26,9 +25,17 @@ const sidebarNavItems = [
     href: '/account/orders',
     icon: ShoppingBag,
   },
-  { title: 'Wallet',
+  { 
+    title: 'Wallet',
     href: '/account/wallet',
-    icon: Wallet },
+    icon: Wallet 
+  },
+  // ★ নতুন কুপন লিংক যোগ করা হলো
+  { 
+    title: 'Coupons',
+    href: '/account/coupons',
+    icon: TicketPercent 
+  },
   {
     title: 'Addresses',
     href: '/account/addresses',
@@ -42,7 +49,7 @@ interface AccountLayoutProps {
 
 export default function AccountLayout({ children }: AccountLayoutProps) {
   const pathname = usePathname();
-  const { user, isLoading, logout } = useAuth(); // UPDATED: useAuth hook
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -53,9 +60,8 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
 
   const handleLogout = async () => {
     try {
-      logout(); // UPDATED: use real logout function
+      logout();
       toast.success('Logged out successfully');
-      // router.push('/login'); // logout function handles redirect
     } catch (error: any) {
       toast.error('Failed to log out');
     }
@@ -73,7 +79,8 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
-                         <Separator className="my-4" />
+                        <Skeleton className="h-10 w-full" />
+                        <Separator className="my-4" />
                         <Skeleton className="h-10 w-full" />
                     </div>
                 </aside>
@@ -93,7 +100,7 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
         </h1>
         <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
           <aside className="lg:w-1/4">
-            <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1 overflow-x-auto pb-2 lg:pb-0">
+            <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
               {sidebarNavItems.map((item) => (
                 <Link
                   key={item.href}
@@ -101,12 +108,12 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 transition-all text-sm flex-shrink-0',
                     pathname === item.href
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'hover:bg-muted text-gray-600 hover:text-gray-900'
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
-                  <span className="truncate">{item.title}</span>
+                  <item.icon className={cn("h-4 w-4", pathname === item.href ? "text-primary-foreground" : "text-gray-500")} />
+                  <span className="truncate font-medium">{item.title}</span>
                 </Link>
               ))}
               <Separator className="my-4 hidden lg:block" />
@@ -114,11 +121,11 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
                   onClick={handleLogout}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 transition-all text-sm text-destructive flex-shrink-0 w-full',
-                    'hover:bg-muted'
+                    'hover:bg-red-50'
                   )}
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="truncate">Logout</span>
+                  <span className="truncate font-medium">Logout</span>
                 </button>
             </nav>
           </aside>

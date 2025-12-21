@@ -14,8 +14,11 @@ const config: CapacitorConfig = {
     ]
   },
   android: {
-    // @ts-ignore - This property exists in the native platform but is missing from types
-    adjustMarginsForEdgeToEdge: 'disable'
+    // @ts-ignore
+    adjustMarginsForEdgeToEdge: 'disable',
+    zoomEnabled: false,
+    // ব্যাকগ্রাউন্ড কালার সাদা বা সবুজ দিন যাতে কালো স্ক্রিন না আসে
+    backgroundColor: "#ffffff" 
   },
   plugins: {
     PushNotifications: {
@@ -26,9 +29,19 @@ const config: CapacitorConfig = {
       providers: ["google.com"],
     },
     StatusBar: {
-      // critical: prevent the plugin from trying to overlap
       overlaysWebView: false,
       style: 'DARK' 
+    },
+    // ★ এই অংশটি নতুন যোগ করুন (ব্ল্যাক স্ক্রিন ফিক্স) ★
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      launchFadeOutDuration: 200,
+      backgroundColor: "#ffffff", // অথবা আপনার সবুজ কালার "#7D9A4D"
+      androidSplashResourceName: "splash",
+      showSpinner: false, // লোডিং স্পিনার বন্ধ রাখতে চাইলে false দিন
+      splashFullScreen: true,
+      splashImmersive: true,
     }
   }
 };

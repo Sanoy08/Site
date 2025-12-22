@@ -115,7 +115,7 @@ export default function CheckoutPage() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   // Debounce search to prevent too many API calls (500ms delay)
-  const [debouncedSearch] = useDebounce(searchQuery, 500);
+  const debouncedSearch = useDebounce(searchQuery, 500);
 
   // Time Validation Popup State
   const [timeValidationError, setTimeValidationError] = useState<{

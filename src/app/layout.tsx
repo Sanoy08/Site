@@ -1,3 +1,5 @@
+// src/app/layout.tsx
+
 import type { Metadata, Viewport } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';

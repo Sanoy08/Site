@@ -13,8 +13,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-// ★★★ FIX: Ticket এবং Coins আইকন এখানে যোগ করা হয়েছে ★★★
-import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Info, Ticket, Coins } from 'lucide-react';
+// ★ Added CalendarIcon here
+import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+
+// ★ Imports for the Date Picker Fix
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 
 // --- Zod Schema ---
 const checkoutSchema = z.object({
@@ -202,7 +207,6 @@ export default function CheckoutPage() {
         toast.success('Order placed successfully!');
         clearCart();
         
-        // Use orderId from API (as identified in diagnosis)
         const orderNum = data.orderId || '0000'; 
         
         const params = new URLSearchParams({
@@ -308,7 +312,52 @@ export default function CheckoutPage() {
               <div className="space-y-4 pt-2">
                   <h3 className="text-lg font-bold">Preferences</h3>
                   <div className="grid grid-cols-2 gap-4">
-                      <FormField control={form.control} name="preferredDate" render={({ field }) => ( <FormItem><FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel><FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]} className="h-12 rounded-xl bg-background" /></FormControl><FormMessage /></FormItem> )} />
+                      
+                      {/* ★ REPLACED: Native Date Input with Shadcn Calendar Popover */}
+                      <FormField
+                        control={form.control}
+                        name="preferredDate"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "h-12 w-full rounded-xl pl-3 text-left font-normal border-muted-foreground/30 bg-background hover:bg-background/50",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(new Date(field.value), "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value ? new Date(field.value) : undefined}
+                                  onSelect={(date) => {
+                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                  }}
+                                  disabled={(date) =>
+                                    date < new Date(new Date().setHours(0, 0, 0, 0))
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
                       <FormField control={form.control} name="mealTime" render={({ field }) => ( <FormItem><FormLabel className="text-xs text-muted-foreground ml-1">Time</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl bg-background"><SelectValue placeholder="Time" /></SelectTrigger></FormControl><SelectContent><SelectItem value="lunch">Lunch</SelectItem><SelectItem value="dinner">Dinner</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                   </div>
                   <FormField control={form.control} name="instructions" render={({ field }) => ( <FormItem><FormControl><FloatingLabelTextarea field={field} label="Cooking Instructions (Optional)" /></FormControl><FormMessage /></FormItem> )} />

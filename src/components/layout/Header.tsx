@@ -92,8 +92,9 @@ export function Header() {
         <header className={cn(
             "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
             isScrolled 
-                ? "bg-background/80 backdrop-blur-xl shadow-sm border-border/60 py-1" 
-                : "bg-background/0 border-transparent py-3"
+  ? "bg-background shadow-sm border-border py-1"
+  : "bg-background/0 border-transparent py-3"
+
         )}>
         <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
             
@@ -308,7 +309,6 @@ export function Header() {
                             <DropdownMenuItem onClick={() => router.push('/account/wallet')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
                                 <Wallet className="mr-3 h-4 w-4 text-muted-foreground" />
                                 Wallet
-                                <Badge className="ml-auto text-[10px] h-5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 border-0">New</Badge>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         

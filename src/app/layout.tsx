@@ -1,5 +1,3 @@
-// src/app/layout.tsx
-
 import type { Metadata, Viewport } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
@@ -8,8 +6,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
-// ১. লোডার কম্পোনেন্ট ইম্পোর্ট করুন
-import GlobalLoader from '@/components/GlobalLoader'; 
+import GlobalLoader from '@/components/GlobalLoader';
+import { Suspense } from 'react'; // ১. Suspense ইম্পোর্ট করুন
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -48,7 +46,6 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
-// জুম এবং লেআউট ফিক্স সেটিংস
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -76,8 +73,10 @@ export default function RootLayout({
             <RealtimeMenuUpdater />
             <AppInitializer />
             
-            {/* ২. গ্লোবাল লোডারটি এখানে বসানো হয়েছে */}
-            <GlobalLoader />
+            {/* ২. GlobalLoader কে Suspense দিয়ে র‍্যাপ করে দিন */}
+            <Suspense fallback={null}>
+              <GlobalLoader />
+            </Suspense>
             
             {children}
             <Toaster />

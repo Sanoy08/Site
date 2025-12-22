@@ -1,3 +1,5 @@
+// src/app/(shop)/checkout/page.tsx
+
 'use client';
 
 import { useCart } from '@/hooks/useCart';
@@ -11,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon, AlertCircle } from 'lucide-react'; // AlertCircle যোগ করা হয়েছে
+import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -34,7 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { Haptics, NotificationType } from '@capacitor/haptics';
 
-// ★★★ NEW IMPORT: Alert Dialog (Popup) ★★★
+// --- Popup (Alert Dialog) ---
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,7 +106,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // ★★★ NEW STATE: Time Validation Popup Control ★★★
+  // Time Validation Popup State
   const [timeValidationError, setTimeValidationError] = useState<{
     show: boolean;
     title: string;
@@ -191,7 +193,7 @@ export default function CheckoutPage() {
   const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
 
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
-    // ★★★ TIME VALIDATION LOGIC START ★★★
+    // --- TIME VALIDATION LOGIC ---
     const today = new Date();
     const todayStr = format(today, "yyyy-MM-dd");
     const currentHour = today.getHours();
@@ -200,7 +202,6 @@ export default function CheckoutPage() {
         // 1. Lunch Restriction (Order before 9 AM)
         if (values.mealTime === 'lunch' && currentHour >= 9) {
             await Haptics.notification({ type: NotificationType.Error });
-            // ★ Show Popup instead of Toast
             setTimeValidationError({
                 show: true,
                 title: "Time Limit Exceeded!",
@@ -212,7 +213,6 @@ export default function CheckoutPage() {
         // 2. Dinner Restriction (Order before 6 PM)
         if (values.mealTime === 'dinner' && currentHour >= 18) {
             await Haptics.notification({ type: NotificationType.Error });
-            // ★ Show Popup instead of Toast
             setTimeValidationError({
                 show: true,
                 title: "Time Limit Exceeded!",
@@ -221,7 +221,6 @@ export default function CheckoutPage() {
             return;
         }
     }
-    // ★★★ TIME VALIDATION LOGIC END ★★★
 
     setIsSubmitting(true);
     const token = localStorage.getItem('token');
@@ -280,7 +279,7 @@ export default function CheckoutPage() {
   return (
     <div className="container py-8 md:py-12 max-w-6xl">
       
-      {/* ★★★ POPUP COMPONENT (Alert Dialog) ★★★ */}
+      {/* --- POPUP COMPONENT (Alert Dialog) --- */}
       <AlertDialog open={timeValidationError.show} onOpenChange={(open) => setTimeValidationError(prev => ({ ...prev, show: open }))}>
         <AlertDialogContent className="rounded-2xl max-w-[90%] md:max-w-lg">
           <AlertDialogHeader>
@@ -345,7 +344,7 @@ export default function CheckoutPage() {
                   <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Full Name" /></FormControl><FormMessage /></FormItem> )} />
                   <FormField control={form.control} name="altPhone" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Phone Number" type="tel" /></FormControl><FormMessage /></FormItem> )} />
                   
-                  {/* ★★★ MOVED: Primary Address is now here ★★★ */}
+                  {/* Primary Address Moved Here */}
                   <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Primary Address" /></FormControl><FormMessage /></FormItem> )} />
               </div>
 
@@ -359,7 +358,7 @@ export default function CheckoutPage() {
 
               {orderType === 'delivery' ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    {/* Primary Address removed from here */}
+                    {/* Primary Address Removed From Here */}
                     
                     <div className="p-4 border rounded-xl bg-gray-50/50 space-y-4">
                         <FormItem className="flex flex-row items-center space-x-3 space-y-0">
@@ -383,12 +382,12 @@ export default function CheckoutPage() {
                   <h3 className="text-lg font-bold">Preferences</h3>
                   <div className="grid grid-cols-2 gap-4">
                       
-                      {/* Date Picker */}
+                      {/* --- FIX: Date Picker Alignment --- */}
                       <FormField
                         control={form.control}
                         name="preferredDate"
                         render={({ field }) => (
-                          <FormItem className="flex flex-col">
+                          <FormItem> {/* Removed 'flex flex-col' to align with Time field */}
                             <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>

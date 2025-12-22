@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata, Viewport } from 'next'; // Added Viewport
+import type { Metadata, Viewport } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -7,6 +7,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
+// ১. ইম্পোর্ট করুন
+import NativeTransition from '@/components/NativeTransition'; 
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -45,7 +47,6 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
-// ★ ADDED: Strict Viewport Settings to fix Zoom/Scroll issues
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -72,7 +73,12 @@ export default function RootLayout({
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />
-            {children}
+            
+            {/* ২. এখানে NativeTransition বসালাম */}
+            <NativeTransition>
+              {children}
+            </NativeTransition>
+            
             <Toaster />
           </CartProvider>
       </body>

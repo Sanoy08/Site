@@ -109,3 +109,17 @@ img {
   transform: translateZ(0);
   will-change: transform;
 }
+
+
+
+@layer components {
+  /* কাস্টম স্পিনার ক্লাস যদি দরকার হয় */
+  .loader-spin {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

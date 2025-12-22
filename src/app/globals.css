@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 84 34% 45%; /* আপনার ওয়েবসাইটের সবুজ থিম */
+    --primary: 84 34% 45%; /* আপনার ওয়েবসাইটের সবুজ থিম */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -24,7 +24,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 45 93% 47%; /* আপনার ওয়েবসাইটের হলুদ/অ্যাম্বার থিম */
+    --accent: 45 93% 47%; /* আপনার ওয়েবসাইটের হলুদ/অ্যাম্বার থিম */
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -66,32 +66,46 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 84 34% 45%;
   }
-}
 
-@layer base {
-  html, body {
-    /* টাচ রেসপন্স ফাস্ট করার জন্য */
-    touch-action: manipulation; 
-    
-    /* ট্যাপ হাইলাইট কালার বন্ধ করা (নেটিভ ফিল পাওয়ার জন্য) */
+  /* ★★★ PERFORMANCE FIXES FOR APP ★★★ */
+  * {
+    @apply border-border;
+    /* নীল ট্যাপ হাইলাইট বন্ধ করে */
     -webkit-tap-highlight-color: transparent;
+    /* টাচ রেসপন্স ফাস্ট করে (300ms ডিলে কমায়) */
+    touch-action: manipulation;
+  }
+
+  html {
+    /* স্মুথ স্ক্রলিং শুধুমাত্র ব্রাউজারে ভালো, অ্যাপে 'auto' রাখলে ল্যাগ কমে */
+    scroll-behavior: auto !important;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
     
-    /* ফন্ট রেন্ডারিং স্মুথ করার জন্য */
+    /* রাবার ব্যান্ড এফেক্ট বা বাউন্স বন্ধ করে */
+    overscroll-behavior: none;
+    overflow-x: hidden;
+    width: 100%;
+    
+    /* টেক্সট এবং অ্যানিমেশন শার্প করে */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+}
 
-  /* হার্ডওয়্যার এক্সিলারেশন চালু করা (GPU ব্যবহার করবে) */
-  * {
-    /* এটি এলিমেন্টগুলোকে GPU লেয়ারে নিয়ে যায়, ফলে স্ক্রল স্মুথ হয় */
-    transform: translateZ(0); 
-    backface-visibility: hidden;
-    perspective: 1000px;
-  }
-  
-  /* ইমেজ সিলেকশন বন্ধ করা */
-  img {
-    -webkit-user-drag: none;
-    user-select: none;
-  }
+/* ইমেজ রেসপন্সিভনেস */
+img {
+  max-width: 100%;
+  height: auto;
+  /* ইমেজ রেন্ডারিং স্মুথ করার জন্য */
+  display: block;
+}
+
+/* GPU Acceleration ক্লাস (দরকার হলে ব্যবহার করতে পারেন) */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
 }

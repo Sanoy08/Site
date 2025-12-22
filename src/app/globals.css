@@ -69,15 +69,29 @@
 }
 
 @layer base {
-  body {
-    @apply bg-background text-foreground;
-    /* Ensure the web app is opaque */
-    background-color: hsl(var(--background)); 
+  html, body {
+    /* টাচ রেসপন্স ফাস্ট করার জন্য */
+    touch-action: manipulation; 
+    
+    /* ট্যাপ হাইলাইট কালার বন্ধ করা (নেটিভ ফিল পাওয়ার জন্য) */
+    -webkit-tap-highlight-color: transparent;
+    
+    /* ফন্ট রেন্ডারিং স্মুথ করার জন্য */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* হার্ডওয়্যার এক্সিলারেশন চালু করা (GPU ব্যবহার করবে) */
+  * {
+    /* এটি এলিমেন্টগুলোকে GPU লেয়ারে নিয়ে যায়, ফলে স্ক্রল স্মুথ হয় */
+    transform: translateZ(0); 
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+  
+  /* ইমেজ সিলেকশন বন্ধ করা */
+  img {
+    -webkit-user-drag: none;
+    user-select: none;
   }
 }
-
-/* ইমেজ রেসপন্সিভনেস */
-img {
-  max-width: 100%;
-  height: auto;
-} 

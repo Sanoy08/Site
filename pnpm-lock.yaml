@@ -10,43 +10,40 @@ importers:
     dependencies:
       '@capacitor-community/fcm':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.0.0)
+        version: 8.0.1
       '@capacitor-firebase/authentication':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.0.0)(firebase@11.10.0)
+        version: 8.0.1(firebase@11.10.0)
       '@capacitor/android':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
+        version: 8.0.0
       '@capacitor/app':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
-      '@capacitor/cli':
-        specifier: ^8.0.0
         version: 8.0.0
-      '@capacitor/core':
+      '@capacitor/cli':
         specifier: ^8.0.0
         version: 8.0.0
       '@capacitor/haptics':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
+        version: 8.0.0
       '@capacitor/ios':
         specifier: ^6.2.1
-        version: 6.2.1(@capacitor/core@8.0.0)
+        version: 6.2.1
       '@capacitor/keyboard':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
+        version: 8.0.0
       '@capacitor/local-notifications':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
+        version: 8.0.0
       '@capacitor/push-notifications':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
+        version: 8.0.0
       '@capacitor/splash-screen':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
+        version: 8.0.0
       '@capacitor/status-bar':
         specifier: ^8.0.0
-        version: 8.0.0(@capacitor/core@8.0.0)
+        version: 8.0.0
       '@genkit-ai/google-genai':
         specifier: ^1.20.0
         version: 1.25.0(genkit@1.25.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.0)(firebase@11.10.0))
@@ -149,9 +146,6 @@ importers:
       firebase-admin:
         specifier: ^13.6.0
         version: 13.6.0
-      framer-motion:
-        specifier: ^12.23.26
-        version: 12.23.26(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       genkit:
         specifier: ^1.20.0
         version: 1.25.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.0)(firebase@11.10.0)
@@ -428,9 +422,6 @@ packages:
     resolution: {integrity: sha512-v9hEBi69xGxuuZhg55N031bMEenKaPSv71Il8C22VOOH6surDyv/MPeImN0oVfFc7eiklaW3rDFYVz6cmXfJWQ==}
     engines: {node: '>=22.0.0'}
     hasBin: true
-
-  '@capacitor/core@8.0.0':
-    resolution: {integrity: sha512-250HTVd/W/KdMygoqaedisvNbHbpbQTN2Hy/8ZYGm1nAqE0Fx7sGss4l0nDg33STxEdDhtVRoL2fIaaiukKseA==}
 
   '@capacitor/haptics@8.0.0':
     resolution: {integrity: sha512-DY1IUOjke1T4ITl7mFHQIKCaJJyHYAYRYHG9bVApU7PDOZiMVGMp48Yjzdqjya+wv/AHS5mDabSTUmhJ5uDvBA==}
@@ -3611,20 +3602,6 @@ packages:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
 
-  framer-motion@12.23.26:
-    resolution: {integrity: sha512-cPcIhgR42xBn1Uj+PzOyheMtZ73H927+uWPDVhUMqxy8UHt6Okavb6xIz9J/phFUHUj0OncR6UvMfJTXoc/LKA==}
-    peerDependencies:
-      '@emotion/is-prop-valid': '*'
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@emotion/is-prop-valid':
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
   fresh@0.5.2:
     resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
     engines: {node: '>= 0.6'}
@@ -4263,12 +4240,6 @@ packages:
         optional: true
       socks:
         optional: true
-
-  motion-dom@12.23.23:
-    resolution: {integrity: sha512-n5yolOs0TQQBRUFImrRfs/+6X4p3Q4n1dUEqt/H58Vx7OW6RF+foWEgmTVDhIWJIMXOuNNL0apKH2S16en9eiA==}
-
-  motion-utils@12.23.6:
-    resolution: {integrity: sha512-eAWoPgr4eFEOFfg2WjIsMoqJTW6Z8MTUCgn/GZ3VRpClWBdnbjryiA3ZSNLyxCTmCQx4RmYX6jX1iWHbenUPNQ==}
 
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
@@ -5803,23 +5774,15 @@ snapshots:
 
   '@babel/runtime@7.28.4': {}
 
-  '@capacitor-community/fcm@8.0.1(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor-community/fcm@8.0.1': {}
 
-  '@capacitor-firebase/authentication@8.0.1(@capacitor/core@8.0.0)(firebase@11.10.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor-firebase/authentication@8.0.1(firebase@11.10.0)':
     optionalDependencies:
       firebase: 11.10.0
 
-  '@capacitor/android@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/android@8.0.0': {}
 
-  '@capacitor/app@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/app@8.0.0': {}
 
   '@capacitor/cli@8.0.0':
     dependencies:
@@ -5843,37 +5806,19 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@capacitor/core@8.0.0':
-    dependencies:
-      tslib: 2.8.1
+  '@capacitor/haptics@8.0.0': {}
 
-  '@capacitor/haptics@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/ios@6.2.1': {}
 
-  '@capacitor/ios@6.2.1(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/keyboard@8.0.0': {}
 
-  '@capacitor/keyboard@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/local-notifications@8.0.0': {}
 
-  '@capacitor/local-notifications@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/push-notifications@8.0.0': {}
 
-  '@capacitor/push-notifications@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/splash-screen@8.0.0': {}
 
-  '@capacitor/splash-screen@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
-
-  '@capacitor/status-bar@8.0.0(@capacitor/core@8.0.0)':
-    dependencies:
-      '@capacitor/core': 8.0.0
+  '@capacitor/status-bar@8.0.0': {}
 
   '@colors/colors@1.6.0': {}
 
@@ -9744,15 +9689,6 @@ snapshots:
 
   forwarded@0.2.0: {}
 
-  framer-motion@12.23.26(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      motion-dom: 12.23.23
-      motion-utils: 12.23.6
-      tslib: 2.8.1
-    optionalDependencies:
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
   fresh@0.5.2: {}
 
   fresh@2.0.0: {}
@@ -10444,12 +10380,6 @@ snapshots:
       '@mongodb-js/saslprep': 1.4.0
       bson: 7.0.0
       mongodb-connection-string-url: 7.0.0
-
-  motion-dom@12.23.23:
-    dependencies:
-      motion-utils: 12.23.6
-
-  motion-utils@12.23.6: {}
 
   ms@2.0.0: {}
 

@@ -10,7 +10,8 @@ import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater'
 import { AppInitializer } from '@/components/AppInitializer';
 import GlobalLoader from '@/components/GlobalLoader';
 import { Suspense } from 'react';
-import Image from 'next/image'; // ১. Image ইম্পোর্ট করা হয়েছে
+import Image from 'next/image';
+import NotificationPrompt from '@/components/NotificationPrompt';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -92,6 +93,9 @@ export default function RootLayout({
             <Suspense fallback={null}>
               <GlobalLoader />
             </Suspense>
+
+            {/* ২. নোটিফিকেশন প্রম্পট এখানে যুক্ত করা হয়েছে */}
+            <NotificationPrompt />
             
             {children}
             <Toaster />

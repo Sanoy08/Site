@@ -13,7 +13,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
+// Added 'Search' to imports
+import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon, AlertCircle, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { Haptics, NotificationType } from '@capacitor/haptics';
+
+// --- Import Debounce Hook (Ensure you have this or install 'use-debounce') ---
+import { useDebounce } from '@/hooks/use-debounce';
 
 // --- Popup (Alert Dialog) ---
 import {
@@ -106,12 +110,51 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // --- OLA MAPS STATE ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  // Debounce search to prevent too many API calls (500ms delay)
+  const [debouncedSearch] = useDebounce(searchQuery, 500);
+
   // Time Validation Popup State
   const [timeValidationError, setTimeValidationError] = useState<{
     show: boolean;
     title: string;
     message: string;
   }>({ show: false, title: '', message: '' });
+
+  // --- OLA MAPS EFFECT ---
+  useEffect(() => {
+    const fetchLocations = async () => {
+        if (!debouncedSearch || debouncedSearch.length < 3) {
+            setSuggestions([]);
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/location/autocomplete?q=${debouncedSearch}`);
+            const data = await res.json();
+            setSuggestions(data.suggestions || []);
+            setShowSuggestions(true);
+        } catch (e) {
+            console.error("Location search failed", e);
+        }
+    };
+
+    fetchLocations();
+  }, [debouncedSearch]);
+
+  const handleSelectAddress = (address: string) => {
+    // Update the form's address field
+    form.setValue('address', address, { shouldValidate: true });
+    
+    // Reset search state
+    setSearchQuery("");
+    setShowSuggestions(false);
+    
+    toast.success("Address updated! Please add House/Flat No.");
+  };
 
   useEffect(() => {
       const fetchWallet = async () => {
@@ -344,8 +387,67 @@ export default function CheckoutPage() {
                   <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Full Name" /></FormControl><FormMessage /></FormItem> )} />
                   <FormField control={form.control} name="altPhone" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Phone Number" type="tel" /></FormControl><FormMessage /></FormItem> )} />
                   
-                  {/* Primary Address Moved Here */}
-                  <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Primary Address" /></FormControl><FormMessage /></FormItem> )} />
+                  {/* --- ADDRESS SECTION START --- */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center">
+                        <h4 className="text-sm font-semibold text-muted-foreground">Delivery Location</h4>
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ola Maps</span>
+                    </div>
+
+                    {/* 1. Ola Maps Smart Search */}
+                    <div className="relative z-20">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search area (e.g. Janai, Dankuni...)" 
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    if(e.target.value.length === 0) setShowSuggestions(false);
+                                }}
+                                className="pl-9 h-11 rounded-xl border-primary/20 bg-white focus-visible:ring-primary/20"
+                            />
+                        </div>
+
+                        {/* Suggestion Dropdown */}
+                        {showSuggestions && suggestions.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                                {suggestions.map((item: any) => (
+                                    <div 
+                                        key={item.place_id}
+                                        onClick={() => handleSelectAddress(item.description)}
+                                        className="p-3 hover:bg-muted/50 cursor-pointer flex items-start gap-3 border-b last:border-0 transition-colors"
+                                    >
+                                        <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">{item.main_text}</p>
+                                            <p className="text-xs text-muted-foreground">{item.secondary_text}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="p-2 bg-muted/20 text-center border-t">
+                                    <p className="text-[10px] text-muted-foreground">Powered by Ola Maps</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 2. Manual Address Field (Primary) */}
+                    <FormField 
+                        control={form.control} 
+                        name="address" 
+                        render={({ field }) => ( 
+                            <FormItem>
+                                <FormControl>
+                                    <FloatingLabelTextarea field={field} label="Confirm Full Address (House No, Street, Landmark)" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem> 
+                        )} 
+                    />
+                  </div>
+                  {/* --- ADDRESS SECTION END --- */}
+
               </div>
 
               <div className="space-y-4">
@@ -358,7 +460,6 @@ export default function CheckoutPage() {
 
               {orderType === 'delivery' ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    {/* Primary Address Removed From Here */}
                     
                     <div className="p-4 border rounded-xl bg-gray-50/50 space-y-4">
                         <FormItem className="flex flex-row items-center space-x-3 space-y-0">
@@ -382,12 +483,12 @@ export default function CheckoutPage() {
                   <h3 className="text-lg font-bold">Preferences</h3>
                   <div className="grid grid-cols-2 gap-4">
                       
-                      {/* --- FIX: Date Picker Alignment --- */}
+                      {/* --- Date Picker --- */}
                       <FormField
                         control={form.control}
                         name="preferredDate"
                         render={({ field }) => (
-                          <FormItem> {/* Removed 'flex flex-col' to align with Time field */}
+                          <FormItem>
                             <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>

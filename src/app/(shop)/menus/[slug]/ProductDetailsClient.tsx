@@ -7,7 +7,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Minus, Star, ShoppingCart, Heart, Share2, Clock, Flame, Ban, ChevronRight, Info } from 'lucide-react';
+// Share2 ইম্পোর্ট সরিয়ে দেওয়া হয়েছে
+import { Plus, Minus, Star, ShoppingCart, Heart, Clock, Flame, Ban, ChevronRight, Info } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import type { Product, Image as ProductImage } from '@/lib/types';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -34,6 +35,18 @@ const fallbackImage: ProductImage = {
   url: PLACEHOLDER_IMAGE_URL, 
   alt: 'Placeholder Image' 
 };
+
+// নতুন কাস্টম শেয়ার আইকন কম্পোনেন্ট
+const CustomShareIcon = ({ className }: { className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 640 640" 
+    className={className}
+    fill="currentColor"
+  >
+    <path d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L169.3 201.4C156.8 213.9 156.8 234.2 169.3 246.7C181.8 259.2 202.1 259.2 214.6 246.7L288 173.3L288 384C288 401.7 302.3 416 320 416C337.7 416 352 401.7 352 384L352 173.3L425.4 246.7C437.9 259.2 458.2 259.2 470.7 246.7C483.2 234.2 483.2 213.9 470.7 201.4L342.7 73.4zM160 416C160 398.3 145.7 384 128 384C110.3 384 96 398.3 96 416L96 480C96 533 139 576 192 576L448 576C501 576 544 533 544 480L544 416C544 398.3 529.7 384 512 384C494.3 384 480 398.3 480 416L480 480C480 497.7 465.7 512 448 512L192 512C174.3 512 160 497.7 160 480L160 416z"/>
+  </svg>
+);
 
 export function ProductDetailsClient({ product, relatedProducts }: { product: Product, relatedProducts: Product[] }) {
   const [quantity, setQuantity] = useState(1);
@@ -126,10 +139,10 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* Top Buttons (Mobile) */}
+         {/* Top Buttons (Mobile) - আইকন পরিবর্তন করা হয়েছে */}
          <div className="absolute top-4 right-4 flex justify-end z-20 pointer-events-none">
              <button onClick={handleShare} className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 pointer-events-auto hover:bg-white transition-colors">
-                 <Share2 className="h-5 w-5" />
+                 <CustomShareIcon className="h-5 w-5" />
              </button>
          </div>
 
@@ -173,9 +186,10 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                  )}
 
+                 {/* Desktop Share Button - আইকন পরিবর্তন করা হয়েছে */}
                  <div className="absolute top-4 right-4">
                      <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors">
-                         <Share2 className="h-5 w-5" />
+                         <CustomShareIcon className="h-5 w-5" />
                      </button>
                  </div>
              </div>
@@ -206,7 +220,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
              )}
           </div>
           
-          {/* PRODUCT INFO */}
+          {/* PRODUCT INFO (বাকি কোড অপরিবর্তিত) */}
           <div className="flex flex-col h-full md:pt-2">
 
             <div className="space-y-3 md:space-y-4">

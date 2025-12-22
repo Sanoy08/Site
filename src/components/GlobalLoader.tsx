@@ -3,20 +3,18 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
+// Image import আর লাগবে না
 
 export default function GlobalLoader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
 
-  // পেজ লোড লজিক
   useEffect(() => {
     setIsLoading(false);
     document.body.classList.remove('overflow-hidden');
   }, [pathname, searchParams]);
 
-  // লিংক ক্লিক লজিক
   useEffect(() => {
     const handleAnchorClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -41,7 +39,7 @@ export default function GlobalLoader() {
     <AnimatePresence>
       {isLoading && (
         <motion.div 
-          key="global-loader" // অ্যানিমেশনের জন্য ইউনিক কি জরুরি
+          key="global-loader"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -49,15 +47,15 @@ export default function GlobalLoader() {
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white touch-none"
         >
           
-          {/* ★★★ YOUR IMAGE HERE ★★★ */}
-          <div className="relative w-48 h-48 mb-4"> 
-            <Image 
-              src="/images/delivery-boy.gif" 
-              alt="Loading..."
-              fill
-              className="object-contain" 
-              priority 
-              unoptimized 
+          {/* ★★★ MP4 VIDEO LOADER ★★★ */}
+          <div className="relative w-64 h-64 mb-4"> 
+            <video
+              src="/images/loader.mp4" // আপনার ভিডিও ফাইলের নাম
+              autoPlay
+              loop
+              muted
+              playsInline // মোবাইলে ফুলস্ক্রিন হওয়া আটকাবে
+              className="w-full h-full object-contain pointer-events-none"
             />
           </div>
 

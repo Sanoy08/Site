@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
 import GlobalLoader from '@/components/GlobalLoader';
-import { Suspense } from 'react'; // ১. Suspense ইম্পোর্ট করুন
+import { Suspense } from 'react';
+import Image from 'next/image'; // ১. Image ইম্পোর্ট করা হয়েছে
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -71,11 +72,23 @@ export default function RootLayout({
           anekBangla.variable,
           pacifico.variable
       )}>
+          
+          {/* ★★★ VIDEO PRELOAD TRICK ★★★ */}
+          {/* এই ভিডিওটি ইউজার দেখবে না, কিন্তু ব্রাউজার এটি আগে থেকেই লোড করে রাখবে */}
+          <div className="hidden" aria-hidden="true">
+            <video 
+              src="/images/loader.mp4" 
+              preload="auto" 
+              muted 
+              width={0} 
+              height={0} 
+            />
+          </div>
+
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />
             
-            {/* ২. GlobalLoader কে Suspense দিয়ে র‍্যাপ করে দিন */}
             <Suspense fallback={null}>
               <GlobalLoader />
             </Suspense>

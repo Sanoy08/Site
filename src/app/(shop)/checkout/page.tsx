@@ -315,48 +315,49 @@ export default function CheckoutPage() {
                       
                       {/* ★ REPLACED: Native Date Input with Shadcn Calendar Popover */}
                       <FormField
-                        control={form.control}
-                        name="preferredDate"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "h-12 w-full rounded-xl pl-3 text-left font-normal border-muted-foreground/30 bg-background hover:bg-background/50",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(new Date(field.value), "PPP")
-                                    ) : (
-                                      <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value ? new Date(field.value) : undefined}
-                                  onSelect={(date) => {
-                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                  }}
-                                  disabled={(date) =>
-                                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                                  }
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+  control={form.control}
+  name="preferredDate"
+  render={({ field }) => (
+    <FormItem className="flex flex-col">
+      <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
+      <Popover>
+        <PopoverTrigger asChild>
+          <FormControl>
+            <Button
+              variant={"outline"}
+              className={cn(
+                "h-12 w-full rounded-xl pl-3 text-left font-normal border-muted-foreground/30 bg-background hover:bg-background/50",
+                !field.value && "text-muted-foreground"
+              )}
+            >
+              {field.value ? (
+                // ★ UPDATE: "PPP" এর বদলে "MMM do, yyyy" ব্যবহার করা হয়েছে
+                format(new Date(field.value), "MMM do, yyyy")
+              ) : (
+                <span>Pick a date</span>
+              )}
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={field.value ? new Date(field.value) : undefined}
+            onSelect={(date) => {
+              field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+            }}
+            disabled={(date) =>
+              date < new Date(new Date().setHours(0, 0, 0, 0))
+            }
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
 
                       <FormField control={form.control} name="mealTime" render={({ field }) => ( <FormItem><FormLabel className="text-xs text-muted-foreground ml-1">Time</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl bg-background"><SelectValue placeholder="Time" /></SelectTrigger></FormControl><SelectContent><SelectItem value="lunch">Lunch</SelectItem><SelectItem value="dinner">Dinner</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                   </div>

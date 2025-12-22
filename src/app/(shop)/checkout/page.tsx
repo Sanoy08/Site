@@ -153,7 +153,7 @@ export default function CheckoutPage() {
     setSearchQuery("");
     setShowSuggestions(false);
     
-    toast.success("Address updated! Please add House/Flat No.");
+    toast.success("Address updated!");
   };
 
   useEffect(() => {
@@ -439,7 +439,7 @@ export default function CheckoutPage() {
                         render={({ field }) => ( 
                             <FormItem>
                                 <FormControl>
-                                    <FloatingLabelTextarea field={field} label="Confirm Full Address (House No, Street, Landmark)" />
+                                    <FloatingLabelTextarea field={field} label="Primary Address" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem> 

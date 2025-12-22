@@ -1,5 +1,6 @@
 // src/app/layout.tsx
-import type { Metadata, Viewport } from 'next'; // Added Viewport
+
+import type { Metadata, Viewport } from 'next';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -7,6 +8,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater';
 import { AppInitializer } from '@/components/AppInitializer';
+// ১. লোডার কম্পোনেন্ট ইম্পোর্ট করুন
+import GlobalLoader from '@/components/GlobalLoader'; 
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -45,7 +48,7 @@ export const metadata: Metadata = {
   description: 'Authentic Bengali cuisine delivered to your doorstep.',
 };
 
-// ★ ADDED: Strict Viewport Settings to fix Zoom/Scroll issues
+// জুম এবং লেআউট ফিক্স সেটিংস
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -72,6 +75,10 @@ export default function RootLayout({
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />
+            
+            {/* ২. গ্লোবাল লোডারটি এখানে বসানো হয়েছে */}
+            <GlobalLoader />
+            
             {children}
             <Toaster />
           </CartProvider>

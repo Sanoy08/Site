@@ -13,7 +13,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-// ★ Added CalendarIcon here
 import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -31,10 +30,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 
-// ★ Imports for the Date Picker Fix
+// --- Imports for Date Picker & Validation ---
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { Haptics, NotificationType } from '@capacitor/haptics'; // ★ Added for Vibration
 
 // --- Zod Schema ---
 const checkoutSchema = z.object({
@@ -176,6 +176,36 @@ export default function CheckoutPage() {
   const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
 
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
+    // ★★★ TIME VALIDATION LOGIC START ★★★
+    const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
+    const currentHour = today.getHours();
+
+    // Check if user selected Today
+    if (values.preferredDate === todayStr) {
+        
+        // 1. Lunch Restriction (Order before 9 AM)
+        if (values.mealTime === 'lunch' && currentHour >= 9) {
+            await Haptics.notification({ type: NotificationType.Error });
+            toast.error("Today's lunch orders are accepted until 9 AM only.", {
+                description: "Please select a future date or choose Dinner for today.",
+                duration: 5000,
+            });
+            return; // Block execution
+        }
+
+        // 2. Dinner Restriction (Order before 6 PM / 18:00)
+        if (values.mealTime === 'dinner' && currentHour >= 18) {
+            await Haptics.notification({ type: NotificationType.Error });
+            toast.error("Today's dinner orders are accepted until 6 PM only.", {
+                description: "Please select a future date.",
+                duration: 5000,
+            });
+            return; // Block execution
+        }
+    }
+    // ★★★ TIME VALIDATION LOGIC END ★★★
+
     setIsSubmitting(true);
     const token = localStorage.getItem('token');
     try {
@@ -313,51 +343,50 @@ export default function CheckoutPage() {
                   <h3 className="text-lg font-bold">Preferences</h3>
                   <div className="grid grid-cols-2 gap-4">
                       
-                      {/* ★ REPLACED: Native Date Input with Shadcn Calendar Popover */}
+                      {/* Date Picker using Shadcn Calendar */}
                       <FormField
-  control={form.control}
-  name="preferredDate"
-  render={({ field }) => (
-    <FormItem className="flex flex-col">
-      <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
-      <Popover>
-        <PopoverTrigger asChild>
-          <FormControl>
-            <Button
-              variant={"outline"}
-              className={cn(
-                "h-12 w-full rounded-xl pl-3 text-left font-normal border-muted-foreground/30 bg-background hover:bg-background/50",
-                !field.value && "text-muted-foreground"
-              )}
-            >
-              {field.value ? (
-                // ★ UPDATE: "PPP" এর বদলে "MMM do, yyyy" ব্যবহার করা হয়েছে
-                format(new Date(field.value), "MMM do, yyyy")
-              ) : (
-                <span>Pick a date</span>
-              )}
-              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-            </Button>
-          </FormControl>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={field.value ? new Date(field.value) : undefined}
-            onSelect={(date) => {
-              field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-            }}
-            disabled={(date) =>
-              date < new Date(new Date().setHours(0, 0, 0, 0))
-            }
-            initialFocus
-          />
-        </PopoverContent>
-      </Popover>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+                        control={form.control}
+                        name="preferredDate"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "h-12 w-full rounded-xl pl-3 text-left font-normal border-muted-foreground/30 bg-background hover:bg-background/50",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(new Date(field.value), "MMM do, yyyy")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value ? new Date(field.value) : undefined}
+                                  onSelect={(date) => {
+                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                  }}
+                                  disabled={(date) =>
+                                    date < new Date(new Date().setHours(0, 0, 0, 0))
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       <FormField control={form.control} name="mealTime" render={({ field }) => ( <FormItem><FormLabel className="text-xs text-muted-foreground ml-1">Time</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl bg-background"><SelectValue placeholder="Time" /></SelectTrigger></FormControl><SelectContent><SelectItem value="lunch">Lunch</SelectItem><SelectItem value="dinner">Dinner</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                   </div>

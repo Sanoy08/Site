@@ -46,7 +46,7 @@ export default function GlobalLoader() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/95 backdrop-blur-md touch-none"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white touch-none"
         >
           
           {/* ★★★ YOUR IMAGE HERE ★★★ */}
@@ -72,7 +72,7 @@ export default function GlobalLoader() {
               Bumba's Kitchen
             </h2>
             <p className="text-sm font-medium text-muted-foreground animate-pulse mt-1">
-              Delivery Boy is on the way...
+              Your page is on the way...
             </p>
           </motion.div>
 

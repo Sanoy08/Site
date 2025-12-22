@@ -73,9 +73,26 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     toast.success(`Added ${quantity} ${product.name} to cart`);
   };
 
-  const handleShare = () => {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied to clipboard!");
+  // ★ UPDATED SHARE FUNCTION ★
+  const handleShare = async () => {
+      const shareData = {
+          title: product.name,
+          text: `Check out ${product.name} on Bumba's Kitchen!`,
+          url: window.location.href,
+      };
+
+      // Check if the browser supports the native share API
+      if (navigator.share) {
+          try {
+              await navigator.share(shareData);
+          } catch (err) {
+              console.log('Error sharing:', err);
+          }
+      } else {
+          // Fallback for browsers that don't support sharing (like desktop Chrome sometimes)
+          navigator.clipboard.writeText(window.location.href);
+          toast.success("Link copied to clipboard!");
+      }
   };
 
   return (
@@ -109,9 +126,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* ❌ Removed Back Button */}
-         {/* <Link href="/menus" ...> ... </Link> */}
-
          {/* Top Buttons (Mobile) */}
          <div className="absolute top-4 right-4 flex justify-end z-20 pointer-events-none">
              <button onClick={handleShare} className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 pointer-events-auto hover:bg-white transition-colors">
@@ -141,7 +155,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           
           {/* Desktop Images */}
           <div className="hidden md:block space-y-4">
-   <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
+             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
 
                  <Image
                     src={getOptimizedImageUrl(displayImages[activeSlide].url)}
@@ -172,20 +186,20 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
                      {displayImages.map((img, idx) => (
                          <button 
-  key={idx}
-  onClick={() => setActiveSlide(idx)}
-  className={cn(
-      "relative w-full aspect-square overflow-hidden transition-all",
-      activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
-  )}
->
-  <Image 
-    src={getOptimizedImageUrl(img.url)} 
-    alt="thumb" 
-    fill 
-    className="object-cover"
-  />
-</button>
+                          key={idx}
+                          onClick={() => setActiveSlide(idx)}
+                          className={cn(
+                              "relative w-full aspect-square overflow-hidden transition-all",
+                              activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
+                          )}
+                        >
+                          <Image 
+                            src={getOptimizedImageUrl(img.url)} 
+                            alt="thumb" 
+                            fill 
+                            className="object-cover"
+                          />
+                        </button>
 
                      ))}
                  </div>
@@ -257,20 +271,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ❌ Removed: Freshly Prepared & 30–40 Mins */}
-            {/* 
-            <div className="grid grid-cols-2 gap-4 mt-6 text-sm text-gray-600">
-                 <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
-                    <Flame className="h-5 w-5 text-orange-500" />
-                    <span>Freshly Prepared</span>
-                 </div>
-                 <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
-                    <Clock className="h-5 w-5 text-blue-500" />
-                    <span>30-40 Mins</span>
-                 </div>
-            </div>
-            */}
-
             <div className="mt-8">
                 <h3 className="font-bold text-lg mb-2 text-gray-900">Description</h3>
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
@@ -325,4 +325,3 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     </div>
   );
 }
-

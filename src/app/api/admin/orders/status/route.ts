@@ -38,6 +38,14 @@ export async function PUT(request: NextRequest) {
 
             let orderUpdate: any = { Status: status }; 
             
+            // ★★★ ১. OTP জেনারেশন লজিক (শুধুমাত্র Received স্ট্যাটাসে) ★★★
+            let generatedOtp = null;
+            if (status === 'Received') {
+                // 4 ডিজিটের র‍্যান্ডম OTP
+                generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                orderUpdate.deliveryOtp = generatedOtp;
+            }
+            
             const couponCode = order.CouponCode;
             const orderCouponIncremented = order.couponUsageTracked === true;
             
@@ -119,7 +127,6 @@ export async function PUT(request: NextRequest) {
                                 { session }
                             );
 
-                            // ★★★ ফিক্স ১: 'await' যোগ করা হয়েছে ★★★
                             await sendNotificationToUser(
                                 client, 
                                 userId.toString(), 
@@ -158,7 +165,6 @@ export async function PUT(request: NextRequest) {
                     { session }
                 );
                 
-                // ★★★ ফিক্স ২: 'await' যোগ করা হয়েছে ★★★
                 await sendNotificationToUser(
                     client, 
                     userId.toString(), 
@@ -171,14 +177,20 @@ export async function PUT(request: NextRequest) {
 
             // --- লজিক: General Status Update Notification ---
             if (userId) {
-                // ★★★ ফিক্স ৩: 'await' যোগ করা হয়েছে এবং ইমেজ প্যারামিটার ঠিক করা হয়েছে ★★★
+                let notifBody = `Order #${order.OrderNumber} is now ${status}.`;
+                
+                // ★★★ ২. OTP নোটিফিকেশনে পাঠানো ★★★
+                if (status === 'Received' && generatedOtp) {
+                    notifBody = `Your order is out for delivery! Share OTP: ${generatedOtp} with the delivery partner.`;
+                }
+
                 await sendNotificationToUser(
                     client, 
                     userId.toString(), 
-                    `Order ${status}`, 
-                    `Order #${order.OrderNumber} is now ${status}.`, 
-                    "", // Image URL (Empty) - আগে এখানে ভুল ছিল
-                    "/account/orders" // Link
+                    `Order ${status} 📦`, 
+                    notifBody, 
+                    "", 
+                    "/account/orders" 
                 );
             }
         });

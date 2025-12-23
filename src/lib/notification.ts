@@ -7,7 +7,7 @@ const SUBSCRIPTIONS_COLLECTION = 'subscriptions';
 const NOTIFICATIONS_COLLECTION = 'notifications';
 const USERS_COLLECTION = 'users';
 
-// ১. নির্দিষ্ট ইউজারকে পাঠানো
+// ১. নির্দিষ্ট ইউজারকে পাঠানো (অপরিবর্তিত)
 export async function sendNotificationToUser(
     client: MongoClient, 
     userId: string, 
@@ -54,7 +54,6 @@ export async function sendNotificationToUser(
         notification: {
           icon: 'ic_stat_icon',
           color: '#f97316',
-          // ★★★ ফিক্স: চ্যানেল আইডি পরিবর্তন করা হয়েছে ★★★
           channelId: 'pop_notifications', 
           defaultSound: true,
           defaultVibrateTimings: true,
@@ -70,7 +69,7 @@ export async function sendNotificationToUser(
   }
 }
 
-// ২. সবাইকে পাঠানো (ব্রডকাস্ট)
+// ২. সবাইকে পাঠানো (ব্রডকাস্ট) (অপরিবর্তিত)
 export async function sendNotificationToAllUsers(
     client: MongoClient, 
     title: string, 
@@ -113,7 +112,6 @@ export async function sendNotificationToAllUsers(
                 notification: {
                     icon: 'ic_stat_icon',
                     color: '#f97316',
-                    // ★★★ ফিক্স: চ্যানেল আইডি পরিবর্তন করা হয়েছে ★★★
                     channelId: 'pop_notifications', 
                     defaultSound: true,
                     defaultVibrateTimings: true,
@@ -129,7 +127,7 @@ export async function sendNotificationToAllUsers(
     }
 }
 
-// ৩. অ্যাডমিন নোটিফিকেশন
+// ৩. অ্যাডমিন নোটিফিকেশন (★★★ আপডেটেড ★★★)
 export async function sendNotificationToAdmins(client: MongoClient, title: string, body: string, url: string = '/admin/orders') {
   try {
     const db = client.db(DB_NAME);
@@ -157,15 +155,20 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
         await messaging.sendEachForMulticast({
             tokens,
             notification: { title, body },
-            data: { url },
+            data: { 
+              url,
+              // লোকাল নোটিফিকেশন হ্যান্ডলারের জন্য চ্যানেল আইডি ডেটা হিসেবে পাঠানো হচ্ছে
+              android_channel_id: 'admin_order_alert' 
+            },
             android: {
                 priority: 'high',
                 notification: {
                     icon: 'ic_stat_icon',
                     color: '#f97316',
-                    // ★★★ ফিক্স: চ্যানেল আইডি পরিবর্তন করা হয়েছে ★★★
-                    channelId: 'pop_notifications',
-                    defaultSound: true,
+                    // ★★★ নতুন চ্যানেল এবং সাউন্ড ★★★
+                    channelId: 'admin_order_alert', 
+                    sound: 'my_alert', // ফাইল নেম (এক্সটেনশন ছাড়া)
+                    defaultSound: false, // ডিফল্ট সাউন্ড বন্ধ
                     defaultVibrateTimings: true
                 }
             }

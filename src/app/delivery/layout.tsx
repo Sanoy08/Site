@@ -19,11 +19,11 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        // ★ আপডেট: সাধারণ লগইনে না পাঠিয়ে ডেলিভারি লগইনে পাঠানো
-        router.replace('/delivery/login'); 
-      } else if (user.role !== 'delivery' && user.role !== 'admin') {
-        // যদি কাস্টমার ঢোকার চেষ্টা করে
-        router.replace('/'); 
+        router.replace('/delivery/login');
+      } 
+      // ★★★ ফিক্স: এখানে && user.role !== 'admin' যোগ করুন ★★★
+      else if (user.role !== 'delivery' && user.role !== 'admin') {
+        router.replace('/'); // কাস্টমার হলে বের করে দেবে, অ্যাডমিন হলে থাকবে
       }
     }
   }, [user, isLoading, router]);

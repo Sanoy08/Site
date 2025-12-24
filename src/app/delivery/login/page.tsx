@@ -32,7 +32,6 @@ export default function DeliveryLogin() {
     setError('');
 
     try {
-      // ১. সাধারণ লগইন রিকোয়েস্ট
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -43,7 +42,6 @@ export default function DeliveryLogin() {
 
       if (!res.ok) throw new Error(data.error || 'Login failed');
 
-      // ২. ★★★ স্পেশাল ডেলিভারি চেক (Security Layer) ★★★
       if (data.user.role !== 'delivery' && data.user.role !== 'admin') {
         throw new Error("Access Denied. Not a delivery partner account.");
       }
@@ -52,17 +50,20 @@ export default function DeliveryLogin() {
         throw new Error("Account pending approval from Admin.");
       }
 
-      // ৩. সব ঠিক থাকলে লগইন
+      // লগইন স্টেট সেট করা
       login(data.user, data.token);
       toast.success("Welcome Partner! 🏍️");
-      router.replace('/delivery');
+      
+      // ★★★ ফিক্স: রাউটার ব্যবহার না করে উইন্ডো লোকেশন ব্যবহার করুন ★★★
+      // এটি পেজ রিফ্রেশ করবে এবং কুকি ঠিকমতো রিড করতে পারবে
+      window.location.href = '/delivery';
 
     } catch (err: any) {
       setError(err.message);
       toast.error("Login Failed");
-    } finally {
-      setIsLoading(false);
-    }
+      setIsLoading(false); // লোডিং বন্ধ করুন (Error হলে)
+    } 
+    // finally ব্লক সরিয়ে দিয়েছি কারণ সফল হলে রিডাইরেক্ট হবে, লোডিং বন্ধ করার দরকার নেই
   };
 
   return (

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "User not linked to order" });
         }
 
-        // কাস্টমারকে নোটিফিকেশন পাঠানো
+        // কাস্টমারকে নোটিফিকেশন পাঠানো    
         await sendNotificationToUser(
             client,
             order.userId.toString(),

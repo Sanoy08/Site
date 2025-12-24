@@ -1,11 +1,15 @@
+// src/app/delivery/layout.tsx
+
+
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2, Home, History, User, Bike } from 'lucide-react';
-import { Toaster } from 'sonner';
+// import { Toaster } from 'sonner'; // <--- এটা বাদ দিন
 
 export default function DeliveryLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -15,9 +19,11 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.replace('/login');
+        // ★ আপডেট: সাধারণ লগইনে না পাঠিয়ে ডেলিভারি লগইনে পাঠানো
+        router.replace('/delivery/login'); 
       } else if (user.role !== 'delivery' && user.role !== 'admin') {
-        router.replace('/');
+        // যদি কাস্টমার ঢোকার চেষ্টা করে
+        router.replace('/'); 
       }
     }
   }, [user, isLoading, router]);
@@ -77,7 +83,8 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
           );
         })}
       </div>
-      <Toaster position="top-center" />
+      
+      {/* <Toaster /> <--- এখান থেকে রিমুভ করা হয়েছে কারণ মেইন লেআউটে অলরেডি আছে */}
     </div>
   );
 }

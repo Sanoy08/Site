@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
+import { finalizeDelivery } from '@/lib/order-service'; // ★ Shared Logic Import
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
@@ -38,10 +39,9 @@ export async function PUT(request: NextRequest) {
 
             let orderUpdate: any = { Status: status }; 
             
-            // ★★★ ১. OTP জেনারেশন লজিক (শুধুমাত্র Received স্ট্যাটাসে) ★★★
+            // OTP Logic (For Received Status)
             let generatedOtp = null;
             if (status === 'Received') {
-                // 4 ডিজিটের র‍্যান্ডম OTP
                 generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
                 orderUpdate.deliveryOtp = generatedOtp;
             }
@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest) {
             const isSuccessStatus = SUCCESS_STATUSES.includes(status);
             const isCancelled = status === 'Cancelled';
             
-            // --- কুপন ব্যবহারের লজিক ---
+            // Coupon Logic
             if (couponCode) {
                 if (isSuccessStatus && !orderCouponIncremented) {
                     await db.collection(COUPONS_COLLECTION).updateOne(
@@ -71,7 +71,7 @@ export async function PUT(request: NextRequest) {
                 }
             }
             
-            // স্ট্যাটাস আপডেট
+            // ১. স্ট্যাটাস আপডেট
             await db.collection(ORDERS_COLLECTION).updateOne(
                 { _id: new ObjectId(orderId) },
                 { $set: orderUpdate },
@@ -83,65 +83,14 @@ export async function PUT(request: NextRequest) {
                 userId = new ObjectId(order.userId);
             }
 
-            // --- লজিক: Earning (Delivered) ---
+            // ২. লজিক: Delivered হলে Shared Function কল করা
             if (status === 'Delivered') {
-                if (userId && !order.coinsAwarded) {
-                    const user = await db.collection(USERS_COLLECTION).findOne({ _id: userId }, { session });
-                    
-                    if (user) {
-                        const orderTotal = parseFloat(order.FinalPrice) || 0;
-                        const currentTotalSpent = (user.totalSpent || 0) + orderTotal;
-                        
-                        let newTier = "Bronze";
-                        let earnRate = 2; 
-
-                        if (currentTotalSpent >= 15000) { newTier = "Gold"; earnRate = 6; } 
-                        else if (currentTotalSpent >= 5000) { newTier = "Silver"; earnRate = 4; }
-
-                        const coinsEarned = Math.floor((orderTotal * earnRate) / 100);
-
-                        if (coinsEarned > 0) {
-                            await db.collection(USERS_COLLECTION).updateOne(
-                                { _id: userId },
-                                { 
-                                    $inc: { "wallet.currentBalance": coinsEarned, "totalSpent": orderTotal },
-                                    $set: { 
-                                        "wallet.tier": newTier,
-                                        "lastTransactionDate": new Date() 
-                                    }
-                                },
-                                { session }
-                            );
-
-                            await db.collection(TRANSACTIONS_COLLECTION).insertOne({
-                                userId: userId,
-                                type: 'earn',
-                                amount: coinsEarned,
-                                description: `Earned from Order #${order.OrderNumber}`,
-                                createdAt: new Date()
-                            }, { session });
-
-                            await db.collection(ORDERS_COLLECTION).updateOne(
-                                { _id: new ObjectId(orderId) },
-                                { $set: { coinsAwarded: true } },
-                                { session }
-                            );
-
-                            await sendNotificationToUser(
-                                client, 
-                                userId.toString(), 
-                                "🎉 Coins Earned!", 
-                                `You earned ${coinsEarned} coins!`, 
-                                "", 
-                                "/account/wallet"
-                            );
-                        }
-                    }
-                }
-            }
-
-            // --- লজিক: Refund (Cancelled) ---
-            if (status === 'Cancelled' && userId && order.CoinsRedeemed > 0 && !order.coinsRefunded) {
+                // ★★★ এটি এখন Coins এবং Delivery Notification হ্যান্ডেল করবে ★★★
+                await finalizeDelivery(client, orderId, session);
+            } 
+            // ৩. লজিক: Refund (Cancelled)
+            else if (status === 'Cancelled' && userId && order.CoinsRedeemed > 0 && !order.coinsRefunded) {
+                // ... Refund Logic (Same as before) ...
                 await db.collection(USERS_COLLECTION).updateOne(
                     { _id: userId },
                     { 
@@ -175,11 +124,11 @@ export async function PUT(request: NextRequest) {
                 );
             }
 
-            // --- লজিক: General Status Update Notification ---
-            if (userId) {
+            // ৪. লজিক: অন্যান্য স্ট্যাটাসের নোটিফিকেশন (Delivered বাদে)
+            // কারণ Delivered হলে finalizeDelivery নিজেই নোটিফিকেশন পাঠাবে
+            if (userId && status !== 'Delivered') {
                 let notifBody = `Order #${order.OrderNumber} is now ${status}.`;
                 
-                // ★★★ ২. OTP নোটিফিকেশনে পাঠানো ★★★
                 if (status === 'Received' && generatedOtp) {
                     notifBody = `Your order is out for delivery! Share OTP: ${generatedOtp} with the delivery partner.`;
                 }

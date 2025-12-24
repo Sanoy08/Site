@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/hooks/use-auth'; // ★ 1. Import useAuth
 
 export default function DeliveryHome() {
+  const { token } = useAuth(); // ★ 2. Get Token
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -75,11 +77,14 @@ export default function DeliveryHome() {
   };
 
   const confirmDelivery = async () => {
-    if (!matchedOrder) return;
+    if (!matchedOrder || !token) return; // টোকেন চেক
     try {
         const res = await fetch('/api/delivery/confirm', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // ★ 3. Add Authorization Header
+            },
             body: JSON.stringify({ orderId: matchedOrder._id })
         });
         const data = await res.json();
@@ -178,7 +183,7 @@ export default function DeliveryHome() {
             <div className="space-y-5">
                 {orders.map((order: any) => (
                 <div key={order._id} className="group relative bg-white rounded-[2rem] p-5 shadow-lg shadow-slate-100 border border-slate-100 hover:shadow-xl transition-all">
-                    {/* ★★★ Change: Always show Collect Cash Badge ★★★ */}
+                    {/* Badge */}
                     <div className="absolute top-5 right-5">
                         <Badge variant="secondary" className="bg-red-50 text-red-600 font-bold border-red-100">
                             Collect Cash
@@ -212,7 +217,6 @@ export default function DeliveryHome() {
                     {/* Actions */}
                     <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
                         <div className="flex flex-col">
-                            {/* ★★★ Change: Always show 'To Collect' ★★★ */}
                             <span className="text-[10px] text-slate-400 font-bold uppercase">To Collect</span>
                             <span className="font-bold text-lg text-red-600">{formatPrice(order.FinalPrice)}</span>
                         </div>
@@ -255,7 +259,6 @@ export default function DeliveryHome() {
                     </p>
                 </div>
 
-                {/* ★★★ Change: Always show Cash Collection Box ★★★ */}
                 <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl my-4">
                     <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">Cash to Collect</p>
                     <p className="text-4xl font-black text-red-600">{formatPrice(matchedOrder?.FinalPrice)}</p>
@@ -319,7 +322,6 @@ export default function DeliveryHome() {
                         <span>{formatPrice(viewOrder?.FinalPrice)}</span>
                     </div>
                     
-                    {/* ★★★ Change: Force Cash display in details too ★★★ */}
                     <div className="flex justify-between items-center pt-1">
                         <span className="text-xs font-bold text-slate-400 uppercase">Payment Method</span>
                         <Badge variant="outline" className="bg-red-50 text-red-600 border-red-100">Cash on Delivery</Badge>

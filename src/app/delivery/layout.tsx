@@ -6,49 +6,72 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2, Home, User, MapPin, Bike, Bell } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth'; // Auth hook import
 import { toast } from 'sonner';
 
 export default function DeliveryLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoading } = useAuth(); // Get user status
-  const [mounted, setMounted] = useState(false);
+  
+  // আমরা শুরুতে কিছুই দেখাব না (isAuthorized = false)
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const verifyUser = async () => {
+      const token = localStorage.getItem('token');
 
-  // ★★★ SECURITY CHECK ★★★
-  useEffect(() => {
-    if (mounted && !isLoading) {
-      if (!user) {
-        // ১. যদি ইউজার না থাকে -> লগইন পেজে পাঠান
-        toast.error("Access Restricted: Login required for Delivery Partners");
+      // ১. টোকেন না থাকলে সোজা লগইন পেজে
+      if (!token) {
         router.replace('/login');
-      } else if (user.role !== 'admin' && user.role !== 'delivery') {
-        // ২. যদি রোল 'admin' বা 'delivery' না হয় -> হোম পেজে পাঠান
-        toast.error("Unauthorized: Restricted area for Delivery Partners only");
-        router.replace('/');
+        return;
       }
-    }
-  }, [user, isLoading, mounted, router]);
 
-  // লোডিং বা চেকিং অবস্থায় কিছুই দেখাবেন না বা লোডার দেখান
-  if (!mounted || isLoading) {
+      try {
+        // ২. সার্ভারকে জিজ্ঞাসা করা হচ্ছে এই টোকেনটি কার এবং তার রোল কি
+        // (লোকাল স্টোরেজের ডেটা আমরা বিশ্বাস করছি না)
+        const res = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success && (data.user.role === 'admin' || data.user.role === 'delivery')) {
+          // ৩. সার্ভার যদি কনফার্ম করে যে ইনি অ্যাডমিন বা ডেলিভারি, তবেই এক্সেস
+          setIsAuthorized(true);
+        } else {
+          // ৪. টোকেন থাকলেও যদি রোল কাস্টমার হয় -> বের করে দাও
+          toast.error("Unauthorized Access!");
+          router.replace('/');
+        }
+      } catch (error) {
+        console.error("Auth verification failed", error);
+        router.replace('/login');
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    verifyUser();
+  }, [router]);
+
+  // যতক্ষণ সার্ভার চেক করছে, ততক্ষণ লোডিং দেখান (পেজের কিছুই দেখা যাবে না)
+  if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <p className="text-slate-500 text-sm font-medium">Verifying Partner Access...</p>
       </div>
     );
   }
 
-  // যদি চেকিং শেষ হয় কিন্তু ইউজার ভ্যালিড না হয়, কন্টেন্ট রেন্ডার করবেন না (রিডাইরেক্ট হওয়া পর্যন্ত অপেক্ষা)
-  if (!user || (user.role !== 'admin' && user.role !== 'delivery')) {
-      return null;
+  // যদি চেকিং শেষ হয় কিন্তু পারমিশন না থাকে, কিছুই রেন্ডার করবেন না (রিডাইরেক্ট হবে)
+  if (!isAuthorized) {
+    return null;
   }
 
-  // ভ্যালিড ডেলিভারি বয় বা অ্যাডমিন হলেই নিচের অংশ রেন্ডার হবে
+  // ★ শুধুমাত্র অথরাইজড হলেই নিচের অংশ রেন্ডার হবে ★
   const navItems = [
     { href: '/delivery', icon: Home, label: 'Dispatch' },
     { href: '/delivery/history', icon: MapPin, label: 'Trips' },

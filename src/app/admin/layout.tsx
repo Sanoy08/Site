@@ -25,9 +25,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
-import { Logo } from '@/components/shared/Logo';
-import { Loader2 } from 'lucide-react';
-import { CalendarDays } from 'lucide-react';
+import { Loader2, CalendarDays } from 'lucide-react';
+import { toast } from 'sonner';
 
 const adminNavLinks = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -45,31 +44,64 @@ const adminNavLinks = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, logout } = useAuth();
+  const { user, logout } = useAuth(); // user state টি এখন শুধু UI এর জন্য ব্যবহার হবে, সিকিউরিটির জন্য নয়
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // ★ নতুন সিকিউরিটি স্টেট
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // ১. সিকিউরিটি চেক (লগইন পেজ বাদে)
+  // ১. সার্ভার সাইড সিকিউরিটি চেক
   useEffect(() => {
-    if (!isLoading) {
-      // যদি বর্তমান পেজ লগইন পেজ হয়, তবে চেক করার দরকার নেই
+    const verifyAdmin = async () => {
+      // যদি লগইন পেজে থাকি, চেকিং স্কিপ করুন
       if (pathname === '/admin/login') {
+        setIsChecking(false);
+        setIsAuthorized(true); // লগইন পেজ সবাই দেখতে পারে
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+
+      // টোকেন না থাকলে লগইন পেজে পাঠান
+      if (!token) {
+        router.replace('/admin/login');
         setIsChecking(false);
         return;
       }
 
-      if (!user) {
-        router.replace('/admin/login'); // লগইন না থাকলে অ্যাডমিন লগইনে পাঠাও
-      } else if (user.role !== 'admin') {
-        router.replace('/'); // অ্যাডমিন না হলে হোমপেজে পাঠাও
-      } else {
-        setIsChecking(false); // সব ঠিক আছে
+      try {
+        // ★★★ SERVER VERIFICATION ★★★
+        // লোকাল স্টোরেজ বিশ্বাস না করে সার্ভারকে জিজ্ঞাসা করা হচ্ছে
+        const res = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success && data.user.role === 'admin') {
+          // সার্ভার কনফার্ম করলে তবেই এক্সেস
+          setIsAuthorized(true);
+        } else {
+          // ফেক অ্যাডমিন বা কাস্টমার হলে বের করে দাও
+          toast.error("Unauthorized: Admin Access Required");
+          router.replace('/');
+        }
+      } catch (error) {
+        console.error("Admin verification failed", error);
+        router.replace('/admin/login');
+      } finally {
+        setIsChecking(false);
       }
-    }
-  }, [user, isLoading, router, pathname]);
+    };
+
+    verifyAdmin();
+  }, [pathname, router]);
 
   // ২. ডার্ক মোড
   useEffect(() => {
@@ -97,26 +129,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  // যদি লোডিং হয় বা চেক চলে
-  if (isLoading || isChecking) {
-    // লগইন পেজ হলে লোডার দেখানোর দরকার নেই, ফর্ম রেন্ডার হতে দিন
-    if (pathname === '/admin/login') return <>{children}</>;
 
+  // লোডিং বা চেকিং অবস্থায় লোডার দেখান
+  if (isChecking) {
+    if (pathname === '/admin/login') return <>{children}</>;
     return (
-        <div className="h-screen w-full flex items-center justify-center bg-muted/20">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="h-screen w-full flex flex-col gap-4 items-center justify-center bg-muted/20">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-sm text-slate-500 font-medium">Verifying Admin Privileges...</p>
         </div>
     );
   }
 
-  // যদি লগইন পেজে থাকি, তবে সাইডবার ছাড়া রেন্ডার করব
+  // লগইন পেজ হলে সরাসরি রেন্ডার
   if (pathname === '/admin/login') {
       return <>{children}</>;
   }
 
-  // অ্যাডমিন না হলে কিছু দেখাবে না (রিডাইরেক্ট হওয়ার আগে)
-  if (!user || user.role !== 'admin') return null;
+  // যদি অথরাইজড না হয়, কিছুই দেখাবেন না (রিডাইরেক্ট হবে)
+  if (!isAuthorized) return null;
 
+  // ইউজার ডেটা না থাকলে (যেমন পেজ রিফ্রেশ হলে useAuth লোড হতে দেরি হতে পারে), ডিফল্ট দেখান
+  const displayUser = user || { name: 'Admin', role: 'admin', picture: '' };
   const currentTitle = adminNavLinks.find(link => link.href === pathname)?.label || 'Admin Panel';
 
   return (
@@ -202,11 +236,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border-2 border-[#4CAF50] shadow-sm cursor-pointer">
-                        <AvatarImage src={user.picture} />
-                        <AvatarFallback className="bg-[#C8E6C9] text-[#2c3e50] font-bold">A</AvatarFallback>
+                        <AvatarImage src={displayUser.picture} />
+                        <AvatarFallback className="bg-[#C8E6C9] text-[#2c3e50] font-bold">
+                            {displayUser.name?.charAt(0) || 'A'}
+                        </AvatarFallback>
                     </Avatar>
                     <span className="hidden sm:block font-medium text-[#2c3e50] dark:text-[#e5e7eb]">
-                        {user.name || 'Admin'}
+                        {displayUser.name}
                     </span>
                 </div>
             </div>

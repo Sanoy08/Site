@@ -28,54 +28,52 @@ import { cn } from '@/lib/utils';
 import { Loader2, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 
+// ★★★ লিঙ্কগুলো আপডেট করা হয়েছে ( /admin বাদ দেওয়া হয়েছে ) ★★★
 const adminNavLinks = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
-  { href: '/admin/products', label: 'Menu Management', icon: Utensils },
-  { href: '/admin/coupons', label: 'Coupons', icon: TicketPercent },
-  { href: '/admin/users', label: 'Customers', icon: Users },
-  { href: '/admin/daily-menu', label: 'Daily Menu', icon: CalendarDays }, 
-  { href: '/admin/special-dates', label: 'Events Calendar', icon: Calendar },
-  { href: '/admin/hero-slides', label: 'Hero Section', icon: ImageIcon },
-  { href: '/admin/offers', label: 'Offers Section', icon: Gift },
-  { href: '/admin/reports', label: 'Reports', icon: BarChart3 }, 
-  { href: '/admin/notifications', label: 'Push Notifications', icon: Send },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard }, // /admin -> /
+  { href: '/orders', label: 'Orders', icon: ShoppingBag }, // /admin/orders -> /orders
+  { href: '/products', label: 'Menu Management', icon: Utensils },
+  { href: '/coupons', label: 'Coupons', icon: TicketPercent },
+  { href: '/users', label: 'Customers', icon: Users },
+  { href: '/daily-menu', label: 'Daily Menu', icon: CalendarDays }, 
+  { href: '/special-dates', label: 'Events Calendar', icon: Calendar },
+  { href: '/hero-slides', label: 'Hero Section', icon: ImageIcon },
+  { href: '/offers', label: 'Offers Section', icon: Gift },
+  { href: '/reports', label: 'Reports', icon: BarChart3 }, 
+  { href: '/notifications', label: 'Push Notifications', icon: Send },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth(); // user state টি এখন শুধু UI এর জন্য ব্যবহার হবে, সিকিউরিটির জন্য নয়
+  const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   
-  // ★ নতুন সিকিউরিটি স্টেট
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
   // ১. সার্ভার সাইড সিকিউরিটি চেক
   useEffect(() => {
     const verifyAdmin = async () => {
-      // যদি লগইন পেজে থাকি, চেকিং স্কিপ করুন
-      if (pathname === '/admin/login') {
+      // লগইন পেজ চেক করার দরকার নেই। খেয়াল করুন এখানেও '/login' ব্যবহার করা হয়েছে, '/admin/login' নয়
+      if (pathname === '/login') {
         setIsChecking(false);
-        setIsAuthorized(true); // লগইন পেজ সবাই দেখতে পারে
+        setIsAuthorized(true);
         return;
       }
 
       const token = localStorage.getItem('token');
 
-      // টোকেন না থাকলে লগইন পেজে পাঠান
       if (!token) {
-        router.replace('/admin/login');
+        // টোকেন না থাকলে লগইন পেজে পাঠান (সাবডোমেইন লজিক অনুযায়ী /login মানেই অ্যাডমিন লগইন)
+        router.replace('/login');
         setIsChecking(false);
         return;
       }
 
       try {
-        // ★★★ SERVER VERIFICATION ★★★
-        // লোকাল স্টোরেজ বিশ্বাস না করে সার্ভারকে জিজ্ঞাসা করা হচ্ছে
         const res = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -85,16 +83,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const data = await res.json();
 
         if (res.ok && data.success && data.user.role === 'admin') {
-          // সার্ভার কনফার্ম করলে তবেই এক্সেস
           setIsAuthorized(true);
         } else {
-          // ফেক অ্যাডমিন বা কাস্টমার হলে বের করে দাও
           toast.error("Unauthorized: Admin Access Required");
-          router.replace('/');
+          // মেইন ডোমেইনে ফেরত পাঠান
+          window.location.href = 'https://www.bumbaskitchen.app';
         }
       } catch (error) {
         console.error("Admin verification failed", error);
-        router.replace('/admin/login');
+        router.replace('/login');
       } finally {
         setIsChecking(false);
       }
@@ -124,15 +121,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
-  // ৩. পেজ চেঞ্জ হলে মোবাইলে সাইডবার বন্ধ
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
 
-
-  // লোডিং বা চেকিং অবস্থায় লোডার দেখান
   if (isChecking) {
-    if (pathname === '/admin/login') return <>{children}</>;
+    if (pathname === '/login') return <>{children}</>;
     return (
         <div className="h-screen w-full flex flex-col gap-4 items-center justify-center bg-muted/20">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -141,16 +135,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // লগইন পেজ হলে সরাসরি রেন্ডার
-  if (pathname === '/admin/login') {
+  if (pathname === '/login') {
       return <>{children}</>;
   }
 
-  // যদি অথরাইজড না হয়, কিছুই দেখাবেন না (রিডাইরেক্ট হবে)
   if (!isAuthorized) return null;
 
-  // ইউজার ডেটা না থাকলে (যেমন পেজ রিফ্রেশ হলে useAuth লোড হতে দেরি হতে পারে), ডিফল্ট দেখান
   const displayUser = user || { name: 'Admin', role: 'admin', picture: '' };
+  
+  // টাইটেল বের করার লজিক আপডেট
   const currentTitle = adminNavLinks.find(link => link.href === pathname)?.label || 'Admin Panel';
 
   return (
@@ -190,7 +183,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <div className="p-4 border-t border-white/10 bg-[#243342]">
             <button 
-                onClick={() => { logout(); router.push('/admin/login'); }}
+                onClick={() => { logout(); router.push('/login'); }} // লগআউট হলে /login এ যাবে (যা আসলে /admin/login)
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white transition-all duration-300"
             >
                 <LogOut className="w-4 h-4" />

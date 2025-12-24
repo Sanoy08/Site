@@ -4,20 +4,51 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Loader2, Home, User, MapPin, Bike, Bell } from 'lucide-react';
-import { Toaster } from 'sonner';
+import { useAuth } from '@/hooks/use-auth'; // Auth hook import
+import { toast } from 'sonner';
 
 export default function DeliveryLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isLoading } = useAuth(); // Get user status
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  // ★★★ SECURITY CHECK ★★★
+  useEffect(() => {
+    if (mounted && !isLoading) {
+      if (!user) {
+        // ১. যদি ইউজার না থাকে -> লগইন পেজে পাঠান
+        toast.error("Access Restricted: Login required for Delivery Partners");
+        router.replace('/login');
+      } else if (user.role !== 'admin' && user.role !== 'delivery') {
+        // ২. যদি রোল 'admin' বা 'delivery' না হয় -> হোম পেজে পাঠান
+        toast.error("Unauthorized: Restricted area for Delivery Partners only");
+        router.replace('/');
+      }
+    }
+  }, [user, isLoading, mounted, router]);
 
+  // লোডিং বা চেকিং অবস্থায় কিছুই দেখাবেন না বা লোডার দেখান
+  if (!mounted || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  // যদি চেকিং শেষ হয় কিন্তু ইউজার ভ্যালিড না হয়, কন্টেন্ট রেন্ডার করবেন না (রিডাইরেক্ট হওয়া পর্যন্ত অপেক্ষা)
+  if (!user || (user.role !== 'admin' && user.role !== 'delivery')) {
+      return null;
+  }
+
+  // ভ্যালিড ডেলিভারি বয় বা অ্যাডমিন হলেই নিচের অংশ রেন্ডার হবে
   const navItems = [
     { href: '/delivery', icon: Home, label: 'Dispatch' },
     { href: '/delivery/history', icon: MapPin, label: 'Trips' },
@@ -76,8 +107,6 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
       <div className="hidden lg:flex fixed bottom-4 right-4 bg-white p-4 rounded-xl shadow-lg border text-xs text-slate-500 max-w-xs">
           <p>💡 This interface is optimized for mobile devices.</p>
       </div>
-      
-      {/* Toast removed from here if it exists in main layout */}
     </div>
   );
 }

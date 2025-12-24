@@ -2,85 +2,82 @@
 
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/use-auth';
-import { Loader2, Home, History, User, Bike } from 'lucide-react';
-// import { Toaster } from 'sonner'; // <--- এটা বাদ দিন
+import { usePathname } from 'next/navigation';
+import { Loader2, Home, User, MapPin, Bike, Bell } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 export default function DeliveryLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (user.role !== 'delivery' && user.role !== 'admin') {
-        router.replace('/');
-      }
-    }
-  }, [user, isLoading, router]);
+    setMounted(true);
+  }, []);
 
-  if (isLoading || !user) {
-    return (
-        <div className="h-screen w-full flex flex-col items-center justify-center bg-gray-50 gap-4">
-            <div className="p-4 bg-white rounded-full shadow-lg animate-bounce">
-                <Bike className="w-8 h-8 text-primary" />
-            </div>
-            <Loader2 className="animate-spin text-muted-foreground" />
-        </div>
-    );
-  }
+  if (!mounted) return null;
 
   const navItems = [
     { href: '/delivery', icon: Home, label: 'Dispatch' },
-    { href: '/delivery/history', icon: History, label: 'History' },
+    { href: '/delivery/history', icon: MapPin, label: 'Trips' },
     { href: '/delivery/profile', icon: User, label: 'Profile' },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 font-sans">
-      {/* Top Bar */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 sticky top-0 z-30 flex justify-between items-center shadow-sm">
+    <div className="min-h-screen bg-slate-50 font-sans pb-24 md:pb-0">
+      
+      {/* Mobile Top Bar */}
+      <div className="lg:hidden bg-white/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3 shadow-sm border-b border-slate-100 flex justify-between items-center">
         <div className="flex items-center gap-2">
-            <div className="bg-primary/10 p-1.5 rounded-lg">
-                <Bike className="w-5 h-5 text-primary" />
+            <div className="bg-blue-600 p-1.5 rounded-lg shadow-blue-200 shadow-md">
+                <Bike className="w-5 h-5 text-white" />
             </div>
-            <h1 className="font-bold text-lg text-slate-800">Partner App</h1>
+            <div>
+                <h1 className="font-bold text-slate-800 leading-tight">Partner App</h1>
+                <div className="flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Online</span>
+                </div>
+            </div>
         </div>
-        <div className="flex items-center gap-2">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-            <span className="text-xs font-bold text-green-700">Online</span>
-        </div>
+        <button className="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <Bell className="w-5 h-5 text-slate-600" />
+            <span className="absolute top-1.5 right-2 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+        </button>
       </div>
 
-      <main className="p-4 max-w-md mx-auto">{children}</main>
+      <main className="max-w-md mx-auto md:mt-6 md:border md:rounded-3xl md:shadow-2xl md:bg-white md:min-h-[800px] md:overflow-hidden md:relative">
+          {children}
+          
+          {/* Mobile Bottom Navigation */}
+          <div className="lg:hidden fixed bottom-6 left-4 right-4 bg-slate-900/90 backdrop-blur-xl text-white rounded-2xl p-2 shadow-2xl z-50 flex justify-around items-center border border-white/10">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link 
+                    key={item.href} 
+                    href={item.href} 
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-white text-slate-900 font-bold shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                  {isActive && <span className="text-xs">{item.label}</span>}
+                </Link>
+              );
+            })}
+          </div>
+      </main>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2 pb-safe z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link 
-                key={item.href} 
-                href={item.href} 
-                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-300 ${isActive ? 'text-primary bg-primary/5' : 'text-slate-400 hover:bg-slate-50'}`}
-            >
-              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "animate-in zoom-in-50 duration-200" : ""} />
-              <span className="text-[10px] font-bold tracking-wide">{item.label}</span>
-            </Link>
-          );
-        })}
+      {/* Desktop Warning */}
+      <div className="hidden lg:flex fixed bottom-4 right-4 bg-white p-4 rounded-xl shadow-lg border text-xs text-slate-500 max-w-xs">
+          <p>💡 This interface is optimized for mobile devices.</p>
       </div>
       
-      {/* <Toaster /> <--- এখান থেকে রিমুভ করা হয়েছে কারণ মেইন লেআউটে অলরেডি আছে */}
+      {/* Toast removed from here if it exists in main layout */}
     </div>
   );
 }

@@ -23,8 +23,8 @@ export default function DeliveryHome() {
   const [orders, setOrders] = useState<any[]>([]);
   
   // States for Modals
-  const [matchedOrder, setMatchedOrder] = useState<any | null>(null); // For Delivery Confirmation
-  const [viewOrder, setViewOrder] = useState<any | null>(null); // For Viewing Details
+  const [matchedOrder, setMatchedOrder] = useState<any | null>(null); 
+  const [viewOrder, setViewOrder] = useState<any | null>(null); 
   
   // Stats
   const [stats, setStats] = useState({ todayEarnings: 0, todayTrips: 0 });
@@ -178,10 +178,10 @@ export default function DeliveryHome() {
             <div className="space-y-5">
                 {orders.map((order: any) => (
                 <div key={order._id} className="group relative bg-white rounded-[2rem] p-5 shadow-lg shadow-slate-100 border border-slate-100 hover:shadow-xl transition-all">
-                    {/* Status Badge */}
+                    {/* ★★★ Change: Always show Collect Cash Badge ★★★ */}
                     <div className="absolute top-5 right-5">
-                        <Badge variant="secondary" className={order.PaymentMethod === 'COD' ? "bg-red-50 text-red-600 font-bold" : "bg-green-50 text-green-600 font-bold"}>
-                            {order.PaymentMethod === 'COD' ? 'Collect Cash' : 'Prepaid'}
+                        <Badge variant="secondary" className="bg-red-50 text-red-600 font-bold border-red-100">
+                            Collect Cash
                         </Badge>
                     </div>
 
@@ -212,13 +212,12 @@ export default function DeliveryHome() {
                     {/* Actions */}
                     <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
                         <div className="flex flex-col">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase">Order Value</span>
-                            {/* ★★★ ফিক্স: ডবল সিম্বল রিমুভ করা হয়েছে ★★★ */}
-                            <span className="font-bold text-lg">{formatPrice(order.FinalPrice)}</span>
+                            {/* ★★★ Change: Always show 'To Collect' ★★★ */}
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">To Collect</span>
+                            <span className="font-bold text-lg text-red-600">{formatPrice(order.FinalPrice)}</span>
                         </div>
                         
                         <div className="flex gap-2">
-                            {/* ★★★ নতুন: Details Button ★★★ */}
                             <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -256,12 +255,11 @@ export default function DeliveryHome() {
                     </p>
                 </div>
 
-                {(!matchedOrder?.paymentStatus || matchedOrder?.PaymentMethod === 'COD') && (
-                    <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl my-4">
-                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">Cash to Collect</p>
-                        <p className="text-4xl font-black text-red-600">{formatPrice(matchedOrder?.FinalPrice)}</p>
-                    </div>
-                )}
+                {/* ★★★ Change: Always show Cash Collection Box ★★★ */}
+                <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl my-4">
+                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">Cash to Collect</p>
+                    <p className="text-4xl font-black text-red-600">{formatPrice(matchedOrder?.FinalPrice)}</p>
+                </div>
 
                 <SwipeButton onConfirm={confirmDelivery} />
                 
@@ -272,7 +270,7 @@ export default function DeliveryHome() {
         </DialogContent>
       </Dialog>
 
-      {/* ★★★ 5. New Order Details Modal ★★★ */}
+      {/* 5. New Order Details Modal */}
       <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
         <DialogContent className="w-[95%] max-w-md rounded-2xl">
             <DialogHeader>
@@ -281,7 +279,6 @@ export default function DeliveryHome() {
             </DialogHeader>
             
             <div className="space-y-4">
-                {/* Instructions */}
                 {viewOrder?.Instructions && (
                     <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg flex gap-2">
                         <Info className="w-5 h-5 text-yellow-600 shrink-0" />
@@ -289,7 +286,6 @@ export default function DeliveryHome() {
                     </div>
                 )}
 
-                {/* Items List */}
                 <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Items</p>
                     {viewOrder?.Items?.map((item: any, i: number) => (
@@ -307,7 +303,6 @@ export default function DeliveryHome() {
 
                 <Separator />
 
-                {/* Bill Summary */}
                 <div className="space-y-1.5 pt-1">
                     <div className="flex justify-between text-xs text-slate-500">
                         <span>Subtotal</span>
@@ -323,9 +318,11 @@ export default function DeliveryHome() {
                         <span>Total to Collect</span>
                         <span>{formatPrice(viewOrder?.FinalPrice)}</span>
                     </div>
+                    
+                    {/* ★★★ Change: Force Cash display in details too ★★★ */}
                     <div className="flex justify-between items-center pt-1">
                         <span className="text-xs font-bold text-slate-400 uppercase">Payment Method</span>
-                        <Badge variant="outline">{viewOrder?.PaymentMethod || 'Online'}</Badge>
+                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-100">Cash on Delivery</Badge>
                     </div>
                 </div>
 

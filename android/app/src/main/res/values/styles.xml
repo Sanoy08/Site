@@ -11,10 +11,13 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         
-        <item name="android:windowBackground">@color/colorPrimary</item>
+        <item name="android:windowBackground">@android:color/white</item>
         
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="colorAccent">@color/colorPrimary</item> <item name="android:textColorHighlight">#337D9A4D</item> <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/CustomActionModeStyle</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
@@ -23,4 +26,21 @@
         <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="android:windowSplashScreenAnimationDuration">1000</item>
     </style>
+
+    <style name="CustomActionModeStyle" parent="Widget.AppCompat.ActionMode">
+        <item name="background">@color/colorPrimary</item> 
+        <item name="titleTextStyle">@style/ActionModeTitleTextStyle</item>
+        <item name="subtitleTextStyle">@style/ActionModeSubtitleTextStyle</item>
+        <item name="closeIcon">@drawable/abc_ic_ab_back_material</item> 
+        <item name="height">?attr/actionBarSize</item>
+    </style>
+
+    <style name="ActionModeTitleTextStyle" parent="TextAppearance.AppCompat.Widget.ActionMode.Title">
+        <item name="android:textColor">@android:color/white</item>
+    </style>
+
+    <style name="ActionModeSubtitleTextStyle" parent="TextAppearance.AppCompat.Widget.ActionMode.Subtitle">
+        <item name="android:textColor">#E0E0E0</item>
+    </style>
+
 </resources>

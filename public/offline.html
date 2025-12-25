@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>No Internet Connection</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f8fafc;
+            color: #334155;
+            padding: 20px;
+            text-align: center;
+        }
+        .icon-container {
+            width: 120px;
+            height: 120px;
+            background-color: #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            animation: pulse 2s infinite;
+        }
+        .icon {
+            width: 64px;
+            height: 64px;
+            color: #64748b;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #1e293b;
+        }
+        p {
+            font-size: 16px;
+            color: #64748b;
+            margin-bottom: 32px;
+            line-height: 1.5;
+            max-width: 300px;
+        }
+        .retry-btn {
+            background-color: #7D9A4D; /* আপনার ব্র্যান্ড কালার */
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(125, 154, 77, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .retry-btn:active {
+            transform: scale(0.95);
+            background-color: #65803d;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(226, 232, 240, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0); }
+        }
+        /* স্পিনার আইকন এর জন্য */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading .spinner { display: block; }
+        .loading .btn-text { display: none; }
+    </style>
+</head>
+<body>
+    <div class="icon-container">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M12 18.75a8.71 8.71 0 01-5.75-2.126M12 15a4.5 4.5 0 00-3.003-1.077M16.5 9a13.46 13.46 0 00-9-3.56M8.25 6a22.51 22.51 0 0113.882 4.122"></path>
+        </svg>
+    </div>
+
+    <h1>No Internet Connection</h1>
+    <p>Please check your network settings and try again to enjoy Bumba's Kitchen.</p>
+
+    <button class="retry-btn" onclick="retryConnection()" id="retryBtn">
+        <span class="btn-text">Try Again</span>
+        <span class="spinner"></span>
+    </button>
+
+    <script>
+        function retryConnection() {
+            const btn = document.getElementById('retryBtn');
+            btn.classList.add('loading');
+            
+            // রিলোড করার চেষ্টা করুন
+            setTimeout(() => {
+                window.location.reload();
+                // ৫ সেকেন্ড পর যদি লোড না হয়, আবার বাটন রিসেট হবে
+                setTimeout(() => {
+                    btn.classList.remove('loading');
+                }, 5000);
+            }, 500);
+        }
+    </script>
+</body>
+</html>

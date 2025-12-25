@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 84 34% 45%; 
+    --primary: 84 34% 45%; /* আপনার ওয়েবসাইটের সবুজ থিম */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -24,7 +24,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 45 93% 47%; 
+    --accent: 45 93% 47%; /* আপনার ওয়েবসাইটের হলুদ/অ্যাম্বার থিম */
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -67,7 +67,7 @@
     --ring: 84 34% 45%;
   }
 
-  /* ★★★ PERFORMANCE & NO-SELECT FIXES ★★★ */
+  /* ★★★ PERFORMANCE FIXES FOR APP ★★★ */
   * {
     @apply border-border;
     /* নীল ট্যাপ হাইলাইট বন্ধ করে */
@@ -75,56 +75,63 @@
     /* টাচ রেসপন্স ফাস্ট করে (300ms ডিলে কমায়) */
     touch-action: manipulation;
 
-    /* ★★★ DISABLE TEXT SELECTION (App Feel) ★★★ */
-    -webkit-user-select: none; /* Safari/Chrome */
+    /* ★★★ TEXT SELECTION DISABLE (নতুন যুক্ত করা হয়েছে) ★★★ */
+    /* অ্যাপের সাধারণ টেক্সট সিলেক্ট করা বা নীল হাইলাইট হওয়া বন্ধ করবে */
+    -webkit-user-select: none; /* Safari / Chrome */
     -moz-user-select: none;    /* Firefox */
-    -ms-user-select: none;     /* IE/Edge */
+    -ms-user-select: none;     /* IE */
     user-select: none;         /* Standard */
-    
-    /* লং প্রেস মেনু বন্ধ করে (Mobile) */
-    -webkit-touch-callout: none; 
   }
 
-  /* শুধুমাত্র ইনপুট ফিল্ডে টেক্সট সিলেক্ট করা যাবে */
-  input, textarea, [contenteditable] {
-    -webkit-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    user-select: text;
-    -webkit-touch-callout: default; /* কপি পেস্ট মেনু চালু থাকবে ইনপুটে */
+  /* ★★★ INPUT EXCEPTION ★★★ */
+  /* ইনপুট এবং টেক্সট এরিয়াতে সিলেকশন অন রাখা বাধ্যতামূলক, না হলে ইউজার টাইপ করতে পারবে না */
+  input, textarea {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
   }
 
   html {
+    /* স্মুথ স্ক্রলিং শুধুমাত্র ব্রাউজারে ভালো, অ্যাপে 'auto' রাখলে ল্যাগ কমে */
     scroll-behavior: auto !important;
   }
 
   body {
     @apply bg-background text-foreground;
     background-color: hsl(var(--background));
+    
+    /* রাবার ব্যান্ড এফেক্ট বা বাউন্স বন্ধ করে */
     overscroll-behavior: none;
     overflow-x: hidden;
     width: 100%;
+    
+    /* টেক্সট এবং অ্যানিমেশন শার্প করে */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 }
 
+/* ইমেজ রেসপন্সিভনেস */
 img {
   max-width: 100%;
   height: auto;
+  /* ইমেজ রেন্ডারিং স্মুথ করার জন্য */
   display: block;
-  /* ইমেজ ড্র্যাগ করা বন্ধ করে */
-  -webkit-user-drag: none; 
-  user-drag: none;
-  pointer-events: none; /* ইমেজ ক্লিক বা সেভ করা যাবে না */
+  
+  /* ইমেজ যাতে ড্র্যাগ করা না যায় */
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
+/* GPU Acceleration ক্লাস (দরকার হলে ব্যবহার করতে পারেন) */
 .gpu-accelerated {
   transform: translateZ(0);
   will-change: transform;
 }
 
 @layer components {
+  /* কাস্টম স্পিনার ক্লাস যদি দরকার হয় */
   .loader-spin {
     animation: spin 1s linear infinite;
   }

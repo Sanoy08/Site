@@ -1,7 +1,6 @@
 package com.bumbaskitchen.app;
 
 import android.os.Bundle;
-import android.graphics.Color; // ★ এই লাইনটি নতুন
 import android.view.View;
 import androidx.activity.EdgeToEdge;
 import androidx.core.graphics.Insets;
@@ -17,34 +16,27 @@ import com.getcapacitor.community.fcm.FCMPlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // ১. থিম পরিবর্তন (XML লেভেলে)
-        setTheme(R.style.AppTheme_NoActionBar);
-
-        // ২. Edge-to-Edge এনাবল করা
+        // 1. Enable Edge-to-Edge (Required for Android 15+)
+        // This makes system bars transparent and allows us to control the background
         EdgeToEdge.enable(this);
 
-        // ৩. প্লাগিন রেজিস্টার
+        // 2. Register Plugins
         registerPlugin(AppPlugin.class);
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
 
         super.onCreate(savedInstanceState);
 
-        // ★★★ লোগো সমস্যার চূড়ান্ত সমাধান (THE ULTIMATE FIX) ★★★
-        // আমরা প্রোগ্রামিং করে উইন্ডোর ব্যাকগ্রাউন্ড সাদা করে দিচ্ছি।
-        // এতে পেছনের স্প্ল্যাশ ইমেজটি মেমরি থেকে মুছে যাবে।
-        try {
-            getWindow().getDecorView().setBackgroundColor(Color.WHITE);
-            getWindow().setBackgroundDrawableResource(android.R.color.white);
-        } catch (Exception e) {
-            // যদি কোনো কারণে কালার সেট না হয়, ইগনোর করুন
-        }
-
-        // ৪. সেফ এরিয়া প্যাডিং (স্ট্যাটাস বারের জন্য)
+        // 3. Apply Global Top Padding (Safe Area)
+        // This listener finds the exact height of the Status Bar and pushes the WebView down
         View rootView = findViewById(android.R.id.content);
         ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            
+            // Apply padding: Left, Top (Status Bar), Right, Bottom (Nav Bar)
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            
+            // Return CONSUMED to prevent double-padding
             return WindowInsetsCompat.CONSUMED;
         });
     }

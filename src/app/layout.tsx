@@ -10,8 +10,8 @@ import { RealtimeMenuUpdater } from '@/components/providers/RealtimeMenuUpdater'
 import { AppInitializer } from '@/components/AppInitializer';
 import GlobalLoader from '@/components/GlobalLoader';
 import { Suspense } from 'react';
-import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
+import NetworkStatus from '@/components/NetworkStatus'; // ★ Import করা হলো
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -74,8 +74,6 @@ export default function RootLayout({
           pacifico.variable
       )}>
           
-          {/* ★★★ VIDEO PRELOAD TRICK ★★★ */}
-          {/* এই ভিডিওটি ইউজার দেখবে না, কিন্তু ব্রাউজার এটি আগে থেকেই লোড করে রাখবে */}
           <div className="hidden" aria-hidden="true">
             <video 
               src="/images/loader.mp4" 
@@ -90,11 +88,13 @@ export default function RootLayout({
             <RealtimeMenuUpdater />
             <AppInitializer />
             
+            {/* ★ এখানে NetworkStatus বসানো হলো (সবার উপরে দেখাবে) */}
+            <NetworkStatus /> 
+
             <Suspense fallback={null}>
               <GlobalLoader />
             </Suspense>
 
-            {/* ২. নোটিফিকেশন প্রম্পট এখানে যুক্ত করা হয়েছে */}
             <NotificationPrompt />
             
             {children}

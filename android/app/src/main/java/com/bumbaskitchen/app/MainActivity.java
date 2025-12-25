@@ -25,6 +25,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
 
+        // ★★★ FIX: থিম পরিবর্তন (লোগো সমস্যা সমাধানের জন্য) ★★★
+        // এই লাইনটি পেছনের স্প্ল্যাশ স্ক্রিন সরিয়ে মেইন থিম (সাদা) লোড করে।
+        // এটি super.onCreate এর আগেই কল করতে হবে।
+        setTheme(R.style.AppTheme_NoActionBar);
+
         super.onCreate(savedInstanceState);
 
         // 3. Apply Global Top Padding (Safe Area)

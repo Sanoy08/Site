@@ -15,7 +15,6 @@
         
         <item name="windowActionModeOverlay">true</item>
         <item name="actionModeStyle">@style/CustomToolbarStyle</item>
-        
         <item name="android:textColorHighlight">#557D9A4D</item> 
     </style>
 
@@ -28,10 +27,8 @@
 
     <style name="CustomToolbarStyle" parent="Widget.AppCompat.ActionMode">
         <item name="background">@color/colorPrimary</item>
-        
         <item name="titleTextStyle">@style/WhiteTitleText</item>
         <item name="subtitleTextStyle">@style/WhiteTitleText</item>
-        
         <item name="closeIcon">@drawable/abc_ic_ab_back_material</item>
         <item name="theme">@style/WhiteIconTheme</item>
     </style>

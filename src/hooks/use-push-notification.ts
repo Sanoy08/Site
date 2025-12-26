@@ -63,18 +63,23 @@ export const usePushNotification = () => {
           await PushNotifications.register();
       }
 
+      // ★★★ CRITICAL FIX: Channel ID Change & Settings ★★★
       if (Capacitor.getPlatform() === 'android') {
+        
+        // ১. সাধারণ ইউজারদের জন্য (Default Sound + Instant Vibrate)
+        // ID change kore 'v2' kora holo jate phone notun settings gulo nite badhyo hoy.
         await PushNotifications.createChannel({
-          id: 'pop_notifications', 
-          name: 'Popup Notifications',
-          description: 'High priority notifications',
-          importance: 5, 
+          id: 'pop_notifications_v2', // NEW ID FOR INSTANT SOUND
+          name: 'General Alerts',
+          description: 'General notifications with sound',
+          importance: 5, // MAX IMPORTANCE
           visibility: 1, 
           lights: true,
           vibration: true,
-          sound: 'default'
+          sound: 'default' // System default sound
         });
 
+        // ২. অ্যাডমিন অর্ডারের জন্য (Custom Sound) - Eta change korini
         await PushNotifications.createChannel({
           id: 'admin_order_alert', 
           name: 'Admin Order Alerts',
@@ -128,18 +133,25 @@ export const usePushNotification = () => {
       }
     });
 
-    // ★ অ্যাপ খোলা থাকলে ম্যানুয়ালি পপ-আপ দেখানো
+    // ★ অ্যাপ খোলা থাকলে ম্যানুয়ালি পপ-আপ (FOREGROUND)
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
       console.log('Push received in foreground:', notification);
       
-      // ★★★ ১. নতুন ইভেন্ট ফায়ার করা হচ্ছে ★★★
-      // এটি নোটিফিকেশন পেজকে বলবে: "নতুন ডেটা এসেছে, রিফ্রেশ করো!"
+      // Page update logic
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('notification-updated'));
       }
 
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
-      const channelId = notification.data?.android_channel_id || 'pop_notifications'; 
+      
+      // Channel determination logic
+      let channelId = notification.data?.android_channel_id;
+      
+      // Jodi server theke 'pop_notifications' pathay, amra 'pop_notifications_v2' te redirect korbo
+      if (!channelId || channelId === 'pop_notifications') {
+          channelId = 'pop_notifications_v2';
+      }
+
       const soundName = channelId === 'admin_order_alert' ? 'my_alert' : 'default';
 
       await LocalNotifications.schedule({
@@ -148,12 +160,13 @@ export const usePushNotification = () => {
             title: notification.title || "New Notification",
             body: notification.body || "",
             id: new Date().getTime(),
-            schedule: { at: new Date(Date.now() + 100) },
+            // ★ FIX: Schedule delay remove kora hoyeche instant baje
+            schedule: undefined, 
             sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
             extra: notification.data,
             smallIcon: "ic_stat_icon",
-            channelId: channelId,
+            channelId: channelId, 
             actionTypeId: "ORDER_UPDATE"
           }
         ]

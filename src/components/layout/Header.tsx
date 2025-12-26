@@ -6,14 +6,6 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +14,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
@@ -49,7 +48,7 @@ export function Header() {
   
   // ★ নতুন স্টেট: আনরিড নোটিফিকেশন কাউন্ট
   const [unreadCount, setUnreadCount] = useState(0);
-  
+
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -69,19 +68,18 @@ export function Header() {
   // ★★★ NOTIFICATION COUNT FETCHING LOGIC ★★★
   const fetchUnreadCount = useCallback(async () => {
     if (!user) return;
+    
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      // আমরা হিস্ট্রি এপিআই ব্যবহার করে আনরিড ফিল্টার করছি
-      // (ভবিষ্যতে শুধু কাউন্টের জন্য আলাদা API বানালে ভালো হবে)
       const res = await fetch('/api/notifications/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       
       if (data.success && Array.isArray(data.notifications)) {
-        // কতগুলো মেসেজ পড়া হয়নি তা গননা করা হচ্ছে
+        // আনরিড মেসেজগুলো ফিল্টার করে গণনা করা হচ্ছে
         const count = data.notifications.filter((n: any) => !n.isRead).length;
         setUnreadCount(count);
       }
@@ -90,20 +88,25 @@ export function Header() {
     }
   }, [user]);
 
-  // ১. প্রথমবার লোড হলে কাউন্ট আনো
+  // ১. প্রথমবার লোড হলে কাউন্ট আনবে
   useEffect(() => {
     fetchUnreadCount();
   }, [fetchUnreadCount]);
 
-  // ২. রিয়েল-টাইম আপডেট (যখন নতুন পুশ আসবে)
+  // ২. রিয়েল-টাইম আপডেট (যখন নতুন পুশ আসবে তখন কাউন্ট বাড়বে)
   useEffect(() => {
     const handleUpdate = () => {
-        console.log("Header: Notification updated, refetching count...");
-        fetchUnreadCount();
+      fetchUnreadCount();
     };
 
     window.addEventListener('notification-updated', handleUpdate);
-    return () => window.removeEventListener('notification-updated', handleUpdate);
+    // পেজ ফোকাস হলেও একবার চেক করবে
+    window.addEventListener('focus', handleUpdate);
+
+    return () => {
+      window.removeEventListener('notification-updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+    };
   }, [fetchUnreadCount]);
 
 
@@ -252,7 +255,7 @@ export function Header() {
         {/* Right Side: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-3">
         
-        {/* Desktop Fake Search Bar Trigger */}
+        {/* Desktop Search Trigger */}
         <div 
             onClick={() => setIsSearchOpen(true)}
             className="hidden sm:flex relative w-[180px] lg:w-[240px] cursor-pointer group"
@@ -276,17 +279,20 @@ export function Header() {
             <Search className="h-5 w-5" />
         </Button>
 
-        {/* ★ The Actual Search Sheet (Rendered Once) ★ */}
+        {/* Search Sheet Component */}
         <SearchSheet open={isSearchOpen} onOpenChange={setIsSearchOpen} />
 
-        {/* ★★★ UPDATED BELL ICON WITH BADGE ★★★ */}
+        {/* ★★★ NOTIFICATION BELL WITH LIVE COUNT ★★★ */}
         <Button asChild variant="ghost" size="icon" className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary">
             <Link href="/notifications">
-                <Bell className="h-5 w-5 transition-transform group-hover:rotate-[15deg] origin-top" />
+                <Bell className={cn(
+                    "h-5 w-5 transition-transform origin-top",
+                    unreadCount > 0 ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
+                )} />
                 
-                {/* নোটিফিকেশন থাকলে লাল ডট নয়, এখন সংখ্যা দেখাবে */}
+                {/* যদি আনরিড মেসেজ থাকে তবেই ব্যাজ দেখাবে */}
                 {unreadCount > 0 && (
-                    <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-background animate-in zoom-in duration-300">
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm ring-2 ring-background animate-in zoom-in duration-300">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}

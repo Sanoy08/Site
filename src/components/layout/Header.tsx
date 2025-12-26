@@ -28,7 +28,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
   Wallet, X, ChevronRight, Sparkles, 
-  Instagram, Facebook, Heart, Settings, UtensilsCrossed
+  Instagram, Facebook, Heart, Settings, UtensilsCrossed,
+  MessageCircle
 } from 'lucide-react';
 import { Logo } from '@/components/shared/Logo';
 import { CartSheet } from '@/components/shop/CartSheet';
@@ -39,7 +40,8 @@ import { Badge } from '@/components/ui/badge';
 const navLinks = [
   { href: '/', label: 'Home', icon: Sparkles },
   { href: '/menus', label: 'Menu', icon: UtensilsCrossed },
-  { href: '/contact', label: 'Contact', icon: User },
+  { href: '/account', label: 'My Account', icon: User },
+  { href: '/contact', label: 'Contact', icon: MessageCircle },
 ];
 
 export function Header() {

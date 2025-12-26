@@ -46,7 +46,8 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
-  const [unreadCount, setUnreadCount] = useState(0);
+  // ★ শুধু চেক করব কোনো আনরিড মেসেজ আছে কি না (True/False)
+  const [hasUnread, setHasUnread] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -64,62 +65,47 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // ★★★ ফিক্সড: আনরিড কাউন্ট ফেচিং লজিক ★★★
-  const fetchUnreadCount = useCallback(async () => {
-    // যদি ইউজার লগইন না থাকে, কল করার দরকার নেই
+  // ★★★ SIMPLE UNREAD CHECKER ★★★
+  const checkUnreadStatus = useCallback(async () => {
     if (!user) return;
     
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      // আমরা শুধু হিস্ট্রি চেক করছি, 'Read' করছি না।
-      // নিশ্চিত করবেন আপনার API যেন GET রিকোয়েস্টে isRead: true না করে দেয়।
+      // আমরা শুধু হিস্ট্রি চেক করছি, কোনো কিছু আপডেট করছি না
       const res = await fetch('/api/notifications/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       
       if (data.success && Array.isArray(data.notifications)) {
-        // শুধুমাত্র আনরিড মেসেজগুলো ফিল্টার করুন
-        const count = data.notifications.filter((n: any) => !n.isRead).length;
-        setUnreadCount(count);
+        // চেক করছি অন্তত একটি মেসেজ Unread আছে কি না
+        const hasNew = data.notifications.some((n: any) => !n.isRead);
+        setHasUnread(hasNew);
       }
     } catch (error) {
-      console.error("Failed to fetch notification count", error);
+      console.error("Failed to check notifications", error);
     }
   }, [user]);
 
-  // ১. অ্যাপ লোড হলে বা পেজ ফোকাস হলে কাউন্ট আপডেট হবে
+  // ১. অ্যাপ লোড বা পেজ চেঞ্জ হলে চেক করবে
   useEffect(() => {
-    fetchUnreadCount();
-    
-    const onFocus = () => fetchUnreadCount();
-    window.addEventListener('focus', onFocus);
-    
-    return () => window.removeEventListener('focus', onFocus);
-  }, [fetchUnreadCount]);
+    checkUnreadStatus();
+  }, [pathname, checkUnreadStatus]);
 
-  // ২. ★★★ লাইভ আপডেট ফিক্স (REAL-TIME FIX) ★★★
+  // ২. রিয়েল-টাইম আপডেট (পুশ নোটিফিকেশন আসলে লাল ডট জ্বলে উঠবে)
   useEffect(() => {
-    const handleNotificationEvent = () => {
-      // A. অপটিমিস্টিক আপডেট: সার্ভারের অপেক্ষা না করেই সাথে সাথে ১ বাড়িয়ে দাও
-      // এতে ইউজার ইনস্ট্যান্ট ফিডব্যাক পাবে এবং ১ এর জায়গায় ২ দেখাবে
-      setUnreadCount((prev) => prev + 1);
-
-      // B. ডিলেড সিঙ্ক: ২ সেকেন্ড পর সার্ভার থেকে আসল ডাটা আনো
-      // কারণ ডাটাবেসে ডাটা সেভ হতে একটু সময় লাগে
-      setTimeout(() => {
-        fetchUnreadCount();
-      }, 2000);
+    const handleUpdate = () => {
+      setHasUnread(true); // সরাসরি লাল ডট জ্বালিয়ে দাও
+      checkUnreadStatus(); // এরপর ব্যাকগ্রাউন্ডে কনফার্ম করো
     };
 
-    window.addEventListener('notification-updated', handleNotificationEvent);
-
+    window.addEventListener('notification-updated', handleUpdate);
     return () => {
-      window.removeEventListener('notification-updated', handleNotificationEvent);
+      window.removeEventListener('notification-updated', handleUpdate);
     };
-  }, [fetchUnreadCount]);
+  }, [checkUnreadStatus]);
 
 
   const handleLogout = () => {
@@ -267,7 +253,7 @@ export function Header() {
         {/* Right Side: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-3">
         
-        {/* Desktop Search Trigger */}
+        {/* Search */}
         <div 
             onClick={() => setIsSearchOpen(true)}
             className="hidden sm:flex relative w-[180px] lg:w-[240px] cursor-pointer group"
@@ -281,7 +267,6 @@ export function Header() {
             </div>
         </div>
 
-        {/* Mobile Search Icon Trigger */}
         <Button 
             variant="ghost" 
             size="icon" 
@@ -293,18 +278,17 @@ export function Header() {
 
         <SearchSheet open={isSearchOpen} onOpenChange={setIsSearchOpen} />
 
-        {/* Notification Bell */}
+        {/* ★★★ NOTIFICATION BELL WITH RED DOT ★★★ */}
         <Button asChild variant="ghost" size="icon" className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary">
             <Link href="/notifications">
                 <Bell className={cn(
                     "h-5 w-5 transition-transform origin-top",
-                    unreadCount > 0 ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
+                    hasUnread ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
                 )} />
                 
-                {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm ring-2 ring-background animate-in zoom-in duration-300">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
+                {/* লাল ডট লজিক */}
+                {hasUnread && (
+                    <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-600 border-2 border-background animate-pulse shadow-sm" />
                 )}
             </Link>
         </Button>

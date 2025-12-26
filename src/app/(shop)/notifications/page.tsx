@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,40 +28,53 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // ★★★ ডেটা আনার ফাংশনটিকে useCallback দিয়ে র‌্যাপ করা হলো যাতে এটি ডিপেন্ডেন্সি হিসেবে ব্যবহার করা যায় ★★★
+  const fetchNotifications = useCallback(async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+          // সাইলেন্ট আপডেট (যদি লোডিং আগে থেকেই ফলস থাকে)
+          // যাতে পেজ কাঁপা-কাঁপ না করে
+          const res = await fetch('/api/notifications/history', {
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          
+          if (data.success) {
+              setNotifications(data.notifications);
+          }
+      } catch (error) {
+          console.error(error);
+      } finally {
+          setIsLoading(false);
+      }
+  }, []);
+
   useEffect(() => {
     if (!isAuthLoading && !user) {
         router.push('/login');
         return;
     }
 
-    const fetchNotifications = async () => {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        try {
-            const res = await fetch('/api/notifications/history', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            
-            if (data.success) {
-                setNotifications(data.notifications);
-            } else {
-                toast.error("Failed to load notifications");
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     if (user) {
         fetchNotifications();
     }
-  }, [user, isAuthLoading, router]);
 
-  // টাইম ফরম্যাট ফাংশন (e.g., "2 hours ago")
+    // ★★★ রিয়েল-টাইম লিসেনার যুক্ত করা হলো ★★★
+    // যখন usePushNotification থেকে ইভেন্ট আসবে, এটি আবার ফেচ করবে
+    const handleNewNotification = () => {
+        console.log("New notification event received, refreshing list...");
+        fetchNotifications();
+    };
+
+    window.addEventListener('notification-received', handleNewNotification);
+
+    return () => {
+        window.removeEventListener('notification-received', handleNewNotification);
+    };
+  }, [user, isAuthLoading, router, fetchNotifications]);
+
   const formatTimeAgo = (dateString: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
     let interval = seconds / 31536000;
@@ -105,7 +118,6 @@ export default function NotificationsPage() {
                     className={`overflow-hidden border transition-all hover:shadow-md ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
                 >
                     <div className="p-4 flex gap-4">
-                        {/* আইকন বা ছবি */}
                         <div className="shrink-0">
                             {notification.image ? (
                                 <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-muted">
@@ -118,7 +130,6 @@ export default function NotificationsPage() {
                             )}
                         </div>
 
-                        {/* কন্টেন্ট */}
                         <div className="flex-grow min-w-0">
                             <div className="flex justify-between items-start gap-2">
                                 <h3 className={`text-sm font-semibold ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
@@ -132,7 +143,6 @@ export default function NotificationsPage() {
                                 {notification.message}
                             </p>
                             
-                            {/* অ্যাকশন লিংক (যদি থাকে) */}
                             {notification.link && (
                                 <div className="mt-3">
                                     <Button asChild size="sm" variant="outline" className="h-8 text-xs gap-1">
@@ -144,7 +154,6 @@ export default function NotificationsPage() {
                             )}
                         </div>
                         
-                        {/* আনরিড ডট */}
                         {!notification.isRead && (
                             <div className="shrink-0 pt-1">
                                 <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />

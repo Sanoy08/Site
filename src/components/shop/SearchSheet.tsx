@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // ★ usePathname যুক্ত করা হলো
 import { 
   Sheet, 
   SheetContent, 
@@ -21,11 +21,7 @@ import {
 } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
 import Image from 'next/image';
-
-// কনস্ট্যান্ট ইম্পোর্ট
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
-
-// ★★★ ব্যাক বাটন হ্যান্ডলার ইম্পোর্ট (CRITICAL FIX) ★★★
 import { registerBackHandler } from '@/hooks/use-back-button';
 
 interface SearchSheetProps {
@@ -35,28 +31,41 @@ interface SearchSheetProps {
 }
 
 const TRENDING_TAGS = ['Chicken Biryani', 'Chicken Kosha', 'Fried Rice', 'Paneer', 'Thali'];
+
 export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) {
   const router = useRouter();
+  const pathname = usePathname(); // ★ পেজ চেঞ্জ ডিটেক্ট করার জন্য
+  
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
+  // ★ নতুন স্টেট: পেজ নেভিগেশন হচ্ছে কি না
+  const [isNavigating, setIsNavigating] = useState(false);
+  
   const debouncedQuery = useDebounce(query, 300);
 
-  // ★★★ ১. ব্যাক বাটন ফিক্স (BACK BUTTON CONTROL) ★★★
-  // স্লাইডার খোলা থাকলে ব্যাক বাটন এটিকে বন্ধ করবে, অ্যাপ কাটবে না
+  // ★ ১. অটোমেটিক শিট ক্লোজ লজিক (পেজ লোড কমপ্লিট হলে)
+  useEffect(() => {
+    if (open) {
+      // পেজ চেঞ্জ হয়ে গেছে, তাই লোডার বন্ধ করো এবং শিট বন্ধ করো
+      setIsNavigating(false);
+      onOpenChange(false);
+    }
+  }, [pathname]); // যখনই pathname চেঞ্জ হবে, এই ইফেক্ট রান করবে
+
+  // ২. ব্যাক বাটন হ্যান্ডলার
   useEffect(() => {
     if (open) {
       registerBackHandler(() => onOpenChange(false));
     } else {
       registerBackHandler(null);
     }
-    // কম্পোনেন্ট সরে গেলে হ্যান্ডলার ক্লিয়ার করো
     return () => registerBackHandler(null);
   }, [open, onOpenChange]);
 
-  // ২. হিস্ট্রি লোড (সেফলি পার্স করা)
+  // ৩. হিস্ট্রি লোড
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
     if (saved) {
@@ -74,7 +83,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, []);
 
-  // ৩. সার্চ রেজাল্ট ফেচিং
+  // ৪. সার্চ রেজাল্ট ফেচিং
   useEffect(() => {
     const fetchResults = async () => {
       if (!debouncedQuery.trim()) {
@@ -102,9 +111,14 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     fetchResults();
   }, [debouncedQuery]);
 
+  // ★ ৫. আপডেটেড ক্লিক হ্যান্ডলার
   const handleProductClick = (slug: string) => {
+    // ১. লোডার চালু করো
+    setIsNavigating(true);
+    // ২. হিস্ট্রিতে যোগ করো
     addToHistory(query);
-    onOpenChange(false);
+    // ৩. শিট এখনই বন্ধ করো না, রাউটার পুশ করো
+    // (শিট বন্ধ হবে useEffect এর মাধ্যমে যখন পেজ লোড কমপ্লিট হবে)
     router.push(`/menus/${slug}`);
   };
 
@@ -122,7 +136,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     localStorage.setItem('recentSearches', JSON.stringify(newHistory));
   };
 
-  // ক্যাটাগরি নাম বের করার হেল্পার
   const getCategoryName = (category: any) => {
       if (!category) return '';
       if (typeof category === 'string') return category;
@@ -139,6 +152,16 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
       )}
       
       <SheetContent side="left" className="w-full sm:w-[400px] p-0 gap-0 border-r bg-background">
+        
+        {/* ★★★ নেভিগেশন লোডার ওভারলে (Full Screen) ★★★ */}
+        {isNavigating && (
+          <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-200">
+            {/* আপনার কাস্টম লোডার ক্লাস ব্যবহার করা হয়েছে */}
+            <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Taking you there...</p>
+          </div>
+        )}
+
         <SheetHeader className="p-4 border-b sticky top-0 bg-background/80 backdrop-blur-md z-10">
           <SheetTitle className="sr-only">Search</SheetTitle>
           <div className="relative">
@@ -149,8 +172,9 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
               placeholder="What are you craving?" 
               className="pl-10 h-12 rounded-xl bg-muted/50 border-transparent focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/20 text-base"
               autoFocus
+              disabled={isNavigating} // লোডিং এর সময় ইনপুট বন্ধ থাকবে
             />
-            {query && (
+            {query && !isNavigating && (
               <button 
                 onClick={() => setQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-muted rounded-full hover:bg-muted-foreground/20"
@@ -184,7 +208,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                   </div>
                 ) : (
                   results.map((product, index) => {
-                    // ★★★ IMAGE FALLBACK LOGIC ★★★
                     const hasImage = product.images && product.images.length > 0 && product.images[0].url;
                     const imageSrc = hasImage ? product.images[0].url : (PLACEHOLDER_IMAGE_URL || '/placeholder.png');
 
@@ -200,7 +223,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                             alt={product.name}
                             fill
                             className="object-cover"
-                            // ইমেজ লোড না হলে ডিফল্ট দেখাবে
                             onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.src = PLACEHOLDER_IMAGE_URL || '/placeholder.png';

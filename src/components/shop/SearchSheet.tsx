@@ -22,8 +22,11 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import Image from 'next/image';
 
-// ★ আপনার প্রজেক্টের কনস্ট্যান্ট থেকে ইম্পোর্ট করা হলো (ProductCard এর মতো)
+// কনস্ট্যান্ট ইম্পোর্ট
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+
+// ★★★ ব্যাক বাটন হ্যান্ডলার ইম্পোর্ট (CRITICAL FIX) ★★★
+import { registerBackHandler } from '@/hooks/use-back-button';
 
 interface SearchSheetProps {
   children?: React.ReactNode;
@@ -32,7 +35,6 @@ interface SearchSheetProps {
 }
 
 const TRENDING_TAGS = ['Chicken Biryani', 'Chicken Kosha', 'Fried Rice', 'Paneer', 'Thali'];
-
 export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -42,7 +44,19 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
   
   const debouncedQuery = useDebounce(query, 300);
 
-  // ১. হিস্ট্রি লোড (সেফলি পার্স করা)
+  // ★★★ ১. ব্যাক বাটন ফিক্স (BACK BUTTON CONTROL) ★★★
+  // স্লাইডার খোলা থাকলে ব্যাক বাটন এটিকে বন্ধ করবে, অ্যাপ কাটবে না
+  useEffect(() => {
+    if (open) {
+      registerBackHandler(() => onOpenChange(false));
+    } else {
+      registerBackHandler(null);
+    }
+    // কম্পোনেন্ট সরে গেলে হ্যান্ডলার ক্লিয়ার করো
+    return () => registerBackHandler(null);
+  }, [open, onOpenChange]);
+
+  // ২. হিস্ট্রি লোড (সেফলি পার্স করা)
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
     if (saved) {
@@ -60,7 +74,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, []);
 
-  // ২. সার্চ রেজাল্ট ফেচিং
+  // ৩. সার্চ রেজাল্ট ফেচিং
   useEffect(() => {
     const fetchResults = async () => {
       if (!debouncedQuery.trim()) {
@@ -171,10 +185,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                 ) : (
                   results.map((product, index) => {
                     // ★★★ IMAGE FALLBACK LOGIC ★★★
-                    // ইমেজ আছে কি না চেক করে, না থাকলে ডিফল্ট ইমেজ বসাবে
                     const hasImage = product.images && product.images.length > 0 && product.images[0].url;
-                    
-                    // এখানে PLACEHOLDER_IMAGE_URL ব্যবহার করা হয়েছে, যদি সেটি না পাওয়া যায় তবে '/placeholder.png'
                     const imageSrc = hasImage ? product.images[0].url : (PLACEHOLDER_IMAGE_URL || '/placeholder.png');
 
                     return (
@@ -189,7 +200,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                             alt={product.name}
                             fill
                             className="object-cover"
-                            // ইমেজ লোড না হলে কি হবে (ঐচ্ছিক)
+                            // ইমেজ লোড না হলে ডিফল্ট দেখাবে
                             onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.src = PLACEHOLDER_IMAGE_URL || '/placeholder.png';

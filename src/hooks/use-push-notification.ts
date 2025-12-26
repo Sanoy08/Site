@@ -64,38 +64,17 @@ export const usePushNotification = () => {
       }
 
       if (Capacitor.getPlatform() === 'android') {
-        
-        // ★★★ FIX 1: Channel ID v3 (Fresh Start) ★★★
-        const channelId = 'pop_notifications_v3';
-
-        // 1. Push Plugin দিয়ে চ্যানেল তৈরি
         await PushNotifications.createChannel({
-          id: channelId,
-          name: 'General Alerts',
-          description: 'General notifications with sound',
-          importance: 5, // MAX Importance (Heads-up এর জন্য জরুরি)
+          id: 'pop_notifications', 
+          name: 'Popup Notifications',
+          description: 'High priority notifications',
+          importance: 5, 
           visibility: 1, 
           lights: true,
           vibration: true,
           sound: 'default'
         });
 
-        // 2. ★★★ FIX 2: LocalNotifications দিয়েও চ্যানেল তৈরি ★★★
-        // অ্যাপ খোলা থাকলে পপ-আপ দেখানোর দায়িত্ব এর, তাই এর কাছেও চ্যানেলটি থাকা চাই
-        try {
-            await LocalNotifications.createChannel({
-                id: channelId,
-                name: 'General Alerts',
-                description: 'General notifications with sound',
-                importance: 5,
-                visibility: 1,
-                lights: true,
-                vibration: true,
-                sound: 'default'
-            });
-        } catch (e) { console.error("Local channel create failed", e); }
-
-        // Admin Channel
         await PushNotifications.createChannel({
           id: 'admin_order_alert', 
           name: 'Admin Order Alerts',
@@ -149,42 +128,33 @@ export const usePushNotification = () => {
       }
     });
 
+    // ★ অ্যাপ খোলা থাকলে ম্যানুয়ালি পপ-আপ দেখানো
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
       console.log('Push received in foreground:', notification);
       
+      // ★★★ ১. নতুন ইভেন্ট ফায়ার করা হচ্ছে ★★★
+      // এটি নোটিফিকেশন পেজকে বলবে: "নতুন ডেটা এসেছে, রিফ্রেশ করো!"
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('notification-updated'));
       }
 
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
-      let channelId = notification.data?.android_channel_id;
-      
-      // চ্যানেল রিডাইরেক্ট (v3 তে)
-      if (!channelId || channelId === 'pop_notifications' || channelId === 'pop_notifications_v2') {
-          channelId = 'pop_notifications_v3';
-      }
-
+      const channelId = notification.data?.android_channel_id || 'pop_notifications'; 
       const soundName = channelId === 'admin_order_alert' ? 'my_alert' : 'default';
 
-      // ★★★ FIX 3: Priority & Tiny Delay ★★★
       await LocalNotifications.schedule({
         notifications: [
           {
             title: notification.title || "New Notification",
             body: notification.body || "",
             id: new Date().getTime(),
-            // একদম ১০০ মিলিসেকেন্ড ডিলে দেওয়া হলো। এটি সাউন্ডে দেরি করবে না, 
-            // কিন্তু অ্যান্ড্রয়েড UI কে পপ-আপ অ্যানিমেশন রেন্ডার করার সময় দেবে।
-            schedule: { at: new Date(Date.now() + 100) }, 
+            schedule: { at: new Date(Date.now() + 100) },
             sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
             extra: notification.data,
             smallIcon: "ic_stat_icon",
-            channelId: channelId, 
-            actionTypeId: "ORDER_UPDATE",
-            // Priority সেট করা হলো (যদিও এটি টাইপস্ক্রিপ্টে এরর দেখাতে পারে, কিন্তু রানটাইমে কাজ করে)
-            // @ts-ignore 
-            priority: 2 
+            channelId: channelId,
+            actionTypeId: "ORDER_UPDATE"
           }
         ]
       });

@@ -46,7 +46,6 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
-  // ★ নতুন স্টেট: আনরিড নোটিফিকেশন কাউন্ট
   const [unreadCount, setUnreadCount] = useState(0);
 
   const pathname = usePathname();
@@ -65,21 +64,24 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // ★★★ NOTIFICATION COUNT FETCHING LOGIC ★★★
+  // ★★★ ফিক্সড: আনরিড কাউন্ট ফেচিং লজিক ★★★
   const fetchUnreadCount = useCallback(async () => {
+    // যদি ইউজার লগইন না থাকে, কল করার দরকার নেই
     if (!user) return;
     
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
+      // আমরা শুধু হিস্ট্রি চেক করছি, 'Read' করছি না।
+      // নিশ্চিত করবেন আপনার API যেন GET রিকোয়েস্টে isRead: true না করে দেয়।
       const res = await fetch('/api/notifications/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       
       if (data.success && Array.isArray(data.notifications)) {
-        // আনরিড মেসেজগুলো ফিল্টার করে গণনা করা হচ্ছে
+        // শুধুমাত্র আনরিড মেসেজগুলো ফিল্টার করুন
         const count = data.notifications.filter((n: any) => !n.isRead).length;
         setUnreadCount(count);
       }
@@ -88,24 +90,34 @@ export function Header() {
     }
   }, [user]);
 
-  // ১. প্রথমবার লোড হলে কাউন্ট আনবে
+  // ১. অ্যাপ লোড হলে বা পেজ ফোকাস হলে কাউন্ট আপডেট হবে
   useEffect(() => {
     fetchUnreadCount();
+    
+    const onFocus = () => fetchUnreadCount();
+    window.addEventListener('focus', onFocus);
+    
+    return () => window.removeEventListener('focus', onFocus);
   }, [fetchUnreadCount]);
 
-  // ২. রিয়েল-টাইম আপডেট (যখন নতুন পুশ আসবে তখন কাউন্ট বাড়বে)
+  // ২. ★★★ লাইভ আপডেট ফিক্স (REAL-TIME FIX) ★★★
   useEffect(() => {
-    const handleUpdate = () => {
-      fetchUnreadCount();
+    const handleNotificationEvent = () => {
+      // A. অপটিমিস্টিক আপডেট: সার্ভারের অপেক্ষা না করেই সাথে সাথে ১ বাড়িয়ে দাও
+      // এতে ইউজার ইনস্ট্যান্ট ফিডব্যাক পাবে এবং ১ এর জায়গায় ২ দেখাবে
+      setUnreadCount((prev) => prev + 1);
+
+      // B. ডিলেড সিঙ্ক: ২ সেকেন্ড পর সার্ভার থেকে আসল ডাটা আনো
+      // কারণ ডাটাবেসে ডাটা সেভ হতে একটু সময় লাগে
+      setTimeout(() => {
+        fetchUnreadCount();
+      }, 2000);
     };
 
-    window.addEventListener('notification-updated', handleUpdate);
-    // পেজ ফোকাস হলেও একবার চেক করবে
-    window.addEventListener('focus', handleUpdate);
+    window.addEventListener('notification-updated', handleNotificationEvent);
 
     return () => {
-      window.removeEventListener('notification-updated', handleUpdate);
-      window.removeEventListener('focus', handleUpdate);
+      window.removeEventListener('notification-updated', handleNotificationEvent);
     };
   }, [fetchUnreadCount]);
 
@@ -279,10 +291,9 @@ export function Header() {
             <Search className="h-5 w-5" />
         </Button>
 
-        {/* Search Sheet Component */}
         <SearchSheet open={isSearchOpen} onOpenChange={setIsSearchOpen} />
 
-        {/* ★★★ NOTIFICATION BELL WITH LIVE COUNT ★★★ */}
+        {/* Notification Bell */}
         <Button asChild variant="ghost" size="icon" className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary">
             <Link href="/notifications">
                 <Bell className={cn(
@@ -290,7 +301,6 @@ export function Header() {
                     unreadCount > 0 ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
                 )} />
                 
-                {/* যদি আনরিড মেসেজ থাকে তবেই ব্যাজ দেখাবে */}
                 {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm ring-2 ring-background animate-in zoom-in duration-300">
                         {unreadCount > 9 ? '9+' : unreadCount}

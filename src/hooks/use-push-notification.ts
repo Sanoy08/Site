@@ -63,10 +63,7 @@ export const usePushNotification = () => {
           await PushNotifications.register();
       }
 
-      // ★★★ ফিক্স: অ্যান্ড্রয়েডের জন্য চ্যানেল তৈরি ★★★
       if (Capacitor.getPlatform() === 'android') {
-        
-        // ১. সাধারণ ইউজারদের জন্য (ডিফল্ট সাউন্ড)
         await PushNotifications.createChannel({
           id: 'pop_notifications', 
           name: 'Popup Notifications',
@@ -78,16 +75,15 @@ export const usePushNotification = () => {
           sound: 'default'
         });
 
-        // ২. ★★★ অ্যাডমিন অর্ডারের জন্য কাস্টম সাউন্ড চ্যানেল ★★★
         await PushNotifications.createChannel({
-          id: 'admin_order_alert', // এই আইডি সার্ভারে ব্যবহার হবে
+          id: 'admin_order_alert',
           name: 'Admin Order Alerts',
           description: 'Alerts for new orders with custom sound',
           importance: 5,
           visibility: 1,
           lights: true,
           vibration: true,
-          sound: 'my_alert' // আপনার ফাইলের নাম (এক্সটেনশন ছাড়া)
+          sound: 'my_alert'
         });
       }
 
@@ -132,12 +128,14 @@ export const usePushNotification = () => {
       }
     });
 
-    // ★ অ্যাপ খোলা থাকলে ম্যানুয়ালি পপ-আপ দেখানো
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
       console.log('Push received in foreground:', notification);
+
+      // ★★★ নতুন লজিক: গ্লোবাল ইভেন্ট ফায়ার করা ★★★
+      // এটি নোটিফিকেশন পেজকে বলবে রিফ্রেশ হতে
+      window.dispatchEvent(new Event('notification-received'));
       
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
-      // সার্ভার থেকে পাঠানো চ্যানেল আইডি চেক করা, যদি না থাকে তবে ডিফল্ট
       const channelId = notification.data?.android_channel_id || 'pop_notifications'; 
       const soundName = channelId === 'admin_order_alert' ? 'my_alert' : 'default';
 
@@ -148,11 +146,11 @@ export const usePushNotification = () => {
             body: notification.body || "",
             id: new Date().getTime(),
             schedule: { at: new Date(Date.now() + 100) },
-            sound: soundName, // লোকাল নোটিফিকেশনেও সাউন্ড সেট করা হলো
+            sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
             extra: notification.data,
             smallIcon: "ic_stat_icon",
-            channelId: channelId, // ডায়নামিক চ্যানেল আইডি
+            channelId: channelId,
             actionTypeId: "ORDER_UPDATE"
           }
         ]

@@ -28,12 +28,13 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // ১. ডেটা ফেচিং লজিকটি একটি আলাদা ফাংশনে আনা হলো যাতে বারবার কল করা যায়
+  // ★ ডেটা ফেচ করার ফাংশনটি useCallback দিয়ে র‍্যাপ করা হলো যাতে রি-ইউজ করা যায়
   const fetchNotifications = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
+        // লোডিং স্টেট বাদে সাইলেন্ট আপডেট (যাতে স্ক্রিন ফ্লিকার না করে)
         const res = await fetch('/api/notifications/history', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -41,18 +42,14 @@ export default function NotificationsPage() {
         
         if (data.success) {
             setNotifications(data.notifications);
-        } else {
-            // সাইলেন্ট ফেইল: ইউজারের বিরক্ত হওয়ার দরকার নেই যদি ব্যাকগ্রাউন্ডে রিফ্রেশ ফেইল করে
-            console.error("Failed to load notifications");
         }
     } catch (error) {
-        console.error(error);
+        console.error("Error fetching notifications:", error);
     } finally {
         setIsLoading(false);
     }
   }, []);
 
-  // ২. প্রথমবার লোড এবং অথেন্টিকেশন চেক
   useEffect(() => {
     if (!isAuthLoading && !user) {
         router.push('/login');
@@ -62,26 +59,23 @@ export default function NotificationsPage() {
     if (user) {
         fetchNotifications();
     }
+
+    // ★★★ ২. ইভেন্ট লিসেনার সেটআপ (Real-time Update) ★★★
+    // যখনই হুক থেকে 'notification-updated' ইভেন্ট আসবে, এটি আবার ডেটা আনবে
+    const handleUpdate = () => {
+        console.log("New notification received, refreshing list...");
+        fetchNotifications();
+    };
+
+    window.addEventListener('notification-updated', handleUpdate);
+
+    // ক্লিনআপ
+    return () => {
+        window.removeEventListener('notification-updated', handleUpdate);
+    };
+
   }, [user, isAuthLoading, router, fetchNotifications]);
 
-  // ৩. ★★★ রিয়েল-টাইম লিসেনার (নতুন কোড) ★★★
-  useEffect(() => {
-    const handleNewNotification = () => {
-        console.log("New notification received, refreshing list...");
-        fetchNotifications(); // নতুন নোটিফিকেশন আসলে আবার লিস্ট লোড হবে
-    };
-
-    // ইভেন্ট লিসেনার যুক্ত করা হলো
-    window.addEventListener('NEW_NOTIFICATION', handleNewNotification);
-
-    // পেজ থেকে বের হয়ে গেলে লিসেনার মুছে ফেলা হবে
-    return () => {
-        window.removeEventListener('NEW_NOTIFICATION', handleNewNotification);
-    };
-  }, [fetchNotifications]);
-
-
-  // টাইম ফরম্যাট ফাংশন
   const formatTimeAgo = (dateString: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
     let interval = seconds / 31536000;
@@ -122,7 +116,7 @@ export default function NotificationsPage() {
             notifications.map((notification) => (
                 <Card 
                     key={notification._id} 
-                    className={`overflow-hidden border transition-all hover:shadow-md ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
+                    className={`overflow-hidden border transition-all hover:shadow-md animate-in slide-in-from-top-2 duration-300 ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
                 >
                     <div className="p-4 flex gap-4">
                         <div className="shrink-0">

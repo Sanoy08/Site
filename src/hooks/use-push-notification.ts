@@ -83,7 +83,7 @@ export const usePushNotification = () => {
           visibility: 1,
           lights: true,
           vibration: true,
-          sound: 'my_alert' 
+          sound: 'my_alert'
         });
       }
 
@@ -132,8 +132,11 @@ export const usePushNotification = () => {
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
       console.log('Push received in foreground:', notification);
       
-      // ১. নোটিফিকেশন পেজ রিফ্রেশ করার জন্য সিগন্যাল পাঠানো (NEW CODE)
-      window.dispatchEvent(new Event('NEW_NOTIFICATION'));
+      // ★★★ ১. নতুন ইভেন্ট ফায়ার করা হচ্ছে ★★★
+      // এটি নোটিফিকেশন পেজকে বলবে: "নতুন ডেটা এসেছে, রিফ্রেশ করো!"
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+      }
 
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
       const channelId = notification.data?.android_channel_id || 'pop_notifications'; 
@@ -146,11 +149,11 @@ export const usePushNotification = () => {
             body: notification.body || "",
             id: new Date().getTime(),
             schedule: { at: new Date(Date.now() + 100) },
-            sound: soundName, 
+            sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
             extra: notification.data,
             smallIcon: "ic_stat_icon",
-            channelId: channelId, 
+            channelId: channelId,
             actionTypeId: "ORDER_UPDATE"
           }
         ]

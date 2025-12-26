@@ -2,10 +2,18 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,13 +22,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
@@ -46,9 +47,6 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
-  // ★ নতুন লজিক: আনরিড আছে কি না (লোকাল টাইমের ওপর ভিত্তি করে)
-  const [hasNewNotification, setHasNewNotification] = useState(false);
-
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -64,68 +62,6 @@ export function Header() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
-
-
-  // ★★★ SMART NOTIFICATION CHECKER (Time Based) ★★★
-  const checkNotifications = useCallback(async () => {
-    if (!user) return;
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const res = await fetch('/api/notifications/history', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      
-      if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
-        
-        // ১. সবচেয়ে লেটেস্ট নোটিফিকেশনটি নাও
-        // (ধরে নিচ্ছি API লেটেস্ট আগে পাঠায়, যদি না পাঠায় তবে sort করে নিতে হবে)
-        const latestNotification = data.notifications[0];
-        const latestTime = new Date(latestNotification.createdAt).getTime();
-
-        // ২. লোকাল স্টোরেজ থেকে লাস্ট চেক করার টাইম নাও
-        const lastSeenTime = localStorage.getItem('last_notification_seen_time');
-
-        // ৩. লজিক: যদি লাস্ট সিন টাইমের চেয়ে নতুন নোটিফিকেশন থাকে, তাহলে লাল বাতি জ্বালাও
-        if (!lastSeenTime || latestTime > parseInt(lastSeenTime)) {
-          setHasNewNotification(true);
-        } else {
-          setHasNewNotification(false);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to check notifications", error);
-    }
-  }, [user]);
-
-  // যখনই বেল আইকনে ক্লিক করবে, তখন আমরা টাইম আপডেট করে দেব
-  const handleBellClick = () => {
-    setHasNewNotification(false); // লাল ডট নিভিয়ে দাও
-    localStorage.setItem('last_notification_seen_time', Date.now().toString()); // বর্তমান সময় সেভ করো
-    router.push('/notifications');
-  };
-
-  // ১. অ্যাপ লোড বা ফোকাস হলে চেক করবে
-  useEffect(() => {
-    checkNotifications();
-    
-    // পেজ যখন ফোকাস পাবে (অন্য অ্যাপ থেকে ফিরে আসলে)
-    const onFocus = () => checkNotifications();
-    window.addEventListener('focus', onFocus);
-    
-    // রিয়েল-টাইম আপডেট ইভেন্ট
-    const onUpdate = () => checkNotifications();
-    window.addEventListener('notification-updated', onUpdate);
-
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('notification-updated', onUpdate);
-    };
-  }, [checkNotifications]);
-
 
   const handleLogout = () => {
       logout();
@@ -272,7 +208,8 @@ export function Header() {
         {/* Right Side: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-3">
         
-        {/* Search */}
+        {/* ★★★ SINGLE SEARCH SHEET IMPLEMENTATION ★★★ */}
+        {/* Desktop Fake Search Bar Trigger */}
         <div 
             onClick={() => setIsSearchOpen(true)}
             className="hidden sm:flex relative w-[180px] lg:w-[240px] cursor-pointer group"
@@ -286,6 +223,7 @@ export function Header() {
             </div>
         </div>
 
+        {/* Mobile Search Icon Trigger */}
         <Button 
             variant="ghost" 
             size="icon" 
@@ -295,25 +233,14 @@ export function Header() {
             <Search className="h-5 w-5" />
         </Button>
 
+        {/* ★ The Actual Search Sheet (Rendered Once) ★ */}
         <SearchSheet open={isSearchOpen} onOpenChange={setIsSearchOpen} />
 
-        {/* ★★★ NOTIFICATION BELL ★★★ */}
-        {/* Link এর বদলে আমরা onClick ব্যবহার করছি যাতে ম্যানুয়ালি হ্যান্ডেল করতে পারি */}
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary"
-            onClick={handleBellClick} // ★ এখানে ক্লিক করলে লাল বাতি নিভবে
-        >
-            <Bell className={cn(
-                "h-5 w-5 transition-transform origin-top",
-                hasNewNotification ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
-            )} />
-            
-            {/* লাল ডট */}
-            {hasNewNotification && (
-                <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-600 border-2 border-background animate-pulse shadow-sm" />
-            )}
+        <Button asChild variant="ghost" size="icon" className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary">
+            <Link href="/notifications">
+                <Bell className="h-5 w-5 transition-transform group-hover:rotate-[15deg] origin-top" />
+                <span className="absolute top-2 right-2.5 h-2 w-2 bg-red-500 rounded-full ring-2 ring-background animate-pulse" />
+            </Link>
         </Button>
 
         <div className="relative">

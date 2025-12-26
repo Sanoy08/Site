@@ -6,12 +6,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, Loader2, Clock, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Bell, Loader2, Clock, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import Image from 'next/image';
-import { cn } from '@/lib/utils'; // স্টাইল মার্জ করার জন্য
 
 type Notification = {
   _id: string;
@@ -29,11 +28,13 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // ★ ডেটা ফেচ করার ফাংশনটি useCallback দিয়ে র‍্যাপ করা হলো যাতে রি-ইউজ করা যায়
   const fetchNotifications = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
+        // লোডিং স্টেট বাদে সাইলেন্ট আপডেট (যাতে স্ক্রিন ফ্লিকার না করে)
         const res = await fetch('/api/notifications/history', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -59,12 +60,16 @@ export default function NotificationsPage() {
         fetchNotifications();
     }
 
+    // ★★★ ২. ইভেন্ট লিসেনার সেটআপ (Real-time Update) ★★★
+    // যখনই হুক থেকে 'notification-updated' ইভেন্ট আসবে, এটি আবার ডেটা আনবে
     const handleUpdate = () => {
+        console.log("New notification received, refreshing list...");
         fetchNotifications();
     };
 
     window.addEventListener('notification-updated', handleUpdate);
 
+    // ক্লিনআপ
     return () => {
         window.removeEventListener('notification-updated', handleUpdate);
     };
@@ -94,14 +99,11 @@ export default function NotificationsPage() {
     <div className="container max-w-2xl py-8 min-h-screen">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold font-headline flex items-center gap-2">
-            <Bell className="h-6 w-6 text-primary" /> Notifications
+            <Bell className="h-6 w-6 text-primary" /> Your Notifications
         </h1>
-        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-            Total: {notifications.length}
-        </span>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {notifications.length === 0 ? (
             <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed">
                 <Bell className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
@@ -111,65 +113,40 @@ export default function NotificationsPage() {
                 </Button>
             </div>
         ) : (
-            notifications.map((notification) => {
-                // আনরিড চেক লজিক
-                const isUnread = !notification.isRead;
-
-                return (
+            notifications.map((notification) => (
                 <Card 
                     key={notification._id} 
-                    className={cn(
-                        "overflow-hidden transition-all duration-300 relative group",
-                        // ★★★ High Contrast Styling Here ★★★
-                        isUnread 
-                            ? "bg-primary/10 border-primary shadow-md scale-[1.01]" // নতুন হলে সবুজ আভা এবং বর্ডার
-                            : "bg-card border-border/50 opacity-80 hover:opacity-100" // পুরানো হলে সাদা এবং হালকা ঝাপসা
-                    )}
+                    className={`overflow-hidden border transition-all hover:shadow-md animate-in slide-in-from-top-2 duration-300 ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
                 >
                     <div className="p-4 flex gap-4">
-                        {/* আইকন বা ছবি */}
-                        <div className="shrink-0 pt-1">
+                        <div className="shrink-0">
                             {notification.image ? (
-                                <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-muted border border-border">
+                                <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-muted">
                                     <Image src={notification.image} alt="Notification" fill className="object-cover" unoptimized={true} />
                                 </div>
                             ) : (
-                                <div className={cn(
-                                    "h-12 w-12 rounded-full flex items-center justify-center shadow-sm",
-                                    isUnread ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                                )}>
+                                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${!notification.isRead ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
                                     <Bell className="h-6 w-6" />
                                 </div>
                             )}
                         </div>
 
-                        {/* কন্টেন্ট */}
                         <div className="flex-grow min-w-0">
                             <div className="flex justify-between items-start gap-2">
-                                <h3 className={cn(
-                                    "text-sm font-semibold leading-tight",
-                                    isUnread ? "text-foreground font-bold" : "text-muted-foreground"
-                                )}>
+                                <h3 className={`text-sm font-semibold ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
                                     {notification.title}
                                 </h3>
-                                
-                                {/* টাইমস্ট্যাম্প */}
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap flex items-center gap-1 shrink-0 bg-background/50 px-1.5 py-0.5 rounded-full border">
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap flex items-center gap-1 shrink-0">
                                     <Clock className="h-3 w-3" /> {formatTimeAgo(notification.createdAt)}
                                 </span>
                             </div>
-                            
-                            <p className={cn(
-                                "text-sm mt-1 leading-relaxed",
-                                isUnread ? "text-foreground/90" : "text-muted-foreground"
-                            )}>
+                            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                                 {notification.message}
                             </p>
                             
-                            {/* অ্যাকশন লিংক */}
                             {notification.link && (
                                 <div className="mt-3">
-                                    <Button asChild size="sm" variant={isUnread ? "default" : "outline"} className="h-7 text-xs gap-1">
+                                    <Button asChild size="sm" variant="outline" className="h-8 text-xs gap-1">
                                         <Link href={notification.link}>
                                             Visit Link <ExternalLink className="h-3 w-3" />
                                         </Link>
@@ -178,17 +155,14 @@ export default function NotificationsPage() {
                             )}
                         </div>
                         
-                        {/* ★★★ NEW BADGE INDICATOR ★★★ */}
-                        {isUnread && (
-                            <div className="absolute top-0 right-0">
-                                <span className="bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg shadow-sm">
-                                    NEW
-                                </span>
+                        {!notification.isRead && (
+                            <div className="shrink-0 pt-1">
+                                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
                             </div>
                         )}
                     </div>
                 </Card>
-            )})
+            ))
         )}
       </div>
     </div>

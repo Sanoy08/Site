@@ -76,14 +76,14 @@ export const usePushNotification = () => {
         });
 
         await PushNotifications.createChannel({
-          id: 'admin_order_alert',
+          id: 'admin_order_alert', 
           name: 'Admin Order Alerts',
           description: 'Alerts for new orders with custom sound',
           importance: 5,
           visibility: 1,
           lights: true,
           vibration: true,
-          sound: 'my_alert'
+          sound: 'my_alert' 
         });
       }
 
@@ -128,13 +128,13 @@ export const usePushNotification = () => {
       }
     });
 
+    // ★ অ্যাপ খোলা থাকলে ম্যানুয়ালি পপ-আপ দেখানো
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
       console.log('Push received in foreground:', notification);
-
-      // ★★★ নতুন লজিক: গ্লোবাল ইভেন্ট ফায়ার করা ★★★
-      // এটি নোটিফিকেশন পেজকে বলবে রিফ্রেশ হতে
-      window.dispatchEvent(new Event('notification-received'));
       
+      // ১. নোটিফিকেশন পেজ রিফ্রেশ করার জন্য সিগন্যাল পাঠানো (NEW CODE)
+      window.dispatchEvent(new Event('NEW_NOTIFICATION'));
+
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
       const channelId = notification.data?.android_channel_id || 'pop_notifications'; 
       const soundName = channelId === 'admin_order_alert' ? 'my_alert' : 'default';
@@ -146,11 +146,11 @@ export const usePushNotification = () => {
             body: notification.body || "",
             id: new Date().getTime(),
             schedule: { at: new Date(Date.now() + 100) },
-            sound: soundName,
+            sound: soundName, 
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
             extra: notification.data,
             smallIcon: "ic_stat_icon",
-            channelId: channelId,
+            channelId: channelId, 
             actionTypeId: "ORDER_UPDATE"
           }
         ]

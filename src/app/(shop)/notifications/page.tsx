@@ -28,29 +28,31 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // ★★★ ডেটা আনার ফাংশনটিকে useCallback দিয়ে র‌্যাপ করা হলো যাতে এটি ডিপেন্ডেন্সি হিসেবে ব্যবহার করা যায় ★★★
+  // ১. ডেটা ফেচিং লজিকটি একটি আলাদা ফাংশনে আনা হলো যাতে বারবার কল করা যায়
   const fetchNotifications = useCallback(async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-      try {
-          // সাইলেন্ট আপডেট (যদি লোডিং আগে থেকেই ফলস থাকে)
-          // যাতে পেজ কাঁপা-কাঁপ না করে
-          const res = await fetch('/api/notifications/history', {
-              headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await res.json();
-          
-          if (data.success) {
-              setNotifications(data.notifications);
-          }
-      } catch (error) {
-          console.error(error);
-      } finally {
-          setIsLoading(false);
-      }
+    try {
+        const res = await fetch('/api/notifications/history', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            setNotifications(data.notifications);
+        } else {
+            // সাইলেন্ট ফেইল: ইউজারের বিরক্ত হওয়ার দরকার নেই যদি ব্যাকগ্রাউন্ডে রিফ্রেশ ফেইল করে
+            console.error("Failed to load notifications");
+        }
+    } catch (error) {
+        console.error(error);
+    } finally {
+        setIsLoading(false);
+    }
   }, []);
 
+  // ২. প্রথমবার লোড এবং অথেন্টিকেশন চেক
   useEffect(() => {
     if (!isAuthLoading && !user) {
         router.push('/login');
@@ -60,21 +62,26 @@ export default function NotificationsPage() {
     if (user) {
         fetchNotifications();
     }
-
-    // ★★★ রিয়েল-টাইম লিসেনার যুক্ত করা হলো ★★★
-    // যখন usePushNotification থেকে ইভেন্ট আসবে, এটি আবার ফেচ করবে
-    const handleNewNotification = () => {
-        console.log("New notification event received, refreshing list...");
-        fetchNotifications();
-    };
-
-    window.addEventListener('notification-received', handleNewNotification);
-
-    return () => {
-        window.removeEventListener('notification-received', handleNewNotification);
-    };
   }, [user, isAuthLoading, router, fetchNotifications]);
 
+  // ৩. ★★★ রিয়েল-টাইম লিসেনার (নতুন কোড) ★★★
+  useEffect(() => {
+    const handleNewNotification = () => {
+        console.log("New notification received, refreshing list...");
+        fetchNotifications(); // নতুন নোটিফিকেশন আসলে আবার লিস্ট লোড হবে
+    };
+
+    // ইভেন্ট লিসেনার যুক্ত করা হলো
+    window.addEventListener('NEW_NOTIFICATION', handleNewNotification);
+
+    // পেজ থেকে বের হয়ে গেলে লিসেনার মুছে ফেলা হবে
+    return () => {
+        window.removeEventListener('NEW_NOTIFICATION', handleNewNotification);
+    };
+  }, [fetchNotifications]);
+
+
+  // টাইম ফরম্যাট ফাংশন
   const formatTimeAgo = (dateString: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
     let interval = seconds / 31536000;

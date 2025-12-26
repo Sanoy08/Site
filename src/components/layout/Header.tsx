@@ -46,8 +46,8 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
-  // ★ শুধু চেক করব কোনো আনরিড মেসেজ আছে কি না (True/False)
-  const [hasUnread, setHasUnread] = useState(false);
+  // ★ নতুন লজিক: আনরিড আছে কি না (লোকাল টাইমের ওপর ভিত্তি করে)
+  const [hasNewNotification, setHasNewNotification] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -65,47 +65,66 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // ★★★ SIMPLE UNREAD CHECKER ★★★
-  const checkUnreadStatus = useCallback(async () => {
+
+  // ★★★ SMART NOTIFICATION CHECKER (Time Based) ★★★
+  const checkNotifications = useCallback(async () => {
     if (!user) return;
     
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      // আমরা শুধু হিস্ট্রি চেক করছি, কোনো কিছু আপডেট করছি না
       const res = await fetch('/api/notifications/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       
-      if (data.success && Array.isArray(data.notifications)) {
-        // চেক করছি অন্তত একটি মেসেজ Unread আছে কি না
-        const hasNew = data.notifications.some((n: any) => !n.isRead);
-        setHasUnread(hasNew);
+      if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
+        
+        // ১. সবচেয়ে লেটেস্ট নোটিফিকেশনটি নাও
+        // (ধরে নিচ্ছি API লেটেস্ট আগে পাঠায়, যদি না পাঠায় তবে sort করে নিতে হবে)
+        const latestNotification = data.notifications[0];
+        const latestTime = new Date(latestNotification.createdAt).getTime();
+
+        // ২. লোকাল স্টোরেজ থেকে লাস্ট চেক করার টাইম নাও
+        const lastSeenTime = localStorage.getItem('last_notification_seen_time');
+
+        // ৩. লজিক: যদি লাস্ট সিন টাইমের চেয়ে নতুন নোটিফিকেশন থাকে, তাহলে লাল বাতি জ্বালাও
+        if (!lastSeenTime || latestTime > parseInt(lastSeenTime)) {
+          setHasNewNotification(true);
+        } else {
+          setHasNewNotification(false);
+        }
       }
     } catch (error) {
       console.error("Failed to check notifications", error);
     }
   }, [user]);
 
-  // ১. অ্যাপ লোড বা পেজ চেঞ্জ হলে চেক করবে
-  useEffect(() => {
-    checkUnreadStatus();
-  }, [pathname, checkUnreadStatus]);
+  // যখনই বেল আইকনে ক্লিক করবে, তখন আমরা টাইম আপডেট করে দেব
+  const handleBellClick = () => {
+    setHasNewNotification(false); // লাল ডট নিভিয়ে দাও
+    localStorage.setItem('last_notification_seen_time', Date.now().toString()); // বর্তমান সময় সেভ করো
+    router.push('/notifications');
+  };
 
-  // ২. রিয়েল-টাইম আপডেট (পুশ নোটিফিকেশন আসলে লাল ডট জ্বলে উঠবে)
+  // ১. অ্যাপ লোড বা ফোকাস হলে চেক করবে
   useEffect(() => {
-    const handleUpdate = () => {
-      setHasUnread(true); // সরাসরি লাল ডট জ্বালিয়ে দাও
-      checkUnreadStatus(); // এরপর ব্যাকগ্রাউন্ডে কনফার্ম করো
-    };
+    checkNotifications();
+    
+    // পেজ যখন ফোকাস পাবে (অন্য অ্যাপ থেকে ফিরে আসলে)
+    const onFocus = () => checkNotifications();
+    window.addEventListener('focus', onFocus);
+    
+    // রিয়েল-টাইম আপডেট ইভেন্ট
+    const onUpdate = () => checkNotifications();
+    window.addEventListener('notification-updated', onUpdate);
 
-    window.addEventListener('notification-updated', handleUpdate);
     return () => {
-      window.removeEventListener('notification-updated', handleUpdate);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('notification-updated', onUpdate);
     };
-  }, [checkUnreadStatus]);
+  }, [checkNotifications]);
 
 
   const handleLogout = () => {
@@ -278,19 +297,23 @@ export function Header() {
 
         <SearchSheet open={isSearchOpen} onOpenChange={setIsSearchOpen} />
 
-        {/* ★★★ NOTIFICATION BELL WITH RED DOT ★★★ */}
-        <Button asChild variant="ghost" size="icon" className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary">
-            <Link href="/notifications">
-                <Bell className={cn(
-                    "h-5 w-5 transition-transform origin-top",
-                    hasUnread ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
-                )} />
-                
-                {/* লাল ডট লজিক */}
-                {hasUnread && (
-                    <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-600 border-2 border-background animate-pulse shadow-sm" />
-                )}
-            </Link>
+        {/* ★★★ NOTIFICATION BELL ★★★ */}
+        {/* Link এর বদলে আমরা onClick ব্যবহার করছি যাতে ম্যানুয়ালি হ্যান্ডেল করতে পারি */}
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary"
+            onClick={handleBellClick} // ★ এখানে ক্লিক করলে লাল বাতি নিভবে
+        >
+            <Bell className={cn(
+                "h-5 w-5 transition-transform origin-top",
+                hasNewNotification ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
+            )} />
+            
+            {/* লাল ডট */}
+            {hasNewNotification && (
+                <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-600 border-2 border-background animate-pulse shadow-sm" />
+            )}
         </Button>
 
         <div className="relative">

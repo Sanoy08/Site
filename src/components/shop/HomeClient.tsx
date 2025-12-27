@@ -28,7 +28,7 @@ type HomeClientProps = {
 };
 
 const CATEGORIES = [
-    { name: "All", image: "/Elements/icons/9.webp", link: "/menus", color: "from-gray-400 to-slate-600" },
+    { name: "All", image: "/Categories/9.webp", link: "/menus", color: "from-gray-400 to-slate-600" },
     { name: "Chicken", image: "/Categories/7.webp", link: "/menus?category=chicken", color: "from-red-400 to-rose-600" },
     { name: "Mutton", image: "/Categories/4.webp", link: "/menus?category=mutton", color: "from-amber-500 to-orange-700" },
     { name: "Rice", image: "/Categories/2.webp", link: "/menus?category=rice", color: "from-yellow-300 to-orange-400" },    

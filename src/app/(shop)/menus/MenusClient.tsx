@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
 
 // --- Category Data ---
 const CATEGORIES = [
-    { name: "All", image: "/Elements/icons/9.webp" }, 
+    { name: "All", image: "/Categories/9.webp" }, 
     { name: "Chicken", image: "/Categories/7.webp" },
     { name: "Mutton", image: "/Categories/4.webp" },
     { name: "Rice", image: "/Categories/2.webp" },    

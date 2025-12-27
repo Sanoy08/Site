@@ -32,16 +32,15 @@ import { cn } from '@/lib/utils';
 
 // --- Category Data ---
 const CATEGORIES = [
-    { name: "All", image: "/Elements/icons/menu-icon.png" }, 
-    { name: "Biryani", image: "/Categories/chicken.webp" },
-    { name: "Thali", image: "/Categories/rice.webp" },
-    { name: "Rolls", image: "/Categories/fried.webp" },
-    { name: "Chicken", image: "/Categories/chicken.webp" },
-    { name: "Mutton", image: "/Categories/mutton.webp" },
-    { name: "Fish", image: "/Categories/fish.webp" },
-    { name: "Paneer", image: "/Categories/paneer.webp" },
-    { name: "Veg", image: "/Categories/veg.webp" },
-    { name: "Egg", image: "/Categories/all.webp" }, 
+    { name: "All", image: "/Elements/icons/9.webp" }, 
+    { name: "Chicken", image: "/Categories/7.webp" },
+    { name: "Mutton", image: "/Categories/4.webp" },
+    { name: "Rice", image: "/Categories/2.webp" },    
+    { name: "Fish", image: "/Categories/3.webp" },
+    { name: "Paneer", image: "/Categories/8.webp" },
+    { name: "Fried Items", image: "/Categories/5.webp" },
+    { name: "Chapati", image: "/Categories/6.webp" },
+    { name: "Veg", image: "/Categories/1.webp" },
 ];
 
 type MenusClientProps = {

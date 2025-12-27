@@ -28,13 +28,15 @@ type HomeClientProps = {
 };
 
 const CATEGORIES = [
-    { name: "Fried", image: "/Categories/Fried.webp", link: "/menus?category=Fried", color: "from-green-400 to-emerald-600" },
-    { name: "Rolls", image: "/Categories/fried.webp", link: "/menus?category=rolls", color: "from-yellow-400 to-orange-500" },
-    { name: "Paneer", image: "/Categories/paneer.webp", link: "/menus?category=paneer", color: "from-blue-400 to-indigo-500" },
-    { name: "Chicken", image: "/Categories/chicken.webp", link: "/menus?category=chicken", color: "from-red-400 to-rose-600" },
-    { name: "Fish", image: "/Categories/fish.webp", link: "/menus?category=fish", color: "from-cyan-400 to-blue-500" },
-    { name: "Mutton", image: "/Categories/mutton.webp", link: "/menus?category=mutton", color: "from-amber-400 to-orange-600" },
-    { name: "Veg", image: "/Categories/veg.webp", link: "/menus?category=veg", color: "from-green-400 to-lime-600" },
+    { name: "All", image: "/Elements/icons/9.webp", link: "/menus", color: "from-gray-400 to-slate-600" },
+    { name: "Chicken", image: "/Categories/7.webp", link: "/menus?category=chicken", color: "from-red-400 to-rose-600" },
+    { name: "Mutton", image: "/Categories/4.webp", link: "/menus?category=mutton", color: "from-amber-500 to-orange-700" },
+    { name: "Rice", image: "/Categories/2.webp", link: "/menus?category=rice", color: "from-yellow-300 to-orange-400" },    
+    { name: "Fish", image: "/Categories/3.webp", link: "/menus?category=fish", color: "from-cyan-400 to-blue-500" },
+    { name: "Paneer", image: "/Categories/8.webp", link: "/menus?category=paneer", color: "from-blue-400 to-indigo-500" },
+    { name: "Fried Items", image: "/Categories/5.webp", link: "/menus?category=fried", color: "from-green-400 to-emerald-600" },
+    { name: "Chapati", image: "/Categories/6.webp", link: "/menus?category=chapati", color: "from-orange-300 to-yellow-600" },
+    { name: "Veg", image: "/Categories/1.webp", link: "/menus?category=veg", color: "from-green-400 to-lime-600" },
 ];
 
 const FEATURES = [

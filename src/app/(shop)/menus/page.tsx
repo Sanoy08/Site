@@ -4,7 +4,7 @@ import { MenusClient } from './MenusClient';
 import { clientPromise } from '@/lib/mongodb';
 import { Product } from '@/lib/types';
 
-// রিয়েল-টাইম আপডেটের জন্য ক্যাশিং বন্ধ (Pusher এর সাথে সিঙ্ক থাকার জন্য)
+// রিয়েল-টাইম আপডেটের জন্য ক্যাশিং বন্ধ
 export const dynamic = 'force-dynamic';
 
 async function getMenuData() {
@@ -12,7 +12,15 @@ async function getMenuData() {
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
     
-    const menuItems = await db.collection('menuItems').find({}).toArray();
+    // ★★★ আপডেটেড সর্টিং লজিক ★★★
+    const menuItems = await db.collection('menuItems')
+      .find({})
+      .sort({ 
+        InStock: -1,       // ১. স্টক থাকলে আগে, না থাকলে সবার শেষে
+        isDailySpecial: -1, // ২. স্টকে থাকা আইটেমগুলোর মধ্যে 'Daily Special' সবার উপরে
+        Name: 1            // ৩. বাকি সব A-Z অর্ডারে
+      }) 
+      .toArray();
 
     const products: Product[] = menuItems.map((doc) => ({
       id: doc._id.toString(),
@@ -33,7 +41,8 @@ async function getMenuData() {
       reviewCount: 0,
       stock: doc.InStock ? 100 : 0,
       featured: doc.Bestseller === true || doc.Bestseller === "true",
-      isDailySpecial: doc.isDailySpecial === true,
+      // Daily Special ফিল্ড ম্যাপ করা হচ্ছে
+      isDailySpecial: doc.isDailySpecial === true, 
       reviews: [],
       createdAt: doc.CreatedAt ? new Date(doc.CreatedAt).toISOString() : undefined
     }));
@@ -51,7 +60,6 @@ export default async function MenusPage() {
 
   return (
     <div>
-      {/* হেডার সেকশন রিমুভ করা হয়েছে */}
       <MenusClient initialProducts={products} />
     </div>
   );

@@ -58,7 +58,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const [showVegOnly, setShowVegOnly] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   
-  // ★ AI Search States ★
+  // AI Search States
   const [aiSearchResults, setAiSearchResults] = useState<Product[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -80,9 +80,8 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     }
   }, [searchParams]);
 
-  // ★★★ AI Search Logic (Debounced) ★★★
+  // AI Search Logic (Debounced)
   useEffect(() => {
-      // যদি ৩ অক্ষরের কম হয়, তবে লোকাল ফিল্টার ব্যবহার হবে, API কল হবে না
       if (searchQuery.length < 3) {
           setAiSearchResults(null);
           return;
@@ -101,7 +100,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           } finally {
               setIsSearching(false);
           }
-      }, 500); // ৫০০ms অপেক্ষা করবে টাইপ থামানোর পর
+      }, 500);
 
       return () => clearTimeout(timeoutId);
   }, [searchQuery]);
@@ -113,21 +112,33 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       else router.push(`/menus?category=${category.toLowerCase()}`, { scroll: false });
   };
 
-  // ★★★ Advanced Filtering Logic ★★★
+  // ★★★ Advanced Filtering Logic (UPDATED) ★★★
   const filteredProducts = useMemo(() => {
-      // ১. সোর্স নির্ধারণ: যদি AI সার্চ রেজাল্ট থাকে, তবে সেটি ব্যবহার করো, নাহলে ইনিশিয়াল প্রোডাক্ট
-      // যদি সার্চ কোয়েরি ৩ অক্ষরের বেশি হয় কিন্তু রেজাল্ট নাল থাকে (মানে লোডিং বা এরর), তবে খালি অ্যারে দেখাবে না, আগেরটাই দেখাবে যতক্ষণ লোড না হয়
       let result = (searchQuery.length >= 3 && aiSearchResults) ? aiSearchResults : initialProducts;
 
-      // ২. ক্যাটাগরি ফিল্টার (সার্চের পরেও ক্যাটাগরি ফিল্টার অ্যাপ্লাই হবে)
+      // ২. ক্যাটাগরি ফিল্টার (Updated Logic)
       if (activeCategory !== 'All') {
-          result = result.filter(p => 
-              p.category.name.toLowerCase().includes(activeCategory.toLowerCase()) ||
-              (activeCategory === 'Veg' && (p.category.name.toLowerCase().includes('paneer')))
-          );
+          result = result.filter(p => {
+              const catName = p.category.name.toLowerCase();
+              const prodName = p.name.toLowerCase();
+              const targetCat = activeCategory.toLowerCase();
+
+              // ★ ফিক্স: যদি Veg ক্যাটাগরি সিলেক্ট করা থাকে
+              if (activeCategory === 'Veg') {
+                  return (
+                      catName.includes('veg') || 
+                      catName.includes('paneer') || 
+                      prodName.includes('veg') || // নামের মধ্যে 'veg' থাকলে দেখাবে
+                      prodName.includes('paneer') // নামের মধ্যে 'paneer' থাকলে দেখাবে
+                  );
+              }
+
+              // অন্যান্য ক্যাটাগরির জন্য সাধারণ লজিক
+              return catName.includes(targetCat);
+          });
       }
 
-      // ৩. লোকাল সার্চ ফিল্টার (যদি ৩ অক্ষরের কম হয়)
+      // ৩. লোকাল সার্চ ফিল্টার
       if (searchQuery && searchQuery.length < 3) {
           const q = searchQuery.toLowerCase();
           result = result.filter(p => 
@@ -136,12 +147,13 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           );
       }
 
-      // ৪. ভেজ ফিল্টার
+      // ৪. ভেজ অনলি টগল (Veg Toggle)
       if (showVegOnly) {
           result = result.filter(p => 
               p.category.name.toLowerCase().includes('veg') || 
               p.category.name.toLowerCase().includes('paneer') ||
-              p.name.toLowerCase().includes('veg')
+              p.name.toLowerCase().includes('veg') || // এখানেও নাম চেক করা হচ্ছে
+              p.name.toLowerCase().includes('paneer')
           );
       }
 
@@ -173,7 +185,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                       />
-                      {/* লোডিং বা ক্লিয়ার বাটন */}
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                           {isSearching ? (
                               <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -185,7 +196,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                       </div>
                   </div>
                   
-                  {/* Mobile Filter Sheet (UI Same as before) */}
+                  {/* Mobile Filter Sheet */}
                   <div className="md:hidden">
                       <Sheet>
                         <SheetTrigger asChild>

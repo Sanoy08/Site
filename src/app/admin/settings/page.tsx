@@ -2,25 +2,72 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Store, Wallet, Save, Bell, Download } from 'lucide-react';
+import { Settings, Store, Wallet, Save, Bell, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePushNotification } from '@/hooks/use-push-notification'; // আমাদের তৈরি হুক
+import { usePushNotification } from '@/hooks/use-push-notification';
 
 export default function AdminSettingsPage() {
-  const { subscribeToPush, isSubscribed, isLoading } = usePushNotification();
+  const { subscribeToPush, isSubscribed, isLoading: isPushLoading } = usePushNotification();
+  
+  // ★ স্টোর ওপেন স্টেট
+  const [isStoreOpen, setIsStoreOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ১. পেজ লোড হলে বর্তমান স্ট্যাটাস আনো
+  useEffect(() => {
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            if (data.success) {
+                setIsStoreOpen(data.isStoreOpen);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchSettings();
+  }, []);
+
+  // ২. সুইচ টগল করার লজিক
+  const handleStoreToggle = async (checked: boolean) => {
+      // লোকাল স্টেট আপডেট (দ্রুত রেসপন্সের জন্য)
+      setIsStoreOpen(checked);
+      
+      try {
+          // সার্ভারে আপডেট
+          await fetch('/api/settings', {
+              method: 'POST',
+              body: JSON.stringify({ isStoreOpen: checked })
+          });
+          
+          if (checked) toast.success("Store is now OPEN ✅");
+          else toast.warning("Store is now CLOSED ⛔");
+
+      } catch (error) {
+          toast.error("Failed to update status");
+          setIsStoreOpen(!checked); // এরর হলে রিভার্ট করো
+      }
+  };
 
   const handleSave = () => {
-    toast.success("Settings saved successfully!");
+    toast.success("Other settings saved successfully!");
   }
 
   const handleEnableNotifications = async () => {
      await subscribeToPush();
-     // হুক নিজেই টোস্ট দেখাবে
+  }
+
+  if (isLoading) {
+      return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
   }
 
   return (
@@ -34,7 +81,7 @@ export default function AdminSettingsPage() {
 
       <div className="grid gap-8">
         
-        {/* Notification Settings */}
+        {/* Notification Settings (Same as before) */}
         <Card className="border-0 shadow-md">
             <CardHeader className="bg-muted/30 border-b">
                 <div className="flex items-center gap-2">
@@ -51,11 +98,11 @@ export default function AdminSettingsPage() {
                     </div>
                     <Button 
                         onClick={handleEnableNotifications} 
-                        disabled={isSubscribed || isLoading}
+                        disabled={isSubscribed || isPushLoading}
                         variant={isSubscribed ? "outline" : "default"}
                         className={isSubscribed ? "text-green-600 border-green-200 bg-green-50" : ""}
                     >
-                        {isLoading ? "Enabling..." : isSubscribed ? "Notifications Active" : "Enable Notifications"}
+                        {isPushLoading ? "Enabling..." : isSubscribed ? "Notifications Active" : "Enable Notifications"}
                     </Button>
                 </div>
             </CardContent>
@@ -70,6 +117,24 @@ export default function AdminSettingsPage() {
                 </div>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
+                
+                {/* ★★★ Accepting Orders Switch ★★★ */}
+                <div className={`flex items-center justify-between border p-4 rounded-xl transition-colors ${isStoreOpen ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+                    <div className="space-y-0.5">
+                        <Label className={`text-base font-semibold ${isStoreOpen ? 'text-green-900' : 'text-red-900'}`}>
+                            {isStoreOpen ? 'Accepting Orders (OPEN)' : 'Store Closed'}
+                        </Label>
+                        <p className={`text-xs ${isStoreOpen ? 'text-green-700' : 'text-red-700'}`}>
+                            {isStoreOpen ? 'Customers can place orders normally.' : 'The store is closed. No orders can be placed.'}
+                        </p>
+                    </div>
+                    <Switch 
+                        checked={isStoreOpen}
+                        onCheckedChange={handleStoreToggle}
+                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500" 
+                    />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label>Delivery Charge (₹)</Label>
@@ -80,17 +145,10 @@ export default function AdminSettingsPage() {
                         <Input type="number" defaultValue="499" placeholder="499" />
                     </div>
                 </div>
-                <div className="flex items-center justify-between border p-4 rounded-xl bg-green-50 border-green-100">
-                    <div className="space-y-0.5">
-                        <Label className="text-base font-semibold text-green-900">Accepting Orders</Label>
-                        <p className="text-xs text-green-700">Turn this off to temporarily close the store.</p>
-                    </div>
-                    <Switch defaultChecked className="data-[state=checked]:bg-green-600" />
-                </div>
             </CardContent>
         </Card>
 
-        {/* Wallet Settings */}
+        {/* Wallet Settings (Same as before) */}
         <Card className="border-0 shadow-md">
             <CardHeader className="bg-muted/30 border-b">
                 <div className="flex items-center gap-2">

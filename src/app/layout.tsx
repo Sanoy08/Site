@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 
 import type { Metadata, Viewport } from 'next';
+import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider'; // ★ এটি ইম্পোর্ট করুন
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartProvider';
@@ -94,10 +95,13 @@ export default function RootLayout({
               <GlobalLoader />
             </Suspense>
 
-            {/* ২. নোটিফিকেশন প্রম্পট এখানে যুক্ত করা হয়েছে */}
             <NotificationPrompt />
             
-            {children}
+            {/* ★★★ এখানে স্টোর স্ট্যাটাস প্রভাইডার বসানো হলো ★★★ */}
+            <StoreStatusProvider>
+                {children}
+            </StoreStatusProvider>
+            
             <Toaster />
           </CartProvider>
       </body>

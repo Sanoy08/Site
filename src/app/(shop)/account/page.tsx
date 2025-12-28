@@ -21,7 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Loader2, Cake, Heart, Lock, Eye, EyeOff, User, 
-  Mail, ShieldCheck, Save, Sparkles, LogOut, CalendarIcon, ChevronDown 
+  Mail, ShieldCheck, Save, Sparkles, LogOut, CalendarIcon 
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { NotificationPermission } from '@/components/shared/NotificationPermission';
@@ -30,8 +30,8 @@ import { cn } from '@/lib/utils';
 
 // --- IMPORTS FOR CALENDAR ---
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -60,6 +60,10 @@ export default function AccountProfilePage() {
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
+
+  // Modal Open States
+  const [isDobOpen, setIsDobOpen] = useState(false);
+  const [isAnniversaryOpen, setIsAnniversaryOpen] = useState(false);
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -109,6 +113,16 @@ export default function AccountProfilePage() {
       })
     }
   }, [user, profileForm]);
+
+  // Prevent Body Scroll Effect
+  useEffect(() => {
+    if (isDobOpen || isAnniversaryOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isDobOpen, isAnniversaryOpen]);
 
   async function onProfileSubmit(data: ProfileFormValues) {
     if (!user) return;
@@ -171,7 +185,6 @@ export default function AccountProfilePage() {
   // @ts-ignore
   const hasAnniversary = !!user?.anniversary && user.anniversary !== "";
 
-  // বর্তমান সাল থেকে ১০০ বছর পিছন পর্যন্ত দেখাবে
   const currentYear = new Date().getFullYear();
   const fromYear = currentYear - 100;
   const toYear = currentYear;
@@ -181,7 +194,6 @@ export default function AccountProfilePage() {
   return (
     <div className="bg-gray-50/50 min-h-screen pb-20">
       
-      {/* --- 1. HEADER SECTION --- */}
       <div className="bg-white border-b pt-10 pb-16 relative overflow-hidden">
          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
          <div className="container relative z-10">
@@ -209,7 +221,6 @@ export default function AccountProfilePage() {
       <div className="container -mt-8 relative z-20">
         <div className="grid lg:grid-cols-3 gap-8">
             
-            {/* --- LEFT: PROFILE FORM --- */}
             <Card className="lg:col-span-2 shadow-lg border-0 overflow-hidden">
                 <CardHeader className="bg-white border-b pb-6">
                     <CardTitle className="flex items-center gap-2 text-xl">
@@ -251,7 +262,6 @@ export default function AccountProfilePage() {
                                 </FormItem>
                             )} />
 
-                            {/* --- SPECIAL DATES SECTION (PREMIUM CALENDAR) --- */}
                             <div className="p-6 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl border border-amber-100 space-y-6">
                                 <div className="flex items-center gap-2 text-amber-900 font-semibold pb-3 border-b border-amber-200/60">
                                     <div className="p-1.5 bg-amber-100 rounded-md"><Sparkles className="h-4 w-4 text-amber-600" /></div>
@@ -268,8 +278,9 @@ export default function AccountProfilePage() {
                                             <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
                                                 <Cake className="h-3.5 w-3.5 text-pink-500" /> Birthday {hasDob && <Lock className="h-3 w-3 ml-auto opacity-50" />}
                                             </FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
+                                            
+                                            <Dialog open={isDobOpen} onOpenChange={setIsDobOpen}>
+                                                <DialogTrigger asChild>
                                                     <FormControl>
                                                         <Button
                                                             disabled={hasDob}
@@ -288,37 +299,59 @@ export default function AccountProfilePage() {
                                                             <CalendarIcon className="ml-auto h-4 w-4 text-amber-500 opacity-80" />
                                                         </Button>
                                                     </FormControl>
-                                                </PopoverTrigger>
+                                                </DialogTrigger>
+                                                
                                                 {!hasDob && (
-                                                    <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl border-amber-100" align="start">
-                                                        <div className="p-3 border-b border-amber-100 bg-amber-50/30">
-                                                            <p className="text-xs font-semibold text-center text-amber-900">Select Birthday</p>
+                                                    <DialogContent className="w-auto p-0 rounded-2xl overflow-hidden border-0 shadow-2xl">
+                                                        <DialogHeader className="p-4 bg-amber-50/50 border-b border-amber-100">
+                                                            <DialogTitle className="text-center text-amber-900 flex flex-col items-center gap-1">
+                                                                <span>Select Your Birthday 🎂</span>
+                                                                <span className="text-xs font-normal text-muted-foreground">We'll send you a gift!</span>
+                                                            </DialogTitle>
+                                                        </DialogHeader>
+                                                        <div className="p-4 flex justify-center bg-white">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={field.value ? new Date(field.value) : undefined}
+                                                                onSelect={(date) => {
+                                                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                                                    setIsDobOpen(false);
+                                                                }}
+                                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                                                initialFocus
+                                                                captionLayout="dropdown-buttons"
+                                                                fromYear={fromYear} 
+                                                                toYear={toYear}
+                                                                className="rounded-md"
+                                                                classNames={{
+                                                                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                                                                    month: "space-y-4",
+                                                                    caption: "flex justify-center pt-1 relative items-center",
+                                                                    caption_label: "hidden",
+                                                                    caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
+                                                                    // ★★★ NAV HIDDEN HERE ★★★
+                                                                    nav: "hidden", 
+                                                                    table: "w-full border-collapse space-y-1",
+                                                                    head_row: "flex",
+                                                                    head_cell: "text-muted-foreground rounded-md w-12 font-normal text-[0.8rem] h-10 flex items-center justify-center",
+                                                                    row: "flex w-full mt-2",
+                                                                    cell: "h-12 w-12 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                                                                    day: "h-12 w-12 p-0 font-normal aria-selected:opacity-100 hover:bg-amber-100 rounded-lg transition-colors",
+                                                                    day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground font-bold shadow-md",
+                                                                    day_today: "bg-amber-50 text-amber-900 font-bold border border-amber-200",
+                                                                    day_outside: "text-muted-foreground opacity-50",
+                                                                    day_disabled: "text-muted-foreground opacity-50",
+                                                                    day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                                                                    day_hidden: "invisible",
+                                                                    dropdown: "bg-background border border-amber-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50 shadow-sm",
+                                                                    dropdown_month: "flex-1",
+                                                                    dropdown_year: "flex-1",
+                                                                }}
+                                                            />
                                                         </div>
-                                                        <Calendar
-                                                            mode="single"
-                                                            selected={field.value ? new Date(field.value) : undefined}
-                                                            onSelect={(date) => {
-                                                                field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                                            }}
-                                                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                                            initialFocus
-                                                            captionLayout="dropdown-buttons" // ★ ইয়ার এবং মান্থ ড্রপডাউন
-                                                            fromYear={fromYear} 
-                                                            toYear={toYear}
-                                                            className="p-3"
-                                                            classNames={{
-                                                                caption_label: "hidden", // ডিফল্ট টেক্সট লুকিয়ে রাখা
-                                                                caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
-                                                                dropdown: "bg-background border border-amber-200 rounded-md py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50",
-                                                                dropdown_month: "flex-1",
-                                                                dropdown_year: "flex-1",
-                                                                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                                                                day_today: "bg-amber-50 text-amber-900 font-bold",
-                                                            }}
-                                                        />
-                                                    </PopoverContent>
+                                                    </DialogContent>
                                                 )}
-                                            </Popover>
+                                            </Dialog>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -329,8 +362,9 @@ export default function AccountProfilePage() {
                                             <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
                                                 <Heart className="h-3.5 w-3.5 text-red-500" /> Anniversary {hasAnniversary && <Lock className="h-3 w-3 ml-auto opacity-50" />}
                                             </FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
+                                            
+                                            <Dialog open={isAnniversaryOpen} onOpenChange={setIsAnniversaryOpen}>
+                                                <DialogTrigger asChild>
                                                     <FormControl>
                                                         <Button
                                                             disabled={hasAnniversary}
@@ -349,37 +383,55 @@ export default function AccountProfilePage() {
                                                             <CalendarIcon className="ml-auto h-4 w-4 text-amber-500 opacity-80" />
                                                         </Button>
                                                     </FormControl>
-                                                </PopoverTrigger>
+                                                </DialogTrigger>
+                                                
                                                 {!hasAnniversary && (
-                                                    <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl border-amber-100" align="start">
-                                                        <div className="p-3 border-b border-amber-100 bg-amber-50/30">
-                                                            <p className="text-xs font-semibold text-center text-amber-900">Select Anniversary</p>
+                                                    <DialogContent className="w-auto p-0 rounded-2xl overflow-hidden border-0 shadow-2xl">
+                                                        <DialogHeader className="p-4 bg-amber-50/50 border-b border-amber-100">
+                                                            <DialogTitle className="text-center text-amber-900 flex flex-col items-center gap-1">
+                                                                <span>Select Anniversary ❤️</span>
+                                                                <span className="text-xs font-normal text-muted-foreground">Celebrate with us!</span>
+                                                            </DialogTitle>
+                                                        </DialogHeader>
+                                                        <div className="p-4 flex justify-center bg-white">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={field.value ? new Date(field.value) : undefined}
+                                                                onSelect={(date) => {
+                                                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                                                    setIsAnniversaryOpen(false);
+                                                                }}
+                                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                                                initialFocus
+                                                                captionLayout="dropdown-buttons"
+                                                                fromYear={fromYear} 
+                                                                toYear={toYear}
+                                                                className="rounded-md"
+                                                                classNames={{
+                                                                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                                                                    month: "space-y-4",
+                                                                    caption: "flex justify-center pt-1 relative items-center",
+                                                                    caption_label: "hidden",
+                                                                    caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
+                                                                    // ★★★ NAV HIDDEN HERE ★★★
+                                                                    nav: "hidden", 
+                                                                    table: "w-full border-collapse space-y-1",
+                                                                    head_row: "flex",
+                                                                    head_cell: "text-muted-foreground rounded-md w-12 font-normal text-[0.8rem] h-10 flex items-center justify-center", 
+                                                                    row: "flex w-full mt-2",
+                                                                    cell: "h-12 w-12 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20", 
+                                                                    day: "h-12 w-12 p-0 font-normal aria-selected:opacity-100 hover:bg-amber-100 rounded-lg transition-colors", 
+                                                                    day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground font-bold shadow-md",
+                                                                    day_today: "bg-amber-50 text-amber-900 font-bold border border-amber-200",
+                                                                    dropdown: "bg-background border border-amber-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50 shadow-sm",
+                                                                    dropdown_month: "flex-1",
+                                                                    dropdown_year: "flex-1",
+                                                                }}
+                                                            />
                                                         </div>
-                                                        <Calendar
-                                                            mode="single"
-                                                            selected={field.value ? new Date(field.value) : undefined}
-                                                            onSelect={(date) => {
-                                                                field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                                            }}
-                                                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                                            initialFocus
-                                                            captionLayout="dropdown-buttons"
-                                                            fromYear={fromYear} 
-                                                            toYear={toYear}
-                                                            className="p-3"
-                                                            classNames={{
-                                                                caption_label: "hidden",
-                                                                caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
-                                                                dropdown: "bg-background border border-amber-200 rounded-md py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50",
-                                                                dropdown_month: "flex-1",
-                                                                dropdown_year: "flex-1",
-                                                                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                                                                day_today: "bg-amber-50 text-amber-900 font-bold",
-                                                            }}
-                                                        />
-                                                    </PopoverContent>
+                                                    </DialogContent>
                                                 )}
-                                            </Popover>
+                                            </Dialog>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -397,7 +449,6 @@ export default function AccountProfilePage() {
                 </CardContent>
             </Card>
 
-            {/* --- RIGHT: SECURITY FORM (Same as before) --- */}
             <Card className="shadow-lg border-0 h-fit sticky top-24">
                 <CardHeader className="bg-white border-b pb-6">
                     <CardTitle className="flex items-center gap-2 text-xl">

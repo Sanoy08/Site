@@ -438,7 +438,9 @@ export default function CheckoutPage() {
         if (!res.ok) throw new Error(data.error || 'Order placement failed');
 
         setIsSuccess(true);
-        toast.success('Order placed successfully!');
+        toast.warning('Almost there! ⏳', {
+    description: 'Please verify your order on WhatsApp now.'
+});
         clearCart();
         
         const orderNum = data.orderId || '0000'; 
@@ -655,7 +657,7 @@ export default function CheckoutPage() {
                                 <DialogContent className="w-[90%] max-w-[340px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl bg-white">
                                     <DialogHeader className="p-5 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-primary/10">
                                         <DialogTitle className="text-center text-primary flex flex-col items-center gap-1">
-                                            <span className="text-lg">Select Delivery Date 📅</span>
+                                            <span className="text-lg">Select Delivery Date</span>
                                         </DialogTitle>
                                     </DialogHeader>
                                     

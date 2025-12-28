@@ -73,18 +73,9 @@ const years = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYe
 
 // --- ANIMATION VARIANTS ---
 const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 50 : -50,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction < 0 ? 50 : -50,
-    opacity: 0,
-  }),
+  enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction < 0 ? 50 : -50, opacity: 0 }),
 };
 
 // --- REUSABLE SWIPEABLE CALENDAR COMPONENT ---
@@ -114,15 +105,12 @@ function SwipeableCalendar({
     setViewDate(newDate);
   };
 
-  // Swipe Logic
   const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const swipeThreshold = 50;
     if (info.offset.x < -swipeThreshold) {
-      // Swipe Left -> Next Month
       setDirection(1);
       setViewDate(addMonths(viewDate, 1));
     } else if (info.offset.x > swipeThreshold) {
-      // Swipe Right -> Previous Month
       setDirection(-1);
       setViewDate(subMonths(viewDate, 1));
     }
@@ -130,7 +118,6 @@ function SwipeableCalendar({
 
   return (
     <div className="flex flex-col items-center gap-4 p-4 bg-white overflow-hidden">
-        {/* Selectors */}
         <div className="flex gap-2 w-full max-w-xs z-20 relative">
             <Select 
                 value={months[getMonth(viewDate)]} 
@@ -163,19 +150,18 @@ function SwipeableCalendar({
             </Select>
         </div>
 
-        {/* Animated Swipe Area */}
         <div className="relative w-full overflow-hidden min-h-[350px]">
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
-              key={viewDate.toISOString()} // Key change triggers animation
+              key={viewDate.toISOString()}
               custom={direction}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
               transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-              drag="x" // Enable horizontal drag
-              dragConstraints={{ left: 0, right: 0 }} // Snap back
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
               onDragEnd={onDragEnd}
               className="w-full h-full cursor-grab active:cursor-grabbing touch-pan-y"
@@ -183,7 +169,7 @@ function SwipeableCalendar({
               <Calendar
                   mode="single"
                   month={viewDate}
-                  onMonthChange={setViewDate} // Keep sync
+                  onMonthChange={setViewDate}
                   selected={selected}
                   onSelect={(date) => {
                       onSelect(date);
@@ -197,7 +183,7 @@ function SwipeableCalendar({
                       month: "space-y-4 w-full",
                       caption: "hidden", 
                       nav: "hidden", 
-                      table: "w-full border-collapse space-y-1 select-none", // Prevent text selection on swipe
+                      table: "w-full border-collapse space-y-1 select-none",
                       head_row: "flex w-full justify-between",
                       head_cell: "text-muted-foreground rounded-md w-9 font-medium text-[0.8rem] h-9 flex items-center justify-center",
                       row: "flex w-full mt-2 justify-between",
@@ -359,25 +345,26 @@ export default function AccountProfilePage() {
   if (!user) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="bg-gray-50/50 min-h-screen pb-20">
+    <div className="bg-gray-50 min-h-screen pb-20">
       
-      <div className="bg-white border-b pt-10 pb-16 relative overflow-hidden">
+      {/* --- HEADER SECTION (Refined) --- */}
+      <div className="bg-white border-b border-gray-100 pt-10 pb-16 relative overflow-hidden">
          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
          <div className="container relative z-10">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
-                <Avatar className="h-28 w-28 border-4 border-white shadow-xl">
+                <Avatar className="h-28 w-28 border-4 border-white shadow-xl ring-1 ring-gray-100">
                     <AvatarImage src={user?.picture || ''} alt={user?.name || ''} />
                     <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary to-orange-600 text-white">
                         {getInitials(user.name)}
                     </AvatarFallback>
                 </Avatar>
                 <div className="text-center md:text-left mb-2 flex-1">
-                    <h1 className="text-3xl font-bold text-gray-900">Hello, {user.name.split(' ')[0]}! 👋</h1>
-                    <p className="text-muted-foreground mt-1">Manage your personal info, security, and preferences.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Hello, {user.name.split(' ')[0]}! 👋</h1>
+                    <p className="text-gray-500 mt-1 font-medium">Manage your personal info, security, and preferences.</p>
                 </div>
                 <div className="flex gap-3">
                     <NotificationPermission />
-                    <Button variant="outline" onClick={logout} className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
+                    <Button variant="outline" onClick={logout} className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 bg-white shadow-sm">
                         <LogOut className="h-4 w-4 mr-2" /> Logout
                     </Button>
                 </div>
@@ -388,29 +375,34 @@ export default function AccountProfilePage() {
       <div className="container -mt-8 relative z-20">
         <div className="grid lg:grid-cols-3 gap-8">
             
-            <Card className="lg:col-span-2 shadow-lg border-0 overflow-hidden">
-                <CardHeader className="bg-white border-b pb-6">
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><User className="h-5 w-5" /></div>
-                        Personal Information
-                    </CardTitle>
-                    <CardDescription>Update your personal details here.</CardDescription>
+            {/* --- LEFT: PROFILE FORM (Clean Card Style) --- */}
+            {/* ★★★ FIX: Changed shadow-lg to shadow-sm, removed overflow-hidden for cleaner look ★★★ */}
+            <Card className="lg:col-span-2 shadow-sm border border-gray-200 bg-white rounded-2xl">
+                <CardHeader className="pb-0 pt-6 px-6 md:px-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><User className="h-5 w-5" /></div>
+                        <div>
+                            <CardTitle className="text-xl font-bold text-gray-900">Personal Information</CardTitle>
+                            <CardDescription className="text-gray-500">Update your personal details here.</CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
+                
                 <CardContent className="p-6 md:p-8 space-y-6">
                     <Form {...profileForm}>
                         <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <FormField control={profileForm.control} name="firstName" render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>First Name</FormLabel>
-                                        <FormControl><Input placeholder="John" {...field} className="h-12 bg-gray-50/50" /></FormControl>
+                                        <FormLabel className="text-gray-700 font-medium">First Name</FormLabel>
+                                        <FormControl><Input placeholder="John" {...field} className="h-12 bg-white border-gray-200 focus:border-primary focus:ring-primary/20 rounded-xl" /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
                                 <FormField control={profileForm.control} name="lastName" render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Last Name</FormLabel>
-                                        <FormControl><Input placeholder="Doe" {...field} className="h-12 bg-gray-50/50" /></FormControl>
+                                        <FormLabel className="text-gray-700 font-medium">Last Name</FormLabel>
+                                        <FormControl><Input placeholder="Doe" {...field} className="h-12 bg-white border-gray-200 focus:border-primary focus:ring-primary/20 rounded-xl" /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -418,32 +410,31 @@ export default function AccountProfilePage() {
 
                             <FormField control={profileForm.control} name="email" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Email Address</FormLabel>
+                                    <FormLabel className="text-gray-700 font-medium">Email Address</FormLabel>
                                     <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                         <FormControl>
-                                            <Input placeholder="email@example.com" {...field} disabled className="pl-10 h-12 bg-gray-100 text-muted-foreground cursor-not-allowed border-transparent" />
+                                            <Input placeholder="email@example.com" {...field} disabled className="pl-10 h-12 bg-gray-50 text-gray-500 cursor-not-allowed border-gray-200 rounded-xl" />
                                         </FormControl>
                                     </div>
                                     <FormMessage />
                                 </FormItem>
                             )} />
 
-                            <div className="p-6 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl border border-amber-100 space-y-6">
-                                <div className="flex items-center gap-2 text-amber-900 font-semibold pb-3 border-b border-amber-200/60">
-                                    <div className="p-1.5 bg-amber-100 rounded-md"><Sparkles className="h-4 w-4 text-amber-600" /></div>
-                                    Special Dates 
-                                    <span className="text-[10px] font-normal text-amber-700 bg-amber-100/50 px-2 py-0.5 rounded-full ml-auto border border-amber-200">
-                                        ✨ Get exclusive offers
+                            {/* Special Dates Section - Slightly distinct but integrated */}
+                            <div className="p-6 bg-gradient-to-br from-amber-50/80 to-orange-50/50 rounded-2xl border border-amber-100 space-y-5">
+                                <div className="flex items-center gap-2 text-amber-900 font-bold pb-2 border-b border-amber-200/50">
+                                    <Sparkles className="h-4 w-4 text-amber-600" /> Special Dates 
+                                    <span className="text-[10px] font-medium text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full ml-auto">
+                                        Exclusive Offers
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     
-                                    {/* ★★★ SWIPEABLE BIRTHDAY CALENDAR ★★★ */}
                                     <FormField control={profileForm.control} name="dob" render={({ field }) => (
                                         <FormItem className="flex flex-col">
-                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
-                                                <Cake className="h-3.5 w-3.5 text-pink-500" /> Birthday {hasDob && <Lock className="h-3 w-3 ml-auto opacity-50" />}
+                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-bold mb-1.5">
+                                                <Cake className="h-3.5 w-3.5 text-pink-500" /> Birthday {hasDob && <Lock className="h-3 w-3 ml-auto opacity-40" />}
                                             </FormLabel>
                                             
                                             <Dialog open={isDobOpen} onOpenChange={setIsDobOpen}>
@@ -453,17 +444,17 @@ export default function AccountProfilePage() {
                                                             disabled={hasDob}
                                                             variant={"outline"}
                                                             className={cn(
-                                                                "h-12 w-full pl-3 text-left font-normal border-amber-200/60 bg-white hover:bg-amber-50/50 hover:border-amber-300 transition-all rounded-xl shadow-sm",
-                                                                !field.value && "text-muted-foreground",
-                                                                hasDob && "bg-gray-50 opacity-60 cursor-not-allowed border-dashed"
+                                                                "h-12 w-full pl-3 text-left font-normal border-amber-200/60 bg-white hover:bg-amber-50/50 hover:border-amber-300 transition-all rounded-xl shadow-sm hover:shadow-md",
+                                                                !field.value && "text-gray-400",
+                                                                hasDob && "bg-gray-50 opacity-70 cursor-not-allowed border-dashed shadow-none"
                                                             )}
                                                         >
                                                             {field.value ? (
-                                                                <span className="font-medium text-gray-900">{format(new Date(field.value), "MMMM do, yyyy")}</span>
+                                                                <span className="font-semibold text-gray-900">{format(new Date(field.value), "MMMM do, yyyy")}</span>
                                                             ) : (
                                                                 <span>Pick your birthday</span>
                                                             )}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 text-amber-500 opacity-80" />
+                                                            <CalendarIcon className="ml-auto h-4 w-4 text-amber-500" />
                                                         </Button>
                                                     </FormControl>
                                                 </DialogTrigger>
@@ -475,7 +466,6 @@ export default function AccountProfilePage() {
                                                                 <span className="text-lg">Select Birthday 🎂</span>
                                                             </DialogTitle>
                                                         </DialogHeader>
-                                                        
                                                         <SwipeableCalendar 
                                                             viewDate={dobViewDate}
                                                             setViewDate={setDobViewDate}
@@ -490,11 +480,10 @@ export default function AccountProfilePage() {
                                         </FormItem>
                                     )} />
 
-                                    {/* ★★★ SWIPEABLE ANNIVERSARY CALENDAR ★★★ */}
                                     <FormField control={profileForm.control} name="anniversary" render={({ field }) => (
                                         <FormItem className="flex flex-col">
-                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
-                                                <Heart className="h-3.5 w-3.5 text-red-500" /> Anniversary {hasAnniversary && <Lock className="h-3 w-3 ml-auto opacity-50" />}
+                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-bold mb-1.5">
+                                                <Heart className="h-3.5 w-3.5 text-red-500" /> Anniversary {hasAnniversary && <Lock className="h-3 w-3 ml-auto opacity-40" />}
                                             </FormLabel>
                                             
                                             <Dialog open={isAnniversaryOpen} onOpenChange={setIsAnniversaryOpen}>
@@ -504,17 +493,17 @@ export default function AccountProfilePage() {
                                                             disabled={hasAnniversary}
                                                             variant={"outline"}
                                                             className={cn(
-                                                                "h-12 w-full pl-3 text-left font-normal border-amber-200/60 bg-white hover:bg-amber-50/50 hover:border-amber-300 transition-all rounded-xl shadow-sm",
-                                                                !field.value && "text-muted-foreground",
-                                                                hasAnniversary && "bg-gray-50 opacity-60 cursor-not-allowed border-dashed"
+                                                                "h-12 w-full pl-3 text-left font-normal border-amber-200/60 bg-white hover:bg-amber-50/50 hover:border-amber-300 transition-all rounded-xl shadow-sm hover:shadow-md",
+                                                                !field.value && "text-gray-400",
+                                                                hasAnniversary && "bg-gray-50 opacity-70 cursor-not-allowed border-dashed shadow-none"
                                                             )}
                                                         >
                                                             {field.value ? (
-                                                                <span className="font-medium text-gray-900">{format(new Date(field.value), "MMMM do, yyyy")}</span>
+                                                                <span className="font-semibold text-gray-900">{format(new Date(field.value), "MMMM do, yyyy")}</span>
                                                             ) : (
                                                                 <span>Pick anniversary date</span>
                                                             )}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 text-amber-500 opacity-80" />
+                                                            <CalendarIcon className="ml-auto h-4 w-4 text-amber-500" />
                                                         </Button>
                                                     </FormControl>
                                                 </DialogTrigger>
@@ -526,7 +515,6 @@ export default function AccountProfilePage() {
                                                                 <span className="text-lg">Select Anniversary ❤️</span>
                                                             </DialogTitle>
                                                         </DialogHeader>
-                                                        
                                                         <SwipeableCalendar 
                                                             viewDate={anniversaryViewDate}
                                                             setViewDate={setAnniversaryViewDate}
@@ -544,7 +532,7 @@ export default function AccountProfilePage() {
                             </div>
 
                             <div className="flex justify-end pt-2">
-                                <Button type="submit" disabled={isProfileSubmitting} className="min-w-[140px] h-12 text-base shadow-lg shadow-primary/20">
+                                <Button type="submit" disabled={isProfileSubmitting} className="min-w-[140px] h-12 text-base shadow-lg shadow-primary/20 rounded-xl bg-primary hover:bg-primary/90">
                                     {isProfileSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                     Save Changes
                                 </Button>
@@ -554,24 +542,28 @@ export default function AccountProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 h-fit sticky top-24">
-                <CardHeader className="bg-white border-b pb-6">
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <div className="p-2 bg-green-50 text-green-600 rounded-lg"><ShieldCheck className="h-5 w-5" /></div>
-                        Security
-                    </CardTitle>
-                    <CardDescription>Update your password.</CardDescription>
+            {/* --- RIGHT: SECURITY FORM (Clean Card Style) --- */}
+            {/* ★★★ FIX: Consistent styling with Profile Card ★★★ */}
+            <Card className="shadow-sm border border-gray-200 bg-white rounded-2xl h-fit sticky top-24">
+                <CardHeader className="pb-0 pt-6 px-6 md:px-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-green-50 text-green-600 rounded-xl"><ShieldCheck className="h-5 w-5" /></div>
+                        <div>
+                            <CardTitle className="text-xl font-bold text-gray-900">Security</CardTitle>
+                            <CardDescription className="text-gray-500">Update your password.</CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-6">
+                <CardContent className="p-6 md:p-8 space-y-6">
                     <Form {...passwordForm}>
-                        <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                        <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-5">
                             <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Current Password</FormLabel>
+                                    <FormLabel className="text-gray-700 font-medium">Current Password</FormLabel>
                                     <FormControl>
                                         <div className="relative">
-                                            <Input type={showCurrentPass ? "text" : "password"} {...field} className="pr-10 h-11" />
-                                            <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                            <Input type={showCurrentPass ? "text" : "password"} {...field} className="pr-10 h-12 bg-white border-gray-200 rounded-xl focus:border-primary" />
+                                            <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                                 {showCurrentPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
@@ -580,15 +572,15 @@ export default function AccountProfilePage() {
                                 </FormItem>
                             )} />
                             
-                            <Separator />
+                            <Separator className="bg-gray-100" />
 
                             <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>New Password</FormLabel>
+                                    <FormLabel className="text-gray-700 font-medium">New Password</FormLabel>
                                     <FormControl>
                                         <div className="relative">
-                                            <Input type={showNewPass ? "text" : "password"} {...field} className="pr-10 h-11" />
-                                            <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                            <Input type={showNewPass ? "text" : "password"} {...field} className="pr-10 h-12 bg-white border-gray-200 rounded-xl focus:border-primary" />
+                                            <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                                 {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
@@ -599,11 +591,11 @@ export default function AccountProfilePage() {
 
                             <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Confirm Password</FormLabel>
+                                    <FormLabel className="text-gray-700 font-medium">Confirm Password</FormLabel>
                                     <FormControl>
                                         <div className="relative">
-                                            <Input type={showConfirmPass ? "text" : "password"} {...field} className="pr-10 h-11" />
-                                            <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                            <Input type={showConfirmPass ? "text" : "password"} {...field} className="pr-10 h-12 bg-white border-gray-200 rounded-xl focus:border-primary" />
+                                            <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                                 {showConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
@@ -612,7 +604,7 @@ export default function AccountProfilePage() {
                                 </FormItem>
                             )} />
 
-                            <Button type="submit" variant="outline" disabled={isPasswordSubmitting} className="w-full h-11 mt-2">
+                            <Button type="submit" variant="outline" disabled={isPasswordSubmitting} className="w-full h-12 mt-2 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-700">
                                 {isPasswordSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Update Password"}
                             </Button>
                         </form>

@@ -13,8 +13,10 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-// Added 'Search' to imports
-import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon, AlertCircle, Search } from 'lucide-react';
+import { 
+  Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, 
+  Calendar as CalendarIcon, AlertCircle, Search 
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -31,16 +33,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 
-// --- Imports for Date Picker & Validation ---
+// --- Imports for Premium Calendar ---
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { format, setMonth, setYear, getMonth, getYear, addMonths, subMonths } from "date-fns";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Haptics, NotificationType } from '@capacitor/haptics';
-
-// --- Import Debounce Hook (Ensure you have this or install 'use-debounce') ---
 import { useDebounce } from '@/hooks/use-debounce';
-
-// --- Popup (Alert Dialog) ---
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,6 +96,145 @@ const FloatingLabelTextarea = ({ field, label }: any) => (
   </div>
 );
 
+// --- ANIMATION VARIANTS FOR CALENDAR ---
+const slideVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction < 0 ? 50 : -50, opacity: 0 }),
+};
+
+const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const currentYear = new Date().getFullYear();
+// চেকআউটের জন্য আমরা শুধু বর্তমান এবং আগামী ১ বছর দেখাবো (অতীতের দরকার নেই)
+const years = [currentYear, currentYear + 1];
+
+// --- SWIPEABLE CALENDAR COMPONENT ---
+function SwipeableCalendar({ 
+  selected, 
+  onSelect, 
+  viewDate, 
+  setViewDate, 
+  onClose 
+}: { 
+  selected?: Date, 
+  onSelect: (date?: Date) => void, 
+  viewDate: Date, 
+  setViewDate: (date: Date) => void,
+  onClose: () => void
+}) {
+  const [direction, setDirection] = useState(0);
+
+  const handleMonthChange = (newMonthIndex: number) => {
+    const newDate = setMonth(viewDate, newMonthIndex);
+    setDirection(newMonthIndex > getMonth(viewDate) ? 1 : -1);
+    setViewDate(newDate);
+  };
+
+  const handleYearChange = (newYear: string) => {
+    const newDate = setYear(viewDate, parseInt(newYear));
+    setViewDate(newDate);
+  };
+
+  const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const swipeThreshold = 50;
+    if (info.offset.x < -swipeThreshold) {
+      setDirection(1);
+      setViewDate(addMonths(viewDate, 1));
+    } else if (info.offset.x > swipeThreshold) {
+      setDirection(-1);
+      setViewDate(subMonths(viewDate, 1));
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-4 p-4 bg-white overflow-hidden">
+        {/* Selectors */}
+        <div className="flex gap-2 w-full max-w-xs z-20 relative">
+            <Select 
+                value={months[getMonth(viewDate)]} 
+                onValueChange={(month) => handleMonthChange(months.indexOf(month))}
+            >
+                <SelectTrigger className="w-[140px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg">
+                    <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent>
+                    {months.map((month) => (
+                        <SelectItem key={month} value={month}>{month}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+
+            <Select 
+                value={getYear(viewDate).toString()} 
+                onValueChange={handleYearChange}
+            >
+                <SelectTrigger className="w-[120px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg">
+                    <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                    {years.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+
+        {/* Animated Swipe Area */}
+        <div className="relative w-full overflow-hidden min-h-[350px]">
+          <AnimatePresence initial={false} custom={direction} mode="wait">
+            <motion.div
+              key={viewDate.toISOString()}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={onDragEnd}
+              className="w-full h-full cursor-grab active:cursor-grabbing touch-pan-y"
+            >
+              <Calendar
+                  mode="single"
+                  month={viewDate}
+                  onMonthChange={setViewDate}
+                  selected={selected}
+                  onSelect={(date) => {
+                      onSelect(date);
+                      onClose();
+                  }}
+                  // ★ Disable Past Dates (Yesterday and before)
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  initialFocus
+                  className="rounded-md border-0 w-full"
+                  classNames={{
+                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                      month: "space-y-4 w-full",
+                      caption: "hidden", 
+                      nav: "hidden", 
+                      table: "w-full border-collapse space-y-1 select-none",
+                      head_row: "flex w-full justify-between",
+                      head_cell: "text-muted-foreground rounded-md w-9 font-medium text-[0.8rem] h-9 flex items-center justify-center",
+                      row: "flex w-full mt-2 justify-between",
+                      cell: "h-10 w-10 text-center text-sm p-0 relative", 
+                      day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-primary/10 rounded-xl transition-all data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:shadow-lg",
+                      day_today: "bg-primary/5 text-primary font-bold border border-primary/20",
+                      day_outside: "text-muted-foreground opacity-30",
+                      day_disabled: "text-muted-foreground opacity-30 cursor-not-allowed line-through",
+                      day_hidden: "invisible",
+                  }}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        
+        <p className="text-[10px] text-muted-foreground/60">Swipe left or right to change month</p>
+    </div>
+  );
+}
+
 // --- Main Component ---
 export default function CheckoutPage() {
   const { state, totalPrice, itemCount, clearCart, isInitialized, checkoutState } = useCart();
@@ -110,11 +249,14 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // Calendar States
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [viewDate, setViewDate] = useState<Date>(new Date());
+
   // --- OLA MAPS STATE ---
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  // Debounce search to prevent too many API calls (500ms delay)
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   // Time Validation Popup State
@@ -146,13 +288,9 @@ export default function CheckoutPage() {
   }, [debouncedSearch]);
 
   const handleSelectAddress = (address: string) => {
-    // Update the form's address field
     form.setValue('address', address, { shouldValidate: true });
-    
-    // Reset search state
     setSearchQuery("");
     setShowSuggestions(false);
-    
     toast.success("Address updated!");
   };
 
@@ -182,6 +320,16 @@ export default function CheckoutPage() {
       router.push('/menus');
     }
   }, [itemCount, user, isLoading, isInitialized, router, isSuccess]);
+
+  // Prevent Body Scroll when Calendar is Open
+  useEffect(() => {
+    if (isCalendarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isCalendarOpen]);
 
   const form = useForm<z.infer<typeof checkoutSchema>>({
     resolver: zodResolver(checkoutSchema),
@@ -236,13 +384,11 @@ export default function CheckoutPage() {
   const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
 
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
-    // --- TIME VALIDATION LOGIC ---
     const today = new Date();
     const todayStr = format(today, "yyyy-MM-dd");
     const currentHour = today.getHours();
 
     if (values.preferredDate === todayStr) {
-        // 1. Lunch Restriction (Order before 9 AM)
         if (values.mealTime === 'lunch' && currentHour >= 9) {
             await Haptics.notification({ type: NotificationType.Error });
             setTimeValidationError({
@@ -253,7 +399,6 @@ export default function CheckoutPage() {
             return; 
         }
 
-        // 2. Dinner Restriction (Order before 6 PM)
         if (values.mealTime === 'dinner' && currentHour >= 18) {
             await Haptics.notification({ type: NotificationType.Error });
             setTimeValidationError({
@@ -394,7 +539,7 @@ export default function CheckoutPage() {
                         <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ola Maps</span>
                     </div>
 
-                    {/* 1. Ola Maps Smart Search */}
+                    {/* Ola Maps Search */}
                     <div className="relative z-20">
                         <div className="relative">
                             <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
@@ -409,7 +554,6 @@ export default function CheckoutPage() {
                             />
                         </div>
 
-                        {/* Suggestion Dropdown */}
                         {showSuggestions && suggestions.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
                                 {suggestions.map((item: any) => (
@@ -432,7 +576,6 @@ export default function CheckoutPage() {
                         )}
                     </div>
 
-                    {/* 2. Manual Address Field (Primary) */}
                     <FormField 
                         control={form.control} 
                         name="address" 
@@ -446,8 +589,6 @@ export default function CheckoutPage() {
                         )} 
                     />
                   </div>
-                  {/* --- ADDRESS SECTION END --- */}
-
               </div>
 
               <div className="space-y-4">
@@ -460,7 +601,6 @@ export default function CheckoutPage() {
 
               {orderType === 'delivery' ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    
                     <div className="p-4 border rounded-xl bg-gray-50/50 space-y-4">
                         <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                             <FormControl><Checkbox checked={isSameAsAddress} onCheckedChange={() => setIsSameAsAddress(prev => !prev)} /></FormControl>
@@ -483,46 +623,51 @@ export default function CheckoutPage() {
                   <h3 className="text-lg font-bold">Preferences</h3>
                   <div className="grid grid-cols-2 gap-4">
                       
-                      {/* --- Date Picker --- */}
+                      {/* --- ★★★ PREMIUM DATE PICKER (Swipeable) ★★★ --- */}
                       <FormField
                         control={form.control}
                         name="preferredDate"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "h-12 w-full rounded-xl pl-3 text-left font-normal border-muted-foreground/30 bg-background hover:bg-background/50",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(new Date(field.value), "MMM do, yyyy")
-                                    ) : (
-                                      <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value ? new Date(field.value) : undefined}
-                                  onSelect={(date) => {
-                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                  }}
-                                  disabled={(date) =>
-                                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                                  }
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
+                            
+                            <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                                <DialogTrigger asChild>
+                                    <FormControl>
+                                      <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                          "h-12 w-full rounded-xl pl-3 text-left font-normal border-muted-foreground/30 bg-background hover:bg-background/50 transition-all",
+                                          !field.value && "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value ? (
+                                          format(new Date(field.value), "MMM do, yyyy")
+                                        ) : (
+                                          <span>Pick a date</span>
+                                        )}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                    </FormControl>
+                                </DialogTrigger>
+                                
+                                {/* Center Modal Content */}
+                                <DialogContent className="w-[90%] max-w-[340px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl bg-white">
+                                    <DialogHeader className="p-5 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-primary/10">
+                                        <DialogTitle className="text-center text-primary flex flex-col items-center gap-1">
+                                            <span className="text-lg">Select Delivery Date 📅</span>
+                                        </DialogTitle>
+                                    </DialogHeader>
+                                    
+                                    <SwipeableCalendar 
+                                        viewDate={viewDate}
+                                        setViewDate={setViewDate}
+                                        selected={field.value ? new Date(field.value) : undefined}
+                                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                                        onClose={() => setIsCalendarOpen(false)}
+                                    />
+                                </DialogContent>
+                            </Dialog>
                             <FormMessage />
                           </FormItem>
                         )}

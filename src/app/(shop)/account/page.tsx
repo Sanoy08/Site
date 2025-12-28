@@ -40,13 +40,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// --- CALENDAR IMPORTS (From your code) ---
+// --- CALENDAR IMPORTS ---
 import { Calendar } from "@/components/ui/calendar";
 import { format, setMonth, setYear, getMonth, getYear, addMonths, subMonths } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
+
+// ★★★ IMPORT BACK HANDLER (New) ★★★
+import { registerBackHandler } from '@/hooks/use-back-button';
 
 // --- SCHEMAS ---
 const profileFormSchema = z.object({
@@ -68,7 +71,7 @@ const passwordFormSchema = z.object({
 });
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
-// --- CALENDAR CONSTANTS (From your code) ---
+// --- CALENDAR CONSTANTS ---
 const months = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
@@ -92,7 +95,7 @@ const slideVariants = {
   }),
 };
 
-// --- REUSABLE SWIPEABLE CALENDAR COMPONENT (Exact copy from your code) ---
+// --- REUSABLE SWIPEABLE CALENDAR COMPONENT ---
 function SwipeableCalendar({ 
   selected, 
   onSelect, 
@@ -172,15 +175,15 @@ function SwipeableCalendar({
         <div className="relative w-full overflow-hidden min-h-[350px]">
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
-              key={viewDate.toISOString()} // Key change triggers animation
+              key={viewDate.toISOString()}
               custom={direction}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
               transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-              drag="x" // Enable horizontal drag
-              dragConstraints={{ left: 0, right: 0 }} // Snap back
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
               onDragEnd={onDragEnd}
               className="w-full h-full cursor-grab active:cursor-grabbing touch-pan-y"
@@ -188,7 +191,7 @@ function SwipeableCalendar({
               <Calendar
                   mode="single"
                   month={viewDate}
-                  onMonthChange={setViewDate} // Keep sync
+                  onMonthChange={setViewDate}
                   selected={selected}
                   onSelect={(date) => {
                       onSelect(date);
@@ -202,7 +205,7 @@ function SwipeableCalendar({
                       month: "space-y-4 w-full",
                       caption: "hidden", 
                       nav: "hidden", 
-                      table: "w-full border-collapse space-y-1 select-none", // Prevent text selection on swipe
+                      table: "w-full border-collapse space-y-1 select-none",
                       head_row: "flex w-full justify-between",
                       head_cell: "text-muted-foreground rounded-md w-9 font-medium text-[0.8rem] h-9 flex items-center justify-center",
                       row: "flex w-full mt-2 justify-between",
@@ -272,6 +275,29 @@ export default function AccountPage() {
 
   const profileForm = useForm<ProfileFormValues>({ resolver: zodResolver(profileFormSchema), defaultValues: { firstName: '', lastName: '', email: '', dob: '', anniversary: '' } });
   const passwordForm = useForm<PasswordFormValues>({ resolver: zodResolver(passwordFormSchema), defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
+
+  // ★★★ BACK BUTTON LOGIC FOR EDIT PROFILE ★★★
+  useEffect(() => {
+    if (isEditProfileOpen) {
+      registerBackHandler(() => setIsEditProfileOpen(false));
+    } else {
+      registerBackHandler(null);
+    }
+    return () => registerBackHandler(null);
+  }, [isEditProfileOpen]);
+
+  // ★★★ BACK BUTTON LOGIC FOR SECURITY/PASSWORD SHEET ★★★
+  useEffect(() => {
+    if (isSecurityOpen) {
+      registerBackHandler(() => setIsSecurityOpen(false));
+    } else {
+      // যদি Edit Profile খোলা না থাকে তবেই নাল করো (সেফটির জন্য)
+      if (!isEditProfileOpen) {
+        registerBackHandler(null);
+      }
+    }
+    return () => registerBackHandler(null);
+  }, [isSecurityOpen, isEditProfileOpen]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -381,7 +407,7 @@ export default function AccountPage() {
                                 <div className="space-y-4 pt-2 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
                                     <h4 className="font-semibold text-sm text-gray-600 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-500" /> Special Dates</h4>
                                     
-                                    {/* ★★★ PREMIUM DOB CALENDAR (Exact Match) ★★★ */}
+                                    {/* DOB CALENDAR */}
                                     <FormField control={profileForm.control} name="dob" render={({ field }) => (
                                         <FormItem>
                                             <Dialog open={isDobOpen} onOpenChange={setIsDobOpen}>
@@ -394,7 +420,6 @@ export default function AccountPage() {
                                                     </FormControl>
                                                 </DialogTrigger>
                                                 {!hasDob && (
-                                                    // ★★★ STYLE UPDATE: Premium Dialog Content ★★★
                                                     <DialogContent className="w-[90%] max-w-[340px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl bg-white">
                                                         <DialogHeader className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
                                                             <DialogTitle className="text-center text-amber-900 flex flex-col items-center gap-1">
@@ -414,7 +439,7 @@ export default function AccountPage() {
                                         </FormItem>
                                     )} />
 
-                                    {/* ★★★ PREMIUM ANNIVERSARY CALENDAR (Exact Match) ★★★ */}
+                                    {/* ANNIVERSARY CALENDAR */}
                                     <FormField control={profileForm.control} name="anniversary" render={({ field }) => (
                                         <FormItem>
                                             <Dialog open={isAnniversaryOpen} onOpenChange={setIsAnniversaryOpen}>
@@ -427,7 +452,6 @@ export default function AccountPage() {
                                                     </FormControl>
                                                 </DialogTrigger>
                                                 {!hasAnniversary && (
-                                                    // ★★★ STYLE UPDATE: Premium Dialog Content ★★★
                                                     <DialogContent className="w-[90%] max-w-[340px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl bg-white">
                                                         <DialogHeader className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
                                                             <DialogTitle className="text-center text-amber-900 flex flex-col items-center gap-1">

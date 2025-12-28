@@ -19,12 +19,14 @@ export default function DailyMenuPage() {
   const [name, setName] = useState("Special Veg Thali");
   const [price, setPrice] = useState("");
   const [inStock, setInStock] = useState(true);
-  const [notifyUsers, setNotifyUsers] = useState(false);
+  
+  // ★★★ FIX: Default state is now true (Always On) ★★★
+  const [notifyUsers, setNotifyUsers] = useState(true);
   
   const [items, setItems] = useState<string[]>(["Rice", "Dal"]);
   const [newItem, setNewItem] = useState("");
 
-  // ক্যানভাস রেফারেন্স (লুকানো ক্যানভাস এবং প্রিভিউ ক্যানভাস)
+  // Canvas Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -58,7 +60,7 @@ export default function DailyMenuPage() {
     fetchData();
   }, []);
 
-  // ★★★ লাইভ প্রিভিউ আপডেট (যখনই ডেটা বদলাবে) ★★★
+  // Live Preview Update
   useEffect(() => {
     if (previewCanvasRef.current && !isLoading) {
         drawOnCanvas(previewCanvasRef.current);
@@ -76,21 +78,18 @@ export default function DailyMenuPage() {
       setItems(items.filter((_, i) => i !== index));
   };
 
-  // ★ কমন ড্রয়িং ফাংশন (প্রিভিউ এবং ফাইনাল জেনারেশন দুটির জন্যই) ★
+  // Drawing Function
   const drawOnCanvas = async (canvas: HTMLCanvasElement) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // ক্যানভাস সাইজ (১৫০০x১৫০০)
       const SCALE_FACTOR = 3;
       canvas.width = 500 * SCALE_FACTOR;
       canvas.height = 500 * SCALE_FACTOR;
       
-      // স্কেলিং
       ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
 
       try {
-        // ফন্ট লোড চেক
         await document.fonts.ready;
 
         const bgImage = new Image();
@@ -99,14 +98,12 @@ export default function DailyMenuPage() {
 
         await new Promise((resolve) => {
             bgImage.onload = resolve;
-            bgImage.onerror = resolve; // এরর হলেও যাতে ক্র্যাশ না করে
+            bgImage.onerror = resolve; 
         });
 
-        // ব্যাকগ্রাউন্ড
         if (bgImage.complete && bgImage.naturalHeight !== 0) {
             ctx.drawImage(bgImage, 0, 0, 500, 500);
         } else {
-            // ফলব্যাক কালার যদি ইমেজ না থাকে
             ctx.fillStyle = "#FFF8E1";
             ctx.fillRect(0, 0, 500, 500);
         }
@@ -114,7 +111,7 @@ export default function DailyMenuPage() {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // --- তারিখ ---
+        // Date
         const today = new Date();
         const day = String(today.getDate()).padStart(2, '0');
         const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -129,7 +126,7 @@ export default function DailyMenuPage() {
         ctx.fillText(dateText, 0, 0);
         ctx.restore();
 
-        // --- মেনু আইটেম ---
+        // Items
         ctx.save();
         ctx.translate(250, 320); 
         ctx.fillStyle = "#ffffffff"; 
@@ -138,7 +135,6 @@ export default function DailyMenuPage() {
         const lineHeight = 30;
         let currentY = -(items.length * lineHeight / 2) + (lineHeight / 2);
         
-        // সর্বোচ্চ ৬টি আইটেম দেখাবে
         const displayItems = items.slice(0, 6);
         displayItems.forEach(item => {
             ctx.fillText(item, 0, currentY); 
@@ -146,7 +142,7 @@ export default function DailyMenuPage() {
         });
         ctx.restore();
 
-        // --- দাম ---
+        // Price
         ctx.save();
         ctx.translate(79, 231);
         ctx.fillStyle = "#000000ff"; 
@@ -160,7 +156,6 @@ export default function DailyMenuPage() {
   };
 
   const handleSave = async () => {
-    // সেভ করার সময় আমরা একটি নতুন লুকানো ক্যানভাস ব্যবহার করব (canvasRef)
     if (!canvasRef.current) return;
     if (!price) {
         toast.error("Please enter a price.");
@@ -171,16 +166,16 @@ export default function DailyMenuPage() {
     const token = localStorage.getItem('token');
 
     try {
-        // ১. জেনারেট
+        // 1. Generate
         await drawOnCanvas(canvasRef.current);
         
-        // ২. ব্লব তৈরি
+        // 2. Blob
         const blob = await new Promise<Blob | null>(resolve => 
             canvasRef.current?.toBlob(resolve, 'image/webp', 0.9)
         );
         if (!blob) throw new Error("Image generation failed");
 
-        // ৩. আপলোড (General Cloudinary Account)
+        // 3. Upload
         const formData = new FormData();
         formData.append('file', blob);
         
@@ -198,7 +193,7 @@ export default function DailyMenuPage() {
 
         const finalImageUrl = uploadData.secure_url;
 
-        // ৪. ডাটাবেস আপডেট
+        // 4. Update Database
         const res = await fetch('/api/admin/daily-special', {
             method: 'POST',
             headers: { 
@@ -209,7 +204,7 @@ export default function DailyMenuPage() {
                 name,
                 price,
                 items, 
-                imageUrl: finalImageUrl, // নতুন জেনারেটেড লিংক
+                imageUrl: finalImageUrl,
                 inStock,
                 notifyUsers
             })
@@ -218,7 +213,7 @@ export default function DailyMenuPage() {
         const data = await res.json();
         if (res.ok) {
             toast.success("Menu Updated & Poster Published! 🚀");
-            setNotifyUsers(false); 
+            // ★★★ FIX: Removed setNotifyUsers(false) so it stays ON ★★★
         } else {
             toast.error(data.error || "Failed to update");
         }
@@ -251,7 +246,6 @@ export default function DailyMenuPage() {
                 <Card className="border-0 shadow-md h-full">
                     <CardContent className="p-6 space-y-6">
                         
-                        {/* Hidden Canvas for final generation */}
                         <canvas ref={canvasRef} className="hidden" />
 
                         <div className="grid grid-cols-1 gap-4">
@@ -304,7 +298,6 @@ export default function DailyMenuPage() {
             <div className="flex flex-col items-center justify-start space-y-4">
                 <Label className="text-lg font-semibold text-muted-foreground">Live Poster Preview</Label>
                 <div className="relative w-full max-w-[400px] aspect-square rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-muted">
-                    {/* ★★★ এই ক্যানভাসটি লাইভ আপডেট হবে ★★★ */}
                     <canvas 
                         ref={previewCanvasRef} 
                         className="w-full h-full object-contain"

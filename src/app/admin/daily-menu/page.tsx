@@ -12,6 +12,22 @@ import { Loader2, Save, Plus, Trash2, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { FloatingInput } from '@/components/ui/floating-input';
 
+// ★★★ HELPER: Cloudinary Image Optimizer for Push Notifications ★★★
+// এটি নিশ্চিত করে যে ছবির সাইজ 500x500px এবং 100KB এর নিচে থাকে
+const getOptimizedNotificationImage = (url: string) => {
+  if (!url) return '';
+  
+  if (url.includes('cloudinary.com')) {
+    // w_500, h_500: Exact dimensions
+    // c_fill: Crop to fill
+    // q_auto:low: Aggressive compression for small file size
+    // f_auto: Efficient format (webp/avif)
+    return url.replace('/upload/', '/upload/w_500,h_500,c_fill,q_auto:low,f_auto/');
+  }
+  
+  return url;
+};
+
 export default function DailyMenuPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -20,7 +36,7 @@ export default function DailyMenuPage() {
   const [price, setPrice] = useState("");
   const [inStock, setInStock] = useState(true);
   
-  // ★★★ FIX: Default state is now true (Always On) ★★★
+  // ★ Default: Always ON
   const [notifyUsers, setNotifyUsers] = useState(true);
   
   const [items, setItems] = useState<string[]>(["Rice", "Dal"]);
@@ -166,16 +182,16 @@ export default function DailyMenuPage() {
     const token = localStorage.getItem('token');
 
     try {
-        // 1. Generate
+        // 1. Generate Canvas Image
         await drawOnCanvas(canvasRef.current);
         
-        // 2. Blob
+        // 2. Create Blob
         const blob = await new Promise<Blob | null>(resolve => 
             canvasRef.current?.toBlob(resolve, 'image/webp', 0.9)
         );
         if (!blob) throw new Error("Image generation failed");
 
-        // 3. Upload
+        // 3. Upload to Cloudinary
         const formData = new FormData();
         formData.append('file', blob);
         
@@ -191,9 +207,12 @@ export default function DailyMenuPage() {
         const uploadData = await uploadRes.json();
         if (!uploadData.secure_url) throw new Error("Upload failed");
 
-        const finalImageUrl = uploadData.secure_url;
+        const originalImageUrl = uploadData.secure_url;
 
-        // 4. Update Database
+        // ★★★ 4. Optimize Image URL for Notification (500x500, <100kb) ★★★
+        const optimizedImageUrl = getOptimizedNotificationImage(originalImageUrl);
+
+        // 5. Update Database with Optimized Image URL
         const res = await fetch('/api/admin/daily-special', {
             method: 'POST',
             headers: { 
@@ -204,7 +223,7 @@ export default function DailyMenuPage() {
                 name,
                 price,
                 items, 
-                imageUrl: finalImageUrl,
+                imageUrl: optimizedImageUrl, // এখানে অপ্টিমাইজড লিংক পাঠানো হচ্ছে
                 inStock,
                 notifyUsers
             })
@@ -213,7 +232,7 @@ export default function DailyMenuPage() {
         const data = await res.json();
         if (res.ok) {
             toast.success("Menu Updated & Poster Published! 🚀");
-            // ★★★ FIX: Removed setNotifyUsers(false) so it stays ON ★★★
+            // notifyUsers state is kept as TRUE
         } else {
             toast.error(data.error || "Failed to update");
         }
@@ -281,7 +300,10 @@ export default function DailyMenuPage() {
                                 <Switch checked={inStock} onCheckedChange={setInStock} />
                             </div>
                             <div className="flex items-center justify-between border p-3 rounded-xl bg-primary/5 border-primary/20">
-                                <div className="space-y-0.5"><Label className="text-primary font-semibold">Notify Users</Label></div>
+                                <div className="space-y-0.5">
+                                    <Label className="text-primary font-semibold">Notify Users</Label>
+                                    <p className="text-xs text-muted-foreground">Send push notification to all users</p>
+                                </div>
                                 <Switch checked={notifyUsers} onCheckedChange={setNotifyUsers} />
                             </div>
                         </div>

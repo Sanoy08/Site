@@ -28,10 +28,19 @@ import { NotificationPermission } from '@/components/shared/NotificationPermissi
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
-// --- IMPORTS FOR CALENDAR ---
+// --- IMPORTS FOR CALENDAR & ANIMATION ---
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, setMonth, setYear, getMonth, getYear, addMonths, subMonths } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -54,6 +63,162 @@ const passwordFormSchema = z.object({
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
+// --- CONSTANTS ---
+const months = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i);
+
+// --- ANIMATION VARIANTS ---
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 50 : -50,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 50 : -50,
+    opacity: 0,
+  }),
+};
+
+// --- REUSABLE SWIPEABLE CALENDAR COMPONENT ---
+function SwipeableCalendar({ 
+  selected, 
+  onSelect, 
+  viewDate, 
+  setViewDate, 
+  onClose 
+}: { 
+  selected?: Date, 
+  onSelect: (date?: Date) => void, 
+  viewDate: Date, 
+  setViewDate: (date: Date) => void,
+  onClose: () => void
+}) {
+  const [direction, setDirection] = useState(0);
+
+  const handleMonthChange = (newMonthIndex: number) => {
+    const newDate = setMonth(viewDate, newMonthIndex);
+    setDirection(newMonthIndex > getMonth(viewDate) ? 1 : -1);
+    setViewDate(newDate);
+  };
+
+  const handleYearChange = (newYear: string) => {
+    const newDate = setYear(viewDate, parseInt(newYear));
+    setViewDate(newDate);
+  };
+
+  // Swipe Logic
+  const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const swipeThreshold = 50;
+    if (info.offset.x < -swipeThreshold) {
+      // Swipe Left -> Next Month
+      setDirection(1);
+      setViewDate(addMonths(viewDate, 1));
+    } else if (info.offset.x > swipeThreshold) {
+      // Swipe Right -> Previous Month
+      setDirection(-1);
+      setViewDate(subMonths(viewDate, 1));
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-4 p-4 bg-white overflow-hidden">
+        {/* Selectors */}
+        <div className="flex gap-2 w-full max-w-xs z-20 relative">
+            <Select 
+                value={months[getMonth(viewDate)]} 
+                onValueChange={(month) => handleMonthChange(months.indexOf(month))}
+            >
+                <SelectTrigger className="w-[140px] h-10 border-amber-200 bg-amber-50/50 focus:ring-amber-500 rounded-lg">
+                    <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent>
+                    {months.map((month) => (
+                        <SelectItem key={month} value={month}>{month}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+
+            <Select 
+                value={getYear(viewDate).toString()} 
+                onValueChange={handleYearChange}
+            >
+                <SelectTrigger className="w-[120px] h-10 border-amber-200 bg-amber-50/50 focus:ring-amber-500 rounded-lg">
+                    <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                    <ScrollArea className="h-[200px]">
+                        {years.map((year) => (
+                            <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                        ))}
+                    </ScrollArea>
+                </SelectContent>
+            </Select>
+        </div>
+
+        {/* Animated Swipe Area */}
+        <div className="relative w-full overflow-hidden min-h-[350px]">
+          <AnimatePresence initial={false} custom={direction} mode="wait">
+            <motion.div
+              key={viewDate.toISOString()} // Key change triggers animation
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+              drag="x" // Enable horizontal drag
+              dragConstraints={{ left: 0, right: 0 }} // Snap back
+              dragElastic={0.2}
+              onDragEnd={onDragEnd}
+              className="w-full h-full cursor-grab active:cursor-grabbing touch-pan-y"
+            >
+              <Calendar
+                  mode="single"
+                  month={viewDate}
+                  onMonthChange={setViewDate} // Keep sync
+                  selected={selected}
+                  onSelect={(date) => {
+                      onSelect(date);
+                      onClose();
+                  }}
+                  disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                  initialFocus
+                  className="rounded-md border-0 w-full"
+                  classNames={{
+                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                      month: "space-y-4 w-full",
+                      caption: "hidden", 
+                      nav: "hidden", 
+                      table: "w-full border-collapse space-y-1 select-none", // Prevent text selection on swipe
+                      head_row: "flex w-full justify-between",
+                      head_cell: "text-muted-foreground rounded-md w-9 font-medium text-[0.8rem] h-9 flex items-center justify-center",
+                      row: "flex w-full mt-2 justify-between",
+                      cell: "h-10 w-10 text-center text-sm p-0 relative", 
+                      day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-amber-100 rounded-xl transition-all data-[selected]:bg-amber-600 data-[selected]:text-white data-[selected]:shadow-lg",
+                      day_today: "bg-amber-50 text-amber-900 font-bold border border-amber-200",
+                      day_outside: "text-muted-foreground opacity-30",
+                      day_disabled: "text-muted-foreground opacity-30",
+                      day_hidden: "invisible",
+                  }}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        
+        <p className="text-[10px] text-muted-foreground/60">Swipe left or right to change month</p>
+    </div>
+  );
+}
+
+
 export default function AccountProfilePage() {
   const { user, login, logout } = useAuth();
   
@@ -64,6 +229,10 @@ export default function AccountProfilePage() {
   // Modal Open States
   const [isDobOpen, setIsDobOpen] = useState(false);
   const [isAnniversaryOpen, setIsAnniversaryOpen] = useState(false);
+
+  // Calendar View States
+  const [dobViewDate, setDobViewDate] = useState<Date>(new Date("2000-01-01"));
+  const [anniversaryViewDate, setAnniversaryViewDate] = useState<Date>(new Date());
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -110,11 +279,13 @@ export default function AccountProfilePage() {
         email: user.email || '',
         dob: userDob,
         anniversary: userAnniversary,
-      })
+      });
+
+      if (userDob) setDobViewDate(new Date(userDob));
+      if (userAnniversary) setAnniversaryViewDate(new Date(userAnniversary));
     }
   }, [user, profileForm]);
 
-  // Prevent Body Scroll Effect
   useEffect(() => {
     if (isDobOpen || isAnniversaryOpen) {
       document.body.style.overflow = 'hidden';
@@ -184,10 +355,6 @@ export default function AccountProfilePage() {
   const hasDob = !!user?.dob && user.dob !== "";
   // @ts-ignore
   const hasAnniversary = !!user?.anniversary && user.anniversary !== "";
-
-  const currentYear = new Date().getFullYear();
-  const fromYear = currentYear - 100;
-  const toYear = currentYear;
 
   if (!user) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>;
 
@@ -272,7 +439,7 @@ export default function AccountProfilePage() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     
-                                    {/* Birthday Field */}
+                                    {/* ★★★ SWIPEABLE BIRTHDAY CALENDAR ★★★ */}
                                     <FormField control={profileForm.control} name="dob" render={({ field }) => (
                                         <FormItem className="flex flex-col">
                                             <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
@@ -302,53 +469,20 @@ export default function AccountProfilePage() {
                                                 </DialogTrigger>
                                                 
                                                 {!hasDob && (
-                                                    <DialogContent className="w-auto p-0 rounded-2xl overflow-hidden border-0 shadow-2xl">
-                                                        <DialogHeader className="p-4 bg-amber-50/50 border-b border-amber-100">
+                                                    <DialogContent className="w-[90%] max-w-[340px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl bg-white">
+                                                        <DialogHeader className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
                                                             <DialogTitle className="text-center text-amber-900 flex flex-col items-center gap-1">
-                                                                <span>Select Your Birthday 🎂</span>
-                                                                <span className="text-xs font-normal text-muted-foreground">We'll send you a gift!</span>
+                                                                <span className="text-lg">Select Birthday 🎂</span>
                                                             </DialogTitle>
                                                         </DialogHeader>
-                                                        <div className="p-4 flex justify-center bg-white">
-                                                            <Calendar
-                                                                mode="single"
-                                                                selected={field.value ? new Date(field.value) : undefined}
-                                                                onSelect={(date) => {
-                                                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                                                    setIsDobOpen(false);
-                                                                }}
-                                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                                                initialFocus
-                                                                captionLayout="dropdown-buttons"
-                                                                fromYear={fromYear} 
-                                                                toYear={toYear}
-                                                                className="rounded-md"
-                                                                classNames={{
-                                                                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                                                                    month: "space-y-4",
-                                                                    caption: "flex justify-center pt-1 relative items-center",
-                                                                    caption_label: "hidden",
-                                                                    caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
-                                                                    // ★★★ NAV HIDDEN HERE ★★★
-                                                                    nav: "hidden", 
-                                                                    table: "w-full border-collapse space-y-1",
-                                                                    head_row: "flex",
-                                                                    head_cell: "text-muted-foreground rounded-md w-12 font-normal text-[0.8rem] h-10 flex items-center justify-center",
-                                                                    row: "flex w-full mt-2",
-                                                                    cell: "h-12 w-12 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                                                                    day: "h-12 w-12 p-0 font-normal aria-selected:opacity-100 hover:bg-amber-100 rounded-lg transition-colors",
-                                                                    day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground font-bold shadow-md",
-                                                                    day_today: "bg-amber-50 text-amber-900 font-bold border border-amber-200",
-                                                                    day_outside: "text-muted-foreground opacity-50",
-                                                                    day_disabled: "text-muted-foreground opacity-50",
-                                                                    day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-                                                                    day_hidden: "invisible",
-                                                                    dropdown: "bg-background border border-amber-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50 shadow-sm",
-                                                                    dropdown_month: "flex-1",
-                                                                    dropdown_year: "flex-1",
-                                                                }}
-                                                            />
-                                                        </div>
+                                                        
+                                                        <SwipeableCalendar 
+                                                            viewDate={dobViewDate}
+                                                            setViewDate={setDobViewDate}
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                                                            onClose={() => setIsDobOpen(false)}
+                                                        />
                                                     </DialogContent>
                                                 )}
                                             </Dialog>
@@ -356,7 +490,7 @@ export default function AccountProfilePage() {
                                         </FormItem>
                                     )} />
 
-                                    {/* Anniversary Field */}
+                                    {/* ★★★ SWIPEABLE ANNIVERSARY CALENDAR ★★★ */}
                                     <FormField control={profileForm.control} name="anniversary" render={({ field }) => (
                                         <FormItem className="flex flex-col">
                                             <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
@@ -386,49 +520,20 @@ export default function AccountProfilePage() {
                                                 </DialogTrigger>
                                                 
                                                 {!hasAnniversary && (
-                                                    <DialogContent className="w-auto p-0 rounded-2xl overflow-hidden border-0 shadow-2xl">
-                                                        <DialogHeader className="p-4 bg-amber-50/50 border-b border-amber-100">
+                                                    <DialogContent className="w-[90%] max-w-[340px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl bg-white">
+                                                        <DialogHeader className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
                                                             <DialogTitle className="text-center text-amber-900 flex flex-col items-center gap-1">
-                                                                <span>Select Anniversary ❤️</span>
-                                                                <span className="text-xs font-normal text-muted-foreground">Celebrate with us!</span>
+                                                                <span className="text-lg">Select Anniversary ❤️</span>
                                                             </DialogTitle>
                                                         </DialogHeader>
-                                                        <div className="p-4 flex justify-center bg-white">
-                                                            <Calendar
-                                                                mode="single"
-                                                                selected={field.value ? new Date(field.value) : undefined}
-                                                                onSelect={(date) => {
-                                                                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                                                                    setIsAnniversaryOpen(false);
-                                                                }}
-                                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                                                initialFocus
-                                                                captionLayout="dropdown-buttons"
-                                                                fromYear={fromYear} 
-                                                                toYear={toYear}
-                                                                className="rounded-md"
-                                                                classNames={{
-                                                                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                                                                    month: "space-y-4",
-                                                                    caption: "flex justify-center pt-1 relative items-center",
-                                                                    caption_label: "hidden",
-                                                                    caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
-                                                                    // ★★★ NAV HIDDEN HERE ★★★
-                                                                    nav: "hidden", 
-                                                                    table: "w-full border-collapse space-y-1",
-                                                                    head_row: "flex",
-                                                                    head_cell: "text-muted-foreground rounded-md w-12 font-normal text-[0.8rem] h-10 flex items-center justify-center", 
-                                                                    row: "flex w-full mt-2",
-                                                                    cell: "h-12 w-12 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20", 
-                                                                    day: "h-12 w-12 p-0 font-normal aria-selected:opacity-100 hover:bg-amber-100 rounded-lg transition-colors", 
-                                                                    day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground font-bold shadow-md",
-                                                                    day_today: "bg-amber-50 text-amber-900 font-bold border border-amber-200",
-                                                                    dropdown: "bg-background border border-amber-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50 shadow-sm",
-                                                                    dropdown_month: "flex-1",
-                                                                    dropdown_year: "flex-1",
-                                                                }}
-                                                            />
-                                                        </div>
+                                                        
+                                                        <SwipeableCalendar 
+                                                            viewDate={anniversaryViewDate}
+                                                            setViewDate={setAnniversaryViewDate}
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                                                            onClose={() => setIsAnniversaryOpen(false)}
+                                                        />
                                                     </DialogContent>
                                                 )}
                                             </Dialog>

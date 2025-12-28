@@ -4,16 +4,18 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Store, Clock, Lock } from 'lucide-react';
+import { Store, Clock, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth'; // ★ Auth হুক ইম্পোর্ট
 
 export function StoreStatusProvider({ children }: { children: React.ReactNode }) {
-  const [isStoreOpen, setIsStoreOpen] = useState<boolean | null>(null); // null means loading
+  const [isStoreOpen, setIsStoreOpen] = useState<boolean | null>(null);
   const pathname = usePathname();
+  
+  // ★ ইউজারের রোল চেক করার জন্য
+  const { user, isLoading: isAuthLoading } = useAuth();
 
-  // প্রতিবার পেজ লোড বা নেভিগেশনে স্ট্যাটাস চেক করবে
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -27,29 +29,46 @@ export function StoreStatusProvider({ children }: { children: React.ReactNode })
     };
 
     checkStatus();
-    
-    // অপশনাল: প্রতি ১ মিনিটে চেক করবে (রিয়েল-টাইম এফেক্টের জন্য)
     const interval = setInterval(checkStatus, 60000);
     return () => clearInterval(interval);
   }, [pathname]);
 
-
-  // ১. অ্যাডমিন রুট বা লগইন পেজ হলে সব সময় অ্যাক্সেস দাও
+  // ১. লগইন পেজ বা অ্যাডমিন রুটে সব সময় অ্যাক্সেস থাকবে
   if (pathname.startsWith('/admin') || pathname === '/login') {
     return <>{children}</>;
   }
 
-  // ২. লোডিং অবস্থায় কিছু দেখিও না বা স্পিনার দেখাও
+  // ২. স্টোর স্ট্যাটাস লোড না হওয়া পর্যন্ত লোডার
   if (isStoreOpen === null) {
      return <div className="h-screen w-full flex items-center justify-center bg-white"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  // ৩. যদি স্টোর খোলা থাকে, তবে অ্যাপ দেখাও
+  // ৩. যদি স্টোর খোলা থাকে, সবার জন্য অ্যাক্সেস
   if (isStoreOpen) {
     return <>{children}</>;
   }
 
-  // ৪. ★★★ STORE CLOSED SCREEN ★★★
+  // ★★★ STORE IS CLOSED (But checking for Admin) ★★★
+
+  // ৪. স্টোর বন্ধ, কিন্তু অথেন্টিকেশন লোড হচ্ছে -> অপেক্ষা করো
+  if (isAuthLoading) {
+      return <div className="h-screen w-full flex items-center justify-center bg-white"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  // ৫. স্টোর বন্ধ, কিন্তু ইউজার অ্যাডমিন -> বাইপাস করো (সব দেখতে পাবে)
+  if (user && user.role === 'admin') {
+      return (
+        <>
+            {/* অ্যাডমিনদের মনে করিয়ে দেওয়ার জন্য একটি ছোট ব্যানার */}
+            <div className="bg-red-500 text-white text-xs font-bold text-center py-1 px-4 fixed top-0 left-0 right-0 z-[100]">
+                STORE IS CURRENTLY CLOSED FOR CUSTOMERS (Admin Mode)
+            </div>
+            {children}
+        </>
+      );
+  }
+
+  // ৬. সাধারণ ইউজারদের জন্য ক্লোজড স্ক্রিন
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center animate-in fade-in duration-500">
       <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100">
@@ -70,7 +89,6 @@ export function StoreStatusProvider({ children }: { children: React.ReactNode })
                 <Clock className="h-4 w-4" /> Usually opens at 11:00 AM
             </div>
             
-            {/* রিফ্রেশ বাটন */}
             <Button 
                 onClick={() => window.location.reload()} 
                 variant="outline" 

@@ -2,18 +2,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +14,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
@@ -47,6 +46,9 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
+  // আনরিড আছে কি না
+  const [hasNewNotification, setHasNewNotification] = useState(false);
+
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -63,6 +65,56 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+
+  // SMART NOTIFICATION CHECKER
+  const checkNotifications = useCallback(async () => {
+    if (!user) return;
+    
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/notifications/history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
+        const latestNotification = data.notifications[0];
+        const latestTime = new Date(latestNotification.createdAt).getTime();
+        const lastSeenTime = localStorage.getItem('last_notification_seen_time');
+
+        if (!lastSeenTime || latestTime > parseInt(lastSeenTime)) {
+          setHasNewNotification(true);
+        } else {
+          setHasNewNotification(false);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check notifications", error);
+    }
+  }, [user]);
+
+  const handleBellClick = () => {
+    setHasNewNotification(false);
+    localStorage.setItem('last_notification_seen_time', Date.now().toString());
+    router.push('/notifications');
+  };
+
+  useEffect(() => {
+    checkNotifications();
+    const onFocus = () => checkNotifications();
+    window.addEventListener('focus', onFocus);
+    const onUpdate = () => checkNotifications();
+    window.addEventListener('notification-updated', onUpdate);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('notification-updated', onUpdate);
+    };
+  }, [checkNotifications]);
+
+
   const handleLogout = () => {
       logout();
       router.push('/login');
@@ -77,6 +129,19 @@ export function Header() {
     if (hour < 12) return 'Good Morning';
     if (hour < 18) return 'Good Afternoon';
     return 'Good Evening';
+  };
+
+  // ★★★ ADMIN REDIRECT FUNCTION ★★★
+  const handleAdminClick = () => {
+      // লোকালহোস্টে কাজ করার সময় লোকাল ইউআরএল, নাহলে লাইভ সাবডোমেইন
+      if (window.location.hostname === 'localhost') {
+         // লোকালহোস্টের জন্য সাধারণত পোর্ট আলাদা হয় (যদি আলাদা প্রোজেক্ট হয়)
+         // অথবা যদি একই প্রোজেক্টে সাবডোমেইন সেটআপ থাকে তবে এটি কাজ করবে না
+         // তাই সেফটির জন্য লাইভ লিংকই দেওয়া ভালো
+         window.location.href = 'https://admin.bumbaskitchen.app';
+      } else {
+         window.location.href = 'https://admin.bumbaskitchen.app';
+      }
   };
 
   return (
@@ -208,8 +273,7 @@ export function Header() {
         {/* Right Side: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-3">
         
-        {/* ★★★ SINGLE SEARCH SHEET IMPLEMENTATION ★★★ */}
-        {/* Desktop Fake Search Bar Trigger */}
+        {/* Search */}
         <div 
             onClick={() => setIsSearchOpen(true)}
             className="hidden sm:flex relative w-[180px] lg:w-[240px] cursor-pointer group"
@@ -223,7 +287,6 @@ export function Header() {
             </div>
         </div>
 
-        {/* Mobile Search Icon Trigger */}
         <Button 
             variant="ghost" 
             size="icon" 
@@ -233,14 +296,23 @@ export function Header() {
             <Search className="h-5 w-5" />
         </Button>
 
-        {/* ★ The Actual Search Sheet (Rendered Once) ★ */}
         <SearchSheet open={isSearchOpen} onOpenChange={setIsSearchOpen} />
 
-        <Button asChild variant="ghost" size="icon" className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary">
-            <Link href="/notifications">
-                <Bell className="h-5 w-5 transition-transform group-hover:rotate-[15deg] origin-top" />
-                <span className="absolute top-2 right-2.5 h-2 w-2 bg-red-500 rounded-full ring-2 ring-background animate-pulse" />
-            </Link>
+        {/* Notification Bell */}
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full relative group transition-colors hover:bg-primary/10 hover:text-primary"
+            onClick={handleBellClick}
+        >
+            <Bell className={cn(
+                "h-5 w-5 transition-transform origin-top",
+                hasNewNotification ? "group-hover:rotate-[15deg] text-foreground" : "text-muted-foreground"
+            )} />
+            
+            {hasNewNotification && (
+                <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-600 border-2 border-background animate-pulse shadow-sm" />
+            )}
         </Button>
 
         <div className="relative">
@@ -290,7 +362,11 @@ export function Header() {
                     {user.role === 'admin' && (
                         <>
                             <DropdownMenuSeparator className="my-2 bg-border/50" />
-                            <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer rounded-lg py-2.5 bg-amber-50 text-amber-900 focus:bg-amber-100 focus:text-amber-900 font-bold border border-amber-100/50">
+                            {/* ★★★ FIX: Direct Link to Subdomain ★★★ */}
+                            <DropdownMenuItem 
+                                onClick={handleAdminClick} 
+                                className="cursor-pointer rounded-lg py-2.5 bg-amber-50 text-amber-900 focus:bg-amber-100 focus:text-amber-900 font-bold border border-amber-100/50"
+                            >
                                 <Settings className="mr-3 h-4 w-4 text-amber-600" />
                                 Admin Dashboard
                             </DropdownMenuItem>

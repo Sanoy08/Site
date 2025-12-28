@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   Search, SlidersHorizontal, X, 
-  UtensilsCrossed, ShoppingBag, ArrowUpDown, Leaf, Loader2
+  UtensilsCrossed, ArrowUpDown, Leaf, Loader2
 } from 'lucide-react';
 import {
   Select,
@@ -38,7 +38,7 @@ const CATEGORIES = [
     { name: "Rice", image: "/Categories/2.webp" },    
     { name: "Fish", image: "/Categories/3.webp" },
     { name: "Paneer", image: "/Categories/8.webp" },
-    { name: "Fried Items", image: "/Categories/5.webp" },
+    { name: "Fried", image: "/Categories/5.webp" },
     { name: "Chapati", image: "/Categories/6.webp" },
     { name: "Veg", image: "/Categories/1.webp" },
 ];
@@ -51,13 +51,18 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // States
+  // --- Main States ---
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('recommended');
   const [showVegOnly, setShowVegOnly] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   
+  // --- Temporary States (For Mobile Sheet) ---
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [tempSortBy, setTempSortBy] = useState('recommended');
+  const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
+
   // AI Search States
   const [aiSearchResults, setAiSearchResults] = useState<Product[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -79,6 +84,21 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
         setActiveCategory('All');
     }
   }, [searchParams]);
+
+  // Sync Temp State when Sheet Opens
+  useEffect(() => {
+    if (isFilterOpen) {
+        setTempSortBy(sortBy);
+        setTempShowVegOnly(showVegOnly);
+    }
+  }, [isFilterOpen, sortBy, showVegOnly]);
+
+  // Apply Filters Handler
+  const handleApplyFilters = () => {
+      setSortBy(tempSortBy);
+      setShowVegOnly(tempShowVegOnly);
+      setIsFilterOpen(false); 
+  };
 
   // AI Search Logic (Debounced)
   useEffect(() => {
@@ -112,33 +132,30 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       else router.push(`/menus?category=${category.toLowerCase()}`, { scroll: false });
   };
 
-  // ★★★ Advanced Filtering Logic (UPDATED) ★★★
+  // Advanced Filtering Logic
   const filteredProducts = useMemo(() => {
       let result = (searchQuery.length >= 3 && aiSearchResults) ? aiSearchResults : initialProducts;
 
-      // ২. ক্যাটাগরি ফিল্টার (Updated Logic)
+      // Category Filter
       if (activeCategory !== 'All') {
           result = result.filter(p => {
               const catName = p.category.name.toLowerCase();
               const prodName = p.name.toLowerCase();
               const targetCat = activeCategory.toLowerCase();
 
-              // ★ ফিক্স: যদি Veg ক্যাটাগরি সিলেক্ট করা থাকে
               if (activeCategory === 'Veg') {
                   return (
                       catName.includes('veg') || 
                       catName.includes('paneer') || 
-                      prodName.includes('veg') || // নামের মধ্যে 'veg' থাকলে দেখাবে
-                      prodName.includes('paneer') // নামের মধ্যে 'paneer' থাকলে দেখাবে
+                      prodName.includes('veg') || 
+                      prodName.includes('paneer')
                   );
               }
-
-              // অন্যান্য ক্যাটাগরির জন্য সাধারণ লজিক
               return catName.includes(targetCat);
           });
       }
 
-      // ৩. লোকাল সার্চ ফিল্টার
+      // Local Search Filter
       if (searchQuery && searchQuery.length < 3) {
           const q = searchQuery.toLowerCase();
           result = result.filter(p => 
@@ -147,17 +164,17 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           );
       }
 
-      // ৪. ভেজ অনলি টগল (Veg Toggle)
+      // Veg Only Filter
       if (showVegOnly) {
           result = result.filter(p => 
               p.category.name.toLowerCase().includes('veg') || 
               p.category.name.toLowerCase().includes('paneer') ||
-              p.name.toLowerCase().includes('veg') || // এখানেও নাম চেক করা হচ্ছে
+              p.name.toLowerCase().includes('veg') || 
               p.name.toLowerCase().includes('paneer')
           );
       }
 
-      // ৫. সর্টিং
+      // Sorting
       if (sortBy === 'price-low') result = [...result].sort((a, b) => a.price - b.price);
       else if (sortBy === 'price-high') result = [...result].sort((a, b) => b.price - a.price);
       else if (sortBy === 'rating') result = [...result].sort((a, b) => b.rating - a.rating);
@@ -171,16 +188,17 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       {/* --- HEADER & FILTERS --- */}
       <div className={cn(
           "sticky top-[60px] z-30 bg-background transition-all duration-300 border-b",
-          isScrolled ? "shadow-md py-2" : "py-4"
+          // ★★★ FIX: Reduced vertical padding (pb-0 when not scrolled) ★★★
+          isScrolled ? "shadow-md py-2" : "pt-3 pb-0"
       )}>
-          <div className="container space-y-4">
+          <div className="container space-y-2"> 
               
-              {/* Top Row */}
+              {/* Top Row (Search & Filters) */}
               <div className="flex gap-3 items-center">
                   <div className="relative flex-grow">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                          placeholder="Search for dishes (e.g. Spicy Chicken)..." 
+                          placeholder="Search for dishes..." 
                           className="pl-10 bg-muted/30 border-muted-foreground/20 rounded-xl h-11 focus:bg-background transition-all"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
@@ -198,7 +216,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                   
                   {/* Mobile Filter Sheet */}
                   <div className="md:hidden">
-                      <Sheet>
+                      <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                         <SheetTrigger asChild>
                             <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl border-muted-foreground/20">
                                 <SlidersHorizontal className="h-5 w-5" />
@@ -213,15 +231,15 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                                 <div className="flex items-center justify-between">
                                     <span className="font-medium flex items-center gap-2"><Leaf className="h-4 w-4 text-green-600"/> Veg Only</span>
                                     <div 
-                                        className={cn("w-12 h-6 rounded-full p-1 cursor-pointer transition-colors", showVegOnly ? "bg-green-500" : "bg-muted")}
-                                        onClick={() => setShowVegOnly(!showVegOnly)}
+                                        className={cn("w-12 h-6 rounded-full p-1 cursor-pointer transition-colors", tempShowVegOnly ? "bg-green-500" : "bg-muted")}
+                                        onClick={() => setTempShowVegOnly(!tempShowVegOnly)}
                                     >
-                                        <div className={cn("w-4 h-4 bg-white rounded-full shadow-sm transition-transform", showVegOnly ? "translate-x-6" : "translate-x-0")} />
+                                        <div className={cn("w-4 h-4 bg-white rounded-full shadow-sm transition-transform", tempShowVegOnly ? "translate-x-6" : "translate-x-0")} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <span className="font-medium">Sort By</span>
-                                    <Select value={sortBy} onValueChange={setSortBy}>
+                                    <Select value={tempSortBy} onValueChange={setTempSortBy}>
                                         <SelectTrigger className="w-full h-12 rounded-xl"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="recommended">Recommended</SelectItem>
@@ -231,7 +249,9 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <Button className="w-full h-12 rounded-xl text-lg" onClick={() => document.body.click()}>Apply Filters</Button>
+                                <Button className="w-full h-12 rounded-xl text-lg" onClick={handleApplyFilters}>
+                                    Apply Filters
+                                </Button>
                             </div>
                         </SheetContent>
                       </Sheet>
@@ -265,7 +285,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
               </div>
 
               {/* Category Slider */}
-              <div className="flex gap-4 md:gap-8 overflow-x-auto pb-2 pt-1 scrollbar-hide mask-fade-right">
+              <div className="flex gap-4 md:gap-8 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right">
                   {CATEGORIES.map((cat, idx) => {
                       const isActive = activeCategory === cat.name;
                       return (
@@ -303,7 +323,8 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       </div>
 
       {/* --- PRODUCTS GRID --- */}
-      <div className="container py-8 min-h-[60vh]">
+      {/* ★★★ FIX: Reduced top padding to pt-2 to minimize gap ★★★ */}
+      <div className="container pt-2 pb-8 min-h-[60vh]">
         {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards">
                 {filteredProducts.map((product) => (

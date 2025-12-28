@@ -34,7 +34,7 @@ const CATEGORIES = [
     { name: "Rice", image: "/Categories/2.webp", link: "/menus?category=rice", color: "from-yellow-300 to-orange-400" },    
     { name: "Fish", image: "/Categories/3.webp", link: "/menus?category=fish", color: "from-cyan-400 to-blue-500" },
     { name: "Paneer", image: "/Categories/8.webp", link: "/menus?category=paneer", color: "from-blue-400 to-indigo-500" },
-    { name: "Fried Items", image: "/Categories/5.webp", link: "/menus?category=fried", color: "from-green-400 to-emerald-600" },
+    { name: "Fried", image: "/Categories/5.webp", link: "/menus?category=fried", color: "from-green-400 to-emerald-600" },
     { name: "Chapati", image: "/Categories/6.webp", link: "/menus?category=chapati", color: "from-orange-300 to-yellow-600" },
     { name: "Veg", image: "/Categories/1.webp", link: "/menus?category=veg", color: "from-green-400 to-lime-600" },
 ];

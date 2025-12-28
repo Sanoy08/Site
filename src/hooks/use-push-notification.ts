@@ -16,6 +16,19 @@ export const usePushNotification = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ★★★ URL হ্যান্ডলিং ফাংশন ★★★
+  const handleNavigation = (url: string) => {
+    if (!url) return;
+
+    // যদি পুরো লিংক হয় (যেমন: https://admin.bumbaskitchen.app...), তাহলে ব্রাউজার রিডাইরেক্ট
+    if (url.startsWith('http') || url.startsWith('https')) {
+        window.location.href = url;
+    } else {
+        // যদি রিলেটিভ লিংক হয় (যেমন: /orders), তাহলে অ্যাপ নেভিগেশন
+        router.push(url);
+    }
+  };
+
   const checkPermission = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) return;
     try {
@@ -128,12 +141,9 @@ export const usePushNotification = () => {
       }
     });
 
-    // ★ অ্যাপ খোলা থাকলে ম্যানুয়ালি পপ-আপ দেখানো
     const notificationListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
       console.log('Push received in foreground:', notification);
       
-      // ★★★ ১. নতুন ইভেন্ট ফায়ার করা হচ্ছে ★★★
-      // এটি নোটিফিকেশন পেজকে বলবে: "নতুন ডেটা এসেছে, রিফ্রেশ করো!"
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('notification-updated'));
       }
@@ -160,17 +170,19 @@ export const usePushNotification = () => {
       });
     });
 
+    // ★ ব্যাকগ্রাউন্ড নোটিফিকেশন ক্লিক হ্যান্ডলার আপডেট
     const actionListener = PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
       const data = notification.notification.data;
       if (data?.url) {
-        router.push(data.url);
+        handleNavigation(data.url); // router.push এর বদলে এটি ব্যবহার হবে
       }
     });
 
+    // ★ ফোরগ্রাউন্ড (লোকাল) নোটিফিকেশন ক্লিক হ্যান্ডলার আপডেট
     const localActionListener = LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
         const data = notification.notification.extra;
         if (data?.url) {
-            router.push(data.url);
+            handleNavigation(data.url); // router.push এর বদলে এটি ব্যবহার হবে
         }
     });
 

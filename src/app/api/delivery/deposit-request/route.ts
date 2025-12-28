@@ -81,14 +81,14 @@ export async function POST(req: NextRequest) {
 
         await db.collection('depositRequests').insertOne(requestDoc);
 
-        // 4. Notify Admin
+        /// 4. Notify Admin (এখানে URL চেঞ্জ করা হলো)
         await sendNotificationToAdmins(
             client, 
             "Cash Deposit Request 💰", 
             `${decoded.name} wants to deposit ₹${totalAmount}.`,
-            "/admin/reports" // Or finance page
+            // ★ আগে ছিল '/admin/reports', এখন পুরো লিঙ্ক:
+            "https://admin.bumbaskitchen.app/reports" 
         );
-
         return NextResponse.json({ success: true, message: "Deposit request sent!" });
 
     } catch (e: any) {

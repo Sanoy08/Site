@@ -101,12 +101,13 @@ export async function POST(request: NextRequest) {
 
             await db.collection(ORDERS_COLLECTION).insertOne(newOrder, { session });
 
-            // ৫. নোটিফিকেশন
+            // ৫. নোটিফিকেশন (এখানে URL চেঞ্জ করা হলো)
             sendNotificationToAdmins(
                 client,
                 "New Order (Pending) ⚠️",
                 `Order #${orderNumber} needs verification.`,
-                '/admin/orders'
+                // ★ আগে ছিল '/admin/orders', এখন পুরো লিঙ্ক:
+                'https://admin.bumbaskitchen.app/orders' 
             ).catch(console.error);
 
         });

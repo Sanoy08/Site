@@ -21,14 +21,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Loader2, Cake, Heart, Lock, Eye, EyeOff, User, 
-  Mail, ShieldCheck, Save, Sparkles, LogOut, CalendarIcon 
+  Mail, ShieldCheck, Save, Sparkles, LogOut, CalendarIcon, ChevronDown 
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { NotificationPermission } from '@/components/shared/NotificationPermission';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
-// --- NEW IMPORTS FOR CALENDAR ---
+// --- IMPORTS FOR CALENDAR ---
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -57,7 +57,6 @@ type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 export default function AccountProfilePage() {
   const { user, login, logout } = useAuth();
   
-  // Password Visibility States
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
@@ -72,7 +71,6 @@ export default function AccountProfilePage() {
     defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" }
   });
 
-  // পেজ লোড হলে ফ্রেশ ডেটা আনা
   useEffect(() => {
     const fetchLatestData = async () => {
         const token = localStorage.getItem('token');
@@ -173,6 +171,11 @@ export default function AccountProfilePage() {
   // @ts-ignore
   const hasAnniversary = !!user?.anniversary && user.anniversary !== "";
 
+  // বর্তমান সাল থেকে ১০০ বছর পিছন পর্যন্ত দেখাবে
+  const currentYear = new Date().getFullYear();
+  const fromYear = currentYear - 100;
+  const toYear = currentYear;
+
   if (!user) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
@@ -203,7 +206,6 @@ export default function AccountProfilePage() {
          </div>
       </div>
 
-      {/* --- 2. MAIN CONTENT GRID --- */}
       <div className="container -mt-8 relative z-20">
         <div className="grid lg:grid-cols-3 gap-8">
             
@@ -249,18 +251,22 @@ export default function AccountProfilePage() {
                                 </FormItem>
                             )} />
 
-                            {/* --- SPECIAL DATES SECTION (UPDATED WITH CALENDAR) --- */}
-                            <div className="p-5 bg-amber-50/50 rounded-xl border border-amber-100 space-y-5">
-                                <div className="flex items-center gap-2 text-amber-800 font-medium pb-2 border-b border-amber-100">
-                                    <Sparkles className="h-4 w-4" /> Special Dates <span className="text-xs font-normal text-amber-600 ml-auto">*Get exclusive offers</span>
+                            {/* --- SPECIAL DATES SECTION (PREMIUM CALENDAR) --- */}
+                            <div className="p-6 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl border border-amber-100 space-y-6">
+                                <div className="flex items-center gap-2 text-amber-900 font-semibold pb-3 border-b border-amber-200/60">
+                                    <div className="p-1.5 bg-amber-100 rounded-md"><Sparkles className="h-4 w-4 text-amber-600" /></div>
+                                    Special Dates 
+                                    <span className="text-[10px] font-normal text-amber-700 bg-amber-100/50 px-2 py-0.5 rounded-full ml-auto border border-amber-200">
+                                        ✨ Get exclusive offers
+                                    </span>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     
                                     {/* Birthday Field */}
                                     <FormField control={profileForm.control} name="dob" render={({ field }) => (
                                         <FormItem className="flex flex-col">
-                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground font-bold mb-1">
-                                                <Cake className="h-3 w-3" /> Birthday {hasDob && <Lock className="h-3 w-3 ml-auto" />}
+                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
+                                                <Cake className="h-3.5 w-3.5 text-pink-500" /> Birthday {hasDob && <Lock className="h-3 w-3 ml-auto opacity-50" />}
                                             </FormLabel>
                                             <Popover>
                                                 <PopoverTrigger asChild>
@@ -269,32 +275,46 @@ export default function AccountProfilePage() {
                                                             disabled={hasDob}
                                                             variant={"outline"}
                                                             className={cn(
-                                                                "h-11 w-full pl-3 text-left font-normal border-amber-200 bg-white hover:bg-white/80 transition-colors",
+                                                                "h-12 w-full pl-3 text-left font-normal border-amber-200/60 bg-white hover:bg-amber-50/50 hover:border-amber-300 transition-all rounded-xl shadow-sm",
                                                                 !field.value && "text-muted-foreground",
-                                                                hasDob && "bg-white/50 opacity-50 cursor-not-allowed"
+                                                                hasDob && "bg-gray-50 opacity-60 cursor-not-allowed border-dashed"
                                                             )}
                                                         >
                                                             {field.value ? (
-                                                                format(new Date(field.value), "MMM do, yyyy")
+                                                                <span className="font-medium text-gray-900">{format(new Date(field.value), "MMMM do, yyyy")}</span>
                                                             ) : (
-                                                                <span>Pick a date</span>
+                                                                <span>Pick your birthday</span>
                                                             )}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                            <CalendarIcon className="ml-auto h-4 w-4 text-amber-500 opacity-80" />
                                                         </Button>
                                                     </FormControl>
                                                 </PopoverTrigger>
                                                 {!hasDob && (
-                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                    <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl border-amber-100" align="start">
+                                                        <div className="p-3 border-b border-amber-100 bg-amber-50/30">
+                                                            <p className="text-xs font-semibold text-center text-amber-900">Select Birthday</p>
+                                                        </div>
                                                         <Calendar
                                                             mode="single"
                                                             selected={field.value ? new Date(field.value) : undefined}
                                                             onSelect={(date) => {
                                                                 field.onChange(date ? format(date, "yyyy-MM-dd") : "");
                                                             }}
-                                                            disabled={(date) =>
-                                                                date > new Date() || date < new Date("1900-01-01")
-                                                            }
+                                                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                                                             initialFocus
+                                                            captionLayout="dropdown-buttons" // ★ ইয়ার এবং মান্থ ড্রপডাউন
+                                                            fromYear={fromYear} 
+                                                            toYear={toYear}
+                                                            className="p-3"
+                                                            classNames={{
+                                                                caption_label: "hidden", // ডিফল্ট টেক্সট লুকিয়ে রাখা
+                                                                caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
+                                                                dropdown: "bg-background border border-amber-200 rounded-md py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50",
+                                                                dropdown_month: "flex-1",
+                                                                dropdown_year: "flex-1",
+                                                                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                                                                day_today: "bg-amber-50 text-amber-900 font-bold",
+                                                            }}
                                                         />
                                                     </PopoverContent>
                                                 )}
@@ -306,8 +326,8 @@ export default function AccountProfilePage() {
                                     {/* Anniversary Field */}
                                     <FormField control={profileForm.control} name="anniversary" render={({ field }) => (
                                         <FormItem className="flex flex-col">
-                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground font-bold mb-1">
-                                                <Heart className="h-3 w-3" /> Anniversary {hasAnniversary && <Lock className="h-3 w-3 ml-auto" />}
+                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
+                                                <Heart className="h-3.5 w-3.5 text-red-500" /> Anniversary {hasAnniversary && <Lock className="h-3 w-3 ml-auto opacity-50" />}
                                             </FormLabel>
                                             <Popover>
                                                 <PopoverTrigger asChild>
@@ -316,32 +336,46 @@ export default function AccountProfilePage() {
                                                             disabled={hasAnniversary}
                                                             variant={"outline"}
                                                             className={cn(
-                                                                "h-11 w-full pl-3 text-left font-normal border-amber-200 bg-white hover:bg-white/80 transition-colors",
+                                                                "h-12 w-full pl-3 text-left font-normal border-amber-200/60 bg-white hover:bg-amber-50/50 hover:border-amber-300 transition-all rounded-xl shadow-sm",
                                                                 !field.value && "text-muted-foreground",
-                                                                hasAnniversary && "bg-white/50 opacity-50 cursor-not-allowed"
+                                                                hasAnniversary && "bg-gray-50 opacity-60 cursor-not-allowed border-dashed"
                                                             )}
                                                         >
                                                             {field.value ? (
-                                                                format(new Date(field.value), "MMM do, yyyy")
+                                                                <span className="font-medium text-gray-900">{format(new Date(field.value), "MMMM do, yyyy")}</span>
                                                             ) : (
-                                                                <span>Pick a date</span>
+                                                                <span>Pick anniversary date</span>
                                                             )}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                            <CalendarIcon className="ml-auto h-4 w-4 text-amber-500 opacity-80" />
                                                         </Button>
                                                     </FormControl>
                                                 </PopoverTrigger>
                                                 {!hasAnniversary && (
-                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                    <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl border-amber-100" align="start">
+                                                        <div className="p-3 border-b border-amber-100 bg-amber-50/30">
+                                                            <p className="text-xs font-semibold text-center text-amber-900">Select Anniversary</p>
+                                                        </div>
                                                         <Calendar
                                                             mode="single"
                                                             selected={field.value ? new Date(field.value) : undefined}
                                                             onSelect={(date) => {
                                                                 field.onChange(date ? format(date, "yyyy-MM-dd") : "");
                                                             }}
-                                                            disabled={(date) =>
-                                                                date > new Date() || date < new Date("1900-01-01")
-                                                            }
+                                                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                                                             initialFocus
+                                                            captionLayout="dropdown-buttons"
+                                                            fromYear={fromYear} 
+                                                            toYear={toYear}
+                                                            className="p-3"
+                                                            classNames={{
+                                                                caption_label: "hidden",
+                                                                caption_dropdowns: "flex justify-center gap-2 mb-2 w-full",
+                                                                dropdown: "bg-background border border-amber-200 rounded-md py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer hover:bg-amber-50",
+                                                                dropdown_month: "flex-1",
+                                                                dropdown_year: "flex-1",
+                                                                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                                                                day_today: "bg-amber-50 text-amber-900 font-bold",
+                                                            }}
                                                         />
                                                     </PopoverContent>
                                                 )}
@@ -363,7 +397,7 @@ export default function AccountProfilePage() {
                 </CardContent>
             </Card>
 
-            {/* --- RIGHT: SECURITY FORM --- */}
+            {/* --- RIGHT: SECURITY FORM (Same as before) --- */}
             <Card className="shadow-lg border-0 h-fit sticky top-24">
                 <CardHeader className="bg-white border-b pb-6">
                     <CardTitle className="flex items-center gap-2 text-xl">

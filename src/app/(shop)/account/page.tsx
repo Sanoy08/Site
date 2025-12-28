@@ -14,16 +14,24 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { Loader2, Cake, Heart, Lock, Eye, EyeOff, User, Mail, ShieldCheck, Save, Sparkles, LogOut } from 'lucide-react';
+import { 
+  Loader2, Cake, Heart, Lock, Eye, EyeOff, User, 
+  Mail, ShieldCheck, Save, Sparkles, LogOut, CalendarIcon 
+} from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { NotificationPermission } from '@/components/shared/NotificationPermission';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+
+// --- NEW IMPORTS FOR CALENDAR ---
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -241,29 +249,104 @@ export default function AccountProfilePage() {
                                 </FormItem>
                             )} />
 
+                            {/* --- SPECIAL DATES SECTION (UPDATED WITH CALENDAR) --- */}
                             <div className="p-5 bg-amber-50/50 rounded-xl border border-amber-100 space-y-5">
                                 <div className="flex items-center gap-2 text-amber-800 font-medium pb-2 border-b border-amber-100">
                                     <Sparkles className="h-4 w-4" /> Special Dates <span className="text-xs font-normal text-amber-600 ml-auto">*Get exclusive offers</span>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    
+                                    {/* Birthday Field */}
                                     <FormField control={profileForm.control} name="dob" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground font-bold">
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground font-bold mb-1">
                                                 <Cake className="h-3 w-3" /> Birthday {hasDob && <Lock className="h-3 w-3 ml-auto" />}
                                             </FormLabel>
-                                            <FormControl>
-                                                <Input type="date" {...field} disabled={hasDob} className={`h-11 ${hasDob ? "bg-white/50" : "bg-white border-amber-200"}`} />
-                                            </FormControl>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button
+                                                            disabled={hasDob}
+                                                            variant={"outline"}
+                                                            className={cn(
+                                                                "h-11 w-full pl-3 text-left font-normal border-amber-200 bg-white hover:bg-white/80 transition-colors",
+                                                                !field.value && "text-muted-foreground",
+                                                                hasDob && "bg-white/50 opacity-50 cursor-not-allowed"
+                                                            )}
+                                                        >
+                                                            {field.value ? (
+                                                                format(new Date(field.value), "MMM do, yyyy")
+                                                            ) : (
+                                                                <span>Pick a date</span>
+                                                            )}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                {!hasDob && (
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => {
+                                                                field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                                            }}
+                                                            disabled={(date) =>
+                                                                date > new Date() || date < new Date("1900-01-01")
+                                                            }
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                )}
+                                            </Popover>
+                                            <FormMessage />
                                         </FormItem>
                                     )} />
+
+                                    {/* Anniversary Field */}
                                     <FormField control={profileForm.control} name="anniversary" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground font-bold">
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground font-bold mb-1">
                                                 <Heart className="h-3 w-3" /> Anniversary {hasAnniversary && <Lock className="h-3 w-3 ml-auto" />}
                                             </FormLabel>
-                                            <FormControl>
-                                                <Input type="date" {...field} disabled={hasAnniversary} className={`h-11 ${hasAnniversary ? "bg-white/50" : "bg-white border-amber-200"}`} />
-                                            </FormControl>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button
+                                                            disabled={hasAnniversary}
+                                                            variant={"outline"}
+                                                            className={cn(
+                                                                "h-11 w-full pl-3 text-left font-normal border-amber-200 bg-white hover:bg-white/80 transition-colors",
+                                                                !field.value && "text-muted-foreground",
+                                                                hasAnniversary && "bg-white/50 opacity-50 cursor-not-allowed"
+                                                            )}
+                                                        >
+                                                            {field.value ? (
+                                                                format(new Date(field.value), "MMM do, yyyy")
+                                                            ) : (
+                                                                <span>Pick a date</span>
+                                                            )}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                {!hasAnniversary && (
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => {
+                                                                field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                                                            }}
+                                                            disabled={(date) =>
+                                                                date > new Date() || date < new Date("1900-01-01")
+                                                            }
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                )}
+                                            </Popover>
+                                            <FormMessage />
                                         </FormItem>
                                     )} />
                                 </div>

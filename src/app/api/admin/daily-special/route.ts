@@ -20,13 +20,10 @@ async function isAdmin(request: NextRequest) {
   } catch { return false; }
 }
 
-// ১. বর্তমান স্পেশাল মেনু পাওয়া
 export async function GET(request: NextRequest) {
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    
-    // স্পেশাল ফ্ল্যাগ দিয়ে খোঁজা হচ্ছে
     const specialItem = await db.collection(COLLECTION_NAME).findOne({ isDailySpecial: true });
 
     if (!specialItem) {
@@ -39,7 +36,7 @@ export async function GET(request: NextRequest) {
             id: specialItem._id,
             name: specialItem.Name,
             price: specialItem.Price,
-            description: specialItem.Description, // এটি স্ট্রিং হিসেবেই যাবে
+            description: specialItem.Description,
             imageUrl: specialItem.ImageURLs?.[0] || '',
             inStock: specialItem.InStock
         }
@@ -50,7 +47,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ২. আপডেট বা তৈরি করা
 export async function POST(request: NextRequest) {
   try {
     if (!await isAdmin(request)) {
@@ -60,27 +56,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, price, items, imageUrl, inStock, notifyUsers } = body;
 
-    // আইটেম লিস্টকে ডেসক্রিপশন টেক্সটে রূপান্তর করা (বুলেট পয়েন্ট সহ)
     const description = items.map((item: string) => `• ${item}`).join('\n');
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
 
-    // আপডেট অবজেক্ট
     const productData = {
         Name: name,
         Price: parseFloat(price),
         Description: description,
-        Category: "Thali", // স্পেশাল ক্যাটাগরি
+        Category: "Thali",
         ImageURLs: [imageUrl],
         InStock: inStock,
-        isDailySpecial: true, // ★ এই ফ্ল্যাগটিই আসল ম্যাজিক
-        Bestseller: false, // হোমপেজে আলাদা সেকশনে দেখাব, তাই বেস্টসেলারে দরকার নেই
+        isDailySpecial: true,
+        Bestseller: false,
         UpdatedAt: new Date()
     };
 
-    // আগে থেকে আছে কি না চেক করা
     const existing = await collection.findOne({ isDailySpecial: true });
 
     if (existing) {
@@ -89,23 +82,23 @@ export async function POST(request: NextRequest) {
         await collection.insertOne({ ...productData, CreatedAt: new Date() });
     }
 
-    // ক্যাশ রিফ্রেশ
     revalidatePath('/menus');
     revalidatePath('/');
 
-    // রিয়েল-টাইম আপডেট
+    // Frontend Realtime Trigger
     await pusherServer.trigger('menu-updates', 'product-changed', {
         message: "Daily Special Menu Updated! 🍛",
         type: 'update'
     });
 
-    // নোটিফিকেশন (যদি অ্যাডমিন চায়)
+    // Notification Logic
     if (notifyUsers) {
-        sendNotificationToAllUsers(
+        await sendNotificationToAllUsers(
             client,
             "Today's Special! 🍛",
             `New ${name} is now available. Order before it runs out!`,
-            '/'
+            imageUrl || "", // ★ FIX: Image URL যোগ করা হয়েছে (খালি থাকলে ব্ল্যাঙ্ক স্ট্রিং)
+            '/menus/special-veg-thalii' // Link
         ).catch(console.error);
     }
 

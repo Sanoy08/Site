@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider'; // ★ এটি ইম্পোর্ট করুন
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
+import { MobileNav } from "@/components/layout/MobileNav"; // Import করুন
 import { CartProvider } from '@/context/CartProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
@@ -104,6 +105,7 @@ export default function RootLayout({
             
             <Toaster />
           </CartProvider>
+          <MobileNav />
       </body>
     </html>
   );

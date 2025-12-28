@@ -16,20 +16,46 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border shadow-t-lg z-50">
-      <nav className="flex justify-around items-center h-full">
-        {navLinks.map((link) => {
-          const isActive = pathname.startsWith(link.href) && (link.href !== '/' || pathname === '/');
-          return (
-            <Link key={link.href} href={link.href} className="flex flex-col items-center justify-center text-center w-full h-full">
-              <link.icon className={cn('h-6 w-6 mb-1', isActive ? 'text-primary' : 'text-muted-foreground')} />
-              <span className={cn('text-xs font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}>
-                {link.label}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+    <div className="md:hidden fixed bottom-2 left-0 right-0 z-50 flex justify-center">
+      <div className="w-[92%] max-w-md rounded-2xl bg-card border border-border shadow-lg px-1 py-1.5">
+        <nav className="flex justify-between items-center">
+          {navLinks.map((link) => {
+            const isActive =
+              pathname === link.href ||
+              (link.href !== '/' && pathname.startsWith(link.href));
+
+            const Icon = link.icon;
+
+            return (
+              <Link key={link.href} href={link.href} className="flex-1 flex justify-center">
+                <div
+                  className={cn(
+                    'flex flex-col items-center justify-center px-3 py-1.5 rounded-xl transition-all duration-300',
+                    isActive
+                      ? 'bg-primary/10 -translate-y-1'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'h-5 w-5',
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'text-[10px] font-medium leading-none',
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {link.label}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }

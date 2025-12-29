@@ -242,7 +242,7 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                 />
             </div>
             
-            {/* ★ Time Slot Selector (Only visible for Auto Pilot) ★ */}
+            {/* ★ Updated Time Slot Selector ★ */}
             {showTimeSlot && (
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-primary"><Clock className="h-4 w-4"/> Target Time Slot</Label>
@@ -254,13 +254,13 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                             <SelectValue placeholder="Select Time" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="morning">Morning (6 AM - 11 AM)</SelectItem>
-                            <SelectItem value="lunch">Lunch (11 AM - 4 PM)</SelectItem>
-                            <SelectItem value="dinner">Dinner (4 PM - 11 PM)</SelectItem>
-                            <SelectItem value="anytime">Anytime (Random)</SelectItem>
+                            <SelectItem value="lunch-preorder">Lunch Pre-order (12 AM)</SelectItem>
+                            <SelectItem value="lunch">Lunch Reminder (6 AM)</SelectItem>
+                            <SelectItem value="dinner-preorder">Dinner Pre-order (12 PM)</SelectItem>
+                            <SelectItem value="dinner">Dinner Reminder (6 PM)</SelectItem>
                         </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">When should this message be sent?</p>
+                    <p className="text-xs text-muted-foreground">Select when this message should be blasted.</p>
                 </div>
             )}
 

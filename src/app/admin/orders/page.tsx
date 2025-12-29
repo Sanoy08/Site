@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, Suspense } from 'react'; // Suspense added
+import { useState, useEffect, Suspense } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -16,8 +16,7 @@ import { formatPrice } from '@/lib/utils';
 // @ts-ignore
 import { generateInvoice } from '@/lib/invoiceGenerator'; 
 import { OrderDetailSheet } from '@/components/admin/OrderDetailSheet'; 
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link'; // ★ Link Import
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'; 
 
 type Order = {
   _id: string;
@@ -40,7 +39,7 @@ type Order = {
 
 const STATUS_OPTIONS = ['Received', 'Cooking', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
-// ★ মেইন কম্পোনেন্টকে আলাদা ফাংশনে নিয়ে Suspense এ র‍্যাপ করা হলো (Best Practice)
+// ★★★ 1. মেইন লজিক কম্পোনেন্ট (আলাদা করা হলো) ★★★
 function AdminOrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -48,9 +47,12 @@ function AdminOrdersContent() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
   
+  // ★ রাউটিং হুকস
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedOrderId = searchParams.get('id');
+  
+  const selectedOrderId = searchParams.get('id'); 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const { user } = useAuth();
@@ -84,7 +86,7 @@ function AdminOrdersContent() {
     fetchOrders();
   }, []);
 
-  // ★ URL ID চেঞ্জ হলে স্লাইডার খোলার লজিক
+  // ★ URL চেঞ্জ হলে স্লাইডার খোলার লজিক
   useEffect(() => {
     if (selectedOrderId && orders.length > 0) {
         const order = orders.find(o => o.OrderNumber === selectedOrderId || o._id === selectedOrderId);
@@ -112,8 +114,21 @@ function AdminOrdersContent() {
     setFilteredOrders(result);
   }, [searchQuery, statusFilter, orders]);
 
+  // ★ অর্ডার ক্লিক হ্যান্ডলার (Better Logic)
+  const handleOrderClick = (orderNumber: string) => {
+      // বর্তমান URL প্যারামিটারগুলো বজায় রাখা (যদি থাকে)
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('id', orderNumber);
+      
+      // router.replace ব্যবহার করা হলো যাতে ব্রাউজার হিস্ট্রি ক্লিন থাকে, অথবা push ব্যবহার করতে পারেন
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  // ★ শিট বন্ধ হ্যান্ডলার
   const handleCloseSheet = () => {
-      router.push('/admin/orders', { scroll: false });
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('id');
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -215,57 +230,57 @@ function AdminOrdersContent() {
           </div>
         </div>
 
-      {/* Mobile View: Cards with DIRECT LINK */}
+      {/* Mobile View: Cards */}
       <div className="grid grid-cols-1 md:hidden gap-4">
         {filteredOrders.map(order => (
-            // ★ Link Component ব্যবহার করা হয়েছে পুরো কার্ডের জন্য
-            <Link key={order._id} href={`/admin/orders?id=${order.OrderNumber}`} className="block">
-                <Card className="border shadow-sm active:scale-[0.98] transition-transform">
-                    <div className="p-4 space-y-3">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="font-mono text-sm font-bold text-foreground">#{order.OrderNumber}</p>
-                                <p className="text-xs text-muted-foreground">{new Date(order.Timestamp).toLocaleDateString()}</p>
-                            </div>
-                            <Badge variant="outline" className={`${getStatusColor(order.Status)} border font-normal`}>
-                                {order.Status}
-                            </Badge>
+            <Card 
+                key={order._id} 
+                onClick={() => handleOrderClick(order.OrderNumber)}
+                className="border shadow-sm active:scale-[0.98] transition-transform cursor-pointer hover:border-primary/50"
+            >
+                <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-mono text-sm font-bold text-foreground">#{order.OrderNumber}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(order.Timestamp).toLocaleDateString()}</p>
                         </div>
-                        <div className="flex justify-between items-center py-2 border-t border-b border-dashed">
-                            <div>
-                                <p className="text-sm font-semibold">{order.Name}</p>
-                                <p className="text-xs text-muted-foreground">{order.Phone}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm font-bold text-primary">{formatPrice(order.FinalPrice)}</p>
-                                <p className="text-xs text-muted-foreground">{order.Items.length} Items</p>
-                            </div>
-                        </div>
-                        {/* Stop Propagation for buttons inside Link */}
-                        <div className="flex gap-2 items-center pt-1" onClick={(e) => e.preventDefault()}>
-                            <div className="flex-1">
-                                <Select defaultValue={order.Status} onValueChange={(val) => handleStatusChange(order._id, val)}>
-                                    <SelectTrigger className="w-full h-9 bg-muted/50">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {STATUS_OPTIONS.map(status => (
-                                            <SelectItem key={status} value={status}>{status}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={(e) => { e.preventDefault(); handleDownloadInvoice(order); }}>
-                                <FileText className="h-4 w-4" />
-                            </Button>
-                        </div>
+                        <Badge variant="outline" className={`${getStatusColor(order.Status)} border font-normal`}>
+                            {order.Status}
+                        </Badge>
                     </div>
-                </Card>
-            </Link>
+                    <div className="flex justify-between items-center py-2 border-t border-b border-dashed">
+                         <div>
+                             <p className="text-sm font-semibold">{order.Name}</p>
+                             <p className="text-xs text-muted-foreground">{order.Phone}</p>
+                         </div>
+                         <div className="text-right">
+                             <p className="text-sm font-bold text-primary">{formatPrice(order.FinalPrice)}</p>
+                             <p className="text-xs text-muted-foreground">{order.Items.length} Items</p>
+                         </div>
+                    </div>
+                    <div className="flex gap-2 items-center pt-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1">
+                            <Select defaultValue={order.Status} onValueChange={(val) => handleStatusChange(order._id, val)}>
+                                <SelectTrigger className="w-full h-9 bg-muted/50">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {STATUS_OPTIONS.map(status => (
+                                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={() => handleDownloadInvoice(order)}>
+                            <FileText className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </Card>
         ))}
       </div>
 
-      {/* Desktop View: Table with DIRECT LINKS */}
+      {/* Desktop View: Table */}
       <Card className="hidden md:block overflow-hidden border-0 shadow-md">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -283,18 +298,18 @@ function AdminOrdersContent() {
                 </TableHeader>
                 <TableBody>
                 {filteredOrders.map(order => (
-                    <TableRow key={order._id} className="hover:bg-muted/20 transition-colors">
-                        {/* ★ Order Number is now a Link */}
-                        <TableCell className="pl-6">
-                            <Link href={`/admin/orders?id=${order.OrderNumber}`} className="font-mono font-medium text-sm text-primary hover:underline">
-                                #{order.OrderNumber}
-                            </Link>
+                    <TableRow 
+                        key={order._id} 
+                        // ★ cursor-pointer নিশ্চিত করা হয়েছে
+                        className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                        onClick={() => handleOrderClick(order.OrderNumber)}
+                    >
+                        <TableCell className="pl-6 font-mono font-medium text-sm text-primary group-hover:text-blue-700">
+                            #{order.OrderNumber}
                         </TableCell>
                         <TableCell>
-                            <Link href={`/admin/orders?id=${order.OrderNumber}`} className="block">
-                                <div className="font-medium text-sm hover:text-primary transition-colors">{order.Name}</div>
-                                <div className="text-xs text-muted-foreground">{order.Phone}</div>
-                            </Link>
+                            <div className="font-medium text-sm">{order.Name}</div>
+                            <div className="text-xs text-muted-foreground">{order.Phone}</div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                             {new Date(order.Timestamp).toLocaleDateString()}
@@ -305,7 +320,7 @@ function AdminOrdersContent() {
                             </Badge>
                         </TableCell>
                         <TableCell className="font-bold text-sm">{formatPrice(order.FinalPrice)}</TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                             <Select 
                                 defaultValue={order.Status} 
                                 onValueChange={(val) => handleStatusChange(order._id, val)}
@@ -320,7 +335,7 @@ function AdminOrdersContent() {
                                 </SelectContent>
                             </Select>
                         </TableCell>
-                        <TableCell className="text-right pr-6">
+                        <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -338,7 +353,6 @@ function AdminOrdersContent() {
         </CardContent>
       </Card>
 
-      {/* Detail Sheet Slider */}
       <OrderDetailSheet 
         order={selectedOrder}
         open={!!selectedOrder}
@@ -351,7 +365,7 @@ function AdminOrdersContent() {
   )
 }
 
-// ★ Default Export with Suspense Boundary (Required for useSearchParams)
+// ★★★ 2. মেইন এক্সপোর্ট (Suspense সহ) ★★★
 export default function AdminOrdersPage() {
     return (
         <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>

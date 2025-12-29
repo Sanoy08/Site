@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react'; // Suspense added
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -15,10 +15,10 @@ import { Input } from "@/components/ui/input";
 import { formatPrice } from '@/lib/utils';
 // @ts-ignore
 import { generateInvoice } from '@/lib/invoiceGenerator'; 
-import { OrderDetailSheet } from '@/components/admin/OrderDetailSheet'; // ★ নতুন কম্পোনেন্ট
-import { useRouter, useSearchParams } from 'next/navigation'; // ★ রাউটিং ইম্পোর্ট
+import { OrderDetailSheet } from '@/components/admin/OrderDetailSheet'; 
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link'; // ★ Link Import
 
-// টাইপ আপডেট করা হয়েছে আপনার ডাটা অনুযায়ী
 type Order = {
   _id: string;
   OrderNumber: string;
@@ -40,17 +40,17 @@ type Order = {
 
 const STATUS_OPTIONS = ['Received', 'Cooking', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
-export default function AdminOrdersPage() {
+// ★ মেইন কম্পোনেন্টকে আলাদা ফাংশনে নিয়ে Suspense এ র‍্যাপ করা হলো (Best Practice)
+function AdminOrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
   
-  // ★ রাউটিং এবং সিলেকশন স্টেট
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectedOrderId = searchParams.get('id'); // URL থেকে ID নেওয়া হচ্ছে
+  const selectedOrderId = searchParams.get('id');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const { user } = useAuth();
@@ -87,7 +87,6 @@ export default function AdminOrdersPage() {
   // ★ URL ID চেঞ্জ হলে স্লাইডার খোলার লজিক
   useEffect(() => {
     if (selectedOrderId && orders.length > 0) {
-        // OrderNumber অথবা _id দিয়ে খোঁজা হচ্ছে (আপনার লিংকে OrderNumber আছে)
         const order = orders.find(o => o.OrderNumber === selectedOrderId || o._id === selectedOrderId);
         if (order) {
             setSelectedOrder(order);
@@ -97,7 +96,6 @@ export default function AdminOrdersPage() {
     }
   }, [selectedOrderId, orders]);
 
-  // ফিল্টারিং লজিক
   useEffect(() => {
     let result = orders;
     if (statusFilter !== 'All') {
@@ -114,22 +112,13 @@ export default function AdminOrdersPage() {
     setFilteredOrders(result);
   }, [searchQuery, statusFilter, orders]);
 
-  // ★ অর্ডার ক্লিক করলে URL আপডেট করা
-  const handleOrderClick = (orderNumber: string) => {
-      // scroll: false রাখলে পেজ জাম্প করবে না
-      router.push(`/admin/orders?id=${orderNumber}`, { scroll: false });
-  };
-
-  // ★ শিট বন্ধ করলে URL ক্লিন করা
   const handleCloseSheet = () => {
       router.push('/admin/orders', { scroll: false });
   };
 
-  // Status Update Handler
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     const token = localStorage.getItem('token');
     
-    // Optimistic UI Update (List & Selected Order both)
     setOrders(prev => prev.map(o => o._id === orderId ? { ...o, Status: newStatus } : o));
     if (selectedOrder && selectedOrder._id === orderId) {
         setSelectedOrder({ ...selectedOrder, Status: newStatus });
@@ -226,59 +215,57 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-      {/* Mobile View: Cards */}
+      {/* Mobile View: Cards with DIRECT LINK */}
       <div className="grid grid-cols-1 md:hidden gap-4">
         {filteredOrders.map(order => (
-            <Card 
-                key={order._id} 
-                // ★ onClick Added Here
-                onClick={() => handleOrderClick(order.OrderNumber)}
-                className="border shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-            >
-                <div className="p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="font-mono text-sm font-bold text-foreground">#{order.OrderNumber}</p>
-                            <p className="text-xs text-muted-foreground">{new Date(order.Timestamp).toLocaleDateString()}</p>
+            // ★ Link Component ব্যবহার করা হয়েছে পুরো কার্ডের জন্য
+            <Link key={order._id} href={`/admin/orders?id=${order.OrderNumber}`} className="block">
+                <Card className="border shadow-sm active:scale-[0.98] transition-transform">
+                    <div className="p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="font-mono text-sm font-bold text-foreground">#{order.OrderNumber}</p>
+                                <p className="text-xs text-muted-foreground">{new Date(order.Timestamp).toLocaleDateString()}</p>
+                            </div>
+                            <Badge variant="outline" className={`${getStatusColor(order.Status)} border font-normal`}>
+                                {order.Status}
+                            </Badge>
                         </div>
-                        <Badge variant="outline" className={`${getStatusColor(order.Status)} border font-normal`}>
-                            {order.Status}
-                        </Badge>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-t border-b border-dashed">
-                         <div>
-                             <p className="text-sm font-semibold">{order.Name}</p>
-                             <p className="text-xs text-muted-foreground">{order.Phone}</p>
-                         </div>
-                         <div className="text-right">
-                             <p className="text-sm font-bold text-primary">{formatPrice(order.FinalPrice)}</p>
-                             <p className="text-xs text-muted-foreground">{order.Items.length} Items</p>
-                         </div>
-                    </div>
-                    {/* Actions prevent bubbling so clicking button doesn't open sheet */}
-                    <div className="flex gap-2 items-center pt-1" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex-1">
-                            <Select defaultValue={order.Status} onValueChange={(val) => handleStatusChange(order._id, val)}>
-                                <SelectTrigger className="w-full h-9 bg-muted/50">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {STATUS_OPTIONS.map(status => (
-                                        <SelectItem key={status} value={status}>{status}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className="flex justify-between items-center py-2 border-t border-b border-dashed">
+                            <div>
+                                <p className="text-sm font-semibold">{order.Name}</p>
+                                <p className="text-xs text-muted-foreground">{order.Phone}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-primary">{formatPrice(order.FinalPrice)}</p>
+                                <p className="text-xs text-muted-foreground">{order.Items.length} Items</p>
+                            </div>
                         </div>
-                        <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={() => handleDownloadInvoice(order)}>
-                            <FileText className="h-4 w-4" />
-                        </Button>
+                        {/* Stop Propagation for buttons inside Link */}
+                        <div className="flex gap-2 items-center pt-1" onClick={(e) => e.preventDefault()}>
+                            <div className="flex-1">
+                                <Select defaultValue={order.Status} onValueChange={(val) => handleStatusChange(order._id, val)}>
+                                    <SelectTrigger className="w-full h-9 bg-muted/50">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {STATUS_OPTIONS.map(status => (
+                                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={(e) => { e.preventDefault(); handleDownloadInvoice(order); }}>
+                                <FileText className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
-                </div>
-            </Card>
+                </Card>
+            </Link>
         ))}
       </div>
 
-      {/* Desktop View: Table */}
+      {/* Desktop View: Table with DIRECT LINKS */}
       <Card className="hidden md:block overflow-hidden border-0 shadow-md">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -296,18 +283,18 @@ export default function AdminOrdersPage() {
                 </TableHeader>
                 <TableBody>
                 {filteredOrders.map(order => (
-                    <TableRow 
-                        key={order._id} 
-                        // ★ onClick Added Here
-                        onClick={() => handleOrderClick(order.OrderNumber)}
-                        className="hover:bg-muted/20 transition-colors cursor-pointer"
-                    >
-                        <TableCell className="pl-6 font-mono font-medium text-sm text-primary">
-                            #{order.OrderNumber}
+                    <TableRow key={order._id} className="hover:bg-muted/20 transition-colors">
+                        {/* ★ Order Number is now a Link */}
+                        <TableCell className="pl-6">
+                            <Link href={`/admin/orders?id=${order.OrderNumber}`} className="font-mono font-medium text-sm text-primary hover:underline">
+                                #{order.OrderNumber}
+                            </Link>
                         </TableCell>
                         <TableCell>
-                            <div className="font-medium text-sm">{order.Name}</div>
-                            <div className="text-xs text-muted-foreground">{order.Phone}</div>
+                            <Link href={`/admin/orders?id=${order.OrderNumber}`} className="block">
+                                <div className="font-medium text-sm hover:text-primary transition-colors">{order.Name}</div>
+                                <div className="text-xs text-muted-foreground">{order.Phone}</div>
+                            </Link>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                             {new Date(order.Timestamp).toLocaleDateString()}
@@ -318,7 +305,7 @@ export default function AdminOrdersPage() {
                             </Badge>
                         </TableCell>
                         <TableCell className="font-bold text-sm">{formatPrice(order.FinalPrice)}</TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TableCell>
                             <Select 
                                 defaultValue={order.Status} 
                                 onValueChange={(val) => handleStatusChange(order._id, val)}
@@ -333,7 +320,7 @@ export default function AdminOrdersPage() {
                                 </SelectContent>
                             </Select>
                         </TableCell>
-                        <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="text-right pr-6">
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -351,7 +338,7 @@ export default function AdminOrdersPage() {
         </CardContent>
       </Card>
 
-      {/* ★ Detail Sheet Slider */}
+      {/* Detail Sheet Slider */}
       <OrderDetailSheet 
         order={selectedOrder}
         open={!!selectedOrder}
@@ -362,4 +349,13 @@ export default function AdminOrdersPage() {
 
     </div>
   )
+}
+
+// ★ Default Export with Suspense Boundary (Required for useSearchParams)
+export default function AdminOrdersPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <AdminOrdersContent />
+        </Suspense>
+    );
 }

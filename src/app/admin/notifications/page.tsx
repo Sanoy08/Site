@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Send, Bell, Plus, Trash2, History, Zap, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Send, Bell, Plus, Trash2, History, Zap, Image as ImageIcon, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import Image from 'next/image';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Image Optimizer Helper
 const getOptimizedNotificationImage = (url: string) => {
@@ -28,8 +29,8 @@ export default function AdminNotificationsPage() {
   const [presets, setPresets] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   
-  // Form State
-  const [formData, setFormData] = useState({ title: '', message: '', image: '', link: '' });
+  // Form State (Default timeSlot is 'anytime')
+  const [formData, setFormData] = useState({ title: '', message: '', image: '', link: '', timeSlot: 'anytime' });
 
   // Load Data
   const fetchData = async () => {
@@ -57,7 +58,7 @@ export default function AdminNotificationsPage() {
         body: JSON.stringify(optimizedData),
       });
       toast.success('Broadcast sent!');
-      setFormData({ title: '', message: '', image: '', link: '' });
+      setFormData({ title: '', message: '', image: '', link: '', timeSlot: 'anytime' });
       fetchData(); // Refresh history
     } catch (e) { toast.error('Failed to send'); } 
     finally { setIsLoading(false); }
@@ -76,7 +77,7 @@ export default function AdminNotificationsPage() {
         body: JSON.stringify(optimizedData),
       });
       toast.success('Preset Saved to Auto-Pilot!');
-      setFormData({ title: '', message: '', image: '', link: '' });
+      setFormData({ title: '', message: '', image: '', link: '', timeSlot: 'anytime' });
       fetchData();
     } catch (e) { toast.error('Failed to save'); } 
     finally { setIsLoading(false); }
@@ -111,7 +112,7 @@ export default function AdminNotificationsPage() {
                 <Card className="border-0 shadow-lg mt-6">
                     <CardHeader><CardTitle>Send Instant Broadcast</CardTitle><CardDescription>Send a message to everyone right now.</CardDescription></CardHeader>
                     <CardContent className="space-y-6">
-                        <NotificationForm formData={formData} setFormData={setFormData} />
+                        <NotificationForm formData={formData} setFormData={setFormData} showTimeSlot={false} />
                         <Button className="w-full h-12 text-lg" onClick={handleManualSend} disabled={isLoading}>
                             {isLoading ? <Loader2 className="animate-spin" /> : <Send className="mr-2 h-5 w-5" />} Send Now
                         </Button>
@@ -126,10 +127,11 @@ export default function AdminNotificationsPage() {
                     <Card className="border-0 shadow-lg h-fit">
                         <CardHeader className="bg-amber-50 rounded-t-xl pb-4">
                             <CardTitle className="text-amber-800 flex items-center gap-2"><Zap className="h-5 w-5"/> Add New Preset</CardTitle>
-                            <CardDescription>Save eye-catchy messages here. The system will pick one randomly & send automatically.</CardDescription>
+                            <CardDescription>System will pick based on time of day.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6 pt-6">
-                            <NotificationForm formData={formData} setFormData={setFormData} />
+                            {/* ★ TimeSlot Option Visible Here ★ */}
+                            <NotificationForm formData={formData} setFormData={setFormData} showTimeSlot={true} />
                             <Button className="w-full h-12 text-lg bg-amber-600 hover:bg-amber-700" onClick={handleSavePreset} disabled={isLoading}>
                                 {isLoading ? <Loader2 className="animate-spin" /> : <Plus className="mr-2 h-5 w-5" />} Save to Auto-Pilot
                             </Button>
@@ -153,9 +155,19 @@ export default function AdminNotificationsPage() {
                                             )}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-gray-900">{preset.title}</h4>
-                                            <p className="text-sm text-gray-600 line-clamp-2">{preset.message}</p>
-                                            <span className="text-[10px] text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full mt-2 inline-block">Link: {preset.link || 'Home'}</span>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                {/* Time Badge */}
+                                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                                                    preset.timeSlot === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                                    preset.timeSlot === 'dinner' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                                    preset.timeSlot === 'morning' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                                                    'bg-gray-100 text-gray-700 border-gray-200'
+                                                }`}>
+                                                    {preset.timeSlot || 'Anytime'}
+                                                </span>
+                                            </div>
+                                            <h4 className="font-bold text-gray-900 leading-tight">{preset.title}</h4>
+                                            <p className="text-sm text-gray-600 line-clamp-2 mt-1">{preset.message}</p>
                                         </div>
                                     </div>
                                     <button 
@@ -190,6 +202,11 @@ export default function AdminNotificationsPage() {
                                             </span>
                                         </div>
                                         <p className="text-sm text-gray-600 mt-0.5">{log.message}</p>
+                                        {log.type === 'AUTO_CRON' && log.targetSlot && (
+                                            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded mt-1 inline-block">
+                                                Auto Pilot: {log.targetSlot}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -203,8 +220,8 @@ export default function AdminNotificationsPage() {
   );
 }
 
-// Reusable Form Component
-function NotificationForm({ formData, setFormData }: any) {
+// Reusable Form Component (Updated with Select)
+function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
     return (
         <>
             <div className="space-y-2">
@@ -224,6 +241,29 @@ function NotificationForm({ formData, setFormData }: any) {
                     placeholder="Write a catchy message..."
                 />
             </div>
+            
+            {/* ★ Time Slot Selector (Only visible for Auto Pilot) ★ */}
+            {showTimeSlot && (
+                <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-primary"><Clock className="h-4 w-4"/> Target Time Slot</Label>
+                    <Select 
+                        value={formData.timeSlot} 
+                        onValueChange={(val) => setFormData({...formData, timeSlot: val})}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="morning">Morning (6 AM - 11 AM)</SelectItem>
+                            <SelectItem value="lunch">Lunch (11 AM - 4 PM)</SelectItem>
+                            <SelectItem value="dinner">Dinner (4 PM - 11 PM)</SelectItem>
+                            <SelectItem value="anytime">Anytime (Random)</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">When should this message be sent?</p>
+                </div>
+            )}
+
             <div className="space-y-2">
                 <Label>Image</Label>
                 <ImageUpload 

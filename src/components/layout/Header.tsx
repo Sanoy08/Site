@@ -53,12 +53,35 @@ export function Header() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
+  // ★★★ UPDATED SCROLL LOGIC ★★★
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      // 1px স্ক্রল করলেই isScrolled true হবে
+      if (window.scrollY > 0) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+
+      // Auto-snap logic: যদি খুব সামান্য স্ক্রল করে ছেড়ে দেয়
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (window.scrollY > 0 && window.scrollY < 60) {
+          window.scrollTo({
+            top: 60,
+            behavior: 'smooth'
+          });
+        }
+      }, 150); // স্ক্রল থামার ১৫০ms পর চেক করবে
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+        window.removeEventListener('scroll', handleScroll);
+        clearTimeout(timeoutId);
+    };
   }, []);
 
   useEffect(() => {
@@ -133,11 +156,7 @@ export function Header() {
 
   // ★★★ ADMIN REDIRECT FUNCTION ★★★
   const handleAdminClick = () => {
-      // লোকালহোস্টে কাজ করার সময় লোকাল ইউআরএল, নাহলে লাইভ সাবডোমেইন
       if (window.location.hostname === 'localhost') {
-         // লোকালহোস্টের জন্য সাধারণত পোর্ট আলাদা হয় (যদি আলাদা প্রোজেক্ট হয়)
-         // অথবা যদি একই প্রোজেক্টে সাবডোমেইন সেটআপ থাকে তবে এটি কাজ করবে না
-         // তাই সেফটির জন্য লাইভ লিংকই দেওয়া ভালো
          window.location.href = 'https://admin.bumbaskitchen.app';
       } else {
          window.location.href = 'https://admin.bumbaskitchen.app';
@@ -145,12 +164,17 @@ export function Header() {
   };
 
   return (
-    <header className={cn(
-        "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
-        isScrolled 
-          ? "bg-background shadow-sm border-border py-1"
-          : "bg-background/0 border-transparent py-3"
-    )}>
+    <header 
+        className={cn(
+            // বেস স্টাইল: ফিক্সড পজিশন, ট্রানজিশন ডিউরেশন ৫০০ms এবং স্মুথ ইজিং
+            "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
+            
+            // ★★★ লজিক: স্ক্রল > ০ হলেই সলিড হয়ে যাবে, নাহলে ট্রান্সপারেন্ট এবং বড় ★★★
+            isScrolled 
+              ? "bg-background/95 backdrop-blur-md shadow-sm border-border py-1" // Scrolled state: Solid & Small Padding
+              : "bg-transparent border-transparent py-3" // Initial state: Transparent & Large Padding
+        )}
+    >
     <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
         
         {/* Left Side: Mobile Menu & Logo */}
@@ -362,7 +386,6 @@ export function Header() {
                     {user.role === 'admin' && (
                         <>
                             <DropdownMenuSeparator className="my-2 bg-border/50" />
-                            {/* ★★★ FIX: Direct Link to Subdomain ★★★ */}
                             <DropdownMenuItem 
                                 onClick={handleAdminClick} 
                                 className="cursor-pointer rounded-lg py-2.5 bg-amber-50 text-amber-900 focus:bg-amber-100 focus:text-amber-900 font-bold border border-amber-100/50"

@@ -2,22 +2,23 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCcw, ShoppingBag, Search, FileText, Download, Eye } from 'lucide-react';
+import { Loader2, RefreshCcw, ShoppingBag, Search, FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from '@/lib/utils';
+// @ts-ignore
 import { generateInvoice } from '@/lib/invoiceGenerator'; 
 import { OrderDetailSheet } from '@/components/admin/OrderDetailSheet'; // ★ নতুন কম্পোনেন্ট
-import { registerBackHandler } from '@/hooks/use-back-button'; // ★ ব্যাক হ্যান্ডলার
+import { useRouter, useSearchParams } from 'next/navigation'; // ★ রাউটিং ইম্পোর্ট
 
+// টাইপ আপডেট করা হয়েছে আপনার ডাটা অনুযায়ী
 type Order = {
   _id: string;
   OrderNumber: string;
@@ -32,6 +33,9 @@ type Order = {
   DeliveryAddress?: string;
   Subtotal: number;
   Discount: number;
+  MealTime?: string;
+  PreferredDate?: string;
+  Instructions?: string;
 };
 
 const STATUS_OPTIONS = ['Received', 'Cooking', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled'];
@@ -43,11 +47,12 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
   
-  // ★ ডিটেইলস শিট স্টেট
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  
+  // ★ রাউটিং এবং সিলেকশন স্টেট
   const router = useRouter();
   const searchParams = useSearchParams();
+  const selectedOrderId = searchParams.get('id'); // URL থেকে ID নেওয়া হচ্ছে
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
   const { user } = useAuth();
 
   const fetchOrders = async () => {
@@ -79,49 +84,25 @@ export default function AdminOrdersPage() {
     fetchOrders();
   }, []);
 
-  // ★ URL থেকে অর্ডার আইডি ধরে শিট ওপেন করা
+  // ★ URL ID চেঞ্জ হলে স্লাইডার খোলার লজিক
   useEffect(() => {
-      const orderIdParam = searchParams.get('id');
-      if (orderIdParam && orders.length > 0) {
-          const matchedOrder = orders.find(o => o.OrderNumber === orderIdParam || o._id === orderIdParam);
-          if (matchedOrder) {
-              setSelectedOrder(matchedOrder);
-          }
-      } else {
-          setSelectedOrder(null);
-      }
-  }, [searchParams, orders]);
-
-  // ★ অর্ডার সিলেক্ট হ্যান্ডলার (URL আপডেট করে)
-  const handleSelectOrder = (order: Order) => {
-      router.push(`/admin/orders?id=${order.OrderNumber}`, { scroll: false });
-  };
-
-  // ★ ক্লোজ হ্যান্ডলার (URL ক্লিন করে)
-  const handleCloseSheet = useCallback(() => {
-      setSelectedOrder(null);
-      router.push('/admin/orders', { scroll: false });
-  }, [router]);
-
-  // ★ ব্যাক বাটন হ্যান্ডলার (ক্যাপাসিটর অ্যাপের জন্য)
-  useEffect(() => {
-      if (selectedOrder) {
-          registerBackHandler(handleCloseSheet);
-      } else {
-          registerBackHandler(null);
-      }
-      return () => registerBackHandler(null);
-  }, [selectedOrder, handleCloseSheet]);
-
+    if (selectedOrderId && orders.length > 0) {
+        // OrderNumber অথবা _id দিয়ে খোঁজা হচ্ছে (আপনার লিংকে OrderNumber আছে)
+        const order = orders.find(o => o.OrderNumber === selectedOrderId || o._id === selectedOrderId);
+        if (order) {
+            setSelectedOrder(order);
+        }
+    } else {
+        setSelectedOrder(null);
+    }
+  }, [selectedOrderId, orders]);
 
   // ফিল্টারিং লজিক
   useEffect(() => {
     let result = orders;
-    
     if (statusFilter !== 'All') {
         result = result.filter(o => o.Status === statusFilter);
     }
-
     if (searchQuery) {
         const lowerQ = searchQuery.toLowerCase();
         result = result.filter(o => 
@@ -133,10 +114,26 @@ export default function AdminOrdersPage() {
     setFilteredOrders(result);
   }, [searchQuery, statusFilter, orders]);
 
+  // ★ অর্ডার ক্লিক করলে URL আপডেট করা
+  const handleOrderClick = (orderNumber: string) => {
+      // scroll: false রাখলে পেজ জাম্প করবে না
+      router.push(`/admin/orders?id=${orderNumber}`, { scroll: false });
+  };
+
+  // ★ শিট বন্ধ করলে URL ক্লিন করা
+  const handleCloseSheet = () => {
+      router.push('/admin/orders', { scroll: false });
+  };
+
+  // Status Update Handler
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     const token = localStorage.getItem('token');
     
+    // Optimistic UI Update (List & Selected Order both)
     setOrders(prev => prev.map(o => o._id === orderId ? { ...o, Status: newStatus } : o));
+    if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder({ ...selectedOrder, Status: newStatus });
+    }
 
     try {
         const res = await fetch('/api/admin/orders/status', {
@@ -171,8 +168,7 @@ export default function AdminOrdersPage() {
       }
   };
 
-  const handleDownloadInvoice = (e: any, order: Order) => {
-      e.stopPropagation(); // ক্লিক করলে যাতে শিট না খোলে
+  const handleDownloadInvoice = (order: Order) => {
       try {
           if (typeof generateInvoice === 'function') {
             generateInvoice(order);
@@ -193,7 +189,6 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto pb-20">
        
-       {/* Header */}
        <div className="flex flex-col gap-6 bg-card p-6 rounded-xl border shadow-sm">
           <div className="flex justify-between items-center">
             <div>
@@ -234,17 +229,17 @@ export default function AdminOrdersPage() {
       {/* Mobile View: Cards */}
       <div className="grid grid-cols-1 md:hidden gap-4">
         {filteredOrders.map(order => (
-            // ★ কার্ডে ক্লিক করলে শিট খুলবে
             <Card 
                 key={order._id} 
+                // ★ onClick Added Here
+                onClick={() => handleOrderClick(order.OrderNumber)}
                 className="border shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                onClick={() => handleSelectOrder(order)}
             >
                 <div className="p-4 space-y-3">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="font-mono text-sm font-bold text-foreground">{order.OrderNumber}</p>
-                            <p className="text-xs text-muted-foreground">{new Date(order.Timestamp).toLocaleString()}</p>
+                            <p className="font-mono text-sm font-bold text-foreground">#{order.OrderNumber}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(order.Timestamp).toLocaleDateString()}</p>
                         </div>
                         <Badge variant="outline" className={`${getStatusColor(order.Status)} border font-normal`}>
                             {order.Status}
@@ -257,9 +252,10 @@ export default function AdminOrdersPage() {
                          </div>
                          <div className="text-right">
                              <p className="text-sm font-bold text-primary">{formatPrice(order.FinalPrice)}</p>
-                             <p className="text-xs text-muted-foreground">{order.OrderType}</p>
+                             <p className="text-xs text-muted-foreground">{order.Items.length} Items</p>
                          </div>
                     </div>
+                    {/* Actions prevent bubbling so clicking button doesn't open sheet */}
                     <div className="flex gap-2 items-center pt-1" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1">
                             <Select defaultValue={order.Status} onValueChange={(val) => handleStatusChange(order._id, val)}>
@@ -273,7 +269,7 @@ export default function AdminOrdersPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={(e) => handleDownloadInvoice(e, order)}>
+                        <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={() => handleDownloadInvoice(order)}>
                             <FileText className="h-4 w-4" />
                         </Button>
                     </div>
@@ -302,11 +298,12 @@ export default function AdminOrdersPage() {
                 {filteredOrders.map(order => (
                     <TableRow 
                         key={order._id} 
+                        // ★ onClick Added Here
+                        onClick={() => handleOrderClick(order.OrderNumber)}
                         className="hover:bg-muted/20 transition-colors cursor-pointer"
-                        onClick={() => handleSelectOrder(order)}
                     >
-                        <TableCell className="pl-6 font-mono font-medium text-sm">
-                            {order.OrderNumber}
+                        <TableCell className="pl-6 font-mono font-medium text-sm text-primary">
+                            #{order.OrderNumber}
                         </TableCell>
                         <TableCell>
                             <div className="font-medium text-sm">{order.Name}</div>
@@ -316,7 +313,7 @@ export default function AdminOrdersPage() {
                             {new Date(order.Timestamp).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
-                            <Badge variant="secondary" className="font-normal text-xs bg-background border">
+                            <Badge variant="secondary" className="font-normal text-xs bg-background border uppercase">
                                 {order.OrderType}
                             </Badge>
                         </TableCell>
@@ -337,23 +334,14 @@ export default function AdminOrdersPage() {
                             </Select>
                         </TableCell>
                         <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end gap-2">
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                                    onClick={(e) => handleDownloadInvoice(e, order)}
-                                >
-                                    <Download className="h-4 w-4 mr-2" /> PDF
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleSelectOrder(order)}
-                                >
-                                    <Eye className="h-4 w-4" />
-                                </Button>
-                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                                onClick={() => handleDownloadInvoice(order)}
+                            >
+                                <Download className="h-4 w-4 mr-2" /> PDF
+                            </Button>
                         </TableCell>
                     </TableRow>
                 ))}
@@ -363,11 +351,13 @@ export default function AdminOrdersPage() {
         </CardContent>
       </Card>
 
-      {/* ★ Side Sheet Component ★ */}
+      {/* ★ Detail Sheet Slider */}
       <OrderDetailSheet 
-        order={selectedOrder} 
-        open={!!selectedOrder} 
-        onClose={handleCloseSheet} 
+        order={selectedOrder}
+        open={!!selectedOrder}
+        onClose={handleCloseSheet}
+        onStatusChange={handleStatusChange}
+        onDownloadInvoice={handleDownloadInvoice}
       />
 
     </div>

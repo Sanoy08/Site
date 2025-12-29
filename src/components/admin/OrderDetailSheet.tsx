@@ -16,7 +16,8 @@ import {
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-const STATUS_OPTIONS = ['Received', 'Cooking', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled'];
+// ★★★ FIX: Removed intermediate statuses ★★★
+const STATUS_OPTIONS = ['Pending Verification', 'Received', 'Delivered', 'Cancelled'];
 
 type OrderDetailSheetProps = {
     order: any | null;
@@ -33,8 +34,8 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
         switch(status) {
             case 'Delivered': return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200', icon: '✅' };
             case 'Cancelled': return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', icon: '❌' };
-            case 'Cooking': return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', icon: '🍳' };
-            case 'Out for Delivery': return { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', icon: '🛵' };
+            case 'Received': return { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', icon: '📥' };
+            case 'Pending Verification': return { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200', icon: '⏳' };
             default: return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', icon: '🕒' };
         }
     };
@@ -73,7 +74,7 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                             <span className={`text-sm font-bold ${statusStyle.text}`}>{order.Status}</span>
                         </div>
                         <Select defaultValue={order.Status} onValueChange={(val) => onStatusChange(order._id, val)}>
-                            <SelectTrigger className="h-9 w-[140px] bg-white border-0 shadow-sm rounded-lg text-xs font-semibold focus:ring-0">
+                            <SelectTrigger className="h-9 w-[160px] bg-white border-0 shadow-sm rounded-lg text-xs font-semibold focus:ring-0">
                                 <SelectValue placeholder="Update" />
                             </SelectTrigger>
                             <SelectContent align="end">

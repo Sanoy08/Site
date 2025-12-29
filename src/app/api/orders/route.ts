@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
                 Instructions: orderData.instructions,
                 Subtotal: subtotal,
                 Discount: orderData.discount || finalDiscount, // টোটাল ডিসকাউন্ট সেভ করা
-                CouponCode: orderData.couponCode, // ★★★ FIX: কুপন কোড যোগ করা হলো ★★★
+                CouponCode: orderData.couponCode,
                 CoinsRedeemed: coinsRedeemed,
                 FinalPrice: orderData.total, // ফ্রন্টএন্ড থেকে আসা ক্যালকুলেটেড টোটাল
                 Items: orderData.items, 
@@ -101,13 +101,13 @@ export async function POST(request: NextRequest) {
 
             await db.collection(ORDERS_COLLECTION).insertOne(newOrder, { session });
 
-            // ৫. নোটিফিকেশন (এখানে URL চেঞ্জ করা হলো)
+            // ৫. নোটিফিকেশন (Dynamic Link Added)
+            // ★★★ লিংকে Order ID যোগ করা হলো যাতে ক্লিক করলে স্লাইডার খোলে ★★★
             sendNotificationToAdmins(
                 client,
                 "New Order (Pending) ⚠️",
                 `Order #${orderNumber} needs verification.`,
-                // ★ আগে ছিল '/admin/orders', এখন পুরো লিঙ্ক:
-                'https://admin.bumbaskitchen.app/orders' 
+                `https://admin.bumbaskitchen.app/orders?id=${orderNumber}`
             ).catch(console.error);
 
         });

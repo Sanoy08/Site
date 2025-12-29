@@ -7,14 +7,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCcw, ShoppingBag, Search, FileText, Download } from 'lucide-react';
+import { Loader2, RefreshCcw, ShoppingBag, Search, FileText, Download, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from '@/lib/utils';
 // আপনার যদি invoiceGenerator না থাকে তবে নিচের লাইনটি কমেন্ট করে দিন
 import { generateInvoice } from '@/lib/invoiceGenerator'; 
+// ★ নতুন কম্পোনেন্ট ইম্পোর্ট
+import { OrderDetailSheet } from '@/components/admin/OrderDetailSheet';
 
 type Order = {
   _id: string;
@@ -30,6 +31,8 @@ type Order = {
   DeliveryAddress?: string;
   Subtotal: number;
   Discount: number;
+  PaymentMethod?: string;
+  DeliveryCharge?: number;
 };
 
 const STATUS_OPTIONS = ['Received', 'Cooking', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled'];
@@ -40,7 +43,10 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  
+  // ★ স্লাইডার ম্যানেজমেন্ট স্টেট
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const fetchOrders = async () => {
     const token = localStorage.getItem('token');
@@ -48,7 +54,6 @@ export default function AdminOrdersPage() {
 
     setIsLoading(true);
     try {
-      // অর্ডার ফেচ করার জন্য GET রিকোয়েস্ট
       const res = await fetch('/api/admin/orders', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -90,15 +95,12 @@ export default function AdminOrdersPage() {
     setFilteredOrders(result);
   }, [searchQuery, statusFilter, orders]);
 
-  // ★ স্ট্যাটাস আপডেট হ্যান্ডলার (কয়েন লজিক কাজ করার জন্য এটি গুরুত্বপূর্ণ)
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     const token = localStorage.getItem('token');
     
-    // UI আগে আপডেট করে দিচ্ছি (Optimistic UI)
     setOrders(prev => prev.map(o => o._id === orderId ? { ...o, Status: newStatus } : o));
 
     try {
-        // ★ সঠিক API পাথ এবং মেথড (PUT) ব্যবহার করা হচ্ছে
         const res = await fetch('/api/admin/orders/status', {
             method: 'PUT',
             headers: { 
@@ -112,7 +114,7 @@ export default function AdminOrdersPage() {
             toast.success(`Order marked as ${newStatus}`);
         } else {
             toast.error("Update failed!");
-            fetchOrders(); // ফেইল করলে রিফ্রেশ
+            fetchOrders(); 
         }
     } catch (error) {
         console.error(error);
@@ -131,7 +133,8 @@ export default function AdminOrdersPage() {
       }
   };
 
-  const handleDownloadInvoice = (order: Order) => {
+  const handleDownloadInvoice = (e: React.MouseEvent, order: Order) => {
+      e.stopPropagation(); // স্লাইডার যাতে ওপেন না হয়
       try {
           if (typeof generateInvoice === 'function') {
             generateInvoice(order);
@@ -145,13 +148,26 @@ export default function AdminOrdersPage() {
       }
   };
 
+  // ★ অর্ডার ক্লিক হ্যান্ডলার
+  const handleOrderClick = (order: Order) => {
+      setSelectedOrder(order);
+      setIsSheetOpen(true);
+  };
+
   if (isLoading) {
     return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-20">
        
+       {/* ★ ডিটেইলস স্লাইডার কম্পোনেন্ট */}
+       <OrderDetailSheet 
+          order={selectedOrder} 
+          isOpen={isSheetOpen} 
+          onClose={() => setIsSheetOpen(false)} 
+       />
+
        <div className="flex flex-col gap-6 bg-card p-6 rounded-xl border shadow-sm">
           <div className="flex justify-between items-center">
             <div>
@@ -192,11 +208,17 @@ export default function AdminOrdersPage() {
       {/* Mobile View: Cards */}
       <div className="grid grid-cols-1 md:hidden gap-4">
         {filteredOrders.map(order => (
-            <Card key={order._id} className="border shadow-sm">
+            <Card 
+                key={order._id} 
+                className="border shadow-sm active:scale-[0.99] transition-transform cursor-pointer"
+                onClick={() => handleOrderClick(order)} // ★ ক্লিক করলে স্লাইডার খুলবে
+            >
                 <div className="p-4 space-y-3">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="font-mono text-sm font-bold text-foreground">{order.OrderNumber}</p>
+                            <p className="font-mono text-sm font-bold text-foreground flex items-center gap-1">
+                                {order.OrderNumber} <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                            </p>
                             <p className="text-xs text-muted-foreground">{new Date(order.Timestamp).toLocaleString()}</p>
                         </div>
                         <Badge variant="outline" className={`${getStatusColor(order.Status)} border font-normal`}>
@@ -213,7 +235,7 @@ export default function AdminOrdersPage() {
                              <p className="text-xs text-muted-foreground">{order.OrderType}</p>
                          </div>
                     </div>
-                    <div className="flex gap-2 items-center pt-1">
+                    <div className="flex gap-2 items-center pt-1" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1">
                             <Select defaultValue={order.Status} onValueChange={(val) => handleStatusChange(order._id, val)}>
                                 <SelectTrigger className="w-full h-9 bg-muted/50">
@@ -226,7 +248,7 @@ export default function AdminOrdersPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={() => handleDownloadInvoice(order)}>
+                        <Button size="icon" variant="outline" className="h-9 w-9 text-blue-600 border-blue-200 bg-blue-50" onClick={(e) => handleDownloadInvoice(e, order)}>
                             <FileText className="h-4 w-4" />
                         </Button>
                     </div>
@@ -253,8 +275,12 @@ export default function AdminOrdersPage() {
                 </TableHeader>
                 <TableBody>
                 {filteredOrders.map(order => (
-                    <TableRow key={order._id} className="hover:bg-muted/20 transition-colors">
-                        <TableCell className="pl-6 font-mono font-medium text-sm">
+                    <TableRow 
+                        key={order._id} 
+                        className="hover:bg-muted/20 transition-colors cursor-pointer group"
+                        onClick={() => handleOrderClick(order)} // ★ ক্লিক করলে স্লাইডার খুলবে
+                    >
+                        <TableCell className="pl-6 font-mono font-medium text-sm group-hover:text-primary transition-colors">
                             {order.OrderNumber}
                         </TableCell>
                         <TableCell>
@@ -270,7 +296,7 @@ export default function AdminOrdersPage() {
                             </Badge>
                         </TableCell>
                         <TableCell className="font-bold text-sm">{formatPrice(order.FinalPrice)}</TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                             <Select 
                                 defaultValue={order.Status} 
                                 onValueChange={(val) => handleStatusChange(order._id, val)}
@@ -285,12 +311,12 @@ export default function AdminOrdersPage() {
                                 </SelectContent>
                             </Select>
                         </TableCell>
-                        <TableCell className="text-right pr-6">
+                        <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
                                 className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                                onClick={() => handleDownloadInvoice(order)}
+                                onClick={(e) => handleDownloadInvoice(e, order)}
                             >
                                 <Download className="h-4 w-4 mr-2" /> PDF
                             </Button>

@@ -6,6 +6,8 @@ import { ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher';
+// ★ ১. ইম্পোর্ট করা হলো
+import { sendNotificationToAllUsers } from '@/lib/notification';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
@@ -24,17 +26,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     if (!await isAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // params await করা (Next.js 15 requirement)
     const { id } = await params;
     const body = await request.json();
     
+    // ইমেজ অ্যারে ঠিক করা
+    const finalImages = Array.isArray(body.imageUrls) ? body.imageUrls : (body.imageUrls ? [body.imageUrls] : []);
+
     const updateData = {
       Name: body.name,
       Description: body.description,
       Price: parseFloat(body.price),
       Category: body.category,
-      // ইমেজ আপডেট
-      ImageURLs: Array.isArray(body.imageUrls) ? body.imageUrls : (body.imageUrls ? [body.imageUrls] : []),
+      ImageURLs: finalImages,
       Bestseller: body.featured,
       InStock: body.inStock
     };
@@ -47,14 +50,32 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       { $set: updateData }
     );
 
+    // ১. ক্যাশ রিফ্রেশ
     revalidatePath('/menus');
     revalidatePath('/');
 
-    // রিয়েল-টাইম আপডেট
+    // ২. রিয়েল-টাইম আপডেট (লাইভ ইউজারদের জন্য)
     await pusherServer.trigger('menu-updates', 'product-changed', {
         message: 'Menu updated',
         type: 'update'
     });
+
+    // ★ ৩. "Juicy" পুশ নোটিফিকেশন পাঠানো (সবার কাছে) ★
+    // আমরা আলাদা try-catch রাখছি যাতে নোটিফিকেশন এরর হলে মেইন আপডেট ক্র্যাশ না করে
+    try {
+        // মেইন ইমেজটি নেওয়া হচ্ছে নোটিফিকেশনের জন্য
+        const notificationImage = finalImages.length > 0 ? finalImages[0] : "";
+        
+        await sendNotificationToAllUsers(
+            client,
+            "✨ Taste Update! 👨‍🍳", // Juicy Title
+            `${body.name} just got refreshed! Check out the new details in our menu. 🍛`, // Juicy Body
+            notificationImage,
+            '/menus' // ক্লিক করলে মেনু পেজে যাবে
+        );
+    } catch (notifError) {
+        console.error("Failed to send update notification:", notifError);
+    }
 
     return NextResponse.json({ success: true, message: 'Product updated' });
   } catch (error: any) {

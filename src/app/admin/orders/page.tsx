@@ -37,9 +37,9 @@ type Order = {
   Instructions?: string;
 };
 
-const STATUS_OPTIONS = ['Received', 'Cooking', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled'];
+// ★★★ FIX: Added 'Pending Verification' ★★★
+const STATUS_OPTIONS = ['Pending Verification', 'Received', 'Cooking', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
-// ★★★ 1. মেইন লজিক কম্পোনেন্ট (আলাদা করা হলো) ★★★
 function AdminOrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -47,7 +47,6 @@ function AdminOrdersContent() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
   
-  // ★ রাউটিং হুকস
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -86,7 +85,6 @@ function AdminOrdersContent() {
     fetchOrders();
   }, []);
 
-  // ★ URL চেঞ্জ হলে স্লাইডার খোলার লজিক
   useEffect(() => {
     if (selectedOrderId && orders.length > 0) {
         const order = orders.find(o => o.OrderNumber === selectedOrderId || o._id === selectedOrderId);
@@ -114,17 +112,12 @@ function AdminOrdersContent() {
     setFilteredOrders(result);
   }, [searchQuery, statusFilter, orders]);
 
-  // ★ অর্ডার ক্লিক হ্যান্ডলার (Better Logic)
   const handleOrderClick = (orderNumber: string) => {
-      // বর্তমান URL প্যারামিটারগুলো বজায় রাখা (যদি থাকে)
       const params = new URLSearchParams(searchParams.toString());
       params.set('id', orderNumber);
-      
-      // router.replace ব্যবহার করা হলো যাতে ব্রাউজার হিস্ট্রি ক্লিন থাকে, অথবা push ব্যবহার করতে পারেন
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // ★ শিট বন্ধ হ্যান্ডলার
   const handleCloseSheet = () => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('id');
@@ -168,6 +161,8 @@ function AdminOrdersContent() {
           case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
           case 'Cooking': return 'bg-orange-100 text-orange-700 border-orange-200';
           case 'Out for Delivery': return 'bg-blue-100 text-blue-700 border-blue-200';
+          // ★ Added Color for Pending Verification
+          case 'Pending Verification': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
           default: return 'bg-gray-100 text-gray-700 border-gray-200';
       }
   };
@@ -300,7 +295,6 @@ function AdminOrdersContent() {
                 {filteredOrders.map(order => (
                     <TableRow 
                         key={order._id} 
-                        // ★ cursor-pointer নিশ্চিত করা হয়েছে
                         className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                         onClick={() => handleOrderClick(order.OrderNumber)}
                     >
@@ -365,7 +359,6 @@ function AdminOrdersContent() {
   )
 }
 
-// ★★★ 2. মেইন এক্সপোর্ট (Suspense সহ) ★★★
 export default function AdminOrdersPage() {
     return (
         <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>

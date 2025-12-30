@@ -1,5 +1,3 @@
-// src/app/admin/hero-slides/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +11,6 @@ import { Loader2, Plus, Trash2, ImageIcon, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { ImageUpload } from '@/components/admin/ImageUpload';
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
 
 type Slide = {
   id: string;
@@ -26,8 +23,6 @@ export default function AdminHeroSlidesPage() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     imageUrl: '',
@@ -72,26 +67,19 @@ export default function AdminHeroSlidesPage() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    setIsDeleting(true);
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this slide?')) return;
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`/api/admin/hero-slides/${deleteId}`, {
+        const res = await fetch(`/api/admin/hero-slides/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Slide deleted');
             fetchSlides();
-        } else {
-            toast.error('Delete failed');
         }
     } catch (e) { toast.error('Delete failed'); }
-    finally { 
-        setIsDeleting(false);
-        setDeleteId(null); 
-    }
   };
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -145,7 +133,7 @@ export default function AdminHeroSlidesPage() {
                       </TableCell>
                       <TableCell className="font-medium">#{slide.order}</TableCell>
                       <TableCell className="text-right pr-6">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => setDeleteId(slide.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(slide.id)}>
                             <Trash2 className="h-4 w-4"/>
                         </Button>
                       </TableCell>
@@ -185,17 +173,6 @@ export default function AdminHeroSlidesPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* ★★★ Using Custom Component ★★★ */}
-      <DeleteConfirmationDialog 
-        open={!!deleteId} 
-        onOpenChange={() => setDeleteId(null)}
-        onConfirm={confirmDelete}
-        isDeleting={isDeleting}
-        title="Delete Slide?"
-        description="This will remove this banner from the homepage immediately."
-      />
-
     </div>
   );
 }

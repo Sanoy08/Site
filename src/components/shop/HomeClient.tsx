@@ -15,7 +15,7 @@ import Autoplay from "embla-carousel-autoplay";
 import { formatPrice } from '@/lib/utils';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import type { Product } from '@/lib/types';
-import { Clock, Utensils, Truck, ShieldCheck, Leaf, ChevronRight } from 'lucide-react';
+import { Utensils, Truck, ShieldCheck, Leaf } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
@@ -25,6 +25,15 @@ type HomeClientProps = {
   offers: Offer[]; 
   bestsellers: Product[]; 
   allProducts?: Product[]; 
+};
+
+// ★★★ Cloudinary Image Optimizer Helper ★★★
+const getOptimizedUrl = (url: string) => {
+  if (!url) return PLACEHOLDER_IMAGE_URL;
+  if (url.includes('cloudinary.com')) {
+    return url.replace('/upload/', '/upload/w_600,q_auto:low,f_auto/');
+  }
+  return url;
 };
 
 const CATEGORIES = [
@@ -77,22 +86,18 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
               <CarouselContent>
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
-                    {/* ★★★ FIX: Fixed Height বাদ দেওয়া হয়েছে, এখন 'w-full' এবং 'h-auto' থাকবে ★★★ */}
                     <Link href={slide.clickUrl} className="block w-full relative">
                       <Image 
                         src={slide.imageUrl} 
                         alt="Hero Slide" 
-                        // width/height=0 এবং sizes="100vw" দিলে ইমেজটি কন্টেইনারের সাইজ নেবে
                         width={0}
                         height={0}
                         sizes="100vw"
-                        // style={{ width: '100%', height: 'auto' }} -> এটি নিশ্চিত করে ইমেজ কখনো ক্রপ হবে না
                         style={{ width: '100%', height: 'auto' }}
                         className="object-contain" 
                         priority 
                         unoptimized={true} 
                       />
-                      {/* Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
                     </Link>
                   </CarouselItem>
@@ -100,7 +105,6 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
               </CarouselContent>
             </Carousel>
             
-            {/* Dots */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
               {Array.from({ length: count }).map((_, index) => (
                 <button key={index} onClick={() => api?.scrollTo(index)} className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${current === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} />
@@ -220,15 +224,27 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
                     <div className="p-1 h-full">
                     <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
-                        <CardContent className="p-0 relative aspect-[16/9]">
-                        <Image src={offer.imageUrl || PLACEHOLDER_IMAGE_URL} alt={offer.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" unoptimized={true} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-5 text-white">
+                        <CardContent className="p-0 relative">
+                        
+                        <Image 
+                            src={getOptimizedUrl(offer.imageUrl)} 
+                            alt={offer.title} 
+                            width={0}
+                            height={0}
+                            sizes="100vw"
+                            style={{ width: '100%', height: 'auto' }}
+                            className="block"
+                            unoptimized={true} 
+                        />
+
+                        {/* Text Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-5 text-white pointer-events-none">
                             <h3 className="text-xl font-bold mb-1 text-white">{offer.title}</h3>
                             <p className="text-sm text-gray-200 line-clamp-1">{offer.description}</p>
                         </div>
-                        <div className="absolute top-3 right-3 bg-white text-black font-bold px-3 py-1 rounded-full text-sm shadow-sm">
-                            {formatPrice(offer.price)}
-                        </div>
+                        
+                        {/* ★★★ Price Tag Removed from here ★★★ */}
+                        
                         </CardContent>
                     </Card>
                     </div>

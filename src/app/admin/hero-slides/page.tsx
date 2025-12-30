@@ -13,7 +13,7 @@ import { Loader2, Plus, Trash2, ImageIcon, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { ImageUpload } from '@/components/admin/ImageUpload';
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
 
 type Slide = {
   id: string;
@@ -26,7 +26,6 @@ export default function AdminHeroSlidesPage() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -78,21 +77,18 @@ export default function AdminHeroSlidesPage() {
     setIsDeleting(true);
     const token = localStorage.getItem('token');
     try {
-        // ★★★ FIX: Changed path param (/id) to query param (?id=) ★★★
-        const res = await fetch(`/api/admin/hero-slides?id=${deleteId}`, {
+        const res = await fetch(`/api/admin/hero-slides/${deleteId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
         if (res.ok) {
             toast.success('Slide deleted');
             fetchSlides();
         } else {
             toast.error('Delete failed');
         }
-    } catch (e) { 
-        toast.error('Delete failed'); 
-    } finally { 
+    } catch (e) { toast.error('Delete failed'); }
+    finally { 
         setIsDeleting(false);
         setDeleteId(null); 
     }
@@ -190,6 +186,7 @@ export default function AdminHeroSlidesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ★★★ Using Custom Component ★★★ */}
       <DeleteConfirmationDialog 
         open={!!deleteId} 
         onOpenChange={() => setDeleteId(null)}

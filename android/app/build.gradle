@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.bumbaskitchen.app"
     compileSdk = rootProject.ext.compileSdkVersion
+
     defaultConfig {
         applicationId "com.bumbaskitchen.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -12,12 +13,24 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    // ★★★ SIGNING CONFIGURATION ADDED HERE ★★★
+    signingConfigs {
+        release {
+            storeFile file("my-release-key.keystore") // আপনার কি-স্টোর ফাইলের নাম
+            storePassword "#bokachoda12"              // আপনার পাসওয়ার্ড
+            keyAlias "my-key-alias"                   // এলিয়াস (আগের কমান্ড অনুযায়ী)
+            keyPassword "#bokachoda12"                // আপনার পাসওয়ার্ড
+        }
+    }
+
     buildTypes {
         release {
+            // ★★★ SIGNING CONFIG APPLIED HERE ★★★
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -45,7 +58,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-auth'
 
-    // ★★★ এই লাইনটি যোগ করা হয়েছে (Google Login Fix) ★★★
+    // Google Login Fix
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
 }
 

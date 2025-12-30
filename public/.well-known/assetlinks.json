@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bumbaskitchen.app", 
+      "sha256_cert_fingerprints": [
+        "D9:67:C6:0E:DA:33:14:EC:1B:12:A3:06:94:F7:ED:DF:49:0A:F0:2E:EF:97:D5:DF:35:38:68:49:2B:10:6E:A6"
+      ]
+    }
+  }
+]

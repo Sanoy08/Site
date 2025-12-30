@@ -22,10 +22,8 @@ export default function NotificationPrompt() {
 
   useEffect(() => {
     const checkPermission = async () => {
-      // ১. লগইন চেক
       if (!user) return;
-
-      // ২. রিজেক্ট চেক
+      
       const hasRejected = localStorage.getItem('notification-rejected');
       if (hasRejected) return;
 
@@ -39,9 +37,9 @@ export default function NotificationPrompt() {
         status = Notification.permission;
       }
 
-      // ৩. পারমিশন না থাকলে ২ সেকেন্ড পর ড্রয়ার ওপেন হবে
+      // ★★★ UPDATED: 5 Seconds Delay ★★★
       if (status !== 'granted') {
-        setTimeout(() => setIsOpen(true), 2000);
+        setTimeout(() => setIsOpen(true), 5000);
       }
     };
 
@@ -90,34 +88,36 @@ export default function NotificationPrompt() {
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
       <DrawerContent>
         <div className="mx-auto w-full max-w-sm">
-          <DrawerHeader className="flex flex-col items-center text-center pt-8">
+          {/* Header Compact */}
+          <DrawerHeader className="flex flex-col items-center text-center pt-6 pb-2">
             
-            {/* বাউন্সিং আইকন */}
-            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-5 ring-4 ring-primary/5">
-              <Bell className="h-10 w-10 text-primary animate-bounce" />
+            {/* Small Icon */}
+            <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mb-3 ring-4 ring-primary/5">
+              <Bell className="h-6 w-6 text-primary animate-bounce" />
             </div>
 
-            <DrawerTitle className="text-2xl font-bold">
-              Turn on Notifications?
+            <DrawerTitle className="text-lg font-bold">
+              Allow Notifications?
             </DrawerTitle>
-            <DrawerDescription className="text-center text-gray-500 mt-3 text-base px-4">
-              Don't miss out on your order updates, driver location, and special offers from <span className="font-semibold text-primary">Bumba's Kitchen</span>.
+            <DrawerDescription className="text-center text-muted-foreground mt-1 text-sm px-4 leading-tight">
+              Get updates on your <b>Order Status</b> & <b>Discounts</b> directly.
             </DrawerDescription>
           </DrawerHeader>
 
-          <DrawerFooter className="pb-8 px-6 gap-3">
+          {/* Footer Row Buttons */}
+          <DrawerFooter className="flex-row gap-3 pb-6 px-4 pt-2">
             <Button 
-              onClick={handleAllow}
-              className="w-full h-12 text-base font-bold rounded-xl shadow-lg shadow-primary/20"
+              variant="outline" 
+              onClick={handleReject}
+              className="flex-1 h-10 rounded-xl text-sm border-gray-200"
             >
-              Allow Notifications
+              Later
             </Button>
             <Button 
-              variant="ghost" 
-              onClick={handleReject}
-              className="w-full h-12 text-base text-gray-500 hover:bg-gray-100 rounded-xl"
+              onClick={handleAllow}
+              className="flex-1 h-10 rounded-xl text-sm font-bold shadow-sm"
             >
-              Maybe Later
+              Allow
             </Button>
           </DrawerFooter>
         </div>

@@ -12,24 +12,24 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
 
-    // ★★★ SIGNING CONFIGURATION ADDED HERE ★★★
     signingConfigs {
         release {
-            storeFile file("my-release-key.keystore") // আপনার কি-স্টোর ফাইলের নাম
-            storePassword "#bokachoda12"              // আপনার পাসওয়ার্ড
-            keyAlias "my-key-alias"                   // এলিয়াস (আগের কমান্ড অনুযায়ী)
-            keyPassword "#bokachoda12"                // আপনার পাসওয়ার্ড
+            storeFile file("my-release-key.keystore")
+            storePassword "#bokachoda12"
+            keyAlias "my-key-alias"
+            keyPassword "#bokachoda12"
+            // ★★★ এই দুটি লাইন অবশ্যই থাকতে হবে "Parse Error" ফিক্স করার জন্য ★★★
+            v1SigningEnabled true
+            v2SigningEnabled true
         }
     }
 
     buildTypes {
         release {
-            // ★★★ SIGNING CONFIG APPLIED HERE ★★★
             signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -57,19 +57,16 @@ dependencies {
     // Firebase Dependencies
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-auth'
-
-    // Google Login Fix
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
 }
 
 apply from: 'capacitor.build.gradle'
 
-// Google Services Plugin (Only apply once at the bottom)
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found, google-services plugin not applied.")
 }

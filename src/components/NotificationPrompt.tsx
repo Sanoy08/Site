@@ -37,9 +37,9 @@ export default function NotificationPrompt() {
         status = Notification.permission;
       }
 
-      // ★★★ UPDATED: 5 Seconds Delay ★★★
+      // ★★★ UPDATED: 3.5 Seconds Delay ★★★
       if (status !== 'granted') {
-        setTimeout(() => setIsOpen(true), 5000);
+        setTimeout(() => setIsOpen(true), 3500);
       }
     };
 

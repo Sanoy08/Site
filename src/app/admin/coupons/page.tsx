@@ -1,3 +1,5 @@
+// src/app/admin/coupons/page.tsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,6 +16,7 @@ import { Loader2, Plus, Trash2, Pencil, TicketPercent, Search, Calendar, Infinit
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
 import { FloatingInput } from '@/components/ui/floating-input';
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
 
 type Coupon = {
   id: string;
@@ -24,7 +27,7 @@ type Coupon = {
   minOrder: number;
   usageLimit?: number;
   startDate?: string;
-  expiryDate: string | null; // null হতে পারে
+  expiryDate: string | null; 
   isActive: boolean;
 };
 
@@ -35,6 +38,9 @@ export default function AdminCouponsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     code: '',
@@ -86,7 +92,6 @@ export default function AdminCouponsPage() {
         minOrder: coupon.minOrder.toString(),
         usageLimit: coupon.usageLimit?.toString() || '',
         startDate: coupon.startDate ? new Date(coupon.startDate).toISOString().split('T')[0] : '',
-        // ★ ফিক্স: null থাকলে ফাঁকা স্ট্রিং, নাহলে ডেট
         expiryDate: coupon.expiryDate ? new Date(coupon.expiryDate).toISOString().split('T')[0] : '',
         isActive: coupon.isActive,
       });
@@ -103,7 +108,6 @@ export default function AdminCouponsPage() {
     const method = editingCoupon ? 'PUT' : 'POST';
     const url = editingCoupon ? `/api/admin/coupons/${editingCoupon.id}` : '/api/admin/coupons';
     
-    // ★ ফিক্স: ফর্ম থেকে আসা ফাঁকা স্ট্রিং-কে null পাঠানো
     const payload = {
         ...formData,
         expiryDate: formData.expiryDate || null 
@@ -129,28 +133,33 @@ export default function AdminCouponsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this coupon?')) return;
+  const confirmDelete = async () => {
+    if(!deleteId) return;
+    setIsDeleting(true);
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`/api/admin/coupons/${id}`, {
+        const res = await fetch(`/api/admin/coupons/${deleteId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Coupon deleted');
             fetchCoupons();
+        } else {
+            toast.error('Delete failed');
         }
     } catch (e) { toast.error('Delete failed'); }
+    finally { 
+        setIsDeleting(false);
+        setDeleteId(null); 
+    }
   };
 
-  // ★ ফিক্স: isExpired লজিক আপডেট (null মানে আনলিমিটেড)
   const isExpired = (expiryDate: string | null) => {
-      if (!expiryDate) return false; // নাল হলে মেয়াদ শেষ হয়নি
+      if (!expiryDate) return false; 
       return new Date(expiryDate) < new Date();
   }
 
-  // ★ হেল্পার: ডেট দেখানোর জন্য
   const displayDate = (date: string | null) => {
       if (!date) return <span className="flex items-center gap-1"><Infinity className="h-3 w-3" /> Lifetime</span>;
       return new Date(date).toLocaleDateString('en-GB');
@@ -220,7 +229,7 @@ export default function AdminCouponsPage() {
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 bg-blue-50 hover:bg-blue-100" onClick={() => handleOpenDialog(coupon)}><Pencil className="h-4 w-4"/></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 bg-red-50 hover:bg-red-100" onClick={() => handleDelete(coupon.id)}><Trash2 className="h-4 w-4"/></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 bg-red-50 hover:bg-red-100" onClick={() => setDeleteId(coupon.id)}><Trash2 className="h-4 w-4"/></Button>
                             </div>
                         </div>
                     </div>
@@ -274,7 +283,7 @@ export default function AdminCouponsPage() {
                             <TableCell className="text-right pr-6">
                                 <div className="flex justify-end gap-2">
                                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-blue-600" onClick={() => handleOpenDialog(coupon)}><Pencil className="h-4 w-4"/></Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-600" onClick={() => handleDelete(coupon.id)}><Trash2 className="h-4 w-4"/></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-600" onClick={() => setDeleteId(coupon.id)}><Trash2 className="h-4 w-4"/></Button>
                                 </div>
                             </TableCell>
                             </TableRow>
@@ -317,7 +326,6 @@ export default function AdminCouponsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                     <FloatingInput label="Start Date" type="date" value={formData.startDate} onChange={(e) => setFormData({...formData, startDate: e.target.value})} />
-                    {/* ★★★ এখানে অপশনাল করা হয়েছে ★★★ */}
                     <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground ml-1">Expiry Date (Optional)</Label>
                         <Input 
@@ -339,6 +347,17 @@ export default function AdminCouponsPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ★★★ Using Custom Component ★★★ */}
+      <DeleteConfirmationDialog 
+        open={!!deleteId} 
+        onOpenChange={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+        title="Delete Coupon?"
+        description="Are you sure? This coupon will be permanently removed."
+      />
+
     </div>
   );
 }

@@ -1,10 +1,8 @@
-// src/app/(shop)/account/addresses/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { MoreVertical, Plus, MapPin, Loader2, Trash2, Pencil, Home, Briefcase } from "lucide-react";
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
 
 type Address = {
     id: string;
@@ -27,6 +26,10 @@ export default function AccountAddressesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     
+    // Delete State
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ name: '', address: '', isDefault: false });
     const [isSaving, setIsSaving] = useState(false);
@@ -105,21 +108,27 @@ export default function AccountAddressesPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Delete this address?")) return;
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        setIsDeleting(true);
         const token = localStorage.getItem('token');
 
         try {
-            const res = await fetch(`/api/user/addresses?id=${id}`, {
+            const res = await fetch(`/api/user/addresses?id=${deleteId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
                 toast.success("Address deleted");
                 fetchAddresses();
+            } else {
+                toast.error("Failed to delete");
             }
         } catch (error) {
-            toast.error("Failed to delete");
+            toast.error("Network error");
+        } finally {
+            setIsDeleting(false);
+            setDeleteId(null);
         }
     };
 
@@ -133,7 +142,7 @@ export default function AccountAddressesPage() {
     if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
     return (
-        <div className="space-y-6 max-w-3xl mx-auto">
+        <div className="space-y-6 max-w-3xl mx-auto pb-24">
             <Card className="border-none shadow-none sm:border sm:shadow-sm">
                 <CardHeader className="px-0 sm:px-6">
                     <div className="flex justify-between items-center">
@@ -162,11 +171,11 @@ export default function AccountAddressesPage() {
                             {addresses.map(addr => (
                                 <div 
                                     key={addr.id} 
-                                    // ★★★ FIX: 'rounded-md' ব্যবহার করা হয়েছে স্কয়ার লুকের জন্য ★★★
-                                    className="group relative bg-card border rounded-md p-4 shadow-sm hover:shadow-md transition-all hover:border-primary/30"
+                                    // ★★★ Card Click Handler added here ★★★
+                                    onClick={() => handleOpenDialog(addr)}
+                                    className="group relative bg-card border rounded-md p-4 shadow-sm hover:shadow-md transition-all hover:border-primary/30 cursor-pointer active:scale-[0.99] active:bg-muted/30"
                                 >
                                     <div className="flex justify-between items-start gap-4">
-                                        {/* min-w-0 ফ্লেক্স কন্টেইনারে টেক্সট র‍্যাপ করার জন্য জরুরি */}
                                         <div className="flex gap-4 flex-1 min-w-0">
                                             <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                                 {getIcon(addr.name)}
@@ -181,24 +190,37 @@ export default function AccountAddressesPage() {
                                                     )}
                                                 </div>
                                                 
-                                                {/* ★★★ FIX: 'break-words' এবং 'whitespace-pre-line' ব্যবহার করা হয়েছে যাতে লেখা ব্রেস করে নিচে নামে কিন্তু বক্সের বাইরে না যায় ★★★ */}
                                                 <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line break-words">
                                                     {addr.address}
                                                 </p>
                                             </div>
                                         </div>
                                         
+                                        {/* Dropdown Menu (Delete) */}
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 hover:bg-muted rounded-md">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    // ★★★ Stop Propagation (যাতে এডিট ওপেন না হয়) ★★★
+                                                    onClick={(e) => e.stopPropagation()} 
+                                                    className="h-8 w-8 -mr-2 hover:bg-muted rounded-md"
+                                                >
                                                     <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                {/* Edit অপশনটি এখানেও রাখা হলো, যদিও কার্ড ক্লিকে কাজ হয় */}
                                                 <DropdownMenuItem onClick={() => handleOpenDialog(addr)}>
                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleDelete(addr.id)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                                                <DropdownMenuItem 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // স্টপ প্রপাগেশন
+                                                        setDeleteId(addr.id);
+                                                    }} 
+                                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                >
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -211,7 +233,7 @@ export default function AccountAddressesPage() {
                 </CardContent>
                 
                 {/* Mobile Only Add Button */}
-                <div className="fixed bottom-6 right-6 sm:hidden z-40">
+                <div className="fixed bottom-24 right-6 sm:hidden z-40">
                     <Button 
                         onClick={() => handleOpenDialog()} 
                         size="icon" 
@@ -222,9 +244,9 @@ export default function AccountAddressesPage() {
                 </div>
             </Card>
 
-            {/* Add/Edit Address Modal */}
+            {/* Add/Edit Modal (Card Style) */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+                <DialogContent className="w-[90%] rounded-2xl sm:max-w-[500px] p-0 gap-0 overflow-hidden">
                     <DialogHeader className="p-6 border-b bg-muted/10">
                         <DialogTitle>{editingId ? 'Edit Address' : 'Add New Address'}</DialogTitle>
                     </DialogHeader>
@@ -267,6 +289,15 @@ export default function AccountAddressesPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <DeleteConfirmationDialog 
+                open={!!deleteId} 
+                onOpenChange={() => setDeleteId(null)}
+                onConfirm={confirmDelete}
+                isDeleting={isDeleting}
+                title="Delete Address?"
+                description="Are you sure you want to delete this address? This action cannot be undone."
+            />
         </div>
     );
 }

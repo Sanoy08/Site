@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, Trash2, CalendarHeart, Cake, Gift, Sparkles, ArrowRight, Save, Download, AlertTriangle } from 'lucide-react';
+import { Loader2, Plus, Trash2, CalendarHeart, Cake, Gift, Sparkles, ArrowRight, Download, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { FloatingInput } from '@/components/ui/floating-input';
 import Image from 'next/image';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
 
 type Event = {
     id: string;
@@ -39,8 +40,11 @@ export default function SpecialDatesPage() {
   
   // Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isWarningOpen, setIsWarningOpen] = useState(false); // ওয়ার্নিং এর জন্য স্টেট
-  const [pendingCustomer, setPendingCustomer] = useState<CustomerEvent | null>(null); // টেম্পোরারি স্টোরেজ
+  const [isWarningOpen, setIsWarningOpen] = useState(false); 
+  const [pendingCustomer, setPendingCustomer] = useState<CustomerEvent | null>(null);
+  
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Form States
   const [title, setTitle] = useState("");
@@ -80,9 +84,7 @@ export default function SpecialDatesPage() {
     }
   }, [isDialogOpen, title, date, type]);
 
-  // ★★★ আপগ্রেড: ইভেন্ট চেক এবং ওয়ার্নিং লজিক ★★★
   const handlePreCheck = (cust: CustomerEvent) => {
-      // চেক করা হচ্ছে এই ইভেন্ট অলরেডি আছে কিনা
       const alreadyExists = events.some(e => 
           e.title.toLowerCase() === cust.name.toLowerCase() && 
           e.type === cust.type &&
@@ -91,9 +93,9 @@ export default function SpecialDatesPage() {
 
       if (alreadyExists) {
           setPendingCustomer(cust);
-          setIsWarningOpen(true); // ডুপ্লিকেট হলে ওয়ার্নিং দেখাও
+          setIsWarningOpen(true); 
       } else {
-          handleOpenDialog(cust); // নতুন হলে সরাসরি ওপেন করো
+          handleOpenDialog(cust);
       }
   };
 
@@ -110,7 +112,7 @@ export default function SpecialDatesPage() {
           setManualImageUrl("");
       }
       setIsDialogOpen(true);
-      setIsWarningOpen(false); // ওয়ার্নিং বন্ধ করে দাও
+      setIsWarningOpen(false); 
       setPendingCustomer(null);
   };
 
@@ -274,24 +276,28 @@ export default function SpecialDatesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this event?')) return;
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
     const token = localStorage.getItem('token');
     try {
-        await fetch(`/api/admin/special-dates?id=${id}`, {
+        await fetch(`/api/admin/special-dates?id=${deleteId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         toast.success('Event deleted');
         fetchData();
     } catch (e) { toast.error('Delete failed'); }
+    finally { 
+        setIsDeleting(false);
+        setDeleteId(null); 
+    }
   };
 
   const isPast = (eventDate: string) => {
       return new Date(eventDate) < new Date(new Date().setHours(0,0,0,0));
   }
 
-  // ★★★ সর্টিং লজিক (Sorting by Date) ★★★
   const sortedEvents = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -339,7 +345,6 @@ export default function SpecialDatesPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    {/* এখানে handlePreCheck কল করা হচ্ছে */}
                                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handlePreCheck(cust)}>
                                         Generate <ArrowRight className="ml-1 h-3 w-3" />
                                     </Button>
@@ -360,7 +365,6 @@ export default function SpecialDatesPage() {
                         {sortedEvents.length === 0 ? (
                             <p className="text-center text-muted-foreground py-8">No events saved yet.</p>
                         ) : (
-                            // এখানে sortedEvents ম্যাপ করা হচ্ছে
                             sortedEvents.map((event) => {
                                 const past = isPast(event.date);
                                 return (
@@ -386,7 +390,8 @@ export default function SpecialDatesPage() {
                                             </p>
                                             <Badge variant="secondary" className="mt-1 capitalize">{event.type}</Badge>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(event.id)}>
+                                        {/* ★★★ Using setDeleteId to trigger custom dialog ★★★ */}
+                                        <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={() => setDeleteId(event.id)}>
                                             <Trash2 className="h-5 w-5" />
                                         </Button>
                                     </div>
@@ -478,6 +483,16 @@ export default function SpecialDatesPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* ★★★ Using Custom Component ★★★ */}
+        <DeleteConfirmationDialog 
+            open={!!deleteId} 
+            onOpenChange={() => setDeleteId(null)}
+            onConfirm={confirmDelete}
+            isDeleting={isDeleting}
+            title="Delete Event?"
+            description="Are you sure? This will remove the event and any associated posters."
+        />
 
     </div>
   );

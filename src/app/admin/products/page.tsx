@@ -23,6 +23,7 @@ import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
 
 type Product = {
   id: string;
@@ -42,6 +43,9 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -136,20 +140,26 @@ export default function AdminProductsPage() {
     }
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // কার্ড ক্লিক ইভেন্ট যাতে ফায়ার না হয়
-    if (!confirm('Are you sure?')) return;
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`/api/admin/products/${id}`, {
+        const res = await fetch(`/api/admin/products/${deleteId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Product deleted');
             fetchProducts();
+        } else {
+            toast.error('Delete failed');
         }
     } catch (e) { toast.error('Delete failed'); }
+    finally { 
+        setIsDeleting(false);
+        setDeleteId(null); 
+    }
   };
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -223,7 +233,11 @@ export default function AdminProductsPage() {
                             <DropdownMenuItem onClick={() => handleOpenDialog(product)}>
                                 <Pencil className="h-4 w-4 mr-2" /> Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => handleDelete(product.id, e)}>
+                            {/* ★★★ Trigger Delete ★★★ */}
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteId(product.id);
+                            }}>
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -330,6 +344,17 @@ export default function AdminProductsPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ★★★ Using Custom Component ★★★ */}
+      <DeleteConfirmationDialog 
+        open={!!deleteId} 
+        onOpenChange={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+        title="Delete Product?"
+        description="Are you sure? This dish will be permanently deleted from the menu."
+      />
+
     </div>
   );
 }

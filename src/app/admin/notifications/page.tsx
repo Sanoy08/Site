@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
 
 // Image Optimizer Helper
 const getOptimizedNotificationImage = (url: string) => {
@@ -28,6 +29,9 @@ export default function AdminNotificationsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [presets, setPresets] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Form State (Default timeSlot is 'anytime')
   const [formData, setFormData] = useState({ title: '', message: '', image: '', link: '', timeSlot: 'anytime' });
@@ -83,12 +87,15 @@ export default function AdminNotificationsPage() {
     finally { setIsLoading(false); }
   };
 
-  // 3. Delete Preset
-  const handleDeletePreset = async (id: string) => {
-      if(!confirm("Remove this preset?")) return;
-      await fetch(`/api/admin/notifications/presets?id=${id}`, { method: 'DELETE' });
+  // 3. Confirm Delete Preset
+  const confirmDeletePreset = async () => {
+      if(!deleteId) return;
+      setIsDeleting(true);
+      await fetch(`/api/admin/notifications/presets?id=${deleteId}`, { method: 'DELETE' });
       toast.success("Preset removed");
       fetchData();
+      setIsDeleting(false);
+      setDeleteId(null);
   };
 
   return (
@@ -171,7 +178,7 @@ export default function AdminNotificationsPage() {
                                         </div>
                                     </div>
                                     <button 
-                                        onClick={() => handleDeletePreset(preset._id)}
+                                        onClick={() => setDeleteId(preset._id)}
                                         className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100"
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -216,11 +223,20 @@ export default function AdminNotificationsPage() {
                 </Card>
             </TabsContent>
         </Tabs>
+
+        {/* ★★★ Using Custom Component ★★★ */}
+        <DeleteConfirmationDialog 
+            open={!!deleteId} 
+            onOpenChange={() => setDeleteId(null)}
+            onConfirm={confirmDeletePreset}
+            isDeleting={isDeleting}
+            title="Delete Preset?"
+            description="This preset will no longer be used for auto-notifications."
+        />
     </div>
   );
 }
 
-// Reusable Form Component (Updated with Select)
 function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
     return (
         <>
@@ -242,7 +258,6 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                 />
             </div>
             
-            {/* ★ Updated Time Slot Selector ★ */}
             {showTimeSlot && (
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-primary"><Clock className="h-4 w-4"/> Target Time Slot</Label>

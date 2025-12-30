@@ -1,3 +1,5 @@
+// src/app/admin/offers/page.tsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,6 +17,7 @@ import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
 
 type Offer = {
   id: string;
@@ -30,6 +33,9 @@ export default function AdminOffersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -74,8 +80,6 @@ export default function AdminOffersPage() {
   const handleSubmit = async () => {
     const token = localStorage.getItem('token');
     try {
-      // For offers, simplified to just add/delete. Edit can be added if needed later.
-      // Assuming POST handles both or just Create for now based on previous API structure.
       const res = await fetch('/api/admin/offers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -94,19 +98,26 @@ export default function AdminOffersPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this offer?')) return;
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`/api/admin/offers/${id}`, {
+        const res = await fetch(`/api/admin/offers/${deleteId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Offer deleted');
             fetchOffers();
+        } else {
+            toast.error('Delete failed');
         }
     } catch (e) { toast.error('Delete failed'); }
+    finally { 
+        setIsDeleting(false);
+        setDeleteId(null); 
+    }
   };
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -148,7 +159,7 @@ export default function AdminOffersPage() {
                     <p className="text-muted-foreground text-sm line-clamp-2 mb-4 min-h-[40px]">{offer.description}</p>
                     
                     <div className="flex justify-end gap-2 pt-4 border-t">
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(offer.id)} className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200">
+                        <Button variant="outline" size="sm" onClick={() => setDeleteId(offer.id)} className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200">
                             <Trash2 className="h-4 w-4 mr-1"/> Delete
                         </Button>
                     </div>
@@ -193,6 +204,16 @@ export default function AdminOffersPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ★★★ Using Custom Component ★★★ */}
+      <DeleteConfirmationDialog 
+        open={!!deleteId} 
+        onOpenChange={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+        title="Delete Offer?"
+        description="This offer will be permanently removed from the website."
+      />
     </div>
   );
 }

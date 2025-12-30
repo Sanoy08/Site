@@ -1,10 +1,10 @@
 // src/app/layout.tsx
 
 import type { Metadata, Viewport } from 'next';
-import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider'; // ★ এটি ইম্পোর্ট করুন
+import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
-import { MobileNav } from "@/components/layout/MobileNav"; // Import করুন
+import { MobileNav } from "@/components/layout/MobileNav";
 import { CartProvider } from '@/context/CartProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import GlobalLoader from '@/components/GlobalLoader';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
+import AppUrlListener from '@/components/AppUrlListener'; // ★ ১. ইম্পোর্ট করা হলো
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -77,7 +78,6 @@ export default function RootLayout({
       )}>
           
           {/* ★★★ VIDEO PRELOAD TRICK ★★★ */}
-          {/* এই ভিডিওটি ইউজার দেখবে না, কিন্তু ব্রাউজার এটি আগে থেকেই লোড করে রাখবে */}
           <div className="hidden" aria-hidden="true">
             <video 
               src="/images/loader.mp4" 
@@ -87,6 +87,9 @@ export default function RootLayout({
               height={0} 
             />
           </div>
+
+          {/* ★★★ ২. Deep Link Listener এখানে বসানো হলো ★★★ */}
+          <AppUrlListener />
 
           <CartProvider>
             <RealtimeMenuUpdater />
@@ -98,7 +101,6 @@ export default function RootLayout({
 
             <NotificationPrompt />
             
-            {/* ★★★ এখানে স্টোর স্ট্যাটাস প্রভাইডার বসানো হলো ★★★ */}
             <StoreStatusProvider>
                 {children}
             </StoreStatusProvider>

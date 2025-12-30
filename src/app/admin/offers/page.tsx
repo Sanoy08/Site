@@ -5,19 +5,18 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Tag, Pencil } from 'lucide-react';
+import { Loader2, Plus, Trash2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { ImageUpload } from '@/components/admin/ImageUpload';
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
 
 type Offer = {
   id: string;
@@ -40,7 +39,7 @@ export default function AdminOffersPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    price: '',
+    price: '0', // ডিফল্ট ভ্যালু 0 রাখা হলো যাতে ব্যাকএন্ড এরর না দেয়
     imageUrl: '',
     active: true,
   });
@@ -72,7 +71,8 @@ export default function AdminOffersPage() {
         });
     } else {
         setEditingOffer(null);
-        setFormData({ title: '', description: '', price: '', imageUrl: '', active: true });
+        // প্রাইস ডিফল্ট হিসেবে '0' সেট করা হলো
+        setFormData({ title: '', description: '', price: '0', imageUrl: '', active: true });
     }
     setIsDialogOpen(true);
   };
@@ -123,13 +123,13 @@ export default function AdminOffersPage() {
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-8 max-w-[1600px] mx-auto">
+    <div className="space-y-8 max-w-[1600px] mx-auto pb-24">
       <div className="flex justify-between items-center bg-card p-6 rounded-xl border shadow-sm">
         <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Tag className="h-6 w-6 text-primary" /> Special Offers
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage combo offers and special promotions.</p>
+            <p className="text-sm text-muted-foreground mt-1">Manage homepage banner offers.</p>
         </div>
         <Button onClick={() => handleOpenDialog()} className="gap-2 shadow-lg shadow-primary/20">
             <Plus className="h-4 w-4" /> Add Offer
@@ -138,7 +138,11 @@ export default function AdminOffersPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {offers.map((offer) => (
-            <Card key={offer.id} className="overflow-hidden border-0 shadow-md group hover:shadow-xl transition-all">
+            <Card 
+                key={offer.id} 
+                className="overflow-hidden border-0 shadow-md group hover:shadow-xl transition-all cursor-pointer"
+                onClick={() => handleOpenDialog(offer)}
+            >
                 <div className="relative h-48 w-full bg-muted">
                     <Image 
                         src={offer.imageUrl || PLACEHOLDER_IMAGE_URL} 
@@ -154,12 +158,21 @@ export default function AdminOffersPage() {
                 <CardContent className="p-5">
                     <div className="flex justify-between items-start mb-2">
                         <h3 className="text-lg font-bold line-clamp-1">{offer.title}</h3>
-                        <span className="text-primary font-bold text-lg">{formatPrice(offer.price)}</span>
+                        {/* Price hidden in UI card as well since input is removed, or kept if needed */}
+                        {/* <span className="text-primary font-bold text-lg">{formatPrice(offer.price)}</span> */}
                     </div>
                     <p className="text-muted-foreground text-sm line-clamp-2 mb-4 min-h-[40px]">{offer.description}</p>
                     
                     <div className="flex justify-end gap-2 pt-4 border-t">
-                        <Button variant="outline" size="sm" onClick={() => setDeleteId(offer.id)} className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteId(offer.id);
+                            }} 
+                            className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200"
+                        >
                             <Trash2 className="h-4 w-4 mr-1"/> Delete
                         </Button>
                     </div>
@@ -169,11 +182,13 @@ export default function AdminOffersPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
-            <DialogHeader>
-                <DialogTitle>Add New Offer</DialogTitle>
+        {/* ★★★ FIX: w-[90%] & rounded-2xl added for Mobile Card Style (Not Edge-to-Edge) ★★★ */}
+        <DialogContent className="w-[90%] rounded-2xl sm:max-w-lg p-0 gap-0 overflow-hidden">
+            <DialogHeader className="p-6 border-b bg-muted/10">
+                <DialogTitle>{editingOffer ? 'Edit Offer' : 'Add New Offer'}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            
+            <div className="p-6 space-y-5">
                 <div className="space-y-2">
                     <Label>Offer Image</Label>
                     <ImageUpload 
@@ -184,28 +199,32 @@ export default function AdminOffersPage() {
                 </div>
                 <div className="space-y-2">
                     <Label>Title</Label>
-                    <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g. Weekend Special" />
+                    <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g. Weekend Special" className="h-11" />
                 </div>
                 <div className="space-y-2">
                     <Label>Description</Label>
                     <Textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Offer details..." />
                 </div>
-                <div className="space-y-2">
-                    <Label>Price (₹)</Label>
-                    <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
-                </div>
-                <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg border">
-                    <Label>Active Status</Label>
+                
+                {/* ★★★ Price Input Removed From UI ★★★ */}
+                {/* Field is still in state (formData.price) for database compatibility */}
+
+                <div className="flex items-center justify-between bg-muted/30 p-4 rounded-lg border">
+                    <div className="space-y-0.5">
+                        <Label className="text-base">Active Status</Label>
+                        <p className="text-xs text-muted-foreground">Show this offer on homepage.</p>
+                    </div>
                     <Switch checked={formData.active} onCheckedChange={(c) => setFormData({...formData, active: c})} />
                 </div>
             </div>
-            <DialogFooter>
-                <Button onClick={handleSubmit}>Create Offer</Button>
+
+            <DialogFooter className="p-6 border-t bg-muted/10">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSubmit}>{editingOffer ? 'Update Offer' : 'Create Offer'}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ★★★ Using Custom Component ★★★ */}
       <DeleteConfirmationDialog 
         open={!!deleteId} 
         onOpenChange={() => setDeleteId(null)}

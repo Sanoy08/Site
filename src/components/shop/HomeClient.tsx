@@ -27,7 +27,7 @@ type HomeClientProps = {
   allProducts?: Product[]; 
 };
 
-// ★★★ Cloudinary Image Optimizer Helper ★★★
+// Cloudinary Image Optimizer
 const getOptimizedUrl = (url: string) => {
   if (!url) return PLACEHOLDER_IMAGE_URL;
   if (url.includes('cloudinary.com')) {
@@ -223,6 +223,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 {offers.map((offer) => (
                 <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
                     <div className="p-1 h-full">
+                    {/* ★★★ ক্লিন কার্ড ডিজাইন ★★★ */}
                     <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
                         <CardContent className="p-0 relative">
                         
@@ -237,13 +238,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                             unoptimized={true} 
                         />
 
-                        {/* Text Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-5 text-white pointer-events-none">
-                            <h3 className="text-xl font-bold mb-1 text-white">{offer.title}</h3>
-                            <p className="text-sm text-gray-200 line-clamp-1">{offer.description}</p>
-                        </div>
-                        
-                        {/* ★★★ Price Tag Removed from here ★★★ */}
+                        {/* ★★★ এখানে আগে Text Overlay ছিল, এখন সেটা রিমুভ করা হয়েছে ★★★ */}
                         
                         </CardContent>
                     </Card>

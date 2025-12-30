@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label'; // Label ইমপোর্ট রাখা হলো
+import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Trash2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
@@ -34,7 +34,6 @@ export default function AdminOffersPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // ফিল্ডগুলো স্টেটে আছে কিন্তু UI থেকে ইনপুট রিমুভ করা হয়েছে
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -70,10 +69,10 @@ export default function AdminOffersPage() {
         });
     } else {
         setEditingOffer(null);
-        // ডিফল্ট ভ্যালু দিয়ে রাখা হলো যাতে ডাটাবেসে এরর না খায়
+        // ★★★ ডিফল্ট টেক্সট রিমুভ করা হয়েছে ★★★
         setFormData({ 
-            title: 'Special Offer', 
-            description: 'Check out this amazing deal!', 
+            title: '', 
+            description: '', 
             price: '0', 
             imageUrl: '', 
             active: true 
@@ -83,7 +82,6 @@ export default function AdminOffersPage() {
   };
 
   const handleSubmit = async () => {
-    // ইমেজ ছাড়া সাবমিট হবে না
     if (!formData.imageUrl) {
         toast.error("Please upload an offer image");
         return;
@@ -150,7 +148,6 @@ export default function AdminOffersPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {offers.map((offer) => (
             <Card key={offer.id} className="overflow-hidden border-0 shadow-md group hover:shadow-xl transition-all">
-                {/* ইমেজ কন্টেইনার ফুল হাইট দেওয়া হলো যাতে টাইটেল না থাকলেও দেখতে ভালো লাগে */}
                 <div className="relative h-64 w-full bg-muted">
                     <Image 
                         src={offer.imageUrl || PLACEHOLDER_IMAGE_URL} 
@@ -163,27 +160,23 @@ export default function AdminOffersPage() {
                         {offer.active ? <span className="text-green-600">Active</span> : <span className="text-red-500">Inactive</span>}
                     </div>
                     
-                    {/* ডিলিট বাটনটি ইমেজের ওপর নিয়ে আসা হলো, যেহেতু নিচে টেক্সট নেই */}
                     <div className="absolute bottom-3 right-3">
                         <Button variant="destructive" size="icon" onClick={() => setDeleteId(offer.id)} className="h-8 w-8 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="h-4 w-4"/>
                         </Button>
                     </div>
                 </div>
-                {/* যেহেতু টাইটেল/প্রাইস রিমুভ করা হয়েছে, তাই কার্ড ফুটার রিমুভ করে দেওয়া হলো ক্লিন লুকের জন্য */}
             </Card>
         ))}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        {/* ★★★ Popup Style Updated: Not Edge-to-Edge & Fixed Height ★★★ */}
         <DialogContent className="w-[90%] rounded-2xl sm:max-w-[450px] p-0 gap-0 overflow-hidden">
             <DialogHeader className="p-6 border-b bg-muted/10">
                 <DialogTitle>{editingOffer ? 'Edit Offer Image' : 'Add New Offer'}</DialogTitle>
             </DialogHeader>
             
             <div className="p-6 space-y-6">
-                {/* শুধুমাত্র ইমেজ আপলোড রাখা হয়েছে */}
                 <div className="space-y-3">
                     <Label className="text-base font-medium">Offer Poster / Banner</Label>
                     <div className="bg-muted/20 p-2 rounded-xl border border-dashed">
@@ -195,7 +188,6 @@ export default function AdminOffersPage() {
                     </div>
                 </div>
 
-                {/* অ্যাক্টিভ স্ট্যাটাস সুইচ */}
                 <div className="flex items-center justify-between bg-muted/30 p-4 rounded-xl border">
                     <div className="space-y-0.5">
                         <Label className="text-base">Active Status</Label>

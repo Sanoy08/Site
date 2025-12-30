@@ -1,17 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/use-auth'; // আপনার Auth হুক
-import { Bell, BellOff, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { Bell, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'sonner';
@@ -22,28 +22,25 @@ export default function NotificationPrompt() {
 
   useEffect(() => {
     const checkPermission = async () => {
-      // ১. যদি ইউজার লগ-ইন না থাকে, তবে দেখাবে না
+      // ১. লগইন চেক
       if (!user) return;
 
-      // ২. যদি ইউজার আগে একবার "Reject" করে থাকে (লোকাল স্টোরেজ চেক), তবে আর বিরক্ত করবে না
+      // ২. রিজেক্ট চেক
       const hasRejected = localStorage.getItem('notification-rejected');
       if (hasRejected) return;
 
       let status = '';
 
       if (Capacitor.isNativePlatform()) {
-        // অ্যাপের জন্য চেক
         const permStatus = await PushNotifications.checkPermissions();
         status = permStatus.receive;
       } else {
-        // ওয়েবসাইটের জন্য চেক
         if (!('Notification' in window)) return;
         status = Notification.permission;
       }
 
-      // ৩. যদি পারমিশন 'granted' না হয়, তবেই পপ-আপ দেখাও
+      // ৩. পারমিশন না থাকলে ২ সেকেন্ড পর ড্রয়ার ওপেন হবে
       if (status !== 'granted') {
-        // অ্যাপ ওপেন হওয়ার ২ সেকেন্ড পর পপ-আপ আসবে (স্মুথ এক্সপেরিয়েন্সের জন্য)
         setTimeout(() => setIsOpen(true), 2000);
       }
     };
@@ -56,14 +53,12 @@ export default function NotificationPrompt() {
       let permissionGranted = false;
 
       if (Capacitor.isNativePlatform()) {
-        // Native App Logic
         const result = await PushNotifications.requestPermissions();
         if (result.receive === 'granted') {
           await PushNotifications.register();
           permissionGranted = true;
         }
       } else {
-        // Web Logic
         const result = await Notification.requestPermission();
         if (result === 'granted') {
           permissionGranted = true;
@@ -76,8 +71,7 @@ export default function NotificationPrompt() {
         });
         setIsOpen(false);
       } else {
-        // ইউজার সিস্টেম পপ-আপে ডিনাই করলে
-        toast.error("Permission denied via system settings.");
+        toast.error("Permission denied via settings.");
         setIsOpen(false);
       }
 
@@ -88,45 +82,46 @@ export default function NotificationPrompt() {
   };
 
   const handleReject = () => {
-    // ইউজার রিজেক্ট করলে লোকাল স্টোরেজে সেভ করে রাখব
-    // যাতে বারবার অ্যাপ খুললেই বিরক্ত না করে
     localStorage.setItem('notification-rejected', 'true');
     setIsOpen(false);
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
-      <AlertDialogContent className="max-w-[90%] sm:max-w-md rounded-2xl">
-        <AlertDialogHeader className="flex flex-col items-center text-center">
-          
-          <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-            <Bell className="h-8 w-8 text-primary animate-bounce" />
-          </div>
-          
-          <AlertDialogTitle className="text-xl font-bold">
-            Enable Notifications?
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-center text-gray-600 mt-2">
-            Get real-time updates on your <b>Order Status</b>, exclusive <b>Discounts</b>, and <b>Delivery Tracking</b>.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        
-        <AlertDialogFooter className="flex-row gap-3 mt-4 sm:justify-center w-full">
-          <Button 
-            variant="outline" 
-            onClick={handleReject}
-            className="flex-1 rounded-xl h-11 border-gray-200 text-gray-500 hover:text-gray-700"
-          >
-            Not Now
-          </Button>
-          <Button 
-            onClick={handleAllow}
-            className="flex-1 rounded-xl h-11 font-bold shadow-md shadow-primary/20"
-          >
-            Allow
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+      <DrawerContent>
+        <div className="mx-auto w-full max-w-sm">
+          <DrawerHeader className="flex flex-col items-center text-center pt-8">
+            
+            {/* বাউন্সিং আইকন */}
+            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-5 ring-4 ring-primary/5">
+              <Bell className="h-10 w-10 text-primary animate-bounce" />
+            </div>
+
+            <DrawerTitle className="text-2xl font-bold">
+              Turn on Notifications?
+            </DrawerTitle>
+            <DrawerDescription className="text-center text-gray-500 mt-3 text-base px-4">
+              Don't miss out on your order updates, driver location, and special offers from <span className="font-semibold text-primary">Bumba's Kitchen</span>.
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <DrawerFooter className="pb-8 px-6 gap-3">
+            <Button 
+              onClick={handleAllow}
+              className="w-full h-12 text-base font-bold rounded-xl shadow-lg shadow-primary/20"
+            >
+              Allow Notifications
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={handleReject}
+              className="w-full h-12 text-base text-gray-500 hover:bg-gray-100 rounded-xl"
+            >
+              Maybe Later
+            </Button>
+          </DrawerFooter>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

@@ -19,6 +19,9 @@ import { Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
+
 export default function CartPage() {
   const { state, itemCount, totalPrice, updateQuantity, removeItem } =
     useCart();
@@ -36,7 +39,8 @@ export default function CartPage() {
               <CardContent className="p-6">
                 <div className="space-y-6">
                   {state.items.map((item) => {
-                    const imageSrc = (item.image && item.image.url && item.image.url.trim() !== '') 
+                    // ✅ Raw URL বের করা
+                    const rawUrl = (item.image && item.image.url && item.image.url.trim() !== '') 
                       ? item.image.url 
                       : PLACEHOLDER_IMAGE_URL;
                     
@@ -45,10 +49,12 @@ export default function CartPage() {
                         <div className="flex items-center gap-4">
                           <Link href={`/menus/${item.slug}`}>
                             <div className="relative h-20 w-20 rounded-md overflow-hidden border bg-muted">
+                              {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
                               <Image
-                                src={imageSrc}
+                                src={optimizeImageUrl(rawUrl)}
                                 alt={item.name}
                                 fill
+                                sizes="80px" // 20 * 4 = 80px
                                 className="object-cover"
                               />
                             </div>
@@ -127,15 +133,15 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter>
-    {/* ★★★ পরিবর্তন: বাটন টেক্সট এবং অনক্লিক ফাংশন ★★★ */}
-    <Button
-        size="lg"
-        className="w-full"
-        onClick={() => router.push('/checkout/summary')} // নতুন পেজে যাবে
-    >
-        Proceed to Summary
-    </Button>
-</CardFooter>
+                {/* ★★★ পরিবর্তন: বাটন টেক্সট এবং অনক্লিক ফাংশন ★★★ */}
+                <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={() => router.push('/checkout/summary')} // নতুন পেজে যাবে
+                >
+                    Proceed to Summary
+                </Button>
+              </CardFooter>
             </Card>
           </div>
         </div>

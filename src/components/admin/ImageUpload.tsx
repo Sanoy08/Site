@@ -6,6 +6,8 @@ import { useState, useCallback } from 'react';
 import { CloudUpload, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
+// ✅ আমাদের ইমেজ অপটিমাইজেশন ইউটিলিটি
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 interface ImageUploadProps {
   value: string[];
@@ -32,7 +34,7 @@ export function ImageUpload({ value, onChange, maxFiles = 1, folder = 'general' 
     setIsUploading(true);
     const uploadedUrls: string[] = [...currentValidUrls];
 
-    // এনভায়রনমেন্ট ভেরিয়েবল থেকে কনফিগ নেওয়া
+    // এনভায়রনমেন্ট ভেরিয়েবল থেকে কনফিগ নেওয়া
     let cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME; 
     let uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
@@ -93,7 +95,6 @@ export function ImageUpload({ value, onChange, maxFiles = 1, folder = 'general' 
     onChange(value.filter((url) => url !== urlToRemove));
   };
 
-  // ★★★ ফিক্স: শুধুমাত্র ভ্যালিড (ফাঁকা নয়) URL গুলো ফিল্টার করে নেওয়া হচ্ছে ★★★
   const validImages = value.filter(url => url && url.trim() !== '');
 
   return (
@@ -132,8 +133,15 @@ export function ImageUpload({ value, onChange, maxFiles = 1, folder = 'general' 
       {validImages.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {validImages.map((url, index) => (
-            <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group">
-              <Image fill src={url} alt="Uploaded" className="object-cover" unoptimized={true} />
+            <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group bg-muted">
+              {/* ✅ প্রিভিউ ইমেজে অপটিমাইজেশন এবং প্রক্সি ব্যবহার */}
+              <Image 
+                fill 
+                src={optimizeImageUrl(url)} 
+                alt="Uploaded" 
+                className="object-cover" 
+                sizes="150px"
+              />
               <button 
                 onClick={() => removeImage(url)}
                 className="absolute top-1 right-1 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

@@ -1,3 +1,5 @@
+// src/app/(shop)/products/[slug]/ProductDetailsClient.tsx
+
 'use client';
 
 import { useState } from 'react';
@@ -8,12 +10,21 @@ import { Plus, Minus, Star } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import type { Product } from '@/lib/types';
 import { ProductCard } from '@/components/shop/ProductCard';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export function ProductDetailsClient({ product, relatedProducts }: { product: Product, relatedProducts: Product[] }) {
   const [quantity, setQuantity] = useState(1);
   const { addItem } = useCart();
   
-  const [mainImage, setMainImage] = useState(product.images[0]);
+  // সেইফটি চেক: যদি ইমেজ না থাকে
+  const initialImage = (product.images && product.images.length > 0) 
+    ? product.images[0] 
+    : { id: 'default', url: PLACEHOLDER_IMAGE_URL, alt: product.name };
+
+  const [mainImage, setMainImage] = useState(initialImage);
 
   const handleAddToCart = () => {
     addItem(product, quantity);
@@ -27,30 +38,37 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         <div className="grid md:grid-cols-2 gap-8">
           {/* Left Column - Image Gallery */}
           <div>
-            <div className="relative aspect-square rounded-lg overflow-hidden border mb-4">
+            <div className="relative aspect-square rounded-lg overflow-hidden border mb-4 bg-muted">
+              {/* ✅ মেইন ইমেজ অপটিমাইজেশন */}
               <Image
-                src={mainImage.url}
+                src={optimizeImageUrl(mainImage.url)}
                 alt={product.name}
                 fill
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover"
+                priority
               />
             </div>
-            <div className="grid grid-cols-4 gap-2">
-              {product.images.map((image) => (
-                <div
-                  key={image.id}
-                  className={`relative aspect-square rounded-md overflow-hidden border-2 cursor-pointer ${mainImage.id === image.id ? 'border-primary' : 'border-transparent'}`}
-                  onClick={() => setMainImage(image)}
-                >
-                  <Image
-                    src={image.url}
-                    alt={image.alt}
-                    fill
-                    className="object-cover"
-                  />
+            {product.images && product.images.length > 1 && (
+                <div className="grid grid-cols-4 gap-2">
+                {product.images.map((image) => (
+                    <div
+                    key={image.id}
+                    className={`relative aspect-square rounded-md overflow-hidden border-2 cursor-pointer bg-muted ${mainImage.id === image.id ? 'border-primary' : 'border-transparent'}`}
+                    onClick={() => setMainImage(image)}
+                    >
+                    {/* ✅ থাম্বনেইল ইমেজ অপটিমাইজেশন */}
+                    <Image
+                        src={optimizeImageUrl(image.url)}
+                        alt={image.alt || product.name}
+                        fill
+                        sizes="100px"
+                        className="object-cover"
+                    />
+                    </div>
+                ))}
                 </div>
-              ))}
-            </div>
+            )}
           </div>
           
           {/* Right Column - Product Details */}
@@ -94,14 +112,14 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         </div>
         
         {/* Rating Section */}
-        <div className="mt-12 text-center bg-card p-8 rounded-lg">
+        <div className="mt-12 text-center bg-card p-8 rounded-lg border shadow-sm">
             <h3 className="text-xl font-semibold mb-2">Enjoyed the meal? Rate it!</h3>
             <div className="flex justify-center gap-2 my-4">
                 {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-8 w-8 text-gray-300 cursor-pointer hover:text-amber-400" />
+                    <Star key={i} className="h-8 w-8 text-gray-300 cursor-pointer hover:text-amber-400 transition-colors" />
                 ))}
             </div>
-            <Button>Submit Rating</Button>
+            <Button variant="outline">Submit Rating</Button>
         </div>
 
 

@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatPrice } from '@/lib/utils';
 import { Loader2, ArrowRight, Ticket, Coins, Check, ShoppingBag, X, Sparkles, Receipt, Wallet, CheckCircle2 } from 'lucide-react';
@@ -16,6 +15,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { Switch } from '@/components/ui/switch';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export default function OrderSummaryPage() {
   const { state, totalPrice, itemCount, isInitialized, setCheckoutData } = useCart();
@@ -233,11 +235,20 @@ export default function OrderSummaryPage() {
                         
                         <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {state.items.map((item) => {
-                                const imageSrc = (item.image && item.image.url) ? item.image.url : PLACEHOLDER_IMAGE_URL;
+                                // ✅ Raw URL বের করা
+                                const rawUrl = (item.image && item.image.url) ? item.image.url : PLACEHOLDER_IMAGE_URL;
+                                
                                 return (
                                     <div key={item.id} className="flex gap-4 items-center group">
                                         <div className="relative h-16 w-16 rounded-xl overflow-hidden border bg-gray-50 flex-shrink-0">
-                                            <Image src={imageSrc} alt={item.name} fill className="object-cover" />
+                                            {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
+                                            <Image 
+                                                src={optimizeImageUrl(rawUrl)} 
+                                                alt={item.name} 
+                                                fill 
+                                                sizes="64px" // থাম্বনেইলের জন্য ছোট সাইজ
+                                                className="object-cover" 
+                                            />
                                         </div>
                                         <div className="flex-grow min-w-0">
                                             <p className="font-semibold text-sm truncate text-gray-800">{item.name}</p>
@@ -262,7 +273,6 @@ export default function OrderSummaryPage() {
                                     <Receipt className="h-5 w-5 text-gray-400" />
                                     <span className="font-bold tracking-wide">BILL SUMMARY</span>
                                 </div>
-                                {/* ★★★ FIX: এখানে এখন আজকের তারিখ দেখাবে ★★★ */}
                                 <div className="text-xs font-mono text-gray-400">Date: {new Date().toLocaleDateString()}</div>
                             </div>
 

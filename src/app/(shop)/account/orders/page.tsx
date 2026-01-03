@@ -11,21 +11,26 @@ import { formatPrice } from '@/lib/utils';
 import { Loader2, Package, Calendar, MapPin, ChevronRight, Clock, Utensils, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
+import Image from 'next/image'; // ✅ নতুন ইমপোর্ট
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants'; // ✅ নতুন ইমপোর্ট
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Order = {
-    _id: string;
-    OrderNumber: string;
-    Timestamp: string;
-    Status: string;
-    FinalPrice: number;
-    Subtotal: number;
-    Discount: number;
-    Items: any[];
-    OrderType: string;
-    Address: string;
-    DeliveryAddress?: string;
-    MealTime: string;
-    PreferredDate: string;
+  _id: string;
+  OrderNumber: string;
+  Timestamp: string;
+  Status: string;
+  FinalPrice: number;
+  Subtotal: number;
+  Discount: number;
+  Items: any[];
+  OrderType: string;
+  Address: string;
+  DeliveryAddress?: string;
+  MealTime: string;
+  PreferredDate: string;
 };
 
 export default function AccountOrdersPage() {
@@ -36,18 +41,15 @@ export default function AccountOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // অর্ডার ফেচিং (আপনার পুরনো লজিক অনুযায়ী)
   useEffect(() => {
     const fetchOrders = async () => {
         const token = localStorage.getItem('token');
-        // টোকেন না থাকলে লোডিং বন্ধ করে দিন (অথবা লগইনে রিডাইরেক্ট করতে পারেন)
         if (!token) {
             setIsLoading(false);
             return;
         }
 
         try {
-            // ★ নিশ্চিত করুন API পাথ ঠিক আছে
             const res = await fetch('/api/user/orders', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -57,7 +59,6 @@ export default function AccountOrdersPage() {
                 setOrders(data.orders);
             } else {
                 console.error("Failed:", data.error);
-                // toast.error("Failed to load orders"); 
             }
         } catch (e) {
             console.error(e);
@@ -70,7 +71,6 @@ export default function AccountOrdersPage() {
     fetchOrders();
   }, []);
 
-  // স্ট্যাটাস কালার হেল্পার
   const getStatusColor = (status: string) => {
       const s = status?.toLowerCase() || '';
       if (s === 'delivered') return 'bg-green-100 text-green-700 border-green-200';
@@ -82,7 +82,6 @@ export default function AccountOrdersPage() {
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
-  // Stats
   const totalOrders = orders.length;
   const completedOrders = orders.filter(o => o.Status === 'Delivered').length;
 
@@ -141,7 +140,6 @@ export default function AccountOrdersPage() {
                           <div className="space-y-3">
                               <div className="flex items-center gap-3">
                                   <span className="font-mono font-bold text-lg text-gray-800">#{order.OrderNumber}</span>
-                                  {/* Badge fix: className দিয়ে স্টাইল ওভাররাইড */}
                                   <Badge variant="outline" className={`${getStatusColor(order.Status)} border-none px-2.5 py-0.5 rounded-md`}>
                                       {order.Status}
                                   </Badge>
@@ -194,17 +192,33 @@ export default function AccountOrdersPage() {
                         <div className="space-y-4">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Items Ordered</h4>
                             <div className="space-y-3">
-                                {Array.isArray(selectedOrder.Items) && selectedOrder.Items.map((item: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-start pb-3 border-b border-dashed last:border-0 last:pb-0">
-                                        <div className="flex gap-3">
-                                            <div className="h-6 w-6 bg-primary/10 rounded-md flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                                                {item.quantity}x
+                                {Array.isArray(selectedOrder.Items) && selectedOrder.Items.map((item: any, idx: number) => {
+                                    // ✅ ইমেজের URL বের করার লজিক
+                                    const rawUrl = item.image?.url || PLACEHOLDER_IMAGE_URL;
+
+                                    return (
+                                        <div key={idx} className="flex justify-between items-center pb-3 border-b border-dashed last:border-0 last:pb-0">
+                                            <div className="flex gap-3 items-center">
+                                                {/* ✅ নতুন: অপটিমাইজড ইমেজ থাম্বনেইল */}
+                                                <div className="relative h-10 w-10 rounded-md overflow-hidden bg-gray-100 border shrink-0">
+                                                    <Image 
+                                                        src={optimizeImageUrl(rawUrl)} 
+                                                        alt={item.name} 
+                                                        fill 
+                                                        sizes="40px"
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+
+                                                <div className="h-6 w-6 bg-primary/10 rounded-md flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                                                    {item.quantity}x
+                                                </div>
+                                                <p className="text-sm font-medium text-gray-800">{item.name}</p>
                                             </div>
-                                            <p className="text-sm font-medium text-gray-800">{item.name}</p>
+                                            <p className="text-sm font-bold text-gray-600">{formatPrice(item.price * item.quantity)}</p>
                                         </div>
-                                        <p className="text-sm font-bold text-gray-600">{formatPrice(item.price * item.quantity)}</p>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -248,7 +262,7 @@ export default function AccountOrdersPage() {
                             </div>
                         </div>
 
-                        {/* Invoice Button (Optional) */}
+                        {/* Invoice Button */}
                         <Button className="w-full mt-4" onClick={() => toast.info("Invoice download coming soon!")}>
                             Download Invoice
                         </Button>

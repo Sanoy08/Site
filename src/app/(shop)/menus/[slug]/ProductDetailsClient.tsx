@@ -7,8 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-// Share2 ইম্পোর্ট সরিয়ে দেওয়া হয়েছে
-import { Plus, Minus, Star, ShoppingCart, Heart, Clock, Flame, Ban, ChevronRight, Info } from 'lucide-react';
+import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import type { Product, Image as ProductImage } from '@/lib/types';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -23,12 +22,10 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 
-const getOptimizedImageUrl = (url: string) => {
-  if (!url) return PLACEHOLDER_IMAGE_URL;
-  if (!url.includes('res.cloudinary.com')) return url;
-  if (url.includes('/q_') || url.includes('/w_')) return url;
-  return url.replace('/upload/', '/upload/w_800,q_auto,f_auto/');
-};
+// ✅ আমাদের তৈরি করা সেন্ট্রাল ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
+
+// ❌ আগের লোকাল getOptimizedImageUrl ফাংশনটি মুছে ফেলা হয়েছে
 
 const fallbackImage: ProductImage = { 
   id: 'placeholder', 
@@ -36,7 +33,7 @@ const fallbackImage: ProductImage = {
   alt: 'Placeholder Image' 
 };
 
-// নতুন কাস্টম শেয়ার আইকন কম্পোনেন্ট
+// কাস্টম শেয়ার আইকন কম্পোনেন্ট (অপরিবর্তিত রাখা হয়েছে)
 const CustomShareIcon = ({ className }: { className?: string }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
@@ -86,7 +83,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     toast.success(`Added ${quantity} ${product.name} to cart`);
   };
 
-  // ★ UPDATED SHARE FUNCTION ★
   const handleShare = async () => {
       const shareData = {
           title: product.name,
@@ -94,7 +90,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           url: window.location.href,
       };
 
-      // Check if the browser supports the native share API
       if (navigator.share) {
           try {
               await navigator.share(shareData);
@@ -102,7 +97,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
               console.log('Error sharing:', err);
           }
       } else {
-          // Fallback for browsers that don't support sharing (like desktop Chrome sometimes)
           navigator.clipboard.writeText(window.location.href);
           toast.success("Link copied to clipboard!");
       }
@@ -118,10 +112,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 {displayImages.map((img, index) => (
                 <CarouselItem key={index} className="pl-0 basis-full">
                     <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
+                        {/* ✅ Mobile Image Updated */}
                         <Image
-                            src={getOptimizedImageUrl(img.url)}
+                            src={optimizeImageUrl(img.url)}
                             alt={img.alt || product.name}
                             fill
+                            sizes="100vw"
                             className={cn("object-cover", isOutOfStock && "grayscale opacity-80")}
                             priority={index === 0}
                         />
@@ -139,7 +135,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* Top Buttons (Mobile) - আইকন পরিবর্তন করা হয়েছে */}
+         {/* Top Buttons (Mobile) */}
          <div className="absolute top-4 right-4 flex justify-end z-20 pointer-events-none">
              <button onClick={handleShare} className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 pointer-events-auto hover:bg-white transition-colors">
                  <CustomShareIcon className="h-5 w-5" />
@@ -169,11 +165,13 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           {/* Desktop Images */}
           <div className="hidden md:block space-y-4">
              <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
-
+                 
+                 {/* ✅ Desktop Main Image Updated */}
                  <Image
-                    src={getOptimizedImageUrl(displayImages[activeSlide].url)}
+                    src={optimizeImageUrl(displayImages[activeSlide].url)}
                     alt={product.name}
                     fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     className={cn("object-cover transition-all duration-500", isOutOfStock && "grayscale opacity-80")}
                     priority
                  />
@@ -186,7 +184,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                  )}
 
-                 {/* Desktop Share Button - আইকন পরিবর্তন করা হয়েছে */}
+                 {/* Desktop Share Button */}
                  <div className="absolute top-4 right-4">
                      <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors">
                          <CustomShareIcon className="h-5 w-5" />
@@ -197,30 +195,30 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
              {/* Thumbnails */}
              {displayImages.length > 1 && (
                  <div className="grid grid-cols-4 gap-0 w-full">
-
                      {displayImages.map((img, idx) => (
                          <button 
-                          key={idx}
-                          onClick={() => setActiveSlide(idx)}
-                          className={cn(
-                              "relative w-full aspect-square overflow-hidden transition-all",
-                              activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
-                          )}
-                        >
-                          <Image 
-                            src={getOptimizedImageUrl(img.url)} 
-                            alt="thumb" 
-                            fill 
-                            className="object-cover"
-                          />
-                        </button>
-
+                           key={idx}
+                           onClick={() => setActiveSlide(idx)}
+                           className={cn(
+                               "relative w-full aspect-square overflow-hidden transition-all",
+                               activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
+                           )}
+                         >
+                           {/* ✅ Thumbnail Image Updated */}
+                           <Image 
+                             src={optimizeImageUrl(img.url)} 
+                             alt="thumb" 
+                             fill 
+                             sizes="20vw"
+                             className="object-cover"
+                           />
+                         </button>
                      ))}
                  </div>
              )}
           </div>
           
-          {/* PRODUCT INFO (বাকি কোড অপরিবর্তিত) */}
+          {/* PRODUCT INFO */}
           <div className="flex flex-col h-full md:pt-2">
 
             <div className="space-y-3 md:space-y-4">

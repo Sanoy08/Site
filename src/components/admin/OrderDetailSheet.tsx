@@ -16,6 +16,9 @@ import {
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
+// ✅ আমাদের ইমেজ অপটিমাইজেশন ইউটিলিটি
+import { optimizeImageUrl } from '@/lib/imageUtils';
+
 // ★★★ FIX: Removed intermediate statuses ★★★
 const STATUS_OPTIONS = ['Pending Verification', 'Received', 'Delivered', 'Cancelled'];
 
@@ -137,7 +140,14 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                                     <div key={idx} className="p-4 flex gap-4 hover:bg-gray-50/50 transition-colors">
                                         <div className="h-16 w-16 bg-gray-100 rounded-xl relative overflow-hidden shrink-0 border border-gray-200">
                                             {item.image?.url ? (
-                                                <Image src={item.image.url} alt={item.name} fill className="object-cover" />
+                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
+                                                <Image 
+                                                    src={optimizeImageUrl(item.image.url)} 
+                                                    alt={item.name} 
+                                                    fill 
+                                                    sizes="64px" // 16 * 4 = 64px
+                                                    className="object-cover" 
+                                                />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-gray-300 text-[10px]">No Image</div>
                                             )}

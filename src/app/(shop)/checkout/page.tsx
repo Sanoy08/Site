@@ -51,6 +51,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
+
 // --- Zod Schema ---
 const checkoutSchema = z.object({
   name: z.string().min(2, 'Please enter a valid name.'),
@@ -105,7 +108,6 @@ const slideVariants = {
 
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const currentYear = new Date().getFullYear();
-// চেকআউটের জন্য আমরা শুধু বর্তমান এবং আগামী ১ বছর দেখাবো (অতীতের দরকার নেই)
 const years = [currentYear, currentYear + 1];
 
 // --- SWIPEABLE CALENDAR COMPONENT ---
@@ -205,7 +207,6 @@ function SwipeableCalendar({
                       onSelect(date);
                       onClose();
                   }}
-                  // ★ Disable Past Dates (Yesterday and before)
                   disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   initialFocus
                   className="rounded-md border-0 w-full"
@@ -710,11 +711,19 @@ export default function CheckoutPage() {
                 
                 <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                     {state.items.map((item) => {
-                        const imageSrc = (item.image && item.image.url) ? item.image.url : PLACEHOLDER_IMAGE_URL;
+                        // ✅ Raw URL বের করা
+                        const rawUrl = (item.image && item.image.url) ? item.image.url : PLACEHOLDER_IMAGE_URL;
                         return (
                             <div key={item.id} className="flex gap-4 items-center">
                                 <div className="relative h-14 w-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
-                                    <Image src={imageSrc} alt={item.name} fill className="object-cover" />
+                                    {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
+                                    <Image 
+                                      src={optimizeImageUrl(rawUrl)} 
+                                      alt={item.name} 
+                                      fill 
+                                      sizes="56px"
+                                      className="object-cover" 
+                                    />
                                 </div>
                                 <div className="flex-grow min-w-0">
                                     <p className="font-medium text-sm truncate">{item.name}</p>

@@ -23,7 +23,10 @@ import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { ImageUpload } from '@/components/admin/ImageUpload';
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Product = {
   id: string;
@@ -191,7 +194,7 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* প্রোডাক্ট গ্রিড (কার্ড ভিউ - মেনু পেজের মতো) */}
+      {/* প্রোডাক্ট গ্রিড */}
       {filteredProducts.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-dashed">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -203,11 +206,11 @@ export default function AdminProductsPage() {
             <Card 
                 key={product.id} 
                 className="group overflow-hidden border shadow-sm hover:shadow-lg transition-all cursor-pointer relative"
-                onClick={() => handleOpenDialog(product)} // পুরো কার্ডে ক্লিক করলে এডিট খুলবে
+                onClick={() => handleOpenDialog(product)} 
             >
               {/* প্রোডাক্ট ইমেজ */}
               <div className="aspect-square relative overflow-hidden bg-muted">
-                 {/* স্ট্যাটাস ব্যাজ (ইমেজের ওপর) */}
+                 {/* স্ট্যাটাস ব্যাজ */}
                  <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
                     {product.stock <= 0 && (
                         <Badge variant="destructive" className="text-[10px] font-bold shadow-sm">
@@ -221,7 +224,7 @@ export default function AdminProductsPage() {
                     )}
                  </div>
 
-                 {/* অ্যাকশন মেনু (ইমেজের ওপর ডানদিকে) */}
+                 {/* অ্যাকশন মেনু */}
                  <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -233,7 +236,6 @@ export default function AdminProductsPage() {
                             <DropdownMenuItem onClick={() => handleOpenDialog(product)}>
                                 <Pencil className="h-4 w-4 mr-2" /> Edit
                             </DropdownMenuItem>
-                            {/* ★★★ Trigger Delete ★★★ */}
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => {
                                 e.stopPropagation();
                                 setDeleteId(product.id);
@@ -244,12 +246,13 @@ export default function AdminProductsPage() {
                     </DropdownMenu>
                  </div>
 
+                 {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
                  <Image 
-                    src={product.images[0]?.url || PLACEHOLDER_IMAGE_URL} 
+                    src={optimizeImageUrl(product.images[0]?.url || PLACEHOLDER_IMAGE_URL)} 
                     alt={product.name} 
                     fill 
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-110" 
-                    unoptimized={true}
                  />
               </div>
 
@@ -273,7 +276,7 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* এডিট/অ্যাড ডায়ালগ */}
+      {/* এডিট/অ্যাড ডায়ালগ */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
             <DialogHeader className="p-6 border-b bg-muted/20">
@@ -345,7 +348,6 @@ export default function AdminProductsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ★★★ Using Custom Component ★★★ */}
       <DeleteConfirmationDialog 
         open={!!deleteId} 
         onOpenChange={() => setDeleteId(null)}

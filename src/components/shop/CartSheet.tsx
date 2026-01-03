@@ -13,8 +13,11 @@ import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 
-// ★ নতুন ইম্পোর্ট
+// ★ ব্যাক বাটন হ্যান্ডলার
 import { registerBackHandler } from '@/hooks/use-back-button';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export function CartSheet() {
   const { state, itemCount, totalPrice, updateQuantity, removeItem } = useCart();
@@ -28,14 +31,10 @@ export function CartSheet() {
   // ★★★ BACK BUTTON CONTROL ★★★
   useEffect(() => {
     if (isOpen) {
-      // শিট খুললে: ব্যাক বাটন হ্যান্ডলার সেট করো (যাতে ব্যাক চাপলে শিট বন্ধ হয়)
       registerBackHandler(() => setIsOpen(false));
     } else {
-      // শিট বন্ধ হলে: হ্যান্ডলার নাল করে দাও (যাতে স্বাভাবিক কাজ করে)
       registerBackHandler(null);
     }
-
-    // কম্পোনেন্ট আনমাউন্ট হলে সেফটির জন্য নাল করে দাও
     return () => registerBackHandler(null);
   }, [isOpen]);
   
@@ -65,17 +64,20 @@ export function CartSheet() {
             <div className="flex-grow overflow-y-auto pr-2 -mr-2">
               <div className="flex flex-col gap-6 py-6">
                 {state.items.map(item => {
-                  const imageSrc = (item.image && item.image.url && item.image.url.trim() !== '') 
+                  // ✅ ইমেজের সোর্স বের করার লজিক আপডেট করা হয়েছে
+                  const rawUrl = (item.image && item.image.url && item.image.url.trim() !== '') 
                     ? item.image.url 
                     : PLACEHOLDER_IMAGE_URL;
 
                   return (
                     <div key={item.id} className="flex gap-4 group">
                       <Link href={`/menus/${item.slug}`} className="flex-shrink-0 relative h-24 w-24 overflow-hidden rounded-xl border bg-muted">
+                         {/* ✅ অপটিমাইজড ইমেজ ব্যবহার এবং sizes সেট করা হয়েছে */}
                          <Image 
-                            src={imageSrc} 
+                            src={optimizeImageUrl(rawUrl)} 
                             alt={item.name} 
                             fill 
+                            sizes="100px" // থাম্বনেইলের জন্য সাইজ বলে দেওয়া হলো (Performance Boost)
                             className="object-cover transition-transform group-hover:scale-105"
                          />
                       </Link>

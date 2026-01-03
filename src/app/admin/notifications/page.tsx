@@ -14,16 +14,10 @@ import { toast } from 'sonner';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
 
-// Image Optimizer Helper
-const getOptimizedNotificationImage = (url: string) => {
-  if (!url) return '';
-  if (url.includes('cloudinary.com')) {
-    return url.replace('/upload/', '/upload/w_600,q_auto:low,f_auto/');
-  }
-  return url;
-};
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export default function AdminNotificationsPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -52,7 +46,8 @@ export default function AdminNotificationsPage() {
   const handleManualSend = async () => {
     if (!formData.title || !formData.message) return toast.error("Title & Message required");
     setIsLoading(true);
-    const optimizedData = { ...formData, image: getOptimizedNotificationImage(formData.image) };
+    // ✅ ইমেজ অপটিমাইজেশন এখানে করার দরকার নেই, সার্ভার বা ক্লাউডিনারি সেটা হ্যান্ডেল করবে। আমরা শুধু URL পাঠাব।
+    const optimizedData = { ...formData };
 
     try {
       const token = localStorage.getItem('token');
@@ -72,7 +67,7 @@ export default function AdminNotificationsPage() {
   const handleSavePreset = async () => {
     if (!formData.title || !formData.message) return toast.error("Title & Message required");
     setIsLoading(true);
-    const optimizedData = { ...formData, image: getOptimizedNotificationImage(formData.image) };
+    const optimizedData = { ...formData };
 
     try {
       await fetch('/api/admin/notifications/presets', {
@@ -137,7 +132,6 @@ export default function AdminNotificationsPage() {
                             <CardDescription>System will pick based on time of day.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6 pt-6">
-                            {/* ★ TimeSlot Option Visible Here ★ */}
                             <NotificationForm formData={formData} setFormData={setFormData} showTimeSlot={true} />
                             <Button className="w-full h-12 text-lg bg-amber-600 hover:bg-amber-700" onClick={handleSavePreset} disabled={isLoading}>
                                 {isLoading ? <Loader2 className="animate-spin" /> : <Plus className="mr-2 h-5 w-5" />} Save to Auto-Pilot
@@ -156,7 +150,14 @@ export default function AdminNotificationsPage() {
                                     <div className="flex gap-4">
                                         <div className="h-16 w-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden relative">
                                             {preset.image ? (
-                                                <Image src={preset.image} alt="img" fill className="object-cover" />
+                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
+                                                <Image 
+                                                    src={optimizeImageUrl(preset.image)} 
+                                                    alt="img" 
+                                                    fill 
+                                                    sizes="64px"
+                                                    className="object-cover" 
+                                                />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-gray-300"><ImageIcon className="h-6 w-6"/></div>
                                             )}
@@ -224,7 +225,6 @@ export default function AdminNotificationsPage() {
             </TabsContent>
         </Tabs>
 
-        {/* ★★★ Using Custom Component ★★★ */}
         <DeleteConfirmationDialog 
             open={!!deleteId} 
             onOpenChange={() => setDeleteId(null)}

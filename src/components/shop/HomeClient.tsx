@@ -13,10 +13,13 @@ import { MobileNav } from '@/components/layout/MobileNav';
 import { ProductCard } from '@/components/shop/ProductCard';
 import Autoplay from "embla-carousel-autoplay";
 import { formatPrice } from '@/lib/utils';
-import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+// import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants'; // এটা এখন আর সরাসরি লাগছে না
 import type { Product } from '@/lib/types';
 import { Utensils, Truck, ShieldCheck, Leaf } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
+
+// ✅ আমাদের নতুন ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
 export type Offer = { id: string; title: string; description: string; price: number; imageUrl: string; };
@@ -27,14 +30,7 @@ type HomeClientProps = {
   allProducts?: Product[]; 
 };
 
-// Cloudinary Image Optimizer
-const getOptimizedUrl = (url: string) => {
-  if (!url) return PLACEHOLDER_IMAGE_URL;
-  if (url.includes('cloudinary.com')) {
-    return url.replace('/upload/', '/upload/w_600,q_auto:low,f_auto/');
-  }
-  return url;
-};
+// ❌ আগের লোকাল function টি মুছে ফেলা হয়েছে (getOptimizedUrl)
 
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp", link: "/menus", color: "from-gray-400 to-slate-600" },
@@ -87,8 +83,9 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
                     <Link href={slide.clickUrl} className="block w-full relative">
+                      {/* ✅ Hero Image Updated */}
                       <Image 
-                        src={slide.imageUrl} 
+                        src={optimizeImageUrl(slide.imageUrl)} 
                         alt="Hero Slide" 
                         width={0}
                         height={0}
@@ -96,7 +93,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                         style={{ width: '100%', height: 'auto' }}
                         className="object-contain" 
                         priority 
-                        unoptimized={true} 
+                        // unoptimized={true} // প্রক্সি ব্যবহারের কারণে আমরা এটি তুলে দিতে পারি, তবে রাখলেও সমস্যা নেই
                       />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
                     </Link>
@@ -135,6 +132,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                       <Link key={idx} href={cat.link} className="flex flex-col items-center gap-3 min-w-[85px] group cursor-pointer">
                           <div className={`relative h-20 w-20 md:h-24 md:w-24 rounded-full p-1 bg-gradient-to-tr ${cat.color} shadow-lg group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300`}>
                               <div className="relative h-full w-full rounded-full overflow-hidden border-2 border-white bg-white">
+                                  {/* লোকাল ইমেজে optimizeImageUrl দরকার নেই, কারণ এগুলি public ফোল্ডারে আছে */}
                                   <Image 
                                     src={cat.image} 
                                     alt={cat.name} 
@@ -151,7 +149,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
           </div>
       </section>
 
-      {/* 3. Trust Badges */}
+      {/* 3. Trust Badges (No Image Change Needed) */}
       <section className="py-8 bg-gray-50/50 border-y border-gray-100">
           <div className="container">
               <div className="grid grid-cols-3 gap-3 md:gap-8">
@@ -180,12 +178,13 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 <div className="max-w-md mx-auto bg-white p-4 rounded-3xl shadow-xl border border-amber-100 hover:shadow-2xl transition-shadow duration-300">
                     <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-sm bg-muted">
                          {dailySpecial.images && dailySpecial.images.length > 0 && dailySpecial.images[0].url ? (
+                            // ✅ Daily Special Image Updated
                             <Image 
-                                src={dailySpecial.images[0].url}
+                                src={optimizeImageUrl(dailySpecial.images[0].url)}
                                 alt={dailySpecial.name}
                                 fill
                                 className="object-cover"
-                                unoptimized={true}
+                                // unoptimized={true}
                              />
                          ) : (
                              <SpecialDishCard 
@@ -223,22 +222,20 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 {offers.map((offer) => (
                 <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
                     <div className="p-1 h-full">
-                    {/* ★★★ ক্লিন কার্ড ডিজাইন ★★★ */}
                     <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
                         <CardContent className="p-0 relative">
                         
+                        {/* ✅ Offer Image Updated */}
                         <Image 
-                            src={getOptimizedUrl(offer.imageUrl)} 
+                            src={optimizeImageUrl(offer.imageUrl)} 
                             alt={offer.title} 
                             width={0}
                             height={0}
                             sizes="100vw"
                             style={{ width: '100%', height: 'auto' }}
                             className="block"
-                            unoptimized={true} 
+                            // unoptimized={true} 
                         />
-
-                        {/* ★★★ এখানে আগে Text Overlay ছিল, এখন সেটা রিমুভ করা হয়েছে ★★★ */}
                         
                         </CardContent>
                     </Card>
@@ -264,7 +261,10 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
               <CarouselContent>
                 {bestsellers.map((product) => (
                   <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
-                    <div className="p-1 h-full"><ProductCard product={product} /></div>
+                    <div className="p-1 h-full">
+                        {/* ProductCard already updated, so no change needed here */}
+                        <ProductCard product={product} />
+                    </div>
                   </CarouselItem>
                 ))}
               </CarouselContent>

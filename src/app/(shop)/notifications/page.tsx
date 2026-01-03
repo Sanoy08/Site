@@ -11,6 +11,10 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import Image from 'next/image';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Notification = {
   _id: string;
@@ -28,13 +32,12 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // ★ ডেটা ফেচ করার ফাংশনটি useCallback দিয়ে র‍্যাপ করা হলো যাতে রি-ইউজ করা যায়
+  // ডেটা ফেচ করার ফাংশন
   const fetchNotifications = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-        // লোডিং স্টেট বাদে সাইলেন্ট আপডেট (যাতে স্ক্রিন ফ্লিকার না করে)
         const res = await fetch('/api/notifications/history', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -60,8 +63,7 @@ export default function NotificationsPage() {
         fetchNotifications();
     }
 
-    // ★★★ ২. ইভেন্ট লিসেনার সেটআপ (Real-time Update) ★★★
-    // যখনই হুক থেকে 'notification-updated' ইভেন্ট আসবে, এটি আবার ডেটা আনবে
+    // ইভেন্ট লিসেনার সেটআপ (Real-time Update)
     const handleUpdate = () => {
         console.log("New notification received, refreshing list...");
         fetchNotifications();
@@ -69,7 +71,6 @@ export default function NotificationsPage() {
 
     window.addEventListener('notification-updated', handleUpdate);
 
-    // ক্লিনআপ
     return () => {
         window.removeEventListener('notification-updated', handleUpdate);
     };
@@ -122,7 +123,19 @@ export default function NotificationsPage() {
                         <div className="shrink-0">
                             {notification.image ? (
                                 <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-muted">
-                                    <Image src={notification.image} alt="Notification" fill className="object-cover" unoptimized={true} />
+                                    {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
+                                    <Image 
+                                        src={optimizeImageUrl(notification.image)} 
+                                        alt="Notification" 
+                                        fill 
+                                        sizes="48px" // 12 * 4 = 48px
+                                        className="object-cover" 
+                                        // unoptimized={true} // প্রক্সি ব্যবহারের কারণে এটি তুলে দেওয়া হলো
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.src = PLACEHOLDER_IMAGE_URL || '/placeholder.png';
+                                        }}
+                                    />
                                 </div>
                             ) : (
                                 <div className={`h-12 w-12 rounded-full flex items-center justify-center ${!notification.isRead ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>

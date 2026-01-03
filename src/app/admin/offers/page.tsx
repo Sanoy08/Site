@@ -4,17 +4,19 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Trash2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Offer = {
   id: string;
@@ -69,7 +71,6 @@ export default function AdminOffersPage() {
         });
     } else {
         setEditingOffer(null);
-        // ★★★ ডিফল্ট টেক্সট রিমুভ করা হয়েছে ★★★
         setFormData({ 
             title: '', 
             description: '', 
@@ -149,12 +150,14 @@ export default function AdminOffersPage() {
         {offers.map((offer) => (
             <Card key={offer.id} className="overflow-hidden border-0 shadow-md group hover:shadow-xl transition-all">
                 <div className="relative h-64 w-full bg-muted">
+                    {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
                     <Image 
-                        src={offer.imageUrl || PLACEHOLDER_IMAGE_URL} 
+                        src={optimizeImageUrl(offer.imageUrl || PLACEHOLDER_IMAGE_URL)} 
                         alt={offer.title} 
                         fill 
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover transition-transform duration-500 group-hover:scale-105" 
-                        unoptimized={true}
+                        // unoptimized={true} // প্রক্সি ব্যবহারের কারণে এটি তুলে দেওয়া হলো
                     />
                     <div className="absolute top-3 right-3 bg-background/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
                         {offer.active ? <span className="text-green-600">Active</span> : <span className="text-red-500">Inactive</span>}

@@ -30,6 +30,9 @@ import {
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
+
 // --- Category Data ---
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp" }, 
@@ -188,7 +191,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       {/* --- HEADER & FILTERS --- */}
       <div className={cn(
           "sticky top-[60px] z-30 bg-background transition-all duration-300 border-b",
-          // ★★★ FIX: Reduced vertical padding (pb-0 when not scrolled) ★★★
           isScrolled ? "shadow-md py-2" : "pt-3 pb-0"
       )}>
           <div className="container space-y-2"> 
@@ -301,12 +303,13 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                                   "relative h-12 w-12 rounded-full overflow-hidden border-2 transition-all",
                                   isActive ? "border-primary shadow-md ring-2 ring-primary/20" : "border-transparent group-hover:border-muted-foreground/30"
                               )}>
+                                  {/* ✅ ক্যাটাগরি ইমেজ অপটিমাইজেশন (Future Proofing) */}
                                   <Image 
-                                    src={cat.image} 
+                                    src={optimizeImageUrl(cat.image)} 
                                     alt={cat.name} 
                                     fill 
                                     className="object-cover" 
-                                    unoptimized={true}
+                                    unoptimized={true} // লোকাল ফাইলের জন্য ঠিক আছে, Cloudinary হলে প্রক্সি কাজ করবে
                                   />
                               </div>
                               <span className={cn(
@@ -323,10 +326,10 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       </div>
 
       {/* --- PRODUCTS GRID --- */}
-      {/* ★★★ FIX: Reduced top padding to pt-2 to minimize gap ★★★ */}
       <div className="container pt-2 pb-8 min-h-[60vh]">
         {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards">
+                {/* ProductCard এর ভেতরে optimizeImageUrl আগেই লাগানো হয়েছে, তাই এখানে কিছু করতে হবে না */}
                 {filteredProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                 ))}

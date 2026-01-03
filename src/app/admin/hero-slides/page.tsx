@@ -13,7 +13,10 @@ import { Loader2, Plus, Trash2, ImageIcon, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { ImageUpload } from '@/components/admin/ImageUpload';
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Slide = {
   id: string;
@@ -132,7 +135,14 @@ export default function AdminHeroSlidesPage() {
                       <TableCell className="pl-6 py-4">
                         <div className="relative h-20 w-36 rounded-lg overflow-hidden border shadow-sm bg-muted">
                              {slide.imageUrl ? (
-                                <Image src={slide.imageUrl} alt="Slide" fill className="object-cover" unoptimized={true} />
+                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
+                                <Image 
+                                    src={optimizeImageUrl(slide.imageUrl)} 
+                                    alt="Slide" 
+                                    fill 
+                                    sizes="150px" // টেবিলের জন্য ছোট সাইজ
+                                    className="object-cover" 
+                                />
                              ) : (
                                 <div className="flex items-center justify-center h-full w-full"><ImageIcon className="h-6 w-6 text-muted-foreground"/></div>
                              )}
@@ -186,7 +196,6 @@ export default function AdminHeroSlidesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ★★★ Using Custom Component ★★★ */}
       <DeleteConfirmationDialog 
         open={!!deleteId} 
         onOpenChange={() => setDeleteId(null)}

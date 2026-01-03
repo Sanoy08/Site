@@ -14,22 +14,25 @@ import Image from 'next/image';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Event = {
-    id: string;
-    title: string;
-    date: string;
-    type: 'birthday' | 'anniversary' | 'other';
-    imageUrl?: string;
+  id: string;
+  title: string;
+  date: string;
+  type: 'birthday' | 'anniversary' | 'other';
+  imageUrl?: string;
 };
 
 type CustomerEvent = {
-    id: string;
-    name: string;
-    nextDate: string;
-    type: 'birthday' | 'anniversary';
-    daysLeft: number;
+  id: string;
+  name: string;
+  nextDate: string;
+  type: 'birthday' | 'anniversary';
+  daysLeft: number;
 };
 
 export default function SpecialDatesPage() {
@@ -371,7 +374,14 @@ export default function SpecialDatesPage() {
                                     <div key={event.id} className={`flex items-center gap-4 p-4 rounded-xl border bg-card hover:shadow-sm transition-all ${past ? 'opacity-60' : ''}`}>
                                         <div className="h-20 w-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted relative border">
                                             {event.imageUrl ? (
-                                                <Image src={event.imageUrl} alt={event.title} fill className="object-cover" unoptimized={true} />
+                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
+                                                <Image 
+                                                    src={optimizeImageUrl(event.imageUrl)} 
+                                                    alt={event.title} 
+                                                    fill 
+                                                    sizes="80px"
+                                                    className="object-cover" 
+                                                />
                                             ) : (
                                                 <div className="h-full w-full flex items-center justify-center text-muted-foreground bg-muted">
                                                      {event.type === 'birthday' ? <Cake className="h-8 w-8 text-pink-400"/> : 
@@ -390,7 +400,6 @@ export default function SpecialDatesPage() {
                                             </p>
                                             <Badge variant="secondary" className="mt-1 capitalize">{event.type}</Badge>
                                         </div>
-                                        {/* ★★★ Using setDeleteId to trigger custom dialog ★★★ */}
                                         <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={() => setDeleteId(event.id)}>
                                             <Trash2 className="h-5 w-5" />
                                         </Button>
@@ -412,10 +421,10 @@ export default function SpecialDatesPage() {
                 
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                         <FloatingInput label="Event Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-                         <FloatingInput label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-                         
-                         <div className="space-y-1">
+                          <FloatingInput label="Event Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                          <FloatingInput label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                          
+                          <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground ml-1">Event Type</Label>
                             <Select value={type} onValueChange={(val: any) => setType(val)}>
                                 <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
@@ -484,7 +493,6 @@ export default function SpecialDatesPage() {
             </DialogContent>
         </Dialog>
 
-        {/* ★★★ Using Custom Component ★★★ */}
         <DeleteConfirmationDialog 
             open={!!deleteId} 
             onOpenChange={() => setDeleteId(null)}

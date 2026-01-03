@@ -1,3 +1,5 @@
+// src/components/layout/MobileNav.tsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,30 +15,33 @@ const navLinks = [
   { href: '/account', label: 'Account', icon: User },
 ];
 
+// যেসব পাথ-এ ন্যাভবার হাইড করতে চান
+const HIDE_PATHS = ['/admin', '/login', '/register', '/verify-otp', '/reset-password', '/forgot-password'];
+
 export function MobileNav() {
   const pathname = usePathname();
   const [shouldHide, setShouldHide] = useState(false);
 
   useEffect(() => {
-    // ১. যদি সাবডোমেইন 'admin' হয়
-    const isAdminDomain = window.location.hostname.includes('admin');
+    // ১. এডমিন সাবডোমেইন চেক
+    const isAdminDomain = typeof window !== 'undefined' && window.location.hostname.includes('admin');
     
-    // ২. অথবা যদি লিংকের পাথে '/admin' থাকে
-    const isAdminPath = pathname.startsWith('/admin');
+    // ২. নির্দিষ্ট পাথ চেক (Login, Register, Admin ইত্যাদি)
+    const isHiddenPath = HIDE_PATHS.some(path => pathname.startsWith(path));
 
-    if (isAdminDomain || isAdminPath) {
+    if (isAdminDomain || isHiddenPath) {
       setShouldHide(true);
     } else {
       setShouldHide(false);
     }
   }, [pathname]);
 
-  // যদি এডমিন পেজ হয়, তাহলে কিচ্ছু দেখাবে না
+  // যদি এডমিন বা হাইড করার পেজ হয়, তাহলে কিছুই দেখাবে না
   if (shouldHide) return null;
 
   return (
     <div className="md:hidden fixed bottom-2 left-0 right-0 z-50 flex justify-center">
-      <div className="w-[92%] max-w-md rounded-2xl bg-card border border-border shadow-lg px-1 py-1.5">
+      <div className="w-[92%] max-w-md rounded-2xl bg-card/95 backdrop-blur-md border border-border shadow-xl px-1 py-1.5 animate-in slide-in-from-bottom-4 duration-300">
         <nav className="flex justify-between items-center">
           {navLinks.map((link) => {
             const isActive =
@@ -52,12 +57,12 @@ export function MobileNav() {
                     'flex flex-col items-center justify-center px-3 py-1.5 rounded-xl transition-all duration-300',
                     isActive
                       ? 'bg-primary/10 -translate-y-1'
-                      : 'text-muted-foreground'
+                      : 'text-muted-foreground hover:text-primary/70'
                   )}
                 >
                   <Icon
                     className={cn(
-                      'h-5 w-5',
+                      'h-5 w-5 mb-0.5',
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     )}
                   />

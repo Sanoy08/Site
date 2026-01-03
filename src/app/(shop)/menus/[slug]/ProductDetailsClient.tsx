@@ -22,10 +22,11 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 
-// ✅ আমাদের তৈরি করা সেন্ট্রাল ইমেজ অপটিমাইজার ইমপোর্ট
-import { optimizeImageUrl } from '@/lib/imageUtils';
+// ✅ Capacitor Share প্লাগইন ইমপোর্ট
+import { Share } from '@capacitor/share';
 
-// ❌ আগের লোকাল getOptimizedImageUrl ফাংশনটি মুছে ফেলা হয়েছে
+// ✅ ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 const fallbackImage: ProductImage = { 
   id: 'placeholder', 
@@ -33,7 +34,6 @@ const fallbackImage: ProductImage = {
   alt: 'Placeholder Image' 
 };
 
-// কাস্টম শেয়ার আইকন কম্পোনেন্ট (অপরিবর্তিত রাখা হয়েছে)
 const CustomShareIcon = ({ className }: { className?: string }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
@@ -63,10 +63,8 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   useEffect(() => {
     if (!api) return;
-
     setCount(api.scrollSnapList().length);
     setCurrent(api.selectedScrollSnap() + 1);
-
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap() + 1);
       setActiveSlide(api.selectedScrollSnap());
@@ -83,23 +81,34 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     toast.success(`Added ${quantity} ${product.name} to cart`);
   };
 
+  // ✅ আপডেটেড শেয়ার ফাংশন (Capacitor এবং Web দুইটার জন্যই)
   const handleShare = async () => {
-      const shareData = {
-          title: product.name,
-          text: `Check out ${product.name} on Bumba's Kitchen!`,
-          url: window.location.href,
-      };
+    const shareOptions = {
+      title: product.name,
+      text: `Check out ${product.name} on Bumba's Kitchen!`,
+      url: window.location.href,
+      dialogTitle: 'Share this dish',
+    };
 
-      if (navigator.share) {
-          try {
-              await navigator.share(shareData);
-          } catch (err) {
-              console.log('Error sharing:', err);
-          }
+    try {
+      // Capacitor Share প্রথমে ট্রাই করবে (App-এর জন্য বেস্ট)
+      const canShare = await Share.canShare();
+      if (canShare.value) {
+        await Share.share(shareOptions);
+      } else if (navigator.share) {
+        // Fallback to browser's navigator.share
+        await navigator.share(shareOptions);
       } else {
-          navigator.clipboard.writeText(window.location.href);
-          toast.success("Link copied to clipboard!");
+        // যদি কিছুই কাজ না করে, লিংক কপি করে দেবে
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("Link copied to clipboard!");
       }
+    } catch (err) {
+      console.log('Share failed:', err);
+      // এরর হলে অন্তত লিংক কপি করার ব্যবস্থা রাখা ভালো
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied to clipboard!");
+    }
   };
 
   return (
@@ -112,7 +121,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 {displayImages.map((img, index) => (
                 <CarouselItem key={index} className="pl-0 basis-full">
                     <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
-                        {/* ✅ Mobile Image Updated */}
                         <Image
                             src={optimizeImageUrl(img.url)}
                             alt={img.alt || product.name}
@@ -135,9 +143,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* Top Buttons (Mobile) */}
-         <div className="absolute top-4 right-4 flex justify-end z-20 pointer-events-none">
-             <button onClick={handleShare} className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 pointer-events-auto hover:bg-white transition-colors">
+         {/* Share Button (Mobile) */}
+         <div className="absolute top-4 right-4 flex justify-end z-20">
+             <button 
+                onClick={handleShare} 
+                className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors"
+             >
                  <CustomShareIcon className="h-5 w-5" />
              </button>
          </div>
@@ -165,8 +176,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           {/* Desktop Images */}
           <div className="hidden md:block space-y-4">
              <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
-                 
-                 {/* ✅ Desktop Main Image Updated */}
                  <Image
                     src={optimizeImageUrl(displayImages[activeSlide].url)}
                     alt={product.name}
@@ -184,9 +193,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                  )}
 
-                 {/* Desktop Share Button */}
+                 {/* Share Button (Desktop) */}
                  <div className="absolute top-4 right-4">
-                     <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors">
+                     <button 
+                        onClick={handleShare} 
+                        className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors"
+                     >
                          <CustomShareIcon className="h-5 w-5" />
                      </button>
                  </div>
@@ -204,7 +216,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                                activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
                            )}
                          >
-                           {/* ✅ Thumbnail Image Updated */}
                            <Image 
                              src={optimizeImageUrl(img.url)} 
                              alt="thumb" 
@@ -220,7 +231,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           
           {/* PRODUCT INFO */}
           <div className="flex flex-col h-full md:pt-2">
-
             <div className="space-y-3 md:space-y-4">
                 <div className="flex items-center justify-between">
                      <div className={cn(
@@ -262,7 +272,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 </p>
             </div>
 
-            {/* Desktop Add to Cart */}
             <div className="hidden md:block mt-8">
                 {!isOutOfStock ? (
                     <div className="flex gap-4">
@@ -271,7 +280,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                             <span className="flex-1 text-center font-bold text-lg">{quantity}</span>
                             <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
                         </div>
-
                         <Button className="flex-1 h-12 rounded-xl text-lg font-bold" onClick={handleAddToCart}>
                             <ShoppingCart className="mr-2" /> Add to Cart — {formatPrice(product.price * quantity)}
                         </Button>
@@ -289,7 +297,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     {product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients."}
                 </p>
             </div>
-
           </div>
         </div>
 
@@ -302,7 +309,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                         See all <ChevronRight className="h-4 w-4" />
                     </Link>
                 </div>
-
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
                     {relatedProducts.map((p) => (
                         <ProductCard key={p.id} product={p} />
@@ -321,7 +327,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     <span className="w-8 text-center font-bold text-lg">{quantity}</span>
                     <Button variant="ghost" size="icon" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
                 </div>
-
                 <Button className="flex-1 h-12 rounded-lg font-bold flex justify-between px-6" onClick={handleAddToCart}>
                     <span>Add Item</span>
                     <span>{formatPrice(product.price * quantity)}</span>
@@ -333,7 +338,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </Button>
         )}
       </div>
-
     </div>
   );
 }

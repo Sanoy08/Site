@@ -27,54 +27,12 @@ type HomeClientProps = {
   allProducts?: Product[]; 
 };
 
-const getOptimizedUrl = (url: string, type: 'hero' | 'offer' | 'zoom') => {
+// Cloudinary Image Optimizer
+const getOptimizedUrl = (url: string) => {
   if (!url) return PLACEHOLDER_IMAGE_URL;
-
-  // ১. যদি ইমেজটি Cloudinary-র হয়, তবেই আমরা প্রক্সি করব
   if (url.includes('cloudinary.com')) {
-    
-    // ২. অ্যাকাউন্ট টাইপ ডিটেক্ট করা (.env ফাইল অনুযায়ী)
-    let accountType = 'general'; // ডিফল্ট
-    
-    // যদি লিঙ্কে Dishes Cloud Name (dk1acdtja) থাকে, তবে সেটা 'menu'
-    if (url.includes('dk1acdtja')) {
-        accountType = 'menu';
-    } 
-    // যদি লিঙ্কে General Cloud Name (dhhfisazd) থাকে, তবে সেটা 'general'
-    else if (url.includes('dhhfisazd')) {
-        accountType = 'general';
-    }
-
-    // ৩. সাইজ এবং ফরম্যাট প্যারামিটার সেট করা (ব্যান্ডউইথ বাঁচাতে)
-    let params = '';
-    switch (type) {
-        case 'hero':
-            // Hero: 800px, Low Quality, AVIF
-            params = 'image/upload/w_800,q_auto:low,f_avif'; 
-            break;
-        case 'offer':
-            // Offer: 500px, Low Quality, AVIF
-            params = 'image/upload/w_500,q_auto:low,f_avif';
-            break;
-        case 'zoom':
-            // Zoom: 1000px, Good Quality, AVIF
-            params = 'image/upload/w_1000,q_auto:good,f_avif';
-            break;
-        default:
-            params = 'image/upload/q_auto,f_avif';
-    }
-
-    // ৪. অরিজিনাল পাথ বের করা (v1234/xyz.jpg অংশটুকু)
-    const parts = url.split('/upload/');
-    if (parts.length < 2) return url; // যদি ফরম্যাট না মেলে
-    const pathAfterUpload = parts[1];
-
-    // ৫. ফাইনাল Cloudflare URL রিটার্ন করা
-    // যেমন: https://images.bumbaskitchen.app/menu/image/upload/w_500.../v123/food.jpg
-    return `https://images.bumbaskitchen.app/${accountType}/${params}/${pathAfterUpload}`;
+    return url.replace('/upload/', '/upload/w_600,q_auto:low,f_auto/');
   }
-
-  // অন্য কোনো ইমেজের ক্ষেত্রে (যেমন লোকাল বা অন্য লিঙ্ক)
   return url;
 };
 
@@ -104,40 +62,18 @@ const testimonials = [
 ];
 
 export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }: HomeClientProps) {
-  const [heroApi, setHeroApi] = useState<CarouselApi>()
-  const [heroCurrent, setHeroCurrent] = useState(0)
-  const [heroCount, setHeroCount] = useState(0)
-
-  const [offerApi, setOfferApi] = useState<CarouselApi>()
-  const [offerCurrent, setOfferCurrent] = useState(0)
-  const [offerCount, setOfferCount] = useState(0)
-
-  const [bestsellerApi, setBestsellerApi] = useState<CarouselApi>()
-  const [bestsellerCurrent, setBestsellerCurrent] = useState(0)
-  const [bestsellerCount, setBestsellerCount] = useState(0)
+  const [api, setApi] = useState<CarouselApi>()
+  const [current, setCurrent] = useState(0)
+  const [count, setCount] = useState(0)
   
   const dailySpecial = allProducts.find(p => p.isDailySpecial);
 
   useEffect(() => {
-    if (!heroApi) return
-    setHeroCount(heroApi.scrollSnapList().length)
-    setHeroCurrent(heroApi.selectedScrollSnap())
-    heroApi.on("select", () => setHeroCurrent(heroApi.selectedScrollSnap()))
-  }, [heroApi])
-
-  useEffect(() => {
-    if (!offerApi) return
-    setOfferCount(offerApi.scrollSnapList().length)
-    setOfferCurrent(offerApi.selectedScrollSnap())
-    offerApi.on("select", () => setOfferCurrent(offerApi.selectedScrollSnap()))
-  }, [offerApi])
-
-  useEffect(() => {
-    if (!bestsellerApi) return
-    setBestsellerCount(bestsellerApi.scrollSnapList().length)
-    setBestsellerCurrent(bestsellerApi.selectedScrollSnap())
-    bestsellerApi.on("select", () => setBestsellerCurrent(bestsellerApi.selectedScrollSnap()))
-  }, [bestsellerApi])
+    if (!api) return
+    setCount(api.scrollSnapList().length)
+    setCurrent(api.selectedScrollSnap())
+    api.on("select", () => setCurrent(api.selectedScrollSnap()))
+  }, [api])
 
   return (
     <div className="bg-background pb-20 md:pb-0">
@@ -146,7 +82,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
       <section className="relative -mt-20 md:-mt-24 w-full">
         {heroSlides.length > 0 ? (
           <>
-            <Carousel setApi={setHeroApi} opts={{ loop: true }} plugins={[Autoplay({ delay: 5000 })]}>
+            <Carousel setApi={setApi} opts={{ loop: true }} plugins={[Autoplay({ delay: 5000 })]}>
               <CarouselContent>
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
@@ -162,20 +98,16 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                         priority 
                         unoptimized={true} 
                       />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
                     </Link>
                   </CarouselItem>
                 ))}
               </CarouselContent>
             </Carousel>
             
-            {/* Hero Dots (White) */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-              {Array.from({ length: heroCount }).map((_, index) => (
-                <button 
-                    key={index} 
-                    onClick={() => heroApi?.scrollTo(index)} 
-                    className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${heroCurrent === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} 
-                />
+              {Array.from({ length: count }).map((_, index) => (
+                <button key={index} onClick={() => api?.scrollTo(index)} className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${current === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} />
               ))}
             </div>
           </>
@@ -286,44 +218,35 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                     <p className="text-muted-foreground mt-1">Grab the best deals before they are gone.</p>
                 </div>
             </div>
-            
-            <Carousel setApi={setOfferApi} opts={{ align: "start", loop: true }} className="w-full">
-                <CarouselContent>
-                    {offers.map((offer) => (
-                    <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
-                        <div className="p-1 h-full">
-                        <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
-                            <CardContent className="p-0 relative">
-                            <Image 
-                                src={getOptimizedUrl(offer.imageUrl)} 
-                                alt={offer.title} 
-                                width={0}
-                                height={0}
-                                sizes="100vw"
-                                style={{ width: '100%', height: 'auto' }}
-                                className="block"
-                                unoptimized={true} 
-                            />
-                            </CardContent>
-                        </Card>
-                        </div>
-                    </CarouselItem>
-                    ))}
-                </CarouselContent>
+            <Carousel opts={{ align: "start", loop: true }} className="w-full">
+            <CarouselContent>
+                {offers.map((offer) => (
+                <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
+                    <div className="p-1 h-full">
+                    {/* ★★★ ক্লিন কার্ড ডিজাইন ★★★ */}
+                    <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
+                        <CardContent className="p-0 relative">
+                        
+                        <Image 
+                            src={getOptimizedUrl(offer.imageUrl)} 
+                            alt={offer.title} 
+                            width={0}
+                            height={0}
+                            sizes="100vw"
+                            style={{ width: '100%', height: 'auto' }}
+                            className="block"
+                            unoptimized={true} 
+                        />
+
+                        {/* ★★★ এখানে আগে Text Overlay ছিল, এখন সেটা রিমুভ করা হয়েছে ★★★ */}
+                        
+                        </CardContent>
+                    </Card>
+                    </div>
+                </CarouselItem>
+                ))}
+            </CarouselContent>
             </Carousel>
-
-            {/* ★★★ Offer Dots (Reverted to Expanding Pill Style) ★★★ */}
-            <div className="flex justify-center gap-2 mt-6">
-              {Array.from({ length: offerCount }).map((_, index) => (
-                <button 
-                    key={index} 
-                    onClick={() => offerApi?.scrollTo(index)} 
-                    // Active: w-8 bg-primary, Inactive: w-2 bg-gray-300
-                    className={`h-1.5 rounded-full transition-all duration-300 ${offerCurrent === index ? 'w-8 bg-primary' : 'w-2 bg-gray-300'}`} 
-                />
-              ))}
-            </div>
-
           </div>
         </section>
       )}
@@ -337,7 +260,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
           </div>
           
           {bestsellers.length > 0 ? (
-            <Carousel setApi={setBestsellerApi} opts={{ align: "start", loop: true }} className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
+            <Carousel opts={{ align: "start", loop: true }} className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
               <CarouselContent>
                 {bestsellers.map((product) => (
                   <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
@@ -350,23 +273,6 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
             </Carousel>
           ) : (
             <p className="text-center text-muted-foreground">No products found.</p>
-          )}
-
-          {/* ★★★ Bestseller Dots (Kept as Ring Style) ★★★ */}
-          {bestsellers.length > 0 && (
-            <div className="flex justify-center gap-3 mt-8 items-center">
-                {Array.from({ length: bestsellerCount }).map((_, index) => (
-                    <button 
-                        key={index} 
-                        onClick={() => bestsellerApi?.scrollTo(index)} 
-                        className={`rounded-full transition-all duration-300 ease-out 
-                            ${bestsellerCurrent === index 
-                                ? 'w-3 h-3 bg-primary ring-2 ring-offset-2 ring-primary scale-110' 
-                                : 'w-2 h-2 bg-gray-300 hover:bg-gray-400' 
-                            }`} 
-                    />
-                ))}
-            </div>
           )}
           
           <div className="text-center mt-10">

@@ -42,6 +42,10 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.bumbaskitchen.app', // ✅ আমাদের নতুন প্রক্সি ডোমেইন
+      },
     ],
   },
 };

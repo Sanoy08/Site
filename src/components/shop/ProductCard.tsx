@@ -6,28 +6,24 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { Product, CartItem } from '@/lib/types'; // CartItem যোগ করুন
+import type { Product, CartItem } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
 import { Plus, Minus, ShoppingCart, Ban } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { Badge } from '../ui/badge';
 import { differenceInDays } from 'date-fns';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
-import { SpecialDishCard } from './SpecialDishCard'; // ★ ইমপোর্ট
+import { SpecialDishCard } from './SpecialDishCard';
+// ✅ আমাদের নতুন ফাংশন ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type ProductCardProps = {
   product: Product;
 };
 
-const getOptimizedImageUrl = (url: string) => {
-  if (!url || !url.includes('res.cloudinary.com')) return url;
-  if (url.includes('/q_') || url.includes('/w_')) return url;
-  return url.replace('/upload/', '/upload/w_500,q_auto,f_auto/');
-};
-
 export function ProductCard({ product }: ProductCardProps) {
   const { state, addItem, updateQuantity } = useCart();
-const cartItem = state.items.find((item: CartItem) => item.id === product.id);
+  const cartItem = state.items.find((item: CartItem) => item.id === product.id);
   const isOutOfStock = product.stock <= 0;
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -47,11 +43,14 @@ const cartItem = state.items.find((item: CartItem) => item.id === product.id);
 
   const isNew = product.createdAt && differenceInDays(new Date(), new Date(product.createdAt)) < 7;
 
-  // ★ ইমেজ চেক লজিক ★
+  // ★ ইমেজ চেক লজিক আপডেটেড ★
   const hasValidImage = product.images && product.images.length > 0 && product.images[0].url && product.images[0].url.trim() !== '';
-  const imageSrc = hasValidImage ? getOptimizedImageUrl(product.images[0].url) : PLACEHOLDER_IMAGE_URL;
+  
+  // ✅ এখানে আমরা optimizeImageUrl ব্যবহার করছি
+  const rawImageUrl = hasValidImage ? product.images[0].url : PLACEHOLDER_IMAGE_URL;
+  const imageSrc = optimizeImageUrl(rawImageUrl);
 
-  // ★ যদি স্পেশাল আইটেম হয় এবং কোনো ইমেজ না থাকে, তবে স্পেশাল কার্ড দেখাও ★
+  // ★ স্পেশাল ডিশ কার্ড লজিক ★
   if (product.isDailySpecial && !hasValidImage) {
       return (
           <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow cursor-pointer group border-amber-200 shadow-md bg-amber-50/30">
@@ -74,7 +73,7 @@ const cartItem = state.items.find((item: CartItem) => item.id === product.id);
       );
   }
 
-  // ... (নরমাল কার্ড রেন্ডারিং - আগের মতোই থাকবে)
+  // ... (নরমাল কার্ড রেন্ডারিং)
   return (
     <Card className={`flex flex-col overflow-hidden h-full transition-shadow hover:shadow-lg bg-card group border-muted/60 ${isOutOfStock ? 'opacity-75 grayscale-[0.5]' : ''}`}>
       <Link href={`/menus/${product.slug}`} className="block aspect-square relative overflow-hidden">
@@ -83,7 +82,16 @@ const cartItem = state.items.find((item: CartItem) => item.id === product.id);
         ) : isNew && (
             <Badge className="absolute top-2 right-2 bg-accent text-accent-foreground z-10 shadow-sm">NEW</Badge>
         )}
-        <Image src={imageSrc} alt={product.name} width={500} height={500} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
+        
+        {/* ✅ Next.js Image Component এখন আমাদের প্রক্সি URL ব্যবহার করবে */}
+        <Image 
+            src={imageSrc} 
+            alt={product.name} 
+            width={500} 
+            height={500} 
+            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" 
+        />
+        
         {isOutOfStock && <div className="absolute inset-0 bg-background/30 z-0" />}
       </Link>
       <CardContent className="p-3 flex flex-col flex-grow gap-2">

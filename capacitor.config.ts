@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
       '*.bumbaskitchen.app'
     ],
     // ★ নতুন লাইন: ইন্টারনেট না থাকলে এই পেজটি দেখাবে
-    errorPath: 'offline.html',
+    // errorPath: 'offline.html',
   },
   android: {
     // @ts-ignore

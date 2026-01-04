@@ -6,18 +6,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch'; // ✅ Switch component
-import { Bell, Loader2, Clock, ExternalLink, ShieldCheck, BellOff } from 'lucide-react';
+import { Bell, Loader2, Clock, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
-import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// ✅ Push Notification Hook Import
-import { usePushNotification } from '@/hooks/use-push-notification';
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Notification = {
   _id: string;
@@ -35,9 +32,7 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // ✅ Push Notification Logic
-  const { isSupported, isSubscribed, subscribe, unsubscribe, isLoading: isPushLoading } = usePushNotification();
-
+  // ডেটা ফেচ করার ফাংশন
   const fetchNotifications = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -63,29 +58,24 @@ export default function NotificationsPage() {
         router.push('/login');
         return;
     }
+
     if (user) {
         fetchNotifications();
     }
 
+    // ইভেন্ট লিসেনার সেটআপ (Real-time Update)
     const handleUpdate = () => {
+        console.log("New notification received, refreshing list...");
         fetchNotifications();
     };
 
     window.addEventListener('notification-updated', handleUpdate);
+
     return () => {
         window.removeEventListener('notification-updated', handleUpdate);
     };
-  }, [user, isAuthLoading, router, fetchNotifications]);
 
-  const handleTogglePush = async (checked: boolean) => {
-    if (checked) {
-      const success = await subscribe();
-      if (success) toast.success("Notifications enabled successfully! 🔔");
-    } else {
-      const success = await unsubscribe();
-      if (success) toast.success("Notifications disabled.");
-    }
-  };
+  }, [user, isAuthLoading, router, fetchNotifications]);
 
   const formatTimeAgo = (dateString: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
@@ -108,46 +98,10 @@ export default function NotificationsPage() {
 
   return (
     <div className="container max-w-2xl py-8 min-h-screen">
-      
-      {/* --- 🔔 PUSH SETTINGS CARD --- */}
-      <Card className="mb-8 overflow-hidden border-primary/20 shadow-sm">
-        <div className="p-5 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
-          <div className="flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isSubscribed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-              {isSubscribed ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-gray-900">Push Notifications</h2>
-              <p className="text-xs text-muted-foreground">
-                {isSubscribed ? 'You are receiving real-time alerts' : 'Enable to get order updates'}
-              </p>
-            </div>
-          </div>
-          
-          {isSupported ? (
-            <div className="flex items-center gap-2">
-              {isPushLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-              <Switch 
-                checked={isSubscribed} 
-                onCheckedChange={handleTogglePush}
-                disabled={isPushLoading}
-              />
-            </div>
-          ) : (
-            <Badge variant="outline" className="text-[10px] text-orange-600 border-orange-200 bg-orange-50">Not Supported</Badge>
-          )}
-        </div>
-      </Card>
-
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold font-headline flex items-center gap-2">
-            History
+        <h1 className="text-2xl font-bold font-headline flex items-center gap-2">
+            <Bell className="h-6 w-6 text-primary" /> Your Notifications
         </h1>
-        {notifications.length > 0 && (
-          <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">
-            {notifications.length} Total
-          </span>
-        )}
       </div>
 
       <div className="space-y-4">
@@ -169,12 +123,14 @@ export default function NotificationsPage() {
                         <div className="shrink-0">
                             {notification.image ? (
                                 <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-muted">
+                                    {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
                                     <Image 
                                         src={optimizeImageUrl(notification.image)} 
                                         alt="Notification" 
                                         fill 
-                                        sizes="48px" 
+                                        sizes="48px" // 12 * 4 = 48px
                                         className="object-cover" 
+                                        // unoptimized={true} // প্রক্সি ব্যবহারের কারণে এটি তুলে দেওয়া হলো
                                         onError={(e) => {
                                             const target = e.target as HTMLImageElement;
                                             target.src = PLACEHOLDER_IMAGE_URL || '/placeholder.png';
@@ -203,7 +159,7 @@ export default function NotificationsPage() {
                             
                             {notification.link && (
                                 <div className="mt-3">
-                                    <Button asChild size="sm" variant="outline" className="h-8 text-xs gap-1 rounded-lg">
+                                    <Button asChild size="sm" variant="outline" className="h-8 text-xs gap-1">
                                         <Link href={notification.link}>
                                             Visit Link <ExternalLink className="h-3 w-3" />
                                         </Link>

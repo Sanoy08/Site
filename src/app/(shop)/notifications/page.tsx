@@ -15,8 +15,7 @@ import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
-import Pusher from 'pusher-js'; // ★ Pusher ইমপোর্ট (যদি ইনস্টল না থাকে: npm install pusher-js)
+import { PushNotifications, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 
 type Notification = {
   _id: string;
@@ -39,7 +38,7 @@ export default function NotificationsPage() {
 
   const router = useRouter();
 
-  // 1. Check Permission Status
+  // 1. Initialize State
   const checkNotificationStatus = async () => {
     const userPref = localStorage.getItem('app_notification_enabled');
     let osStatus = 'default';
@@ -52,7 +51,7 @@ export default function NotificationsPage() {
     }
 
     setPermissionStatus(osStatus);
-
+    
     if (userPref === 'false') {
         setIsNotifEnabled(false);
     } else if (userPref === 'true') {
@@ -77,7 +76,7 @@ export default function NotificationsPage() {
         if (Capacitor.isNativePlatform()) {
           const result = await PushNotifications.requestPermissions();
           if (result.receive === 'granted') {
-            await PushNotifications.register(); 
+            await PushNotifications.register();
             granted = true;
           }
         } else {
@@ -110,11 +109,12 @@ export default function NotificationsPage() {
         setIsNotifEnabled(false);
         toast.info("Notifications Muted");
       } catch (error) {
-        console.error("Error disabling:", error);
+        console.error("Error disabling notifications:", error);
       }
     }
   };
 
+  // 3. Fetch Data Logic
   const fetchNotifications = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -132,91 +132,47 @@ export default function NotificationsPage() {
     }
   }, []);
 
-  // ★★★ Real-time Listener Effect ★★★
-  useEffect(() => {
-    if (!user) return;
-
-    // 1. Mobile App Realtime Listener (Foreground)
-    let nativeListener: any;
-    if (Capacitor.isNativePlatform()) {
-        const addListener = async () => {
-            // অ্যাপ খোলা থাকা অবস্থায় নোটিফিকেশন এলে এই ফাংশন কল হবে
-            nativeListener = await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                console.log('Push received in foreground:', notification);
-                fetchNotifications(); // লিস্ট রিফ্রেশ
-                // অপশনাল: ইউজারকে ছোট টোস্ট দেখানো
-                toast.info("New Notification", {
-                    description: notification.title || "Check your inbox",
-                    icon: <BellRing className="h-4 w-4 text-primary" />
-                });
-            });
-        };
-        addListener();
-    }
-
-    // 2. Web Realtime Listener (Pusher)
-    // আপনার .env থেকে Pusher Key নেওয়া হচ্ছে
-    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
-    let pusher: Pusher | null = null;
-
-    if (pusherKey && pusherCluster) {
-        pusher = new Pusher(pusherKey, {
-            cluster: pusherCluster,
-        });
-
-        // আপনার ব্যাকএন্ডে যে চ্যানেল নাম দেওয়া আছে (সাধারণত `user-{userId}` বা `notifications-{userId}`)
-        // আমি ধরে নিচ্ছি 'notifications-{userId}' ফরম্যাট। যদি কাজ না করে তবে ব্যাকএন্ড চেক করবেন।
-        // আপনার User ID: user.id অথবা user._id
-        const userId = (user as any).id || (user as any)._id;
-        const channel = pusher.subscribe(`notifications-${userId}`);
-
-        channel.bind('new-notification', (data: any) => {
-            console.log('Pusher notification received:', data);
-            fetchNotifications(); // লিস্ট রিফ্রেশ
-            if (!Capacitor.isNativePlatform()) {
-                 toast.info("New Notification Received");
-            }
-        });
-    }
-
-    // Cleanup
-    return () => {
-        if (nativeListener) {
-            nativeListener.remove();
-        }
-        if (pusher) {
-            pusher.unbind_all();
-            pusher.unsubscribe(`notifications-${(user as any).id || (user as any)._id}`);
-        }
-    };
-  }, [user, fetchNotifications]);
-
+  // ★★★ 4. Realtime Listener & Auth Effect ★★★
   useEffect(() => {
     if (!isAuthLoading && !user) {
         router.push('/login');
         return;
     }
+
     if (user) {
         fetchNotifications();
         checkNotificationStatus();
-    }
-    
-    // ম্যানুয়াল ইভেন্ট লিসেনার (যদি অন্য কম্পোনেন্ট থেকে ট্রিগার হয়)
-    const handleUpdate = () => fetchNotifications();
-    window.addEventListener('notification-updated', handleUpdate);
-    
-    const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-             checkNotificationStatus();
-             fetchNotifications(); // অ্যাপে ফিরে আসলে রিফ্রেশ
-        }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // --- ★ Realtime Listener Setup for App ★ ---
+        if (Capacitor.isNativePlatform()) {
+            
+            // A. Foreground এ নোটিফিকেশন আসলে
+            PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
+                console.log('Push received in foreground:', notification);
+                
+                // ১. লিস্ট রিফ্রেশ করো
+                fetchNotifications(); 
+                
+                // ২. ইউজারকে জানাও যে নতুন কিছু এসেছে (Optional but good UX)
+                toast.info(notification.title || "New Notification", {
+                    description: notification.body,
+                    icon: <Bell className="h-4 w-4 text-primary" />
+                });
+            });
 
+            // B. নোটিফিকেশনে ট্যাপ করলে (Background -> Foreground)
+            PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
+                console.log('Push action performed:', notification);
+                fetchNotifications(); // লিস্ট রিফ্রেশ
+            });
+        }
+    }
+
+    // Clean up listeners when component unmounts
     return () => {
-        window.removeEventListener('notification-updated', handleUpdate);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        if (Capacitor.isNativePlatform()) {
+            PushNotifications.removeAllListeners();
+        }
     };
 
   }, [user, isAuthLoading, router, fetchNotifications]);
@@ -287,7 +243,7 @@ export default function NotificationsPage() {
             notifications.map((notification) => (
                 <Card 
                     key={notification._id} 
-                    className={`overflow-hidden border transition-all hover:shadow-md animate-in slide-in-from-top-2 duration-300 ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
+                    className={`overflow-hidden border transition-all hover:shadow-md animate-in slide-in-from-top-1 duration-300 ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
                 >
                     <div className="p-4 flex gap-4">
                         <div className="shrink-0">
@@ -333,6 +289,10 @@ export default function NotificationsPage() {
                                 </div>
                             )}
                         </div>
+                        {/* Unread Dot Indicator */}
+                        {!notification.isRead && (
+                            <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary animate-pulse" />
+                        )}
                     </div>
                 </Card>
             ))

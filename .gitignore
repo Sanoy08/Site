@@ -46,3 +46,9 @@ firestore-debug.log
 
 
 service-account.json
+
+node_modules/
+.next/
+android/
+.env.local
+service-account.json

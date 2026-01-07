@@ -6,8 +6,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch'; // Switch কম্পোনেন্ট লাগবে
-import { Bell, Loader2, Clock, ExternalLink, Settings, BellOff, BellRing } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Bell, Loader2, Clock, ExternalLink, BellOff, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
@@ -38,51 +38,57 @@ export default function NotificationsPage() {
 
   const router = useRouter();
 
-  // ★★★ 1. Check Current Permission Status ★★★
+  // ★★★ 1. Initialize State Correctly ★★★
   const checkNotificationStatus = async () => {
-    let status = 'default';
+    // আগে লোকাল স্টোরেজ চেক করব ইউজার ম্যানুয়ালি অফ করেছে কিনা
+    const userPref = localStorage.getItem('app_notification_enabled');
+
+    let osStatus = 'default';
+
     if (Capacitor.isNativePlatform()) {
+      // নেটিভ অ্যাপ
       const perm = await PushNotifications.checkPermissions();
-      status = perm.receive;
+      osStatus = perm.receive;
     } else if ('Notification' in window) {
-      status = Notification.permission;
+      // ওয়েব
+      osStatus = Notification.permission;
     }
 
-    setPermissionStatus(status);
+    setPermissionStatus(osStatus);
+
+    // লজিক: 
+    // যদি ইউজার 'false' সেট করে থাকে -> টগল OFF থাকবে।
+    // যদি ইউজার কিছু সেট না করে থাকে (null) কিন্তু OS পারমিশন 'granted' -> টগল ON থাকবে।
+    // যদি ইউজার 'true' সেট করে থাকে -> টগল ON থাকবে।
     
-    // যদি পারমিশন granted হয় এবং ইউজার আগে reject না করে থাকে
-    const isRejected = localStorage.getItem('notification-rejected') === 'true';
-    setIsNotifEnabled(status === 'granted' && !isRejected);
+    if (userPref === 'false') {
+        setIsNotifEnabled(false);
+    } else if (userPref === 'true') {
+        setIsNotifEnabled(true);
+    } else {
+        // ফার্স্ট টাইম বা কোনো প্রেফারেন্স নেই
+        setIsNotifEnabled(osStatus === 'granted');
+    }
   };
 
-  // ★★★ 2. Handle Toggle Change ★★★
+  // ★★★ 2. Handle Toggle Change (Real Fix) ★★★
   const handleToggleNotification = async (checked: boolean) => {
     if (checked) {
       // --- Turning ON ---
       if (permissionStatus === 'denied') {
         toast.error("Notifications are blocked!", {
           description: "Please enable them from your phone Settings.",
-          action: {
-            label: "Open Settings",
-            onClick: () => {
-               // নেটিভ অ্যাপ হলে সেটিংসে নিয়ে যাবে, ওয়েব হলে গাইড দেখাবে
-               if (Capacitor.isNativePlatform()) {
-                 // অ্যান্ড্রয়েড সেটিংস খোলার লজিক (কাস্টম প্লাগিন লাগতে পারে, সিম্পল টোস্ট রাখা ভালো)
-                 toast.info("Go to Settings > Apps > Bumba's Kitchen > Notifications");
-               }
-            }
-          }
         });
-        return;
+        // টগল অন হতে দেব না যদি পারমিশন না থাকে
+        return; 
       }
 
-      // Request Permission
       try {
         let granted = false;
         if (Capacitor.isNativePlatform()) {
           const result = await PushNotifications.requestPermissions();
           if (result.receive === 'granted') {
-            await PushNotifications.register();
+            await PushNotifications.register(); // ★ ডিভাইস রেজিস্টার করা হলো
             granted = true;
           }
         } else {
@@ -91,31 +97,39 @@ export default function NotificationsPage() {
         }
 
         if (granted) {
+          localStorage.setItem('app_notification_enabled', 'true'); // প্রেফারেন্স সেভ
           localStorage.removeItem('notification-rejected'); // রিজেকশন ফ্ল্যাগ রিমুভ
           setIsNotifEnabled(true);
           setPermissionStatus('granted');
           toast.success("Notifications Enabled!");
         } else {
           toast.error("Permission denied.");
+          setIsNotifEnabled(false);
         }
       } catch (e) {
         console.error(e);
+        setIsNotifEnabled(false);
       }
 
     } else {
       // --- Turning OFF ---
-      // প্রোগ্রামিং দিয়ে OS পারমিশন অফ করা যায় না, তাই আমরা লোকাল ফ্ল্যাগ সেট করব
-      localStorage.setItem('notification-rejected', 'true');
-      setIsNotifEnabled(false);
-      
-      // অপশনাল: নেটিভে লিসেনার রিমুভ করা যেতে পারে
-      if(Capacitor.isNativePlatform()){
-        await PushNotifications.removeAllListeners();
+      try {
+        if (Capacitor.isNativePlatform()) {
+           // ★ এই লাইনটি আসল কাজ করবে: সার্ভার থেকে ডিভাইস আন-রেজিস্টার করা
+           await PushNotifications.unregister(); 
+           // Listener রিমুভ করা যাতে আর রিসিভ না করে
+           await PushNotifications.removeAllListeners();
+        }
+        
+        localStorage.setItem('app_notification_enabled', 'false'); // প্রেফারেন্স সেভ
+        setIsNotifEnabled(false);
+        
+        toast.info("Notifications Muted", {
+          description: "You won't receive updates until you turn this back on."
+        });
+      } catch (error) {
+        console.error("Error disabling notifications:", error);
       }
-      
-      toast.info("Notifications Muted", {
-        description: "You won't receive updates until you turn this back on."
-      });
     }
   };
 
@@ -143,16 +157,15 @@ export default function NotificationsPage() {
     }
     if (user) {
         fetchNotifications();
-        checkNotificationStatus(); // চেক স্ট্যাটাস
+        checkNotificationStatus();
     }
 
     const handleUpdate = () => {
-        console.log("Refreshing notifications...");
         fetchNotifications();
     };
     window.addEventListener('notification-updated', handleUpdate);
     
-    // ফোরগ্রাউন্ডে অ্যাপ ফিরে আসলে পারমিশন চেক করা (যদি ইউজার সেটিংস থেকে চেঞ্জ করে)
+    // অ্যাপ ফোরগ্রাউন্ডে আসলে চেক করা
     const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') checkNotificationStatus();
     };
@@ -192,7 +205,7 @@ export default function NotificationsPage() {
         </h1>
       </div>
 
-      {/* ★★★ SETTINGS TOGGLE CARD ★★★ */}
+      {/* Settings Toggle Card */}
       <Card className="p-4 bg-secondary/20 border-secondary/20 shadow-none">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

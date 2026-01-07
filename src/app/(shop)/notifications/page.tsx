@@ -16,6 +16,7 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import Pusher from 'pusher-js'; // ★ Pusher ইমপোর্ট (যদি ইনস্টল না থাকে: npm install pusher-js)
 
 type Notification = {
   _id: string;
@@ -32,54 +33,42 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // ★★★ Settings State ★★★
+  // Settings State
   const [isNotifEnabled, setIsNotifEnabled] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<string>('default');
 
   const router = useRouter();
 
-  // ★★★ 1. Initialize State Correctly ★★★
+  // 1. Check Permission Status
   const checkNotificationStatus = async () => {
-    // আগে লোকাল স্টোরেজ চেক করব ইউজার ম্যানুয়ালি অফ করেছে কিনা
     const userPref = localStorage.getItem('app_notification_enabled');
-
     let osStatus = 'default';
 
     if (Capacitor.isNativePlatform()) {
-      // নেটিভ অ্যাপ
       const perm = await PushNotifications.checkPermissions();
       osStatus = perm.receive;
     } else if ('Notification' in window) {
-      // ওয়েব
       osStatus = Notification.permission;
     }
 
     setPermissionStatus(osStatus);
 
-    // লজিক: 
-    // যদি ইউজার 'false' সেট করে থাকে -> টগল OFF থাকবে।
-    // যদি ইউজার কিছু সেট না করে থাকে (null) কিন্তু OS পারমিশন 'granted' -> টগল ON থাকবে।
-    // যদি ইউজার 'true' সেট করে থাকে -> টগল ON থাকবে।
-    
     if (userPref === 'false') {
         setIsNotifEnabled(false);
     } else if (userPref === 'true') {
         setIsNotifEnabled(true);
     } else {
-        // ফার্স্ট টাইম বা কোনো প্রেফারেন্স নেই
         setIsNotifEnabled(osStatus === 'granted');
     }
   };
 
-  // ★★★ 2. Handle Toggle Change (Real Fix) ★★★
+  // 2. Handle Toggle
   const handleToggleNotification = async (checked: boolean) => {
     if (checked) {
-      // --- Turning ON ---
       if (permissionStatus === 'denied') {
         toast.error("Notifications are blocked!", {
           description: "Please enable them from your phone Settings.",
         });
-        // টগল অন হতে দেব না যদি পারমিশন না থাকে
         return; 
       }
 
@@ -88,7 +77,7 @@ export default function NotificationsPage() {
         if (Capacitor.isNativePlatform()) {
           const result = await PushNotifications.requestPermissions();
           if (result.receive === 'granted') {
-            await PushNotifications.register(); // ★ ডিভাইস রেজিস্টার করা হলো
+            await PushNotifications.register(); 
             granted = true;
           }
         } else {
@@ -97,8 +86,8 @@ export default function NotificationsPage() {
         }
 
         if (granted) {
-          localStorage.setItem('app_notification_enabled', 'true'); // প্রেফারেন্স সেভ
-          localStorage.removeItem('notification-rejected'); // রিজেকশন ফ্ল্যাগ রিমুভ
+          localStorage.setItem('app_notification_enabled', 'true');
+          localStorage.removeItem('notification-rejected');
           setIsNotifEnabled(true);
           setPermissionStatus('granted');
           toast.success("Notifications Enabled!");
@@ -112,23 +101,16 @@ export default function NotificationsPage() {
       }
 
     } else {
-      // --- Turning OFF ---
       try {
         if (Capacitor.isNativePlatform()) {
-           // ★ এই লাইনটি আসল কাজ করবে: সার্ভার থেকে ডিভাইস আন-রেজিস্টার করা
            await PushNotifications.unregister(); 
-           // Listener রিমুভ করা যাতে আর রিসিভ না করে
            await PushNotifications.removeAllListeners();
         }
-        
-        localStorage.setItem('app_notification_enabled', 'false'); // প্রেফারেন্স সেভ
+        localStorage.setItem('app_notification_enabled', 'false');
         setIsNotifEnabled(false);
-        
-        toast.info("Notifications Muted", {
-          description: "You won't receive updates until you turn this back on."
-        });
+        toast.info("Notifications Muted");
       } catch (error) {
-        console.error("Error disabling notifications:", error);
+        console.error("Error disabling:", error);
       }
     }
   };
@@ -150,6 +132,66 @@ export default function NotificationsPage() {
     }
   }, []);
 
+  // ★★★ Real-time Listener Effect ★★★
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. Mobile App Realtime Listener (Foreground)
+    let nativeListener: any;
+    if (Capacitor.isNativePlatform()) {
+        const addListener = async () => {
+            // অ্যাপ খোলা থাকা অবস্থায় নোটিফিকেশন এলে এই ফাংশন কল হবে
+            nativeListener = await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                console.log('Push received in foreground:', notification);
+                fetchNotifications(); // লিস্ট রিফ্রেশ
+                // অপশনাল: ইউজারকে ছোট টোস্ট দেখানো
+                toast.info("New Notification", {
+                    description: notification.title || "Check your inbox",
+                    icon: <BellRing className="h-4 w-4 text-primary" />
+                });
+            });
+        };
+        addListener();
+    }
+
+    // 2. Web Realtime Listener (Pusher)
+    // আপনার .env থেকে Pusher Key নেওয়া হচ্ছে
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+    let pusher: Pusher | null = null;
+
+    if (pusherKey && pusherCluster) {
+        pusher = new Pusher(pusherKey, {
+            cluster: pusherCluster,
+        });
+
+        // আপনার ব্যাকএন্ডে যে চ্যানেল নাম দেওয়া আছে (সাধারণত `user-{userId}` বা `notifications-{userId}`)
+        // আমি ধরে নিচ্ছি 'notifications-{userId}' ফরম্যাট। যদি কাজ না করে তবে ব্যাকএন্ড চেক করবেন।
+        // আপনার User ID: user.id অথবা user._id
+        const userId = (user as any).id || (user as any)._id;
+        const channel = pusher.subscribe(`notifications-${userId}`);
+
+        channel.bind('new-notification', (data: any) => {
+            console.log('Pusher notification received:', data);
+            fetchNotifications(); // লিস্ট রিফ্রেশ
+            if (!Capacitor.isNativePlatform()) {
+                 toast.info("New Notification Received");
+            }
+        });
+    }
+
+    // Cleanup
+    return () => {
+        if (nativeListener) {
+            nativeListener.remove();
+        }
+        if (pusher) {
+            pusher.unbind_all();
+            pusher.unsubscribe(`notifications-${(user as any).id || (user as any)._id}`);
+        }
+    };
+  }, [user, fetchNotifications]);
+
   useEffect(() => {
     if (!isAuthLoading && !user) {
         router.push('/login');
@@ -159,15 +201,16 @@ export default function NotificationsPage() {
         fetchNotifications();
         checkNotificationStatus();
     }
-
-    const handleUpdate = () => {
-        fetchNotifications();
-    };
+    
+    // ম্যানুয়াল ইভেন্ট লিসেনার (যদি অন্য কম্পোনেন্ট থেকে ট্রিগার হয়)
+    const handleUpdate = () => fetchNotifications();
     window.addEventListener('notification-updated', handleUpdate);
     
-    // অ্যাপ ফোরগ্রাউন্ডে আসলে চেক করা
     const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') checkNotificationStatus();
+        if (document.visibilityState === 'visible') {
+             checkNotificationStatus();
+             fetchNotifications(); // অ্যাপে ফিরে আসলে রিফ্রেশ
+        }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -244,7 +287,7 @@ export default function NotificationsPage() {
             notifications.map((notification) => (
                 <Card 
                     key={notification._id} 
-                    className={`overflow-hidden border transition-all hover:shadow-md ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
+                    className={`overflow-hidden border transition-all hover:shadow-md animate-in slide-in-from-top-2 duration-300 ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
                 >
                     <div className="p-4 flex gap-4">
                         <div className="shrink-0">

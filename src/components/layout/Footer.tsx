@@ -20,7 +20,7 @@ export function Footer() {
                 </p>
             </div>
 
-            {/* ★★★ App Download Section ★★★ */}
+            {/* ★★★ App Download Section Updated ★★★ */}
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2">
                     <Smartphone className="h-4 w-4 text-primary" /> Get our Mobile App
@@ -29,9 +29,8 @@ export function Footer() {
                     Download the official app for the best experience.
                 </p>
                 <Button asChild className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20 gap-2">
-                    {/* ★★★ DIRECT DOWNLOAD LINK ★★★ */}
-                    {/* এটি public ফোল্ডারের ফাইলটি সরাসরি ডাউনলোড করাবে */}
-                    <a href="/bumbas-kitchen.apk" download="BumbasKitchen.apk">
+                    {/* ★★★ MAGIC LINK USED HERE ★★★ */}
+                    <a href="/download/android">
                         <Download className="h-4 w-4" />
                         Download for Android
                     </a>

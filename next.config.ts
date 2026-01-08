@@ -1,4 +1,5 @@
 // next.config.ts
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -9,12 +10,11 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    // Vercel-কে ইমেজ প্রসেস করতে বাধা দেবে, ফলে লিমিট শেষ হবে না।
     unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'lh3.googleusercontent.com', // ★ Google Profile Image (Added)
+        hostname: 'lh3.googleusercontent.com',
         port: '',
         pathname: '/**',
       },
@@ -44,9 +44,22 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'images.bumbaskitchen.app', // ✅ আমাদের নতুন প্রক্সি ডোমেইন
+        hostname: 'images.bumbaskitchen.app',
       },
     ],
+  },
+  
+  // ★★★ MAGIC REDIRECT SETUP ★★★
+  // ভবিষ্যতে অ্যাপ আপডেট হলে শুধু এখানেই লিংকটা বদলে দেবেন, 
+  // পুরো ওয়েবসাইটে অটোমেটিক নতুন ভার্সন ডাউনলোড হবে।
+  async redirects() {
+    return [
+      {
+        source: '/download/android', // ছোট লিংক
+        destination: 'https://github.com/Sanoy08/Site/releases/download/v1.0.0/app-release.apk', // আসল ডাউনলোড লিংক
+        permanent: false, // false রাখা ভালো, যাতে ব্রাউজার ক্যাশ না ধরে রাখে
+      },
+    ];
   },
 };
 

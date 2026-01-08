@@ -46,8 +46,3 @@ firestore-debug.log
 
 
 service-account.json
-
-
-# Ignore APK files
-*.apk
-*.aab

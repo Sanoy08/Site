@@ -3,19 +3,18 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot, ChevronRight } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Bot, ChevronRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
-// ★★★ টাইপ আপডেট (slug যুক্ত করা হয়েছে) ★★★
 type ProductSuggestion = {
   id: string;
   name: string;
   price: string | number;
-  slug: string; // নতুন ফিল্ড
+  slug: string;
 };
 
 type Message = {
@@ -23,6 +22,14 @@ type Message = {
   content: string;
   products?: ProductSuggestion[];
 };
+
+// ★★★ ১. কুইক চিপস লিস্ট ★★★
+const quickQuestions = [
+    "Today's Special? 🍗", 
+    "Current Offers? 🏷️", 
+    "Store Open? 🏪", 
+    "Veg Options 🥦"
+];
 
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,16 +41,33 @@ export function Chatbot() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // ★★★ ২. মেমোরি লোড করা (LocalStorage) ★★★
   useEffect(() => {
+    const savedChat = localStorage.getItem('chat_history');
+    if (savedChat) {
+        try {
+            const parsed = JSON.parse(savedChat);
+            if (parsed.length > 0) setMessages(parsed);
+        } catch (e) {
+            console.error("Chat history parse error", e);
+        }
+    }
+  }, []);
+
+  // ★★★ ৩. মেমোরি সেভ করা ★★★
+  useEffect(() => {
+    if (messages.length > 1) { // শুধু ওয়েলকাম মেসেজ থাকলে সেভ করার দরকার নেই
+        localStorage.setItem('chat_history', JSON.stringify(messages));
+    }
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (text?: string) => {
+    const messageToSend = text || input;
+    if (!messageToSend.trim()) return;
 
-    const userMessage = input;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { role: 'user', content: messageToSend }]);
     setIsLoading(true);
 
     try {
@@ -51,8 +75,9 @@ export function Chatbot() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage,
-          history: messages.map(m => ({ role: m.role, content: m.content })) 
+          message: messageToSend,
+          // পুরো হিস্ট্রি না পাঠিয়ে শেষের ১০টা পাঠানো ভালো (Token বাঁচাতে)
+          history: messages.slice(-10).map(m => ({ role: m.role, content: m.content })) 
         }),
       });
 
@@ -67,17 +92,20 @@ export function Chatbot() {
       }
 
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'ai', content: "Network error! Try again." }]);
+      setMessages(prev => [...prev, { role: 'ai', content: "Network error! Try again later." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ★★★ নতুন হ্যান্ডলার: Slug দিয়ে রাউটিং ★★★
   const handleProductClick = (slug: string) => {
     setIsOpen(false);
-    // সরাসরি ডিটেইলস পেজে নিয়ে যাবে
     router.push(`/menus/${slug}`);
+  };
+
+  const clearHistory = () => {
+      setMessages([{ role: 'ai', content: "Chat history cleared! How can I help you now?" }]);
+      localStorage.removeItem('chat_history');
   };
 
   return (
@@ -88,7 +116,7 @@ export function Chatbot() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="mb-4 w-[350px] sm:w-[380px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col h-[500px]"
+            className="mb-4 w-[350px] sm:w-[380px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col h-[550px]"
           >
             {/* Header */}
             <div className="bg-primary p-4 flex items-center justify-between text-primary-foreground shadow-md">
@@ -104,9 +132,14 @@ export function Chatbot() {
                   </span>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="hover:bg-white/20 text-white rounded-full h-8 w-8">
-                <X size={18} />
-              </Button>
+              <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" onClick={clearHistory} className="hover:bg-white/20 text-white rounded-full h-8 w-8" title="Clear History">
+                    <Trash2 size={16} />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="hover:bg-white/20 text-white rounded-full h-8 w-8">
+                    <X size={18} />
+                  </Button>
+              </div>
             </div>
 
             {/* Chat Area */}
@@ -126,13 +159,12 @@ export function Chatbot() {
                         {msg.content}
                       </div>
 
-                      {/* ★★★ Product Buttons ★★★ */}
+                      {/* Product Buttons */}
                       {msg.role === 'ai' && msg.products && msg.products.length > 0 && (
                         <div className="mt-2 flex flex-col gap-2 w-[85%]">
                             {msg.products.map((product, pIdx) => (
                                 <button
                                     key={pIdx}
-                                    // এখানে slug পাস করা হচ্ছে
                                     onClick={() => handleProductClick(product.slug)}
                                     className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-primary/20 rounded-xl hover:border-primary hover:shadow-md transition-all group text-left w-full"
                                 >
@@ -163,17 +195,33 @@ export function Chatbot() {
                </div>
             </div>
 
+            {/* ★★★ ৪. কুইক সাজেশান চিপস ★★★ */}
+            <div className="px-3 pb-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex gap-2 overflow-x-auto py-2 custom-scrollbar no-scrollbar">
+                    {quickQuestions.map((q, i) => (
+                        <button
+                            key={i}
+                            onClick={() => handleSend(q)}
+                            disabled={isLoading}
+                            className="text-[11px] font-medium bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-primary hover:text-white hover:border-primary transition-colors flex-shrink-0"
+                        >
+                            {q}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Input Area */}
-            <div className="p-3 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+            <div className="px-3 pb-3 bg-white dark:bg-slate-900 flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Type your message..."
+                placeholder="Ask e.g., 'Discount ache?'"
                 className="flex-1 border-gray-200 dark:border-gray-700 focus-visible:ring-primary rounded-xl"
               />
               <Button 
-                onClick={handleSend} 
+                onClick={() => handleSend()} 
                 disabled={isLoading || !input.trim()}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground w-11 h-11 p-0 rounded-xl shadow-sm shrink-0"
               >

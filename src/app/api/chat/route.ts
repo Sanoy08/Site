@@ -17,22 +17,37 @@ export async function POST(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
     
-    // ডাটাবেস থেকে মেনু আনা
-    const menuItems = await db.collection('menuItems').find({}, {
-        projection: { _id: 1, Name: 1, Price: 1, InStock: 1, Slug: 1 } 
-    }).toArray();
+    // ★★★ ১. প্যারালাল ডাটা ফেচিং (মেনু, কুপন, এবং সেটিংস একসাথে) ★★★
+    const [menuItems, activeCoupons, settings] = await Promise.all([
+        // মেনু আইটেম
+        db.collection('menuItems').find({}, {
+            projection: { _id: 1, Name: 1, Price: 1, InStock: 1, Slug: 1 } 
+        }).toArray(),
+        
+        // অ্যাক্টিভ কুপন
+        db.collection('coupons').find({ isActive: true }).toArray(),
+        
+        // স্টোর সেটিংস (দোকান খোলা/বন্ধ)
+        db.collection('settings').findOne({})
+    ]);
 
-    // AI-এর পড়ার জন্য মেনু লিস্ট তৈরি
+    // মেনু কনটেক্সট তৈরি
     const menuContext = menuItems.map(item => {
       const safeSlug = item.Slug || item.Name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
       return `ID: ${item._id.toString()} | Name: ${item.Name} | Price: ₹${item.Price} | Slug: ${safeSlug} | Status: ${item.InStock ? 'Available' : 'Out of Stock'}`;
     }).join('\n');
 
+    // কুপন কনটেক্সট তৈরি
+    const couponContext = activeCoupons.length > 0 
+        ? activeCoupons.map(c => `- Code: ${c.code} (${c.discountAmount}% OFF) - ${c.description || ''}`).join('\n')
+        : "No active coupons currently.";
+
+    // স্টোর স্ট্যাটাস চেক
+    const isStoreOpen = settings?.isStoreOpen ?? true; // ডিফল্ট true ধরা হলো যদি সেটিংস না থাকে
+
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // ★★★ FIX: 'gemini-2.5-flash-lite' ব্যবহার করা হচ্ছে ★★★
-    // ২০২৬ সালে এটি ফ্রি টায়ারের জন্য বেস্ট অপশন (High Limit)
-    // যদি এটিও কাজ না করে, তবে 'gemini-2.0-flash' চেষ্টা করবেন।
+    // মডেল কনফিগারেশন
     const model = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         generationConfig: {
@@ -40,9 +55,15 @@ export async function POST(req: NextRequest) {
         }
     });
 
+    // ★★★ ২. আপডেটেড সিস্টেম প্রম্পট ★★★
     const systemPrompt = `
-      You are the AI assistant for "Bumba's Kitchen".
+      You are the smart AI assistant for "Bumba's Kitchen".
       
+      🏪 STORE STATUS: ${isStoreOpen ? "OPEN ✅" : "CLOSED ❌ (We are currently closed)"}
+      
+      💰 ACTIVE OFFERS:
+      ${couponContext}
+
       🥬 CURRENT MENU DATA:
       ${menuContext}
 
@@ -53,21 +74,23 @@ export async function POST(req: NextRequest) {
            { 
              "id": "...", 
              "name": "Food Name", 
-             "price": "Price",
+             "price": "Price", 
              "slug": "The EXACT slug from the menu data" 
            }
         ]
       }
 
       RULES:
-      1. If suggesting food, ALWAYS include the 'slug' in the product object.
-      2. Keep answers short and friendly in Banglish or English.
+      1. If the store is CLOSED, politely inform the user but allow them to browse the menu.
+      2. If the user asks for price, mention the price AND if any coupon is applicable to save money.
+      3. If suggesting food, ALWAYS include the 'slug' in the product object.
+      4. Keep answers short, helpful, and friendly in Banglish or English.
     `;
 
     const chat = model.startChat({
       history: [
         { role: "user", parts: [{ text: systemPrompt }] },
-        { role: "model", parts: [{ text: `{"reply": "Understood!", "products": []}` }] },
+        { role: "model", parts: [{ text: `{"reply": "Understood! I have the latest store data.", "products": []}` }] },
         ...(history || []).map((msg: any) => ({
           role: msg.role === 'user' ? 'user' : 'model',
           parts: [{ text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }],
@@ -90,14 +113,13 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Chat API Error:", error);
     
-    // যদি মডেলের কোটা শেষ হয়ে যায় বা অন্য সমস্যা হয়
     const errorMessage = error.message?.includes('429') 
         ? "আমি এখন একটু ব্যস্ত, দয়া করে কিছুক্ষণ পর চেষ্টা করুন। (Server Busy)" 
         : "দুঃখিত, এখন কানেক্ট করা যাচ্ছে না।";
 
     return NextResponse.json(
         { reply: errorMessage, products: [] }, 
-        { status: 200 } // ক্র্যাশ এড়াতে 200 পাঠানো হচ্ছে
+        { status: 200 }
     );
   }
 }

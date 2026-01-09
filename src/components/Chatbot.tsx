@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth'; // ★ ইউজার ডেটার জন্য
+import { useAuth } from '@/hooks/use-auth'; 
 
 type ProductSuggestion = {
   id: string;
@@ -26,30 +26,29 @@ type Message = {
 
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuth(); // ★ ইউজার লগইন থাকলে নাম পাওয়া যাবে
+  const { user } = useAuth(); 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // ★ ১. মেমোরি লোড করা (Mount হওয়ার পর)
+  // ★ ১. মেমোরি লোড এবং নাম ফিক্স
   useEffect(() => {
     const savedChat = localStorage.getItem('bumbas_chat_history');
     if (savedChat) {
       setMessages(JSON.parse(savedChat));
     } else {
-      // যদি হিস্ট্রি না থাকে, ওয়েলকাম মেসেজ সেট করা
-      // ইউজার নাম থাকলে তাকে নাম ধরে ডাকবে
-      const greeting = user?.displayName 
-        ? `Hello ${user.displayName}! 👋 Welcome back to Bumba's Kitchen. Ki khete chan ajke?` 
+      // FIX: displayName -> name
+      const userName = user?.name || null;
+      const greeting = userName 
+        ? `Hello ${userName}! 👋 Welcome back to Bumba's Kitchen. Ki khete chan ajke?` 
         : "Hello! 👋 Welcome to Bumba's Kitchen. Ki khete chan ajke?";
-        
       setMessages([{ role: 'ai', content: greeting }]);
     }
-  }, [user?.displayName]); // ইউজার লোড হলে গ্রিটিং আপডেট হতে পারে যদি চ্যাট খালি থাকে
+  }, [user?.name]); // FIX: user.name
 
-  // ★ ২. মেমোরি সেভ করা (Message চেঞ্জ হলে)
+  // ★ ২. সেভ চ্যাট
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem('bumbas_chat_history', JSON.stringify(messages));
@@ -57,11 +56,12 @@ export function Chatbot() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
 
-  // ★ ৩. চ্যাট ক্লিয়ার ফাংশন
+  // ★ ৩. চ্যাট ক্লিয়ার
   const handleClearChat = () => {
     localStorage.removeItem('bumbas_chat_history');
-    const greeting = user?.displayName 
-        ? `Hello ${user.displayName}! 👋 Notun kore shuru kora jak. Ajke ki khaben?` 
+    const userName = user?.name || null;
+    const greeting = userName 
+        ? `Hello ${userName}! 👋 Notun kore shuru kora jak.` 
         : "Chat cleared! 🧹 How can I help you now?";
     setMessages([{ role: 'ai', content: greeting }]);
   };
@@ -71,7 +71,6 @@ export function Chatbot() {
     if (!messageToSend.trim()) return;
 
     setInput('');
-    // অপটিমিস্টিক আপডেট
     const newMessages = [...messages, { role: 'user', content: messageToSend } as Message];
     setMessages(newMessages);
     setIsLoading(true);
@@ -83,7 +82,7 @@ export function Chatbot() {
         body: JSON.stringify({
           message: messageToSend,
           history: newMessages.map(m => ({ role: m.role, content: m.content })),
-          userName: user?.displayName || "Guest" // ★ নাম পাঠানো হচ্ছে ব্যাকএন্ডে
+          userName: user?.name || "Guest" // FIX: displayName -> name
         }),
       });
 
@@ -139,7 +138,6 @@ export function Chatbot() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                {/* Clear Chat Button */}
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -205,8 +203,26 @@ export function Chatbot() {
                </div>
             </div>
 
-            {/* Quick Chips & Input Area (Same as before) */}
-            <div className="px-3 pt-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800 flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+            {/* Input Area */}
+            <div className="p-3 bg-white dark:bg-slate-900 flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Type here..."
+                className="flex-1 border-gray-200 dark:border-gray-700 focus-visible:ring-primary rounded-xl h-10"
+              />
+              <Button 
+                onClick={() => handleSend()} 
+                disabled={isLoading || !input.trim()}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground w-10 h-10 p-0 rounded-xl shadow-sm shrink-0"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </div>
+            
+             {/* Quick Chips (Mobile Friendly) */}
+            <div className="px-3 py-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800 flex gap-2 overflow-x-auto custom-scrollbar">
                 {quickChips.map((chip, i) => (
                     <button
                         key={i}
@@ -225,22 +241,6 @@ export function Chatbot() {
                 ))}
             </div>
 
-            <div className="p-3 bg-white dark:bg-slate-900 flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Type here..."
-                className="flex-1 border-gray-200 dark:border-gray-700 focus-visible:ring-primary rounded-xl h-10"
-              />
-              <Button 
-                onClick={() => handleSend()} 
-                disabled={isLoading || !input.trim()}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground w-10 h-10 p-0 rounded-xl shadow-sm shrink-0"
-              >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>

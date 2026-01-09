@@ -7,7 +7,7 @@ import { clientPromise } from '@/lib/mongodb';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, history, userName } = body; // ★ userName রিসিভ করা
+    const { message, history, userName } = body; // ফ্রন্টএন্ড থেকে ইউজার নেম আসছে
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
     
-    // ১. মেনু ডেটা
+    // ১. মেনু ডেটা আনা
     const menuItems = await db.collection('menuItems').find({}, {
         projection: { _id: 1, Name: 1, Price: 1, InStock: 1, Slug: 1 } 
     }).toArray();
@@ -27,17 +27,21 @@ export async function POST(req: NextRequest) {
       return `ID: ${item._id.toString()} | Name: ${item.Name} | Price: ₹${item.Price} | Slug: ${safeSlug} | Status: ${item.InStock ? 'Available' : 'Out of Stock'}`;
     }).join('\n');
 
-    // ২. কুপন ডেটা
+    // ২. পাবলিক কুপন আনা (লজিক আপডেট করা হয়েছে)
+    // - isActive: true হতে হবে
+    // - userId: থাকা যাবে না (মানে সবার জন্য)
+    // - usageLimit: 1 এর সমান হওয়া যাবে না (মানে সিঙ্গেল ইউজ কুপন বাদ)
     const publicCoupons = await db.collection('coupons').find({
         isActive: true,
-        userId: { $exists: false } 
+        userId: { $exists: false }, 
+        usageLimit: { $ne: 1 } // ★★★ এই লাইনটি নতুন যোগ করা হয়েছে (1 হলে বাদ দেবে)
     }).toArray();
 
     const couponContext = publicCoupons.map(c => 
         `- Code: ${c.code} | Get ${c.value}${c.discountType === 'percentage' ? '%' : '₹'} OFF | Min Order: ₹${c.minOrder}`
     ).join('\n');
 
-    // ৩. অর্ডার ট্র্যাকিং
+    // ৩. অর্ডার ট্র্যাকিং লজিক
     let orderContext = "";
     const orderMatch = message.match(/BK-[A-Z0-9]+/i);
     
@@ -51,6 +55,7 @@ export async function POST(req: NextRequest) {
             - Order ID: ${order.OrderNumber}
             - Status: ${order.Status}
             - Total: ₹${order.FinalPrice}
+            - Delivery Boy: ${order.DeliveryBoy ? order.DeliveryBoy.name : 'Not assigned'}
             `;
         } else {
             orderContext = `❌ Order ID ${orderId} not found.`;
@@ -64,38 +69,39 @@ export async function POST(req: NextRequest) {
         generationConfig: { responseMimeType: "application/json" }
     });
 
-    // ৫. সিস্টেম প্রম্পট (User Name যুক্ত করা হয়েছে)
+    // ৫. সিস্টেম প্রম্পট
     const systemPrompt = `
       You are the AI assistant for "Bumba's Kitchen".
       
-      👤 USER INFO: 
-      You are talking to: ${userName || 'Guest'}. 
-      If the name is available (not Guest), address them by name occasionally to be friendly.
+      👤 USER CONTEXT:
+      User Name: ${userName || 'Guest'}. (Be friendly and use their name if available).
 
       🥬 MENU:
       ${menuContext}
 
       💰 OFFERS:
       ${couponContext}
+      (Only suggest these coupons if user asks for offers.)
 
       ${orderContext}
 
-      ⚡ RESPONSE JSON:
+      ⚡ RESPONSE FORMAT (JSON):
       {
-        "reply": "Short answer. Use emojis.",
-        "products": [{ "id": "...", "name": "...", "price": "...", "slug": "..." }]
+        "reply": "Your answer here using Emojis.",
+        "products": [
+           { "id": "...", "name": "...", "price": "...", "slug": "..." }
+        ]
       }
 
       RULES:
-      1. Be friendly.
-      2. If asking for suggestions, show products.
-      3. Language: Banglish or English.
+      1. Language: Banglish or English.
+      2. If suggesting food, always fill 'products' array correctly with slug.
     `;
 
     const chat = model.startChat({
       history: [
         { role: "user", parts: [{ text: systemPrompt }] },
-        { role: "model", parts: [{ text: `{"reply": "Understood! Hi ${userName || 'there'}!", "products": []}` }] },
+        { role: "model", parts: [{ text: `{"reply": "Hi ${userName || 'there'}! Ki lagbe?", "products": []}` }] },
         ...(history || []).map((msg: any) => ({
           role: msg.role === 'user' ? 'user' : 'model',
           parts: [{ text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }],
@@ -117,6 +123,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("Chat API Error:", error);
-    return NextResponse.json({ reply: "Server Busy. Try later.", products: [] }, { status: 200 });
+    return NextResponse.json({ reply: "Ekhon server busy ache. Pore try korun.", products: [] }, { status: 200 });
   }
 }

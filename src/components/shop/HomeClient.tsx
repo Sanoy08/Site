@@ -22,19 +22,16 @@ import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
 export type Offer = { id: string; title: string; description: string; price: number; imageUrl: string; };
-
-// ★★★ ১. নতুন টাইপ ডেফিনিশন ★★★
 export type SliderImage = { id: string; imageUrl: string; clickUrl: string; }; 
 
 type HomeClientProps = { 
   heroSlides: HeroSlide[]; 
-  sliderImages: SliderImage[]; // ★★★ ২. নতুন প্রপ যোগ করা হয়েছে ★★★
+  sliderImages: SliderImage[];
   offers: Offer[]; 
   bestsellers: Product[]; 
   allProducts?: Product[]; 
 };
 
-// ক্যাটাগরি কনফিগারেশন
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp", link: "/menus", borderColor: "border-slate-500" },
     { name: "Chicken", image: "/Categories/7.webp", link: "/menus?category=chicken", borderColor: "border-red-500" },
@@ -166,7 +163,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           </div>
       </section>
 
-      {/* ★★★ 4. NEW: Middle Image Slider Section ★★★ */}
+      {/* ★★★ 4. NEW: Middle Image Slider Section (Auto Height Fix) ★★★ */}
       {sliderImages && sliderImages.length > 0 && (
         <section className="py-8 bg-background">
           <div className="container">
@@ -174,15 +171,19 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             <CarouselContent>
                 {sliderImages.map((slide) => (
                 <CarouselItem key={slide.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
-                    <div className="p-1 h-full">
-                    <Link href={slide.clickUrl || '#'} className="block h-full cursor-pointer hover:opacity-95 transition-opacity">
-                        <Card className="overflow-hidden h-full border-none shadow-md rounded-2xl bg-card">
-                            <CardContent className="p-0 relative aspect-[16/9] md:aspect-[21/9]">
+                    <div className="p-1"> {/* Removed h-full to let height adjust */}
+                    <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
+                        <Card className="overflow-hidden border-none shadow-md rounded-2xl bg-card">
+                            <CardContent className="p-0">
+                            {/* ★★★ Auto Height Logic ★★★ */}
                             <Image 
                                 src={optimizeImageUrl(slide.imageUrl)} 
                                 alt="Slider Image" 
-                                fill
-                                className="object-cover"
+                                width={0} 
+                                height={0}
+                                sizes="(max-width: 768px) 100vw, 50vw"
+                                style={{ width: '100%', height: 'auto' }} // This makes it responsive and auto-height
+                                className="object-contain"
                             />
                             </CardContent>
                         </Card>

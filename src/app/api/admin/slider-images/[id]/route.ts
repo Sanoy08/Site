@@ -21,24 +21,33 @@ async function isAdmin(request: NextRequest) {
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    // ১. অথেনটিকেশন চেক
     if (!await isAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = params; // URL থেকে ID নেওয়া
+
+    if (!id || !ObjectId.isValid(id)) {
+        return NextResponse.json({ success: false, error: 'Invalid ID format' }, { status: 400 });
     }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
+    // ২. ডিলিট অপারেশন
     const result = await db.collection(COLLECTION_NAME).deleteOne({ 
-      _id: new ObjectId(params.id) 
+      _id: new ObjectId(id) 
     });
 
     if (result.deletedCount === 1) {
-      revalidatePath('/');
+      revalidatePath('/'); // হোমপেজ রিফ্রেশ করা
       return NextResponse.json({ success: true, message: 'Image deleted' }, { status: 200 });
     } else {
-      return NextResponse.json({ success: false, error: 'Image not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Image not found in DB' }, { status: 404 });
     }
   } catch (error: any) {
+    console.error("Delete Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

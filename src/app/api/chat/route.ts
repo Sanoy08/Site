@@ -17,11 +17,12 @@ export async function POST(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
     
-    // মেনু আইটেম আনা (Slug সহ)
+    // ডাটাবেস থেকে মেনু আনা
     const menuItems = await db.collection('menuItems').find({}, {
         projection: { _id: 1, Name: 1, Price: 1, InStock: 1, Slug: 1 } 
     }).toArray();
 
+    // AI-এর পড়ার জন্য মেনু লিস্ট তৈরি
     const menuContext = menuItems.map(item => {
       const safeSlug = item.Slug || item.Name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
       return `ID: ${item._id.toString()} | Name: ${item.Name} | Price: ₹${item.Price} | Slug: ${safeSlug} | Status: ${item.InStock ? 'Available' : 'Out of Stock'}`;
@@ -29,9 +30,10 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // ★★★ FIX: মডেল পরিবর্তন করে 1.5-flash করা হয়েছে (High Free Limit) ★★★
+    // ★★★ FIX: মডেল পরিবর্তন করে 'gemini-1.5-flash-8b' করা হয়েছে ★★★
+    // এটি সবচেয়ে ফাস্ট এবং হাই-লিমিট ফ্রি মডেল
     const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash", 
+        model: "gemini-1.5-flash-8b", 
         generationConfig: {
             responseMimeType: "application/json" 
         }
@@ -86,7 +88,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("Chat API Error:", error);
-    // এরর হ্যান্ডলিং যাতে ক্লায়েন্ট বুঝতে পারে
-    return NextResponse.json({ error: "AI Service Unavailable. Please try again later." }, { status: 503 });
+    // যদি 404 বা অন্য এরর হয়, ইউজারকে সুন্দর মেসেজ দেখানো
+    return NextResponse.json(
+        { reply: "Sorry, I am having trouble connecting right now. Please try again later.", products: [] }, 
+        { status: 200 } // 200 দিচ্ছি যাতে ফ্রন্টএন্ডে ক্র্যাশ না করে
+    );
   }
 }

@@ -13,7 +13,6 @@ import { MobileNav } from '@/components/layout/MobileNav';
 import { ProductCard } from '@/components/shop/ProductCard';
 import Autoplay from "embla-carousel-autoplay";
 import { formatPrice } from '@/lib/utils';
-// import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants'; 
 import type { Product } from '@/lib/types';
 import { Utensils, Truck, ShieldCheck, Leaf } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
@@ -23,16 +22,19 @@ import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
 export type Offer = { id: string; title: string; description: string; price: number; imageUrl: string; };
+
+// ★★★ ১. নতুন টাইপ ডেফিনিশন ★★★
+export type SliderImage = { id: string; imageUrl: string; clickUrl: string; }; 
+
 type HomeClientProps = { 
   heroSlides: HeroSlide[]; 
+  sliderImages: SliderImage[]; // ★★★ ২. নতুন প্রপ যোগ করা হয়েছে ★★★
   offers: Offer[]; 
   bestsellers: Product[]; 
   allProducts?: Product[]; 
 };
 
-// ❌ আগের লোকাল function টি মুছে ফেলা হয়েছে (getOptimizedUrl)
-
-// ★★★ UPDATE: বর্ডার কালার আলাদা করা হয়েছে ★★★
+// ক্যাটাগরি কনফিগারেশন
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp", link: "/menus", borderColor: "border-slate-500" },
     { name: "Chicken", image: "/Categories/7.webp", link: "/menus?category=chicken", borderColor: "border-red-500" },
@@ -58,7 +60,7 @@ const testimonials = [
     { name: 'Ankit B.', location: 'Konnagar', rating: 4, quote: "Ordered the veg thali and it was wholesome and delicious. Highly recommended!" }
 ];
 
-export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }: HomeClientProps) {
+export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)
   const [count, setCount] = useState(0)
@@ -84,7 +86,6 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
                     <Link href={slide.clickUrl} className="block w-full relative">
-                      {/* ✅ Hero Image Updated */}
                       <Image 
                         src={optimizeImageUrl(slide.imageUrl)} 
                         alt="Hero Slide" 
@@ -94,7 +95,6 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                         style={{ width: '100%', height: 'auto' }}
                         className="object-contain" 
                         priority 
-                        // unoptimized={true} 
                       />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
                     </Link>
@@ -119,7 +119,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
         )}
       </section>
 
-      {/* 2. Category Slider (UPDATED) */}
+      {/* 2. Category Slider */}
       <section className="py-6 md:py-10 bg-background">
           <div className="container">
               <div className="flex items-center justify-between mb-4 px-1">
@@ -128,11 +128,9 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                   </h3>
               </div>
               
-              {/* ★★★ UPDATE: md:justify-center যোগ করা হয়েছে এবং গ্যাপ কমানো হয়েছে ★★★ */}
               <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 pt-2 px-1 scrollbar-hide md:justify-center">
                   {CATEGORIES.map((cat, idx) => (
                       <Link key={idx} href={cat.link} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
-                          {/* ★★★ UPDATE: সাইজ ছোট করা হয়েছে (h-14/h-20) এবং বর্ডার কালার যোগ করা হয়েছে ★★★ */}
                           <div className={`relative h-14 w-14 md:h-20 md:w-20 rounded-full border-[3px] ${cat.borderColor} p-0.5 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 bg-white`}>
                               <div className="relative h-full w-full rounded-full overflow-hidden bg-white">
                                   <Image 
@@ -151,7 +149,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
           </div>
       </section>
 
-      {/* 3. Trust Badges (No Image Change Needed) */}
+      {/* 3. Trust Badges */}
       <section className="py-8 bg-gray-50/50 border-y border-gray-100">
           <div className="container">
               <div className="grid grid-cols-3 gap-3 md:gap-8">
@@ -168,7 +166,37 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
           </div>
       </section>
 
-      {/* 4. Daily Special Section */}
+      {/* ★★★ 4. NEW: Middle Image Slider Section ★★★ */}
+      {sliderImages && sliderImages.length > 0 && (
+        <section className="py-8 bg-background">
+          <div className="container">
+            <Carousel opts={{ align: "start", loop: true }} plugins={[Autoplay({ delay: 3500 })]} className="w-full">
+            <CarouselContent>
+                {sliderImages.map((slide) => (
+                <CarouselItem key={slide.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
+                    <div className="p-1 h-full">
+                    <Link href={slide.clickUrl || '#'} className="block h-full cursor-pointer hover:opacity-95 transition-opacity">
+                        <Card className="overflow-hidden h-full border-none shadow-md rounded-2xl bg-card">
+                            <CardContent className="p-0 relative aspect-[16/9] md:aspect-[21/9]">
+                            <Image 
+                                src={optimizeImageUrl(slide.imageUrl)} 
+                                alt="Slider Image" 
+                                fill
+                                className="object-cover"
+                            />
+                            </CardContent>
+                        </Card>
+                    </Link>
+                    </div>
+                </CarouselItem>
+                ))}
+            </CarouselContent>
+            </Carousel>
+          </div>
+        </section>
+      )}
+
+      {/* 5. Daily Special Section */}
       {dailySpecial && (
         <section className="py-16 bg-amber-50/50">
             <div className="container">
@@ -180,13 +208,11 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 <div className="max-w-md mx-auto bg-white p-4 rounded-3xl shadow-xl border border-amber-100 hover:shadow-2xl transition-shadow duration-300">
                     <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-sm bg-muted">
                          {dailySpecial.images && dailySpecial.images.length > 0 && dailySpecial.images[0].url ? (
-                            // ✅ Daily Special Image Updated
                             <Image 
                                 src={optimizeImageUrl(dailySpecial.images[0].url)}
                                 alt={dailySpecial.name}
                                 fill
                                 className="object-cover"
-                                // unoptimized={true}
                              />
                          ) : (
                              <SpecialDishCard 
@@ -209,7 +235,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
         </section>
       )}
 
-      {/* 5. Upcoming Offers */}
+      {/* 6. Upcoming Offers */}
       {offers.length > 0 && (
         <section className="py-16 bg-background">
           <div className="container">
@@ -226,8 +252,6 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                     <div className="p-1 h-full">
                     <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
                         <CardContent className="p-0 relative">
-                        
-                        {/* ✅ Offer Image Updated */}
                         <Image 
                             src={optimizeImageUrl(offer.imageUrl)} 
                             alt={offer.title} 
@@ -236,9 +260,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                             sizes="100vw"
                             style={{ width: '100%', height: 'auto' }}
                             className="block"
-                            // unoptimized={true} 
                         />
-                        
                         </CardContent>
                     </Card>
                     </div>
@@ -250,7 +272,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
         </section>
       )}
 
-      {/* 6. Bestsellers */}
+      {/* 7. Bestsellers */}
        <section className="py-16 md:py-24 bg-background">
         <div className="container">
           <div className="text-center mb-12">
@@ -264,7 +286,6 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                 {bestsellers.map((product) => (
                   <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
                     <div className="p-1 h-full">
-                        {/* ProductCard already updated, so no change needed here */}
                         <ProductCard product={product} />
                     </div>
                   </CarouselItem>
@@ -285,7 +306,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
         </div>
       </section>
 
-      {/* 7. Testimonials */}
+      {/* 8. Testimonials */}
       <section className="py-16 bg-slate-50">
         <div className="container">
           <h2 className="text-3xl font-bold text-center mb-12 font-headline">Happy Tummies 😊</h2>

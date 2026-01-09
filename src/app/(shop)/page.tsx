@@ -13,14 +13,23 @@ async function getHomePageData() {
     const db = client.db('BumbasKitchenDB');
 
     // সব ডেটা একসাথে আনা হচ্ছে (Parallel Fetching)
-    const [slidesData, offersData, productsData] = await Promise.all([
+    // ★★★ UPDATE: homeSliderImages কালেকশন যোগ করা হয়েছে
+    const [slidesData, offersData, productsData, sliderImagesData] = await Promise.all([
       db.collection('heroSlides').find({}).sort({ order: 1 }).toArray(),
       db.collection('offers').find({ active: true }).toArray(),
-      db.collection('menuItems').find({}).toArray()
+      db.collection('menuItems').find({}).toArray(),
+      db.collection('homeSliderImages').find({}).sort({ order: 1 }).toArray() // নতুন লাইন
     ]);
 
     // স্লাইডার ম্যাপ
     const heroSlides = slidesData.map(slide => ({
+      id: slide._id.toString(),
+      imageUrl: slide.imageUrl,
+      clickUrl: slide.clickUrl,
+    }));
+
+    // ★★★ UPDATE: নতুন মিডল স্লাইডার ম্যাপ
+    const sliderImages = sliderImagesData.map(slide => ({
       id: slide._id.toString(),
       imageUrl: slide.imageUrl,
       clickUrl: slide.clickUrl,
@@ -56,11 +65,13 @@ async function getHomePageData() {
     // ফিল্টারিং
     const bestsellers = allProducts.filter((p: any) => p.featured).slice(0, 8);
 
-    return { heroSlides, offers, bestsellers, allProducts };
+    // ★★★ sliderImages রিটার্ন করা হচ্ছে
+    return { heroSlides, offers, bestsellers, allProducts, sliderImages };
 
   } catch (error) {
     console.error("Error fetching homepage data:", error);
-    return { heroSlides: [], offers: [], bestsellers: [], allProducts: [] };
+    // এরর হলে সব খালি অ্যারে রিটার্ন করবে
+    return { heroSlides: [], offers: [], bestsellers: [], allProducts: [], sliderImages: [] };
   }
 }
 
@@ -70,6 +81,7 @@ export default async function HomePage() {
   return (
     <HomeClient 
       heroSlides={data.heroSlides} 
+      sliderImages={data.sliderImages} // ★ নতুন প্রপ পাস করা হলো
       offers={data.offers} 
       bestsellers={data.bestsellers as Product[]} 
       allProducts={data.allProducts as Product[]} 

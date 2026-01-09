@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Images } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -38,6 +39,7 @@ const adminNavLinks = [
   { href: '/daily-menu', label: 'Daily Menu', icon: CalendarDays }, 
   { href: '/special-dates', label: 'Events Calendar', icon: Calendar },
   { href: '/hero-slides', label: 'Hero Section', icon: ImageIcon },
+  { href: '/slider-images', label: 'Middle Slider', icon: Images },
   { href: '/offers', label: 'Offers Section', icon: Gift },
   { href: '/reports', label: 'Reports', icon: BarChart3 }, 
   { href: '/notifications', label: 'Push Notifications', icon: Send },

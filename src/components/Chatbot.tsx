@@ -3,12 +3,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot, ChevronRight, Sparkles, Tag, Package } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Bot, ChevronRight, Sparkles, Tag, Package, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth'; // ★ ইউজার ডেটার জন্য
 
 type ProductSuggestion = {
   id: string;
@@ -25,24 +26,54 @@ type Message = {
 
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'ai', content: "Hello! 👋 Welcome to Bumba's Kitchen. Ki khete chan ajke?" }
-  ]);
+  const { user } = useAuth(); // ★ ইউজার লগইন থাকলে নাম পাওয়া যাবে
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // ★ ১. মেমোরি লোড করা (Mount হওয়ার পর)
   useEffect(() => {
+    const savedChat = localStorage.getItem('bumbas_chat_history');
+    if (savedChat) {
+      setMessages(JSON.parse(savedChat));
+    } else {
+      // যদি হিস্ট্রি না থাকে, ওয়েলকাম মেসেজ সেট করা
+      // ইউজার নাম থাকলে তাকে নাম ধরে ডাকবে
+      const greeting = user?.displayName 
+        ? `Hello ${user.displayName}! 👋 Welcome back to Bumba's Kitchen. Ki khete chan ajke?` 
+        : "Hello! 👋 Welcome to Bumba's Kitchen. Ki khete chan ajke?";
+        
+      setMessages([{ role: 'ai', content: greeting }]);
+    }
+  }, [user?.displayName]); // ইউজার লোড হলে গ্রিটিং আপডেট হতে পারে যদি চ্যাট খালি থাকে
+
+  // ★ ২. মেমোরি সেভ করা (Message চেঞ্জ হলে)
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('bumbas_chat_history', JSON.stringify(messages));
+    }
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
+
+  // ★ ৩. চ্যাট ক্লিয়ার ফাংশন
+  const handleClearChat = () => {
+    localStorage.removeItem('bumbas_chat_history');
+    const greeting = user?.displayName 
+        ? `Hello ${user.displayName}! 👋 Notun kore shuru kora jak. Ajke ki khaben?` 
+        : "Chat cleared! 🧹 How can I help you now?";
+    setMessages([{ role: 'ai', content: greeting }]);
+  };
 
   const handleSend = async (text?: string) => {
     const messageToSend = text || input;
     if (!messageToSend.trim()) return;
 
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: messageToSend }]);
+    // অপটিমিস্টিক আপডেট
+    const newMessages = [...messages, { role: 'user', content: messageToSend } as Message];
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
@@ -51,7 +82,8 @@ export function Chatbot() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: messageToSend,
-          history: messages.map(m => ({ role: m.role, content: m.content })) 
+          history: newMessages.map(m => ({ role: m.role, content: m.content })),
+          userName: user?.displayName || "Guest" // ★ নাম পাঠানো হচ্ছে ব্যাকএন্ডে
         }),
       });
 
@@ -76,11 +108,10 @@ export function Chatbot() {
     router.push(`/menus/${slug}`);
   };
 
-  // Quick Chips Data
   const quickChips = [
     { label: "Today's Special 🍗", text: "Ajker special ki ache?", icon: Sparkles },
     { label: "Offers 🏷️", text: "Kono offer ache ekhon?", icon: Tag },
-    { label: "Track Order 📦", text: "Track my order BK-", icon: Package }, // ইউজার এটা এডিট করে আইডি বসাবে
+    { label: "Track Order 📦", text: "Track my order BK-", icon: Package },
   ];
 
   return (
@@ -107,9 +138,21 @@ export function Chatbot() {
                   </span>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="hover:bg-white/20 text-white rounded-full h-8 w-8">
-                <X size={18} />
-              </Button>
+              <div className="flex items-center gap-1">
+                {/* Clear Chat Button */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleClearChat} 
+                  title="Clear Chat"
+                  className="hover:bg-white/20 text-white rounded-full h-8 w-8"
+                >
+                  <Trash2 size={16} />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="hover:bg-white/20 text-white rounded-full h-8 w-8">
+                  <X size={18} />
+                </Button>
+              </div>
             </div>
 
             {/* Chat Area */}
@@ -162,16 +205,16 @@ export function Chatbot() {
                </div>
             </div>
 
-            {/* Quick Chips Area */}
+            {/* Quick Chips & Input Area (Same as before) */}
             <div className="px-3 pt-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800 flex gap-2 overflow-x-auto custom-scrollbar pb-1">
                 {quickChips.map((chip, i) => (
                     <button
                         key={i}
                         onClick={() => {
                             if (chip.label.includes("Track")) {
-                                setInput(chip.text); // ট্র্যাকিংয়ের জন্য ইনপুটে বসাবে যাতে ইউজার আইডি দিতে পারে
+                                setInput(chip.text); 
                             } else {
-                                handleSend(chip.text); // বাকিগুলো সরাসরি সেন্ড করবে
+                                handleSend(chip.text);
                             }
                         }}
                         className="flex items-center gap-1.5 text-[11px] font-medium bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-primary hover:text-white transition-colors text-slate-600 dark:text-slate-300"
@@ -182,7 +225,6 @@ export function Chatbot() {
                 ))}
             </div>
 
-            {/* Input Area */}
             <div className="p-3 bg-white dark:bg-slate-900 flex gap-2">
               <Input
                 value={input}

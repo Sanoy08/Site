@@ -17,37 +17,53 @@ export async function POST(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
     
-    // ★★★ ১. প্যারালাল ডাটা ফেচিং (মেনু, কুপন, এবং সেটিংস একসাথে) ★★★
-    const [menuItems, activeCoupons, settings] = await Promise.all([
-        // মেনু আইটেম
-        db.collection('menuItems').find({}, {
-            projection: { _id: 1, Name: 1, Price: 1, InStock: 1, Slug: 1 } 
-        }).toArray(),
-        
-        // অ্যাক্টিভ কুপন
-        db.collection('coupons').find({ isActive: true }).toArray(),
-        
-        // স্টোর সেটিংস (দোকান খোলা/বন্ধ)
-        db.collection('settings').findOne({})
-    ]);
+    // ১. মেনু ডেটা আনা
+    const menuItems = await db.collection('menuItems').find({}, {
+        projection: { _id: 1, Name: 1, Price: 1, InStock: 1, Slug: 1 } 
+    }).toArray();
 
-    // মেনু কনটেক্সট তৈরি
     const menuContext = menuItems.map(item => {
       const safeSlug = item.Slug || item.Name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
       return `ID: ${item._id.toString()} | Name: ${item.Name} | Price: ₹${item.Price} | Slug: ${safeSlug} | Status: ${item.InStock ? 'Available' : 'Out of Stock'}`;
     }).join('\n');
 
-    // কুপন কনটেক্সট তৈরি
-    const couponContext = activeCoupons.length > 0 
-        ? activeCoupons.map(c => `- Code: ${c.code} (${c.discountAmount}% OFF) - ${c.description || ''}`).join('\n')
-        : "No active coupons currently.";
+    // ২. পাবলিক কুপন আনা (Private Coupon গোপন রাখা হচ্ছে)
+    // লজিক: isActive = true এবং userId ফিল্ড নেই
+    const publicCoupons = await db.collection('coupons').find({
+        isActive: true,
+        userId: { $exists: false } 
+    }).toArray();
 
-    // স্টোর স্ট্যাটাস চেক
-    const isStoreOpen = settings?.isStoreOpen ?? true; // ডিফল্ট true ধরা হলো যদি সেটিংস না থাকে
+    const couponContext = publicCoupons.map(c => 
+        `- Code: ${c.code} | Get ${c.value}${c.discountType === 'percentage' ? '%' : '₹'} OFF | Min Order: ₹${c.minOrder}`
+    ).join('\n');
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    // ৩. অর্ডার ট্র্যাকিং লজিক
+    // ইউজার যদি মেসেজে "BK-..." আইডি দেয়, তাহলে অর্ডার স্ট্যাটাস চেক হবে
+    let orderContext = "";
+    const orderMatch = message.match(/BK-[A-Z0-9]+/i); // Regex to find Order ID
     
-    // মডেল কনফিগারেশন
+    if (orderMatch) {
+        const orderId = orderMatch[0].toUpperCase();
+        const order = await db.collection('orders').findOne({ OrderNumber: orderId });
+        
+        if (order) {
+            orderContext = `
+            📦 ORDER STATUS INFO:
+            - Order ID: ${order.OrderNumber}
+            - Status: ${order.Status}
+            - Items: ${order.Items?.map((i: any) => i.name).join(', ')}
+            - Total Price: ₹${order.FinalPrice}
+            - Delivery Address: ${order.DeliveryAddress}
+            (Tell this to the user politely)
+            `;
+        } else {
+            orderContext = `❌ System Info: User asked for Order ID ${orderId}, but it was not found in the database.`;
+        }
+    }
+
+    // ৪. AI কনফিগারেশন (gemini-2.5-flash-lite)
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         generationConfig: {
@@ -55,42 +71,42 @@ export async function POST(req: NextRequest) {
         }
     });
 
-    // ★★★ ২. আপডেটেড সিস্টেম প্রম্পট ★★★
+    // ৫. সিস্টেম প্রম্পট আপডেট
     const systemPrompt = `
-      You are the smart AI assistant for "Bumba's Kitchen".
+      You are the AI assistant for "Bumba's Kitchen".
       
-      🏪 STORE STATUS: ${isStoreOpen ? "OPEN ✅" : "CLOSED ❌ (We are currently closed)"}
-      
-      💰 ACTIVE OFFERS:
-      ${couponContext}
-
-      🥬 CURRENT MENU DATA:
+      🥬 MENU DATA:
       ${menuContext}
+
+      💰 ACTIVE PUBLIC OFFERS:
+      ${couponContext}
+      (Only mention coupons if user asks about offers/price. Do NOT make up fake codes.)
+
+      ${orderContext}
 
       ⚡ RESPONSE FORMAT (JSON ONLY):
       {
-        "reply": "Short answer here.",
+        "reply": "Short answer here using Emojis.",
         "products": [
            { 
              "id": "...", 
              "name": "Food Name", 
-             "price": "Price", 
-             "slug": "The EXACT slug from the menu data" 
+             "price": "Price",
+             "slug": "Slug" 
            }
         ]
       }
 
       RULES:
-      1. If the store is CLOSED, politely inform the user but allow them to browse the menu.
-      2. If the user asks for price, mention the price AND if any coupon is applicable to save money.
-      3. If suggesting food, ALWAYS include the 'slug' in the product object.
-      4. Keep answers short, helpful, and friendly in Banglish or English.
+      1. Always include 'slug' in product suggestions.
+      2. If Order ID is found in context, tell the status clearly.
+      3. Language: Banglish or English.
     `;
 
     const chat = model.startChat({
       history: [
         { role: "user", parts: [{ text: systemPrompt }] },
-        { role: "model", parts: [{ text: `{"reply": "Understood! I have the latest store data.", "products": []}` }] },
+        { role: "model", parts: [{ text: `{"reply": "Understood!", "products": []}` }] },
         ...(history || []).map((msg: any) => ({
           role: msg.role === 'user' ? 'user' : 'model',
           parts: [{ text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }],
@@ -112,14 +128,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("Chat API Error:", error);
-    
     const errorMessage = error.message?.includes('429') 
-        ? "আমি এখন একটু ব্যস্ত, দয়া করে কিছুক্ষণ পর চেষ্টা করুন। (Server Busy)" 
-        : "দুঃখিত, এখন কানেক্ট করা যাচ্ছে না।";
+        ? "Server Busy. Please wait a moment." 
+        : "Connection Error.";
 
-    return NextResponse.json(
-        { reply: errorMessage, products: [] }, 
-        { status: 200 }
-    );
+    return NextResponse.json({ reply: errorMessage, products: [] }, { status: 200 });
   }
 }

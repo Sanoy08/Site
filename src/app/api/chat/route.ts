@@ -30,10 +30,11 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // ★★★ FIX: মডেল পরিবর্তন করে 'gemini-1.5-flash-8b' করা হয়েছে ★★★
-    // এটি সবচেয়ে ফাস্ট এবং হাই-লিমিট ফ্রি মডেল
+    // ★★★ FIX: 'gemini-2.5-flash-lite' ব্যবহার করা হচ্ছে ★★★
+    // ২০২৬ সালে এটি ফ্রি টায়ারের জন্য বেস্ট অপশন (High Limit)
+    // যদি এটিও কাজ না করে, তবে 'gemini-2.0-flash' চেষ্টা করবেন।
     const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash-8b", 
+        model: "gemini-2.5-flash-lite", 
         generationConfig: {
             responseMimeType: "application/json" 
         }
@@ -88,10 +89,15 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("Chat API Error:", error);
-    // যদি 404 বা অন্য এরর হয়, ইউজারকে সুন্দর মেসেজ দেখানো
+    
+    // যদি মডেলের কোটা শেষ হয়ে যায় বা অন্য সমস্যা হয়
+    const errorMessage = error.message?.includes('429') 
+        ? "আমি এখন একটু ব্যস্ত, দয়া করে কিছুক্ষণ পর চেষ্টা করুন। (Server Busy)" 
+        : "দুঃখিত, এখন কানেক্ট করা যাচ্ছে না।";
+
     return NextResponse.json(
-        { reply: "Sorry, I am having trouble connecting right now. Please try again later.", products: [] }, 
-        { status: 200 } // 200 দিচ্ছি যাতে ফ্রন্টএন্ডে ক্র্যাশ না করে
+        { reply: errorMessage, products: [] }, 
+        { status: 200 } // ক্র্যাশ এড়াতে 200 পাঠানো হচ্ছে
     );
   }
 }

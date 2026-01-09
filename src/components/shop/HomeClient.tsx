@@ -13,7 +13,7 @@ import { MobileNav } from '@/components/layout/MobileNav';
 import { ProductCard } from '@/components/shop/ProductCard';
 import Autoplay from "embla-carousel-autoplay";
 import { formatPrice } from '@/lib/utils';
-// import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants'; // এটা এখন আর সরাসরি লাগছে না
+// import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants'; 
 import type { Product } from '@/lib/types';
 import { Utensils, Truck, ShieldCheck, Leaf } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
@@ -32,16 +32,17 @@ type HomeClientProps = {
 
 // ❌ আগের লোকাল function টি মুছে ফেলা হয়েছে (getOptimizedUrl)
 
+// ★★★ UPDATE: বর্ডার কালার আলাদা করা হয়েছে ★★★
 const CATEGORIES = [
-    { name: "All", image: "/Categories/9.webp", link: "/menus", color: "from-gray-400 to-slate-600" },
-    { name: "Chicken", image: "/Categories/7.webp", link: "/menus?category=chicken", color: "from-red-400 to-rose-600" },
-    { name: "Mutton", image: "/Categories/4.webp", link: "/menus?category=mutton", color: "from-amber-500 to-orange-700" },
-    { name: "Rice", image: "/Categories/2.webp", link: "/menus?category=rice", color: "from-yellow-300 to-orange-400" },    
-    { name: "Fish", image: "/Categories/3.webp", link: "/menus?category=fish", color: "from-cyan-400 to-blue-500" },
-    { name: "Paneer", image: "/Categories/8.webp", link: "/menus?category=paneer", color: "from-blue-400 to-indigo-500" },
-    { name: "Fried", image: "/Categories/5.webp", link: "/menus?category=fried", color: "from-green-400 to-emerald-600" },
-    { name: "Chapati", image: "/Categories/6.webp", link: "/menus?category=chapati", color: "from-orange-300 to-yellow-600" },
-    { name: "Veg", image: "/Categories/1.webp", link: "/menus?category=veg", color: "from-green-400 to-lime-600" },
+    { name: "All", image: "/Categories/9.webp", link: "/menus", borderColor: "border-slate-500" },
+    { name: "Chicken", image: "/Categories/7.webp", link: "/menus?category=chicken", borderColor: "border-red-500" },
+    { name: "Mutton", image: "/Categories/4.webp", link: "/menus?category=mutton", borderColor: "border-amber-700" },
+    { name: "Rice", image: "/Categories/2.webp", link: "/menus?category=rice", borderColor: "border-orange-400" },    
+    { name: "Fish", image: "/Categories/3.webp", link: "/menus?category=fish", borderColor: "border-cyan-500" },
+    { name: "Paneer", image: "/Categories/8.webp", link: "/menus?category=paneer", borderColor: "border-indigo-500" },
+    { name: "Fried", image: "/Categories/5.webp", link: "/menus?category=fried", borderColor: "border-emerald-500" },
+    { name: "Chapati", image: "/Categories/6.webp", link: "/menus?category=chapati", borderColor: "border-yellow-600" },
+    { name: "Veg", image: "/Categories/1.webp", link: "/menus?category=veg", borderColor: "border-lime-500" },
 ];
 
 const FEATURES = [
@@ -93,7 +94,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                         style={{ width: '100%', height: 'auto' }}
                         className="object-contain" 
                         priority 
-                        // unoptimized={true} // প্রক্সি ব্যবহারের কারণে আমরা এটি তুলে দিতে পারি, তবে রাখলেও সমস্যা নেই
+                        // unoptimized={true} 
                       />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
                     </Link>
@@ -118,21 +119,22 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
         )}
       </section>
 
-      {/* 2. Category Slider */}
-      <section className="py-8 md:py-12 bg-background">
+      {/* 2. Category Slider (UPDATED) */}
+      <section className="py-6 md:py-10 bg-background">
           <div className="container">
-              <div className="flex items-center justify-between mb-6 px-1">
+              <div className="flex items-center justify-between mb-4 px-1">
                   <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
                       <Utensils className="h-5 w-5 text-primary" /> What's on your mind?
                   </h3>
               </div>
               
-              <div className="flex gap-4 md:gap-8 overflow-x-auto pb-6 pt-2 px-1 scrollbar-hide">
+              {/* ★★★ UPDATE: md:justify-center যোগ করা হয়েছে এবং গ্যাপ কমানো হয়েছে ★★★ */}
+              <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 pt-2 px-1 scrollbar-hide md:justify-center">
                   {CATEGORIES.map((cat, idx) => (
-                      <Link key={idx} href={cat.link} className="flex flex-col items-center gap-3 min-w-[85px] group cursor-pointer">
-                          <div className={`relative h-20 w-20 md:h-24 md:w-24 rounded-full p-1 bg-gradient-to-tr ${cat.color} shadow-lg group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300`}>
-                              <div className="relative h-full w-full rounded-full overflow-hidden border-2 border-white bg-white">
-                                  {/* লোকাল ইমেজে optimizeImageUrl দরকার নেই, কারণ এগুলি public ফোল্ডারে আছে */}
+                      <Link key={idx} href={cat.link} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
+                          {/* ★★★ UPDATE: সাইজ ছোট করা হয়েছে (h-14/h-20) এবং বর্ডার কালার যোগ করা হয়েছে ★★★ */}
+                          <div className={`relative h-14 w-14 md:h-20 md:w-20 rounded-full border-[3px] ${cat.borderColor} p-0.5 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 bg-white`}>
+                              <div className="relative h-full w-full rounded-full overflow-hidden bg-white">
                                   <Image 
                                     src={cat.image} 
                                     alt={cat.name} 
@@ -142,7 +144,7 @@ export function HomeClient({ heroSlides, offers, bestsellers, allProducts = [] }
                                   />
                               </div>
                           </div>
-                          <span className="text-sm font-semibold text-gray-700 group-hover:text-primary transition-colors">{cat.name}</span>
+                          <span className="text-xs md:text-sm font-semibold text-gray-700 group-hover:text-primary transition-colors">{cat.name}</span>
                       </Link>
                   ))}
               </div>

@@ -67,65 +67,45 @@
     --ring: 84 34% 45%;
   }
 
-  /* ===============================
-     GLOBAL INTERACTION RULES
-     =============================== */
-
+  /* ★★★ STRICT SELECTION DISABLE ★★★ */
   * {
     @apply border-border;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 
-    /* ONLY vertical gesture allowed */
-    touch-action: pan-y;
-
-    /* Disable selection & long-press */
+    /* টেক্সট সিলেকশন এবং হাইলাইট বন্ধ (ইনপুট সহ সবখানে) */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     -ms-user-select: none !important;
     user-select: none !important;
+
+    /* লং প্রেস মেনু (iOS/Android) বন্ধ */
     -webkit-touch-callout: none !important;
   }
-
-  input,
-  textarea {
+  
+  /* ইনপুট ফিল্ডে ফোকাস এবং টাইপ করার স্টাইল */
+  input, textarea {
+    /* সিলেকশন বন্ধ থাকলেও কার্সার যেন দেখা যায় এবং টাইপ করা যায় */
     pointer-events: auto !important;
-    user-select: text !important;
-    -webkit-user-select: text !important;
+    
+    /* আউটলাইন বা বর্ডার হাইলাইট বন্ধ */
     outline: none !important;
   }
 
-  /* ===============================
-     SCROLL / OVERSCROLL FIX
-     =============================== */
-
-  html,
-  body,
-  #__next {
-    width: 100%;
-    position: relative;
-
-    overflow-x: hidden !important;
-
-    /* Kill left/right rubber stretch */
-    overscroll-behavior-x: none !important;
-    overscroll-behavior-y: auto;
+  html {
+    scroll-behavior: auto !important;
   }
 
   body {
     @apply bg-background text-foreground;
     background-color: hsl(var(--background));
-
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: auto !important;
-
+    overscroll-behavior: none;
+    overflow-x: hidden;
+    width: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 }
-
-/* ===============================
-   MEDIA & PERFORMANCE
-   =============================== */
 
 img {
   max-width: 100%;

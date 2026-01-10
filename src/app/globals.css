@@ -94,6 +94,8 @@
 
   html {
     scroll-behavior: auto !important;
+    /* ★★★ FIX: এই লাইনটি রাবার ব্যান্ডিং এফেক্ট বন্ধ করবে ★★★ */
+    overscroll-behavior: none;
   }
 
   body {

@@ -16,8 +16,6 @@ import { formatPrice } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import { Utensils, Truck, ShieldCheck, Leaf } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
-
-// ✅ আমাদের নতুন ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
@@ -83,12 +81,13 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
                     <Link href={slide.clickUrl} className="block w-full relative">
+                      {/* Hero Image: Always priority, full width */}
                       <Image 
                         src={optimizeImageUrl(slide.imageUrl)} 
                         alt="Hero Slide" 
                         width={0}
                         height={0}
-                        sizes="100vw"
+                        sizes="100vw" 
                         style={{ width: '100%', height: 'auto' }}
                         className="object-contain" 
                         priority 
@@ -130,10 +129,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                       <Link key={idx} href={cat.link} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
                           <div className={`relative h-14 w-14 md:h-20 md:w-20 rounded-full border-[3px] ${cat.borderColor} p-0.5 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 bg-white`}>
                               <div className="relative h-full w-full rounded-full overflow-hidden bg-white">
+                                  {/* Small Images: sizes set to very small to save data */}
                                   <Image 
                                     src={cat.image} 
                                     alt={cat.name} 
                                     fill 
+                                    sizes="(max-width: 768px) 20vw, 10vw" 
                                     className="object-cover group-hover:scale-110 transition-transform duration-500" 
                                     unoptimized={true}
                                   />
@@ -163,7 +164,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           </div>
       </section>
 
-      {/* ★★★ 4. NEW: Middle Image Slider Section (Auto Height Fix) ★★★ */}
+      {/* 4. Middle Image Slider Section (Optimized) */}
       {sliderImages && sliderImages.length > 0 && (
         <section className="py-8 bg-background">
           <div className="container">
@@ -171,18 +172,18 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             <CarouselContent>
                 {sliderImages.map((slide) => (
                 <CarouselItem key={slide.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
-                    <div className="p-1"> {/* Removed h-full to let height adjust */}
+                    <div className="p-1">
                     <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
                         <Card className="overflow-hidden border-none shadow-md rounded-2xl bg-card">
                             <CardContent className="p-0">
-                            {/* ★★★ Auto Height Logic ★★★ */}
+                            {/* Auto Height + Optimized Sizes */}
                             <Image 
                                 src={optimizeImageUrl(slide.imageUrl)} 
                                 alt="Slider Image" 
                                 width={0} 
                                 height={0}
-                                sizes="(max-width: 768px) 100vw, 50vw"
-                                style={{ width: '100%', height: 'auto' }} // This makes it responsive and auto-height
+                                sizes="(max-width: 768px) 90vw, 33vw"
+                                style={{ width: '100%', height: 'auto' }}
                                 className="object-contain"
                             />
                             </CardContent>
@@ -213,6 +214,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                                 src={optimizeImageUrl(dailySpecial.images[0].url)}
                                 alt={dailySpecial.name}
                                 fill
+                                sizes="(max-width: 768px) 90vw, 50vw" // Optimized
                                 className="object-cover"
                              />
                          ) : (
@@ -258,7 +260,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                             alt={offer.title} 
                             width={0}
                             height={0}
-                            sizes="100vw"
+                            sizes="(max-width: 768px) 85vw, 33vw" // Optimized
                             style={{ width: '100%', height: 'auto' }}
                             className="block"
                         />

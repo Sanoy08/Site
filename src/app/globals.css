@@ -92,16 +92,25 @@
     outline: none !important;
   }
 
+  /* ★★★ FIX: HTML ট্যাগেও overscroll বন্ধ করা হলো ★★★ */
   html {
     scroll-behavior: auto !important;
+    overscroll-behavior: none !important; /* এই লাইনটি খুব গুরুত্বপূর্ণ */
+    overflow-x: hidden !important; /* হরিজন্টাল স্ক্রল ফোর্সফুলি বন্ধ */
+    height: 100%; /* হাইট ১০০% রাখা ভালো */
   }
 
+  /* ★★★ FIX: BODY ট্যাগেও overscroll-x বন্ধ নিশ্চিত করা হলো ★★★ */
   body {
     @apply bg-background text-foreground;
     background-color: hsl(var(--background));
-    overscroll-behavior: none;
-    overflow-x: hidden;
+    
+    overscroll-behavior: none !important; /* সম্পূর্ণ বাউন্স বন্ধ */
+    overscroll-behavior-x: none !important; /* বাম-ডান বাউন্স স্পেসিফিকালি বন্ধ */
+    overflow-x: hidden !important;
+    
     width: 100%;
+    min-height: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

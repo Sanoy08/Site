@@ -280,13 +280,14 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
             )}
 
             <div className="space-y-2">
-                <Label>Image</Label>
-                <ImageUpload 
-                    value={formData.image ? [formData.image] : []}
-                    onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
-                    maxFiles={1}
-                />
-            </div>
+    <Label>Image</Label>
+    <ImageUpload 
+        value={formData.image ? [formData.image] : []}
+        onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
+        maxFiles={1}
+        folder="notifications"  // ★★★ এই লাইনটি যোগ করুন (যাতে 'notifications' ফোল্ডারে সেভ হয়)
+    />
+</div>
             <div className="space-y-2">
                 <Label>Link (e.g. /menus)</Label>
                 <Input value={formData.link} onChange={(e) => setFormData({...formData, link: e.target.value})} />

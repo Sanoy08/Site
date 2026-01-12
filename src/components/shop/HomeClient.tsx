@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
@@ -56,18 +56,53 @@ const testimonials = [
 ];
 
 export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
-  const [api, setApi] = useState<CarouselApi>()
-  const [current, setCurrent] = useState(0)
-  const [count, setCount] = useState(0)
+  // Hero Carousel State
+  const [heroApi, setHeroApi] = useState<CarouselApi>()
+  const [heroCurrent, setHeroCurrent] = useState(0)
+  const [heroCount, setHeroCount] = useState(0)
+
+  // Middle Slider State
+  const [middleApi, setMiddleApi] = useState<CarouselApi>()
+  const [middleCurrent, setMiddleCurrent] = useState(0)
+  const [middleCount, setMiddleCount] = useState(0)
+
+  // Offers Slider State
+  const [offersApi, setOffersApi] = useState<CarouselApi>()
+  const [offersCurrent, setOffersCurrent] = useState(0)
+  const [offersCount, setOffersCount] = useState(0)
+
+  // Bestsellers Slider State
+  const [bestsellersApi, setBestsellersApi] = useState<CarouselApi>()
+  const [bestsellersCurrent, setBestsellersCurrent] = useState(0)
+  const [bestsellersCount, setBestsellersCount] = useState(0)
   
   const dailySpecial = allProducts.find(p => p.isDailySpecial);
 
-  useEffect(() => {
-    if (!api) return
-    setCount(api.scrollSnapList().length)
-    setCurrent(api.selectedScrollSnap())
-    api.on("select", () => setCurrent(api.selectedScrollSnap()))
-  }, [api])
+  // Helper Hook to handle carousel state updates
+  const useCarouselEffect = (api: CarouselApi | undefined, setCount: (c: number) => void, setCurrent: (c: number) => void) => {
+    useEffect(() => {
+        if (!api) return;
+        
+        const updateState = () => {
+            setCount(api.scrollSnapList().length);
+            setCurrent(api.selectedScrollSnap());
+        };
+
+        updateState();
+        api.on("select", updateState);
+        api.on("reInit", updateState); // Handle responsive resizing
+
+        return () => {
+            api.off("select", updateState);
+            api.off("reInit", updateState);
+        };
+    }, [api, setCount, setCurrent]);
+  };
+
+  useCarouselEffect(heroApi, setHeroCount, setHeroCurrent);
+  useCarouselEffect(middleApi, setMiddleCount, setMiddleCurrent);
+  useCarouselEffect(offersApi, setOffersCount, setOffersCurrent);
+  useCarouselEffect(bestsellersApi, setBestsellersCount, setBestsellersCurrent);
 
   return (
     <div className="bg-background pb-20 md:pb-0">
@@ -76,18 +111,17 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       <section className="relative -mt-20 md:-mt-24 w-full">
         {heroSlides.length > 0 ? (
           <>
-            <Carousel setApi={setApi} opts={{ loop: true }} plugins={[Autoplay({ delay: 5000 })]}>
+            <Carousel setApi={setHeroApi} opts={{ loop: true }} plugins={[Autoplay({ delay: 5000 })]}>
               <CarouselContent>
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
                     <Link href={slide.clickUrl} className="block w-full relative">
-                      {/* Hero Image: Always priority, full width */}
                       <Image 
                         src={optimizeImageUrl(slide.imageUrl)} 
                         alt="Hero Slide" 
                         width={0}
                         height={0}
-                        sizes="100vw" 
+                        sizes="100vw"
                         style={{ width: '100%', height: 'auto' }}
                         className="object-contain" 
                         priority 
@@ -99,9 +133,15 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
               </CarouselContent>
             </Carousel>
             
+            {/* Hero Dots */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-              {Array.from({ length: count }).map((_, index) => (
-                <button key={index} onClick={() => api?.scrollTo(index)} className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${current === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} />
+              {Array.from({ length: heroCount }).map((_, index) => (
+                <button 
+                    key={index} 
+                    onClick={() => heroApi?.scrollTo(index)} 
+                    className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${heroCurrent === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} 
+                    aria-label={`Go to slide ${index + 1}`}
+                />
               ))}
             </div>
           </>
@@ -129,12 +169,11 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                       <Link key={idx} href={cat.link} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
                           <div className={`relative h-14 w-14 md:h-20 md:w-20 rounded-full border-[3px] ${cat.borderColor} p-0.5 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 bg-white`}>
                               <div className="relative h-full w-full rounded-full overflow-hidden bg-white">
-                                  {/* Small Images: sizes set to very small to save data */}
                                   <Image 
                                     src={cat.image} 
                                     alt={cat.name} 
                                     fill 
-                                    sizes="(max-width: 768px) 20vw, 10vw" 
+                                    sizes="(max-width: 768px) 20vw, 10vw"
                                     className="object-cover group-hover:scale-110 transition-transform duration-500" 
                                     unoptimized={true}
                                   />
@@ -164,36 +203,51 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           </div>
       </section>
 
-      {/* 4. Middle Image Slider Section (Optimized) */}
+      {/* 4. Middle Image Slider Section */}
       {sliderImages && sliderImages.length > 0 && (
         <section className="py-8 bg-background">
           <div className="container">
-            <Carousel opts={{ align: "start", loop: true }} plugins={[Autoplay({ delay: 3500 })]} className="w-full">
-            <CarouselContent>
-                {sliderImages.map((slide) => (
-                <CarouselItem key={slide.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
-                    <div className="p-1">
-                    <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
-                        <Card className="overflow-hidden border-none shadow-md rounded-2xl bg-card">
-                            <CardContent className="p-0">
-                            {/* Auto Height + Optimized Sizes */}
-                            <Image 
-                                src={optimizeImageUrl(slide.imageUrl)} 
-                                alt="Slider Image" 
-                                width={0} 
-                                height={0}
-                                sizes="(max-width: 768px) 90vw, 33vw"
-                                style={{ width: '100%', height: 'auto' }}
-                                className="object-contain"
-                            />
-                            </CardContent>
-                        </Card>
-                    </Link>
-                    </div>
-                </CarouselItem>
-                ))}
-            </CarouselContent>
+            <Carousel setApi={setMiddleApi} opts={{ align: "start", loop: true }} plugins={[Autoplay({ delay: 3500 })]} className="w-full">
+                <CarouselContent>
+                    {sliderImages.map((slide) => (
+                    <CarouselItem key={slide.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
+                        <div className="p-1">
+                        <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
+                            <Card className="overflow-hidden border-none shadow-md rounded-2xl bg-card">
+                                <CardContent className="p-0">
+                                <Image 
+                                    src={optimizeImageUrl(slide.imageUrl)} 
+                                    alt="Slider Image" 
+                                    width={0} 
+                                    height={0}
+                                    sizes="(max-width: 768px) 90vw, 33vw"
+                                    style={{ width: '100%', height: 'auto' }}
+                                    className="object-contain"
+                                />
+                                </CardContent>
+                            </Card>
+                        </Link>
+                        </div>
+                    </CarouselItem>
+                    ))}
+                </CarouselContent>
             </Carousel>
+
+            {/* Middle Slider Dots */}
+            {middleCount > 1 && (
+                <div className="flex justify-center gap-1.5 mt-4">
+                    {Array.from({ length: middleCount }).map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => middleApi?.scrollTo(index)}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                                middleCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'
+                            }`}
+                            aria-label={`Go to slide ${index + 1}`}
+                        />
+                    ))}
+                </div>
+            )}
           </div>
         </section>
       )}
@@ -214,7 +268,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                                 src={optimizeImageUrl(dailySpecial.images[0].url)}
                                 alt={dailySpecial.name}
                                 fill
-                                sizes="(max-width: 768px) 90vw, 50vw" // Optimized
+                                sizes="(max-width: 768px) 90vw, 50vw"
                                 className="object-cover"
                              />
                          ) : (
@@ -248,29 +302,45 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                     <p className="text-muted-foreground mt-1">Grab the best deals before they are gone.</p>
                 </div>
             </div>
-            <Carousel opts={{ align: "start", loop: true }} className="w-full">
-            <CarouselContent>
-                {offers.map((offer) => (
-                <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
-                    <div className="p-1 h-full">
-                    <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
-                        <CardContent className="p-0 relative">
-                        <Image 
-                            src={optimizeImageUrl(offer.imageUrl)} 
-                            alt={offer.title} 
-                            width={0}
-                            height={0}
-                            sizes="(max-width: 768px) 85vw, 33vw" // Optimized
-                            style={{ width: '100%', height: 'auto' }}
-                            className="block"
-                        />
-                        </CardContent>
-                    </Card>
-                    </div>
-                </CarouselItem>
-                ))}
-            </CarouselContent>
+            <Carousel setApi={setOffersApi} opts={{ align: "start", loop: true }} className="w-full">
+                <CarouselContent>
+                    {offers.map((offer) => (
+                    <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
+                        <div className="p-1 h-full">
+                        <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
+                            <CardContent className="p-0 relative">
+                            <Image 
+                                src={optimizeImageUrl(offer.imageUrl)} 
+                                alt={offer.title} 
+                                width={0}
+                                height={0}
+                                sizes="(max-width: 768px) 85vw, 33vw"
+                                style={{ width: '100%', height: 'auto' }}
+                                className="block"
+                            />
+                            </CardContent>
+                        </Card>
+                        </div>
+                    </CarouselItem>
+                    ))}
+                </CarouselContent>
             </Carousel>
+
+            {/* Offers Dots */}
+            {offersCount > 1 && (
+                <div className="flex justify-center gap-1.5 mt-6">
+                    {Array.from({ length: offersCount }).map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => offersApi?.scrollTo(index)}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                                offersCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'
+                            }`}
+                            aria-label={`Go to offer slide ${index + 1}`}
+                        />
+                    ))}
+                </div>
+            )}
           </div>
         </section>
       )}
@@ -284,24 +354,42 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           </div>
           
           {bestsellers.length > 0 ? (
-            <Carousel opts={{ align: "start", loop: true }} className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
-              <CarouselContent>
-                {bestsellers.map((product) => (
-                  <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
-                    <div className="p-1 h-full">
-                        <ProductCard product={product} />
+            <div className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
+                <Carousel setApi={setBestsellersApi} opts={{ align: "start", loop: true }} className="w-full">
+                <CarouselContent>
+                    {bestsellers.map((product) => (
+                    <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
+                        <div className="p-1 h-full">
+                            <ProductCard product={product} />
+                        </div>
+                    </CarouselItem>
+                    ))}
+                </CarouselContent>
+                <CarouselPrevious className="hidden md:flex" />
+                <CarouselNext className="hidden md:flex" />
+                </Carousel>
+
+                {/* Bestsellers Dots */}
+                {bestsellersCount > 1 && (
+                    <div className="flex justify-center gap-1.5 mt-8">
+                        {Array.from({ length: bestsellersCount }).map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={() => bestsellersApi?.scrollTo(index)}
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                    bestsellersCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'
+                                }`}
+                                aria-label={`Go to product slide ${index + 1}`}
+                            />
+                        ))}
                     </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious />
-              <CarouselNext />
-            </Carousel>
+                )}
+            </div>
           ) : (
             <p className="text-center text-muted-foreground">No products found.</p>
           )}
           
-          <div className="text-center mt-10">
+          <div className="text-center mt-12">
               <Button asChild variant="outline" className="rounded-full px-8 border-primary/50 text-primary hover:bg-primary/5">
                   <Link href="/menus">View Full Menu</Link>
               </Button>

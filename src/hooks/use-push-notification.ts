@@ -16,15 +16,11 @@ export const usePushNotification = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ★★★ URL হ্যান্ডলিং ফাংশন ★★★
   const handleNavigation = (url: string) => {
     if (!url) return;
-
-    // যদি পুরো লিংক হয় (যেমন: https://admin.bumbaskitchen.app...), তাহলে ব্রাউজার রিডাইরেক্ট
     if (url.startsWith('http') || url.startsWith('https')) {
         window.location.href = url;
     } else {
-        // যদি রিলেটিভ লিংক হয় (যেমন: /orders), তাহলে অ্যাপ নেভিগেশন
         router.push(url);
     }
   };
@@ -45,11 +41,9 @@ export const usePushNotification = () => {
     
     try {
       let permStatus = await PushNotifications.checkPermissions();
-      
       if (permStatus.receive === 'prompt') {
         permStatus = await PushNotifications.requestPermissions();
       }
-      
       if (permStatus.receive === 'granted') {
         await PushNotifications.register();
         setIsSubscribed(true);
@@ -77,17 +71,7 @@ export const usePushNotification = () => {
       }
 
       if (Capacitor.getPlatform() === 'android') {
-        await PushNotifications.createChannel({
-          id: 'pop_notifications', 
-          name: 'Popup Notifications',
-          description: 'High priority notifications',
-          importance: 5, 
-          visibility: 1, 
-          lights: true,
-          vibration: true,
-          sound: 'default'
-        });
-
+        // ১. অ্যাডমিন চ্যানেল (আগের মতোই)
         await PushNotifications.createChannel({
           id: 'admin_order_alert', 
           name: 'Admin Order Alerts',
@@ -98,19 +82,30 @@ export const usePushNotification = () => {
           vibration: true,
           sound: 'my_alert'
         });
+
+        // ২. ★ ইউজারদের জন্য নতুন কাস্টম সাউন্ড চ্যানেল ★
+        await PushNotifications.createChannel({
+          id: 'user_notifications', 
+          name: 'User Alerts', 
+          description: 'General notifications for users',
+          importance: 5, 
+          visibility: 1, 
+          lights: true,
+          vibration: true,
+          sound: 'user_alert' // ★ আপনার নতুন সাউন্ড ফাইলের নাম (user_alert.mp3)
+        });
       }
 
+      // Action Types (যদি ভিউ বাটন ক্লিক করতে চান)
       try {
         await (PushNotifications as any).registerActionTypes({
-            types: [
-            {
+            types: [{
                 id: 'ORDER_UPDATE',
                 actions: [
-                { id: 'view', title: 'View Order', foreground: true },
-                { id: 'dismiss', title: 'Dismiss', destructive: true },
+                    { id: 'view', title: 'View Order', foreground: true },
+                    { id: 'dismiss', title: 'Dismiss', destructive: true },
                 ],
-            },
-            ]
+            }]
         });
       } catch (err) {
           console.warn("Action types registration failed", err);
@@ -149,8 +144,16 @@ export const usePushNotification = () => {
       }
 
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
-      const channelId = notification.data?.android_channel_id || 'pop_notifications'; 
-      const soundName = channelId === 'admin_order_alert' ? 'my_alert' : 'default';
+      
+      // ★ চ্যানেল এবং সাউন্ড ডিটেকশন লজিক আপডেট ★
+      // যদি সার্ভার থেকে চ্যানেল আইডি না আসে, তবে ডিফল্ট হিসেবে 'user_notifications' ধরা হবে
+      const channelId = notification.data?.android_channel_id || 'user_notifications'; 
+      
+      let soundName = 'user_alert'; // ডিফল্ট সাউন্ড (ইউজারদের জন্য)
+
+      if (channelId === 'admin_order_alert') {
+          soundName = 'my_alert'; // অ্যাডমিন সাউন্ড
+      }
 
       await LocalNotifications.schedule({
         notifications: [
@@ -159,7 +162,7 @@ export const usePushNotification = () => {
             body: notification.body || "",
             id: new Date().getTime(),
             schedule: { at: new Date(Date.now() + 100) },
-            sound: soundName,
+            sound: soundName, // ★ সঠিক সাউন্ড ফাইল বাজবে
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
             extra: notification.data,
             smallIcon: "ic_stat_icon",
@@ -170,19 +173,17 @@ export const usePushNotification = () => {
       });
     });
 
-    // ★ ব্যাকগ্রাউন্ড নোটিফিকেশন ক্লিক হ্যান্ডলার আপডেট
     const actionListener = PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
       const data = notification.notification.data;
       if (data?.url) {
-        handleNavigation(data.url); // router.push এর বদলে এটি ব্যবহার হবে
+        handleNavigation(data.url);
       }
     });
 
-    // ★ ফোরগ্রাউন্ড (লোকাল) নোটিফিকেশন ক্লিক হ্যান্ডলার আপডেট
     const localActionListener = LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
         const data = notification.notification.extra;
         if (data?.url) {
-            handleNavigation(data.url); // router.push এর বদলে এটি ব্যবহার হবে
+            handleNavigation(data.url);
         }
     });
 

@@ -7,7 +7,7 @@ const SUBSCRIPTIONS_COLLECTION = 'subscriptions';
 const NOTIFICATIONS_COLLECTION = 'notifications';
 const USERS_COLLECTION = 'users';
 
-// ১. নির্দিষ্ট ইউজারকে পাঠানো (অপরিবর্তিত)
+// ১. নির্দিষ্ট ইউজারকে পাঠানো (আপডেটেড - কাস্টম সাউন্ড)
 export async function sendNotificationToUser(
     client: MongoClient, 
     userId: string, 
@@ -45,6 +45,8 @@ export async function sendNotificationToUser(
       },
       data: { 
           url,
+          // ★ চ্যানেল আইডি পাঠানো হচ্ছে যাতে ফোরগ্রাউন্ডে সঠিক সাউন্ড বাজে
+          android_channel_id: 'user_notifications', 
           ...(imageUrl && { image: imageUrl }),
           ...(imageUrl && { picture: imageUrl }) 
       },
@@ -54,8 +56,10 @@ export async function sendNotificationToUser(
         notification: {
           icon: 'ic_stat_icon',
           color: '#f97316',
-          channelId: 'pop_notifications', 
-          defaultSound: true,
+          // ★ ইউজারদের জন্য কাস্টম সাউন্ড কনফিগারেশন ★
+          channelId: 'user_notifications', 
+          sound: 'user_alert', // এক্সটেনশন ছাড়া নাম (user_alert.mp3)
+          defaultSound: false, // ডিফল্ট বন্ধ
           defaultVibrateTimings: true,
           ...(imageUrl && { imageUrl: imageUrl })
         }
@@ -69,7 +73,7 @@ export async function sendNotificationToUser(
   }
 }
 
-// ২. সবাইকে পাঠানো (ব্রডকাস্ট) (অপরিবর্তিত)
+// ২. সবাইকে পাঠানো (আপডেটেড - কাস্টম সাউন্ড)
 export async function sendNotificationToAllUsers(
     client: MongoClient, 
     title: string, 
@@ -103,6 +107,8 @@ export async function sendNotificationToAllUsers(
             },
             data: { 
                 url,
+                // ★ চ্যানেল আইডি পাঠানো হচ্ছে
+                android_channel_id: 'user_notifications', 
                 ...(imageUrl && { image: imageUrl }),
                 ...(imageUrl && { picture: imageUrl })
             },
@@ -112,8 +118,10 @@ export async function sendNotificationToAllUsers(
                 notification: {
                     icon: 'ic_stat_icon',
                     color: '#f97316',
-                    channelId: 'pop_notifications', 
-                    defaultSound: true,
+                    // ★ ইউজারদের জন্য কাস্টম সাউন্ড কনফিগারেশন ★
+                    channelId: 'user_notifications', 
+                    sound: 'user_alert', // এক্সটেনশন ছাড়া নাম
+                    defaultSound: false,
                     defaultVibrateTimings: true,
                     ...(imageUrl && { imageUrl: imageUrl }) 
                 }
@@ -127,7 +135,7 @@ export async function sendNotificationToAllUsers(
     }
 }
 
-// ৩. অ্যাডমিন নোটিফিকেশন (★★★ আপডেটেড ★★★)
+// ৩. অ্যাডমিন নোটিফিকেশন (অপরিবর্তিত - অ্যাডমিন সাউন্ড থাকবে)
 export async function sendNotificationToAdmins(client: MongoClient, title: string, body: string, url: string = '/admin/orders') {
   try {
     const db = client.db(DB_NAME);
@@ -157,7 +165,6 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
             notification: { title, body },
             data: { 
               url,
-              // লোকাল নোটিফিকেশন হ্যান্ডলারের জন্য চ্যানেল আইডি ডেটা হিসেবে পাঠানো হচ্ছে
               android_channel_id: 'admin_order_alert' 
             },
             android: {
@@ -165,10 +172,9 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
                 notification: {
                     icon: 'ic_stat_icon',
                     color: '#f97316',
-                    // ★★★ নতুন চ্যানেল এবং সাউন্ড ★★★
                     channelId: 'admin_order_alert', 
-                    sound: 'my_alert', // ফাইল নেম (এক্সটেনশন ছাড়া)
-                    defaultSound: false, // ডিফল্ট সাউন্ড বন্ধ
+                    sound: 'my_alert', 
+                    defaultSound: false, 
                     defaultVibrateTimings: true
                 }
             }

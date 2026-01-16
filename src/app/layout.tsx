@@ -16,6 +16,7 @@ import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
 import AppUrlListener from '@/components/AppUrlListener'; // ★ ১. ইম্পোর্ট করা হলো
 import { Chatbot } from "@/components/Chatbot";
+import { AppUpdater } from '@/components/AppUpdater'; // ইমপোর্ট
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -105,6 +106,7 @@ export default function RootLayout({
             <StoreStatusProvider>
                 {children}
             </StoreStatusProvider>
+            <AppUpdater />
             <Chatbot />
             <Toaster />
           </CartProvider>

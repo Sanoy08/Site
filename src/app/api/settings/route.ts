@@ -3,35 +3,43 @@
 import { NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 
-// সেটিংস ফেচ করা
 export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
     
-    // সেটিংস কালেকশন থেকে ডাটা আনো
     const settings = await db.collection('settings').findOne({ type: 'general' });
     
-    // ডিফল্ট ভ্যালু (যদি ডাটাবেসে কিছু না থাকে)
-    const isStoreOpen = settings ? settings.isStoreOpen : true; // ডিফল্ট: খোলা
-
-    return NextResponse.json({ success: true, isStoreOpen });
+    return NextResponse.json({ 
+        success: true, 
+        isStoreOpen: settings?.isStoreOpen ?? true,
+        // ★ নতুন ফিল্ডগুলো পাঠানো হচ্ছে
+        androidVersion: settings?.androidVersion || '1.0.0',
+        apkUrl: settings?.apkUrl || '',
+        forceUpdate: settings?.forceUpdate || false,
+        
+        // ওয়ালেট সেটিংস (যদি আগে থেকে থাকে)
+        deliveryCharge: settings?.deliveryCharge || 40,
+        freeDeliveryAbove: settings?.freeDeliveryAbove || 499,
+        coinsPer100: settings?.coinsPer100 || 10,
+        coinValue: settings?.coinValue || 1
+    });
   } catch (error) {
     return NextResponse.json({ success: false, isStoreOpen: true });
   }
 }
 
-// সেটিংস আপডেট করা (অ্যাডমিন)
 export async function POST(req: Request) {
   try {
-    const { isStoreOpen } = await req.json();
+    const body = await req.json(); // বডি থেকে সব ফিল্ড নেওয়া হচ্ছে
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
 
+    // ★ $set ব্যবহার করে পার্শিয়াল আপডেট করা হবে (যাতে শুধু নির্দিষ্ট ফিল্ড আপডেট হয়)
     await db.collection('settings').updateOne(
       { type: 'general' },
-      { $set: { type: 'general', isStoreOpen } }, // স্ট্যাটাস আপডেট
-      { upsert: true } // না থাকলে তৈরি করো
+      { $set: { ...body, type: 'general' } }, 
+      { upsert: true }
     );
 
     return NextResponse.json({ success: true });

@@ -8,7 +8,7 @@ android {
         applicationId "com.bumbaskitchen.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2        // আগের চেয়ে ১ বাড়ান (যেমন: 1 ছিল, 2 করলেন)
+        versionCode 2
         versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

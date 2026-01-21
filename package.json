@@ -59,6 +59,7 @@
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.8.0",
     "clsx": "^2.1.1",
+    "cordova-sms-plugin": "^1.0.4",
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "embla-carousel-autoplay": "^8.0.4",

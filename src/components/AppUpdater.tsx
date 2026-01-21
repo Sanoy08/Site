@@ -7,16 +7,16 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Rocket, Loader2 } from 'lucide-react';
+import { Download, Rocket, Loader2, RefreshCw } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
-import { Http } from '@capacitor-community/http'; // ★ নতুন ইমপোর্ট
 import { toast } from 'sonner';
 
 export function AppUpdater() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState({ latestVersion: '', apkUrl: '', force: false });
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -26,7 +26,7 @@ export function AppUpdater() {
         const appInfo = await App.getInfo();
         const currentVersion = appInfo.version;
 
-        // টাইমস্ট্যাম্প যোগ করা হয়েছে যাতে ক্যাশড ডেটা না আসে
+        // টাইমস্ট্যাম্প দিয়ে ক্যাশ বাইপাস করা হচ্ছে
         const res = await fetch(`https://www.bumbaskitchen.app/api/app-version?t=${new Date().getTime()}`);
         const data = await res.json();
 
@@ -60,39 +60,67 @@ export function AppUpdater() {
     return false;
   };
 
-  // ★ নতুন ডাউনলোড লজিক (Native HTTP) ★
   const handleDownloadAndInstall = async () => {
     if (!updateInfo.apkUrl) return;
 
     setIsDownloading(true);
-    toast.info("Downloading update... Please wait.");
+    setDownloadProgress(10); // শুরু বোঝানোর জন্য
+    toast.info("Starting download...");
 
     try {
+        // ১. ফাইল ডাউনলোড (Fetch API)
+        // নোট: বড় ফাইলের জন্য এটি মেমোরি নিতে পারে, তবে ২০-৩০ MB পর্যন্ত সমস্যা নেই
+        const response = await fetch(updateInfo.apkUrl, {
+            method: 'GET',
+            headers: { 'Cache-Control': 'no-cache' }
+        });
+
+        if (!response.ok) throw new Error("Network response was not ok");
+
+        setDownloadProgress(50); // ডাউনলোড অর্ধেক হয়েছে
+        const blob = await response.blob();
+
+        // ২. Blob কে Base64 এ কনভার্ট করা (Filesystem এ সেভ করার জন্য)
+        const base64Data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64 = reader.result as string;
+                // 'data:application/vnd.android.package-archive;base64,' অংশটি বাদ দিতে হবে
+                const base64Raw = base64.split(',')[1]; 
+                resolve(base64Raw);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+
+        setDownloadProgress(80); // কনভার্সন শেষ
+
         const fileName = 'update.apk';
 
-        // ১. আগে যদি কোনো ফাইল থাকে, ক্লিন করা
+        // ৩. আগের ফাইল ডিলিট করা (যদি থাকে)
         try {
             await Filesystem.deleteFile({
                 path: fileName,
                 directory: Directory.Cache
             });
-        } catch(e) { /* ফাইল না থাকলে ইগনোর করুন */ }
+        } catch (e) { /* ফাইল না থাকলে ইগনোর */ }
 
-        // ২. Native HTTP দিয়ে ডাউনলোড করা (মেমোরি ক্রাশ হবে না)
-        const response = await Http.downloadFile({
-    url: updateInfo.apkUrl,
-    filePath: fileName,
-    // 👇 এখানে 'as any' যোগ করুন
-    fileDirectory: Directory.Cache as any, 
-});
+        // ৪. ফাইল সেভ করা
+        const savedFile = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache,
+        });
 
-        // ৩. ফাইলের সঠিক URI বের করা (FileOpener এর জন্য)
+        setDownloadProgress(100); // সেভ শেষ
+
+        // ৫. ফাইলের URI বের করা
         const uriResult = await Filesystem.getUri({
             path: fileName,
             directory: Directory.Cache
         });
 
-        // ৪. APK ওপেন/ইন্সটল করা
+        // ৬. অ্যাপ ইন্সটল করা
         await FileOpener.open({
             filePath: uriResult.uri,
             contentType: 'application/vnd.android.package-archive',
@@ -100,13 +128,19 @@ export function AppUpdater() {
 
         setIsDownloading(false);
 
-    } catch (error) {
-        console.error("Native Update failed:", error);
-        toast.error("Download failed. Opening browser...");
-        setIsDownloading(false);
+    } catch (error: any) {
+        console.error("In-App Update Failed:", error);
+        // এরর মেসেজটি ইউজারের কাছে দেখানো হচ্ছে যাতে বোঝা যায় কেন ফেইল হলো
+        toast.error(`Update failed: ${error.message || 'Unknown error'}`);
         
-        // ফেইল হলে ব্যাকআপ হিসেবে ব্রাউজার ওপেন হবে
-        window.open(updateInfo.apkUrl, '_system');
+        // ফেইল হলে ব্রাউজারে খোলার অপশন
+        setTimeout(() => {
+            if(confirm("In-app update failed. Open in browser instead?")) {
+                window.open(updateInfo.apkUrl, '_system');
+            }
+        }, 1000);
+        
+        setIsDownloading(false);
     }
   };
 
@@ -122,7 +156,7 @@ export function AppUpdater() {
             <Rocket className="h-6 w-6" /> Update Available!
           </DialogTitle>
           <DialogDescription className="pt-2 text-slate-600">
-            Version <strong>{updateInfo.latestVersion}</strong> is ready to install.
+            Version <strong>{updateInfo.latestVersion}</strong> is ready.
             {updateInfo.force && <span className="block mt-2 text-red-500 font-bold">Mandatory Update.</span>}
           </DialogDescription>
         </DialogHeader>
@@ -135,7 +169,8 @@ export function AppUpdater() {
           >
             {isDownloading ? (
                 <>
-                    <Loader2 className="h-5 w-5 animate-spin" /> Downloading...
+                    <Loader2 className="h-5 w-5 animate-spin" /> 
+                    {downloadProgress > 0 ? `Downloading ${downloadProgress}%` : 'Downloading...'}
                 </>
             ) : (
                 <>

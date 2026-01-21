@@ -27,24 +27,3 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
-
-
-
-// Fix for libraries missing namespace (Specific fix for capacitor-community-http)
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
-            android {
-                // যদি namespace না থাকে, তবে সেট করো
-                if (namespace == null) {
-                    namespace project.group
-                }
-                
-                // ★★★ এই অংশটি স্পেশালি আপনার এরর ফিক্স করবে ★★★
-                if (project.name == "capacitor-community-http") {
-                    namespace "com.getcapacitor.http.http"
-                }
-            }
-        }
-    }
-}

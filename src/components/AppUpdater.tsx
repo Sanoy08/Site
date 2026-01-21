@@ -7,16 +7,16 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Rocket, Loader2, AlertCircle } from 'lucide-react';
+import { Download, Rocket, Loader2 } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
+import { Http } from '@capacitor-community/http'; // ★ নতুন ইমপোর্ট
 import { toast } from 'sonner';
 
 export function AppUpdater() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState({ latestVersion: '', apkUrl: '', force: false });
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0); // Optional: if you want to show %
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -26,7 +26,7 @@ export function AppUpdater() {
         const appInfo = await App.getInfo();
         const currentVersion = appInfo.version;
 
-        // ক্যাশিং এড়াতে টাইমস্ট্যাম্প যোগ করা হয়েছে
+        // টাইমস্ট্যাম্প যোগ করা হয়েছে যাতে ক্যাশড ডেটা না আসে
         const res = await fetch(`https://www.bumbaskitchen.app/api/app-version?t=${new Date().getTime()}`);
         const data = await res.json();
 
@@ -60,7 +60,7 @@ export function AppUpdater() {
     return false;
   };
 
-  // ★ APK ডাউনলোড এবং ইন্সটল করার ফাংশন ★
+  // ★ নতুন ডাউনলোড লজিক (Native HTTP) ★
   const handleDownloadAndInstall = async () => {
     if (!updateInfo.apkUrl) return;
 
@@ -68,48 +68,44 @@ export function AppUpdater() {
     toast.info("Downloading update... Please wait.");
 
     try {
-        // ১. ফাইল ডাউনলোড করা (Fetch API ব্যবহার করে)
-        const response = await fetch(updateInfo.apkUrl);
-        const blob = await response.blob();
-
-        // ২. ব্লব (Blob) কে বেস৬৪ (Base64) এ কনভার্ট করা
-        const base64Data = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-
         const fileName = 'update.apk';
 
-        // ৩. ফাইলটি ক্যাশ ডিরেক্টরিতে সেভ করা
-        await Filesystem.writeFile({
-            path: fileName,
-            data: base64Data,
-            directory: Directory.Cache
-        });
+        // ১. আগে যদি কোনো ফাইল থাকে, ক্লিন করা
+        try {
+            await Filesystem.deleteFile({
+                path: fileName,
+                directory: Directory.Cache
+            });
+        } catch(e) { /* ফাইল না থাকলে ইগনোর করুন */ }
 
-        // ৪. ফাইলের পাথ (URI) বের করা
+        // ২. Native HTTP দিয়ে ডাউনলোড করা (মেমোরি ক্রাশ হবে না)
+        const response = await Http.downloadFile({
+    url: updateInfo.apkUrl,
+    filePath: fileName,
+    // 👇 এখানে 'as any' যোগ করুন
+    fileDirectory: Directory.Cache as any, 
+});
+
+        // ৩. ফাইলের সঠিক URI বের করা (FileOpener এর জন্য)
         const uriResult = await Filesystem.getUri({
             path: fileName,
             directory: Directory.Cache
         });
 
-        // ৫. ফাইল ওপেনার দিয়ে APK ওপেন করা (এটাই ইন্সটল প্রম্পট আনবে)
+        // ৪. APK ওপেন/ইন্সটল করা
         await FileOpener.open({
             filePath: uriResult.uri,
-            contentType: 'application/vnd.android.package-archive', // APK এর MIME type
+            contentType: 'application/vnd.android.package-archive',
         });
 
         setIsDownloading(false);
-        // ইনস্টল শুরু হলে অ্যাপ বন্ধ হতে পারে, তাই ডায়ালগ বন্ধ করার দরকার নেই
 
     } catch (error) {
-        console.error("Update failed:", error);
-        toast.error("Download failed. Opening browser instead.");
+        console.error("Native Update failed:", error);
+        toast.error("Download failed. Opening browser...");
         setIsDownloading(false);
         
-        // যদি অ্যাপের ভেতর ফেইল করে, ব্যাকআপ হিসেবে ব্রাউজার ওপেন হবে
+        // ফেইল হলে ব্যাকআপ হিসেবে ব্রাউজার ওপেন হবে
         window.open(updateInfo.apkUrl, '_system');
     }
   };

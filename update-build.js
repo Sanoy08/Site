@@ -38,6 +38,14 @@ const runBuildProcess = (commitMsg) => {
     try {
         console.log("\n🚀 Starting Auto-Build & Push Process...");
 
+        // ★★★ নতুন স্টেপ: সবার আগে পুরনো APK ডিলিট করা ★★★
+        if (fs.existsSync(destApk)) {
+            console.log("🗑️  Removing old APK from public folder...");
+            fs.unlinkSync(destApk);
+        } else {
+            console.log("ℹ️  No old APK found in public folder.");
+        }
+
         // ৩. Gradle ফাইল আপডেট (ভার্সন বাড়ানো)
         let gradleContent = fs.readFileSync(gradlePath, 'utf8');
         const codeMatch = gradleContent.match(/versionCode (\d+)/);
@@ -71,17 +79,17 @@ const runBuildProcess = (commitMsg) => {
         const buildCmd = isWindows ? 'cd android && gradlew.bat assembleRelease' : 'cd android && ./gradlew assembleRelease';
         execSync(buildCmd, { stdio: 'inherit' });
 
-        // ৬. APK ফাইল মুভ করা
+        // ৬. APK ফাইল মুভ করা (এখন আর ডিলিট করার দরকার নেই, কারণ শুরুতে করেছি)
         if (fs.existsSync(sourceApk)) {
-            if (fs.existsSync(destApk)) fs.unlinkSync(destApk);
+            // কপি করা হচ্ছে
             fs.copyFileSync(sourceApk, destApk);
-            console.log(`✅ APK copied to public folder.`);
+            console.log(`✅ New APK copied to public folder.`);
         } else {
             throw new Error("APK generation failed!");
         }
 
         // ৭. গিট কমিট এবং পুশ (Git Push)
-        console.log("\ncloud_upload Pushing to GitHub...");
+        console.log("\n☁️  Pushing to GitHub...");
         
         execSync('git add .', { stdio: 'inherit' });
         execSync(`git commit -m "${commitMsg} (v${newName})"`, { stdio: 'inherit' });

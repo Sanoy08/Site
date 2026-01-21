@@ -11,15 +11,16 @@
     "apk": "node update-build.js",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
-    
   },
   "dependencies": {
     "@capacitor-community/fcm": "^8.0.1",
+    "@capacitor-community/file-opener": "^8.0.0",
     "@capacitor-firebase/authentication": "^8.0.1",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0",
     "@capacitor/haptics": "^8.0.0",
     "@capacitor/ios": "^6.2.1",
     "@capacitor/keyboard": "^8.0.0",

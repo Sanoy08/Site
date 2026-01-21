@@ -146,9 +146,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      cordova-sms-plugin:
-        specifier: ^1.0.4
-        version: 1.0.4
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
@@ -3230,10 +3227,6 @@ packages:
   cookie@0.7.2:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
-
-  cordova-sms-plugin@1.0.4:
-    resolution: {integrity: sha512-O+8sBBtTIel99+T+gbZCsw6svLk6D2PP6aEedOpQLSBbeyW0ZY+bTt9s6a5CZubSdeuFP0Lh2nXph5+4/v/m4A==}
-    engines: {'0': {name: cordova, version: '>=3.0.0'}}
 
   core-js@3.47.0:
     resolution: {integrity: sha512-c3Q2VVkGAUyupsjRnaNX6u8Dq2vAdzm9iuPj5FW0fRxzlxgq9Q39MDq10IvmQSpLgHQNyQzQmOo6bgGHmH3NNg==}
@@ -9284,8 +9277,6 @@ snapshots:
   cookie-signature@1.2.2: {}
 
   cookie@0.7.2: {}
-
-  cordova-sms-plugin@1.0.4: {}
 
   core-js@3.47.0:
     optional: true

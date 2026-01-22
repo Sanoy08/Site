@@ -48,11 +48,10 @@ export default function DailyMenuPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-        const token = localStorage.getItem('token');
+        // ★★★ Fix: Remove Token Check
         try {
-            const res = await fetch('/api/admin/daily-special', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            // ★★★ Fix: Remove Header
+            const res = await fetch('/api/admin/daily-special');
             const data = await res.json();
             if (data.success && data.data) {
                 const d = data.data;
@@ -179,7 +178,7 @@ export default function DailyMenuPage() {
     }
 
     setIsSaving(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
 
     try {
         // 1. Generate Canvas Image
@@ -213,11 +212,11 @@ export default function DailyMenuPage() {
         const optimizedImageUrl = getOptimizedNotificationImage(originalImageUrl);
 
         // 5. Update Database with Optimized Image URL
+        // ★★★ Fix: Remove Authorization Header
         const res = await fetch('/api/admin/daily-special', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 name,

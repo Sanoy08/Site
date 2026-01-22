@@ -50,10 +50,11 @@ export default function AdminNotificationsPage() {
     const optimizedData = { ...formData };
 
     try {
-      const token = localStorage.getItem('token');
+      // ★★★ Fix: Remove Token Logic
+      // ★★★ Fix: Remove Authorization Header
       await fetch('/api/admin/notifications/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(optimizedData),
       });
       toast.success('Broadcast sent!');
@@ -150,7 +151,7 @@ export default function AdminNotificationsPage() {
                                     <div className="flex gap-4">
                                         <div className="h-16 w-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden relative">
                                             {preset.image ? (
-                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
+                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
                                                 <Image 
                                                     src={optimizeImageUrl(preset.image)} 
                                                     alt="img" 
@@ -280,14 +281,14 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
             )}
 
             <div className="space-y-2">
-    <Label>Image</Label>
-    <ImageUpload 
-        value={formData.image ? [formData.image] : []}
-        onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
-        maxFiles={1}
-        folder="notifications"  // ★★★ এই লাইনটি যোগ করুন (যাতে 'notifications' ফোল্ডারে সেভ হয়)
-    />
-</div>
+                <Label>Image</Label>
+                <ImageUpload 
+                    value={formData.image ? [formData.image] : []}
+                    onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
+                    maxFiles={1}
+                    folder="notifications" 
+                />
+            </div>
             <div className="space-y-2">
                 <Label>Link (e.g. /menus)</Label>
                 <Input value={formData.link} onChange={(e) => setFormData({...formData, link: e.target.value})} />

@@ -110,7 +110,7 @@ export default function AdminProductsPage() {
   };
 
   const handleSubmit = async () => {
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     const method = editingProduct ? 'PUT' : 'POST';
     const url = editingProduct ? `/api/admin/products/${editingProduct.id}` : '/api/admin/products';
 
@@ -125,9 +125,10 @@ export default function AdminProductsPage() {
     };
 
     try {
+      // ★★★ Fix: Remove Authorization Header
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       
@@ -146,11 +147,11 @@ export default function AdminProductsPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+        // ★★★ Fix: Remove Authorization Header
         const res = await fetch(`/api/admin/products/${deleteId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Product deleted');
@@ -246,7 +247,7 @@ export default function AdminProductsPage() {
                     </DropdownMenu>
                  </div>
 
-                 {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
+                 {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
                  <Image 
                     src={optimizeImageUrl(product.images[0]?.url || PLACEHOLDER_IMAGE_URL)} 
                     alt={product.name} 

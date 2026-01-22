@@ -11,10 +11,8 @@ import { formatPrice } from '@/lib/utils';
 import { Loader2, Package, Calendar, MapPin, ChevronRight, Clock, Utensils, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import Image from 'next/image'; // ✅ নতুন ইমপোর্ট
-import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants'; // ✅ নতুন ইমপোর্ট
-
-// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import Image from 'next/image';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 type Order = {
@@ -43,21 +41,16 @@ export default function AccountOrdersPage() {
 
   useEffect(() => {
     const fetchOrders = async () => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            setIsLoading(false);
-            return;
-        }
-
+        // ★ ফিক্স: localStorage টোকেন চেক বাদ দেওয়া হয়েছে
         try {
-            const res = await fetch('/api/user/orders', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            // ★ ফিক্স: কুকি অটোমেটিক যাবে তাই হেডার বাদ
+            const res = await fetch('/api/user/orders');
             const data = await res.json();
             
             if (data.success) {
                 setOrders(data.orders);
             } else {
+                // যদি লগইন না থাকে বা এরর হয়
                 console.error("Failed:", data.error);
             }
         } catch (e) {
@@ -193,13 +186,11 @@ export default function AccountOrdersPage() {
                             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Items Ordered</h4>
                             <div className="space-y-3">
                                 {Array.isArray(selectedOrder.Items) && selectedOrder.Items.map((item: any, idx: number) => {
-                                    // ✅ ইমেজের URL বের করার লজিক
                                     const rawUrl = item.image?.url || PLACEHOLDER_IMAGE_URL;
 
                                     return (
                                         <div key={idx} className="flex justify-between items-center pb-3 border-b border-dashed last:border-0 last:pb-0">
                                             <div className="flex gap-3 items-center">
-                                                {/* ✅ নতুন: অপটিমাইজড ইমেজ থাম্বনেইল */}
                                                 <div className="relative h-10 w-10 rounded-md overflow-hidden bg-gray-100 border shrink-0">
                                                     <Image 
                                                         src={optimizeImageUrl(rawUrl)} 

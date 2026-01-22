@@ -58,15 +58,14 @@ export default function SpecialDatesPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
     try {
+      // ★★★ Fix: Remove Token Logic
       const resEvents = await fetch('/api/admin/special-dates');
       const dataEvents = await resEvents.json();
       if (dataEvents.success) setEvents(dataEvents.events);
 
-      const resCustomers = await fetch('/api/admin/customers-with-dates', {
-          headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // ★★★ Fix: Remove Header
+      const resCustomers = await fetch('/api/admin/customers-with-dates');
       const dataCustomers = await resCustomers.json();
       if (dataCustomers.success) setCustomerEvents(dataCustomers.events);
 
@@ -210,7 +209,7 @@ export default function SpecialDatesPage() {
         return;
     }
     setIsSaving(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
 
     try {
         let finalImageUrl = manualImageUrl; 
@@ -227,11 +226,11 @@ export default function SpecialDatesPage() {
             const expiryDate = expiryDateObj.toISOString().split('T')[0];
 
             try {
+                // ★★★ Fix: Remove Authorization Header
                 const couponRes = await fetch('/api/admin/coupons', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json', 
-                        'Authorization': `Bearer ${token}` 
                     },
                     body: JSON.stringify({
                         code: couponCode,
@@ -259,9 +258,10 @@ export default function SpecialDatesPage() {
             }
         }
 
+        // ★★★ Fix: Remove Authorization Header
         const res = await fetch('/api/admin/special-dates', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, date, type, imageUrl: finalImageUrl }),
         });
 
@@ -282,11 +282,11 @@ export default function SpecialDatesPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+        // ★★★ Fix: Remove Headers
         await fetch(`/api/admin/special-dates?id=${deleteId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         toast.success('Event deleted');
         fetchData();
@@ -374,7 +374,7 @@ export default function SpecialDatesPage() {
                                     <div key={event.id} className={`flex items-center gap-4 p-4 rounded-xl border bg-card hover:shadow-sm transition-all ${past ? 'opacity-60' : ''}`}>
                                         <div className="h-20 w-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted relative border">
                                             {event.imageUrl ? (
-                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
+                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
                                                 <Image 
                                                     src={optimizeImageUrl(event.imageUrl)} 
                                                     alt={event.title} 

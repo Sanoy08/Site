@@ -88,11 +88,12 @@ export default function AdminOffersPage() {
         return;
     }
 
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+      // ★★★ Fix: Remove Authorization Header
       const res = await fetch('/api/admin/offers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       
@@ -111,11 +112,11 @@ export default function AdminOffersPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+        // ★★★ Fix: Remove Authorization Header
         const res = await fetch(`/api/admin/offers/${deleteId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Offer deleted');
@@ -150,14 +151,13 @@ export default function AdminOffersPage() {
         {offers.map((offer) => (
             <Card key={offer.id} className="overflow-hidden border-0 shadow-md group hover:shadow-xl transition-all">
                 <div className="relative h-64 w-full bg-muted">
-                    {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
+                    {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
                     <Image 
                         src={optimizeImageUrl(offer.imageUrl || PLACEHOLDER_IMAGE_URL)} 
                         alt={offer.title} 
                         fill 
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover transition-transform duration-500 group-hover:scale-105" 
-                        // unoptimized={true} // প্রক্সি ব্যবহারের কারণে এটি তুলে দেওয়া হলো
                     />
                     <div className="absolute top-3 right-3 bg-background/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
                         {offer.active ? <span className="text-green-600">Active</span> : <span className="text-red-500">Inactive</span>}

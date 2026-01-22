@@ -291,7 +291,6 @@ export default function AccountPage() {
     if (isSecurityOpen) {
       registerBackHandler(() => setIsSecurityOpen(false));
     } else {
-      // যদি Edit Profile খোলা না থাকে তবেই নাল করো (সেফটির জন্য)
       if (!isEditProfileOpen) {
         registerBackHandler(null);
       }
@@ -299,17 +298,14 @@ export default function AccountPage() {
     return () => registerBackHandler(null);
   }, [isSecurityOpen, isEditProfileOpen]);
 
+  // ★★★ NEW: Fetch Data with Cookie Auth (No localStorage) ★★★
   useEffect(() => {
     const fetchData = async () => {
-        const token = localStorage.getItem('token');
-        if (!token) return;
         try {
-            const resAuth = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (resAuth.ok) {
-                const data = await resAuth.json();
-                if (data.success) login(data.user, token);
-            }
-            const resWallet = await fetch('/api/wallet', { headers: { 'Authorization': `Bearer ${token}` } });
+            // Note: useAuth already fetches '/api/auth/me' on mount, so we don't need to do it here again.
+            // We just fetch the wallet balance.
+            
+            const resWallet = await fetch('/api/wallet'); // No headers needed
             if (resWallet.ok) {
                 const walletData = await resWallet.json();
                 if (walletData.success) setWalletBalance(walletData.balance);
@@ -333,12 +329,18 @@ export default function AccountPage() {
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
-    const token = localStorage.getItem('token');
     try {
-        const res = await fetch('/api/auth/update-profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
+        // ★★★ Fix: Remove Token & Headers
+        const res = await fetch('/api/auth/update-profile', { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(data) 
+        });
         const resData = await res.json();
         if (!res.ok) throw new Error(resData.error);
-        login(resData.user, token || '');
+        
+        login(resData.user); // Update local state
+        
         toast.success("Profile Updated");
         setIsEditProfileOpen(false);
     } catch (e: any) { toast.error(e.message); }
@@ -346,11 +348,16 @@ export default function AccountPage() {
 
   const onPasswordSubmit = async (data: PasswordFormValues) => {
     if (!user) return;
-    const token = localStorage.getItem('token');
     try {
-        const res = await fetch('/api/auth/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
+        // ★★★ Fix: Remove Token & Headers
+        const res = await fetch('/api/auth/change-password', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(data) 
+        });
         const resData = await res.json();
         if (!res.ok) throw new Error(resData.error);
+        
         toast.success("Password Changed");
         passwordForm.reset();
         setIsSecurityOpen(false);

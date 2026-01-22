@@ -1,3 +1,5 @@
+// src/app/(shop)/account/addresses/page.tsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -35,13 +37,9 @@ export default function AccountAddressesPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     const fetchAddresses = async () => {
-        const token = localStorage.getItem('token');
-        if(!token) return;
-
+        // ★ ফিক্স: localStorage টোকেন চেক বাদ দেওয়া হয়েছে
         try {
-            const res = await fetch('/api/user/addresses', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch('/api/user/addresses'); // ★ ফিক্স: হেডার রিমুভ করা হয়েছে
             const data = await res.json();
             if (data.success) {
                 setAddresses(data.addresses);
@@ -79,7 +77,7 @@ export default function AccountAddressesPage() {
         }
 
         setIsSaving(true);
-        const token = localStorage.getItem('token');
+        // ★ ফিক্স: localStorage টোকেন গেট বাদ দেওয়া হয়েছে
 
         try {
             const method = editingId ? 'PUT' : 'POST';
@@ -89,7 +87,7 @@ export default function AccountAddressesPage() {
                 method: method,
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে
                 },
                 body: JSON.stringify(body)
             });
@@ -99,7 +97,8 @@ export default function AccountAddressesPage() {
                 setIsDialogOpen(false);
                 fetchAddresses();
             } else {
-                toast.error("Failed to save address");
+                const data = await res.json();
+                toast.error(data.error || "Failed to save address");
             }
         } catch (error) {
             toast.error("Error saving address");
@@ -111,12 +110,12 @@ export default function AccountAddressesPage() {
     const confirmDelete = async () => {
         if (!deleteId) return;
         setIsDeleting(true);
-        const token = localStorage.getItem('token');
+        // ★ ফিক্স: localStorage টোকেন গেট বাদ দেওয়া হয়েছে
 
         try {
             const res = await fetch(`/api/user/addresses?id=${deleteId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে
             });
             if (res.ok) {
                 toast.success("Address deleted");
@@ -171,7 +170,6 @@ export default function AccountAddressesPage() {
                             {addresses.map(addr => (
                                 <div 
                                     key={addr.id} 
-                                    // ★★★ Card Click Handler added here ★★★
                                     onClick={() => handleOpenDialog(addr)}
                                     className="group relative bg-card border rounded-md p-4 shadow-sm hover:shadow-md transition-all hover:border-primary/30 cursor-pointer active:scale-[0.99] active:bg-muted/30"
                                 >
@@ -202,7 +200,6 @@ export default function AccountAddressesPage() {
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    // ★★★ Stop Propagation (যাতে এডিট ওপেন না হয়) ★★★
                                                     onClick={(e) => e.stopPropagation()} 
                                                     className="h-8 w-8 -mr-2 hover:bg-muted rounded-md"
                                                 >
@@ -210,13 +207,12 @@ export default function AccountAddressesPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                {/* Edit অপশনটি এখানেও রাখা হলো, যদিও কার্ড ক্লিকে কাজ হয় */}
                                                 <DropdownMenuItem onClick={() => handleOpenDialog(addr)}>
                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem 
                                                     onClick={(e) => {
-                                                        e.stopPropagation(); // স্টপ প্রপাগেশন
+                                                        e.stopPropagation(); 
                                                         setDeleteId(addr.id);
                                                     }} 
                                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"

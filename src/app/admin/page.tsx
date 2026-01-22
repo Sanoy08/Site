@@ -35,13 +35,10 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
+      // ★★★ Fix: Remove Token Check
       try {
-        const res = await fetch('/api/admin/stats', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        // ★★★ Fix: Remove Header
+        const res = await fetch('/api/admin/stats');
         const data = await res.json();
         
         if (data.success) {

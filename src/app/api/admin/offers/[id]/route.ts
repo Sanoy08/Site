@@ -3,35 +3,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'offers';
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
-}
-
-// ★★★ ফিক্স: params এখন একটি Promise, তাই টাইপ এবং await ব্যবহার করা হয়েছে ★★★
+// ★★★ ফিক্স: params এখন একটি Promise, তাই টাইপ এবং await ব্যবহার করা হয়েছে ★★★
 export async function DELETE(
     request: NextRequest, 
     props: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ১. পারমিশন চেক
-    if (!await isAdmin(request)) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // ২. params await করা (Next.js 15 Fix)
@@ -40,7 +26,7 @@ export async function DELETE(
 
     // ৩. আইডি ভ্যালিড কি না চেক করা
     if (!ObjectId.isValid(id)) {
-        return NextResponse.json({ success: false, error: 'Invalid ID format' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Invalid ID format' }, { status: 400 });
     }
 
     const client = await clientPromise;
@@ -50,10 +36,10 @@ export async function DELETE(
     const result = await db.collection(COLLECTION_NAME).deleteOne({ _id: new ObjectId(id) });
 
     if (result.deletedCount === 0) {
-        return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 });
     }
 
-    // ৫. ক্যাশ ক্লিয়ার (যাতে হোমপেজে অফার লিস্ট আপডেট হয়)
+    // ৫. ক্যাশ ক্লিয়ার (যাতে হোমপেজে অফার লিস্ট আপডেট হয়)
     revalidatePath('/');
 
     return NextResponse.json({ success: true, message: 'Offer deleted successfully' });

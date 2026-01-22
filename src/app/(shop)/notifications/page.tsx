@@ -116,13 +116,10 @@ export default function NotificationsPage() {
 
   // 3. Fetch Data Logic
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
+    // ★★★ Fix: Remove Token Check
     try {
-        const res = await fetch('/api/notifications/history', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        // ★★★ Fix: Remove Header (Cookie auto-sent)
+        const res = await fetch('/api/notifications/history');
         const data = await res.json();
         if (data.success) setNotifications(data.notifications);
     } catch (error) {

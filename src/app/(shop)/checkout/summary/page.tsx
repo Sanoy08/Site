@@ -15,8 +15,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { Switch } from '@/components/ui/switch';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
-
-// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export default function OrderSummaryPage() {
@@ -34,10 +32,9 @@ export default function OrderSummaryPage() {
   // 1. Fetch Wallet Balance
   useEffect(() => {
       const fetchWallet = async () => {
-          const token = localStorage.getItem('token');
-          if(!token) return;
+          // ★★★ Fix: Remove Token & Header
           try {
-              const res = await fetch('/api/wallet', { headers: { 'Authorization': `Bearer ${token}` } });
+              const res = await fetch('/api/wallet');
               const data = await res.json();
               if(data.success) setWalletBalance(data.balance);
           } catch(e) {}
@@ -235,18 +232,16 @@ export default function OrderSummaryPage() {
                         
                         <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {state.items.map((item) => {
-                                // ✅ Raw URL বের করা
                                 const rawUrl = (item.image && item.image.url) ? item.image.url : PLACEHOLDER_IMAGE_URL;
                                 
                                 return (
                                     <div key={item.id} className="flex gap-4 items-center group">
                                         <div className="relative h-16 w-16 rounded-xl overflow-hidden border bg-gray-50 flex-shrink-0">
-                                            {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
                                             <Image 
                                                 src={optimizeImageUrl(rawUrl)} 
                                                 alt={item.name} 
                                                 fill 
-                                                sizes="64px" // থাম্বনেইলের জন্য ছোট সাইজ
+                                                sizes="64px"
                                                 className="object-cover" 
                                             />
                                         </div>
@@ -289,18 +284,18 @@ export default function OrderSummaryPage() {
                                 {/* Savings */}
                                 {(couponDiscount > 0 || (useCoins && coinDiscountAmount > 0)) && (
                                     <div className="bg-green-50 rounded-lg p-3 space-y-2 border border-green-100">
-                                        {couponDiscount > 0 && (
-                                            <div className="flex justify-between text-green-700 text-sm font-medium">
-                                                <span className="flex items-center gap-1.5"><Ticket className="h-3.5 w-3.5"/> Coupon Savings</span>
-                                                <span>- {formatPrice(couponDiscount)}</span>
-                                            </div>
-                                        )}
-                                        {useCoins && coinDiscountAmount > 0 && (
-                                            <div className="flex justify-between text-amber-700 text-sm font-medium">
-                                                <span className="flex items-center gap-1.5"><Coins className="h-3.5 w-3.5"/> Coin Savings</span>
-                                                <span>- {formatPrice(coinDiscountAmount)}</span>
-                                            </div>
-                                        )}
+                                            {couponDiscount > 0 && (
+                                                <div className="flex justify-between text-green-700 text-sm font-medium">
+                                                    <span className="flex items-center gap-1.5"><Ticket className="h-3.5 w-3.5"/> Coupon Savings</span>
+                                                    <span>- {formatPrice(couponDiscount)}</span>
+                                                </div>
+                                            )}
+                                            {useCoins && coinDiscountAmount > 0 && (
+                                                <div className="flex justify-between text-amber-700 text-sm font-medium">
+                                                    <span className="flex items-center gap-1.5"><Coins className="h-3.5 w-3.5"/> Coin Savings</span>
+                                                    <span>- {formatPrice(coinDiscountAmount)}</span>
+                                                </div>
+                                            )}
                                     </div>
                                 )}
 

@@ -16,7 +16,7 @@ import { Loader2, Plus, Trash2, Pencil, TicketPercent, Search, Calendar, Infinit
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
 import { FloatingInput } from '@/components/ui/floating-input';
-import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog'; // ★ Import
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
 
 type Coupon = {
   id: string;
@@ -104,7 +104,7 @@ export default function AdminCouponsPage() {
   };
 
   const handleSubmit = async () => {
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     const method = editingCoupon ? 'PUT' : 'POST';
     const url = editingCoupon ? `/api/admin/coupons/${editingCoupon.id}` : '/api/admin/coupons';
     
@@ -114,9 +114,10 @@ export default function AdminCouponsPage() {
     };
 
     try {
+      // ★★★ Fix: Remove Authorization Header
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       
@@ -136,11 +137,11 @@ export default function AdminCouponsPage() {
   const confirmDelete = async () => {
     if(!deleteId) return;
     setIsDeleting(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+        // ★★★ Fix: Remove Headers
         const res = await fetch(`/api/admin/coupons/${deleteId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Coupon deleted');
@@ -348,7 +349,6 @@ export default function AdminCouponsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ★★★ Using Custom Component ★★★ */}
       <DeleteConfirmationDialog 
         open={!!deleteId} 
         onOpenChange={() => setDeleteId(null)}

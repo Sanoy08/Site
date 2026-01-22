@@ -26,12 +26,11 @@ export default function AdminReportsPage() {
   const [endDate, setEndDate] = useState(today);
 
   const fetchReport = async () => {
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     setIsLoading(true);
     try {
-        const res = await fetch(`/api/admin/reports?start=${startDate}&end=${endDate}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        // ★★★ Fix: Remove Authorization Header
+        const res = await fetch(`/api/admin/reports?start=${startDate}&end=${endDate}`);
         const data = await res.json();
         if (data.success) {
             setReportData(data.data);
@@ -56,7 +55,6 @@ export default function AdminReportsPage() {
         return;
     }
 
-    // ★★★ FIX: ফাইলের নামের জন্য তারিখ ফরম্যাট (DD-MM-YYYY) ★★★
     const formatForFileName = (isoDate: string) => {
         const [year, month, day] = isoDate.split('-');
         return `${day}-${month}-${year}`;
@@ -74,7 +72,6 @@ export default function AdminReportsPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    // ফাইলের নাম এখন হবে: sales_report_25-12-2024_to_31-12-2024.csv
     link.setAttribute("download", `sales_report_${formatForFileName(startDate)}_to_${formatForFileName(endDate)}.csv`);
     document.body.appendChild(link);
     link.click();
@@ -84,7 +81,6 @@ export default function AdminReportsPage() {
   const totalRevenue = reportData.reduce((sum, item) => sum + item.sales, 0);
   const totalOrders = reportData.reduce((sum, item) => sum + item.orders, 0);
 
-  // চার্টের জন্য তারিখ ফরম্যাটার
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });

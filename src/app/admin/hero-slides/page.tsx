@@ -54,11 +54,12 @@ export default function AdminHeroSlidesPage() {
   useEffect(() => { fetchSlides(); }, []);
 
   const handleSubmit = async () => {
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+      // ★★★ Fix: Remove Authorization Header
       const res = await fetch('/api/admin/hero-slides', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       
@@ -78,11 +79,11 @@ export default function AdminHeroSlidesPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+        // ★★★ Fix: Remove Authorization Header
         const res = await fetch(`/api/admin/hero-slides/${deleteId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Slide deleted');
@@ -135,7 +136,7 @@ export default function AdminHeroSlidesPage() {
                       <TableCell className="pl-6 py-4">
                         <div className="relative h-20 w-36 rounded-lg overflow-hidden border shadow-sm bg-muted">
                              {slide.imageUrl ? (
-                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
+                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
                                 <Image 
                                     src={optimizeImageUrl(slide.imageUrl)} 
                                     alt="Slide" 

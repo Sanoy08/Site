@@ -10,9 +10,10 @@ import {
   Calendar, ImageIcon, Gift, BarChart3, Send, Settings, Menu, Moon, Sun, LogOut, CalendarDays, Loader2
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from '@/hooks/use-auth'; // Updated hook
+import { useAuth } from '@/hooks/use-auth'; 
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Images } from 'lucide-react';
 
 const adminNavLinks = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,30 +31,27 @@ const adminNavLinks = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
-import { Images } from 'lucide-react';
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, logout } = useAuth(); // useAuth handles cookie check
+  const { user, isLoading, logout } = useAuth(); 
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // ১. Security Check
+  // ১. Security Check & Redirect Logic
   useEffect(() => {
-    if (isLoading) return; // Wait for /me call
+    if (isLoading) return; // Wait until loading finishes
 
     if (!user) {
-        // Not logged in
         if (pathname !== '/login') router.replace('/login');
     } else if (user.role !== 'admin') {
-        // Logged in but not admin
         toast.error("Unauthorized: Admin Access Required");
-        window.location.href = 'https://www.bumbaskitchen.app'; // Kick to main site
+        // Force redirect to main site if not admin
+        window.location.href = 'https://www.bumbaskitchen.app'; 
     }
   }, [user, isLoading, pathname, router]);
 
-  // ২. Dark Mode
+  // ২. Dark Mode Logic
   useEffect(() => {
     const savedTheme = localStorage.getItem('adminTheme');
     if (savedTheme === 'dark') {
@@ -74,7 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
-  // Loading State
+  // Loading State UI
   if (isLoading) {
     return (
         <div className="h-screen w-full flex flex-col gap-4 items-center justify-center bg-muted/20">
@@ -84,26 +82,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // If on login page, render children without layout
+  // Allow login page to render without layout wrapper
   if (pathname === '/login') return <>{children}</>;
 
-  // If not authorized yet (and not loading), don't render anything (useEffect will redirect)
+  // Block rendering if unauthorized (double check)
   if (!user || user.role !== 'admin') return null;
 
   const currentTitle = adminNavLinks.find(link => link.href === pathname)?.label || 'Admin Panel';
 
   return (
     <div className={`min-h-screen flex bg-[#f0f2f5] dark:bg-[#121212] transition-colors duration-300 font-sans`}>
-      {/* Sidebar (Same as before) */}
+      {/* Sidebar */}
       <aside className={cn(
         "fixed inset-y-0 left-0 z-50 w-[260px] bg-[#2c3e50] text-[#ecf0f1] shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shadow-none flex flex-col",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        {/* ... Sidebar Content ... */}
         <div className="h-16 flex items-center justify-center gap-3 border-b border-white/10 px-4">
            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#2c3e50] font-bold">BK</div>
            <h3 className="text-xl font-semibold font-serif tracking-wide">Bumba's Kitchen</h3>
         </div>
+        
         <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3 custom-scrollbar">
           {adminNavLinks.map((link) => {
             const Icon = link.icon;
@@ -126,6 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
           })}
         </nav>
+        
         <div className="p-4 border-t border-white/10 bg-[#243342]">
             <button onClick={logout} className="flex items-center justify-center gap-2 w-full py-2.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white transition-all duration-300">
                 <LogOut className="w-4 h-4" />
@@ -134,7 +133,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-16 bg-white dark:bg-[#1e1e1e] shadow-sm flex items-center justify-between px-6 sticky top-0 z-30 transition-colors duration-300">
             <div className="flex items-center gap-4">
@@ -143,6 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </button>
                 <h1 className="text-xl font-bold text-[#2c3e50] dark:text-[#e5e7eb] truncate">{currentTitle}</h1>
             </div>
+            
             <div className="flex items-center gap-4 sm:gap-6">
                  <div onClick={toggleTheme} className="w-14 h-7 bg-[#ccc] dark:bg-[#4A5568] rounded-full relative cursor-pointer flex items-center justify-between px-1.5 transition-colors duration-300">
                     <Moon className="w-3.5 h-3.5 text-[#f1c40f] z-10" />
@@ -158,6 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
             </div>
         </header>
+        
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
             <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {children}

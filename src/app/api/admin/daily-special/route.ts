@@ -2,30 +2,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher';
 import { sendNotificationToAllUsers } from '@/lib/notification';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
-}
 
 export async function GET(request: NextRequest) {
   try {
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক (Optional, but good practice for admin routes)
+    if (!await verifyAdmin(request)) {
+       return NextResponse.json({ success: false, error: 'Unauthorized Access' }, { status: 401 });
+    }
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const specialItem = await db.collection(COLLECTION_NAME).findOne({ isDailySpecial: true });
@@ -53,7 +44,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!await isAdmin(request)) {
+    // ২. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -101,7 +93,7 @@ export async function POST(request: NextRequest) {
             client,
             "Today's Special! 🍛",
             `New ${name} is now available. Order before it runs out!`,
-            imageUrl || "", // ★ FIX: Image URL যোগ করা হয়েছে (খালি থাকলে ব্ল্যাঙ্ক স্ট্রিং)
+            imageUrl || "", 
             '/menus/special-veg-thalii' // Link
         ).catch(console.error);
     }

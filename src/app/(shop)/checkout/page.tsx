@@ -51,7 +51,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 // --- Zod Schema ---
@@ -295,12 +294,11 @@ export default function CheckoutPage() {
     toast.success("Address updated!");
   };
 
+  // ★★★ Fix: Remove Token & Header
   useEffect(() => {
       const fetchWallet = async () => {
-          const token = localStorage.getItem('token');
-          if(!token) return;
           try {
-              const res = await fetch('/api/wallet', { headers: { 'Authorization': `Bearer ${token}` } });
+              const res = await fetch('/api/wallet');
               const data = await res.json();
               if(data.success) setWalletBalance(data.balance);
           } catch(e) {}
@@ -349,14 +347,12 @@ export default function CheckoutPage() {
         if (!user) return;
         let savedAddress = '';
         try {
-            const token = localStorage.getItem('token');
-            if (token) {
-                const res = await fetch('/api/user/addresses', { headers: { 'Authorization': `Bearer ${token}` } });
-                const data = await res.json();
-                if (data.success && Array.isArray(data.addresses)) {
-                    const defaultAddr = data.addresses.find((a: any) => a.isDefault);
-                    savedAddress = defaultAddr ? defaultAddr.address : (data.addresses[0]?.address || '');
-                }
+            // ★★★ Fix: Remove Token & Header
+            const res = await fetch('/api/user/addresses');
+            const data = await res.json();
+            if (data.success && Array.isArray(data.addresses)) {
+                const defaultAddr = data.addresses.find((a: any) => a.isDefault);
+                savedAddress = defaultAddr ? defaultAddr.address : (data.addresses[0]?.address || '');
             }
         } catch (error) {}
         
@@ -412,7 +408,7 @@ export default function CheckoutPage() {
     }
 
     setIsSubmitting(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
         const orderPayload = {
             ...values,
@@ -426,11 +422,11 @@ export default function CheckoutPage() {
             deliveryAddress: orderType === 'delivery' ? (values.deliveryAddress || values.address) : undefined,
         };
 
+        // ★★★ Fix: Remove Header
         const res = await fetch('/api/orders', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': token ? `Bearer ${token}` : ''
             },
             body: JSON.stringify(orderPayload),
         });
@@ -440,8 +436,8 @@ export default function CheckoutPage() {
 
         setIsSuccess(true);
         toast.warning('Almost there! ⏳', {
-    description: 'Please verify your order on WhatsApp now.'
-});
+            description: 'Please verify your order on WhatsApp now.'
+        });
         clearCart();
         
         const orderNum = data.orderId || '0000'; 
@@ -711,12 +707,10 @@ export default function CheckoutPage() {
                 
                 <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                     {state.items.map((item) => {
-                        // ✅ Raw URL বের করা
                         const rawUrl = (item.image && item.image.url) ? item.image.url : PLACEHOLDER_IMAGE_URL;
                         return (
                             <div key={item.id} className="flex gap-4 items-center">
                                 <div className="relative h-14 w-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
-                                    {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
                                     <Image 
                                       src={optimizeImageUrl(rawUrl)} 
                                       alt={item.name} 

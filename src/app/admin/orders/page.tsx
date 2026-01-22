@@ -57,14 +57,10 @@ function AdminOrdersContent() {
   const { user } = useAuth();
 
   const fetchOrders = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/orders', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // ★★★ Fix: Remove Header
+      const res = await fetch('/api/admin/orders');
       const data = await res.json();
       
       if (data.success) {
@@ -125,7 +121,7 @@ function AdminOrdersContent() {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     
     setOrders(prev => prev.map(o => o._id === orderId ? { ...o, Status: newStatus } : o));
     if (selectedOrder && selectedOrder._id === orderId) {
@@ -133,11 +129,11 @@ function AdminOrdersContent() {
     }
 
     try {
+        // ★★★ Fix: Remove Header
         const res = await fetch('/api/admin/orders/status', {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
             },
             body: JSON.stringify({ orderId, status: newStatus })
         });

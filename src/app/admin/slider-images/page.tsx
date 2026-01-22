@@ -52,11 +52,12 @@ export default function AdminSliderImagesPage() {
   useEffect(() => { fetchSlides(); }, []);
 
   const handleSubmit = async () => {
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+      // ★★★ Fix: Remove Authorization Header
       const res = await fetch('/api/admin/slider-images', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       
@@ -76,11 +77,11 @@ export default function AdminSliderImagesPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const token = localStorage.getItem('token');
+    // ★★★ Fix: Remove Token Logic
     try {
+        // ★★★ Fix: Remove Authorization Header
         const res = await fetch(`/api/admin/slider-images/${deleteId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             toast.success('Image deleted');

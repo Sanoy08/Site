@@ -31,13 +31,11 @@ export default function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUsers = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    // ★★★ Fix: Remove Token Logic
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // ★★★ Fix: Remove Authorization Header
+      const res = await fetch('/api/admin/users');
       const data = await res.json();
       if (data.success) {
         setUsers(data.users);

@@ -9,7 +9,11 @@ import { sendNotificationToAllUsers } from '@/lib/notification'; // পুশ �
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
+}
 
 async function isAdmin(request: NextRequest) {
   const authHeader = request.headers.get('authorization');

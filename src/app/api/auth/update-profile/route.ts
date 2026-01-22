@@ -7,7 +7,11 @@ import jwt from 'jsonwebtoken';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
+}
 
 export async function PUT(request: NextRequest) {
   try {

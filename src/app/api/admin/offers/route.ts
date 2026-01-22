@@ -7,7 +7,11 @@ import { revalidatePath } from 'next/cache'; // ★ ইমপোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'offers';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
+}
 
 async function isAdmin(request: NextRequest) {
   const authHeader = request.headers.get('authorization');

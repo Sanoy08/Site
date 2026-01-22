@@ -10,7 +10,11 @@ const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'coinTransactions';
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
+}
 
 const COIN_VALUE = 1; 
 

@@ -6,7 +6,11 @@ import { ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import { sendNotificationToAdmins } from '@/lib/notification';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
+}
 
 // GET: Check Current Request Status
 export async function GET(req: NextRequest) {

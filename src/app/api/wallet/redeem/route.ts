@@ -3,18 +3,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
 import { sendNotificationToUser } from '@/lib/notification';
+import { verifyUser } from '@/lib/auth-utils'; // ★ ফিক্স: কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'coinTransactions';
 const COUPONS_COLLECTION = 'coupons';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
 
 const COIN_VALUE_MULTIPLIER = 1; 
 
@@ -31,20 +26,16 @@ const toBoldUnicode = (text: string) => {
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // 1. ★ ফিক্স: কুকি থেকে ইউজার ভেরিফাই করা (ম্যানুয়াল হেডার চেক বাদ)
+    const decoded = await verifyUser(request);
+
+    if (!decoded) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    let userId;
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      userId = decoded._id;
-    } catch (e) {
-      return NextResponse.json({ success: false, error: 'Invalid Token' }, { status: 401 });
-    }
+    const userId = decoded._id;
 
+    // 2. ইনপুট ভ্যালিডেশন
     const { coinsToRedeem } = await request.json();
     const redeemAmount = parseInt(coinsToRedeem);
 
@@ -59,6 +50,7 @@ export async function POST(request: NextRequest) {
     try {
         await session.withTransaction(async () => {
             
+            // ইউজারের ব্যালেন্স চেক
             const user = await db.collection(USERS_COLLECTION).findOne(
                 { _id: new ObjectId(userId) },
                 { session }
@@ -68,6 +60,7 @@ export async function POST(request: NextRequest) {
                 throw new Error('Insufficient coin balance.');
             }
 
+            // ব্যালেন্স কমানো
             await db.collection(USERS_COLLECTION).updateOne(
                 { _id: new ObjectId(userId) },
                 { $inc: { "wallet.currentBalance": -redeemAmount } },
@@ -77,21 +70,23 @@ export async function POST(request: NextRequest) {
             const couponCode = `REDEEM-${Date.now().toString().slice(-6)}`;
             const discountValue = redeemAmount * COIN_VALUE_MULTIPLIER;
 
-            // ★ বোল্ড কোড তৈরি করা
+            // ★ বোল্ড কোড তৈরি
             const boldCode = toBoldUnicode(couponCode);
 
+            // কুপন তৈরি
             await db.collection(COUPONS_COLLECTION).insertOne({
                 code: couponCode,
                 discountType: 'flat',
                 value: discountValue,
                 minOrder: 0,
-                expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
                 isActive: true,
                 isOneTime: true,
                 userId: new ObjectId(userId),
                 createdAt: new Date()
             }, { session });
 
+            // ট্রানজেকশন লগ
             await db.collection(TRANSACTIONS_COLLECTION).insertOne({
                 userId: new ObjectId(userId),
                 type: 'redeem',
@@ -100,13 +95,13 @@ export async function POST(request: NextRequest) {
                 createdAt: new Date()
             }, { session });
 
-            // ★ নোটিফিকেশনে boldCode ব্যবহার করা হয়েছে
+            // ★ নোটিফিকেশন পাঠানো
             await sendNotificationToUser(
                 client,
                 userId,
                 "Coins Redeemed! 🎟️",
                 `You successfully redeemed ${redeemAmount} coins for a ₹${discountValue} coupon. Code: ${boldCode}`,
-                "", // Image URL (Empty)
+                "", // Image URL
                 "/account/coupons" // Link
             );
         });

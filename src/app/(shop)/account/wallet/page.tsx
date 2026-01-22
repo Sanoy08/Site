@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// ★ নতুন আইকন TimerOff যোগ করা হয়েছে
 import { Loader2, TrendingUp, History, Gift, Coins, ArrowDownLeft, ArrowUpRight, RotateCcw, TimerOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
@@ -18,7 +17,6 @@ import { formatPrice } from '@/lib/utils';
 
 type Transaction = {
     id: string;
-    // ★ 'expire' টাইপ যোগ করা হয়েছে
     type: 'earn' | 'redeem' | 'refund' | 'expire'; 
     amount: number;
     description: string;
@@ -38,13 +36,9 @@ export default function WalletPage() {
   const [isRedeeming, setIsRedeeming] = useState(false);
 
   const fetchWalletData = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
       try {
-          const res = await fetch('/api/wallet', {
-              headers: { 'Authorization': `Bearer ${token}` }
-          });
+          // ★ ফিক্স: localStorage চেক এবং Authorization হেডার বাদ দেওয়া হয়েছে
+          const res = await fetch('/api/wallet');
           const data = await res.json();
           
           if (data.success) {
@@ -52,11 +46,14 @@ export default function WalletPage() {
               setTier(data.tier);
               setTotalSpent(data.totalSpent);
               setTransactions(data.transactions);
+          } else {
+             // যদি অথেন্টিকেশন ফেইল করে
+             console.error(data.error);
           }
       } catch (e) {
-          console.error(e);
+          console.error("Wallet fetch error:", e);
       } finally {
-          setIsLoading(false);
+          setIsLoading(false); // ★ এটি এখন সবসময় কল হবে
       }
   };
 
@@ -75,14 +72,13 @@ export default function WalletPage() {
       }
 
       setIsRedeeming(true);
-      const token = localStorage.getItem('token');
 
       try {
           const res = await fetch('/api/wallet/redeem', {
               method: 'POST',
               headers: { 
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
+                  // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে (Cookie অটোমেটিক যাবে)
               },
               body: JSON.stringify({ coinsToRedeem: parseInt(redeemAmount) })
           });
@@ -188,7 +184,6 @@ export default function WalletPage() {
             ) : (
                 <div className="grid gap-3">
                     {transactions.map((txn) => {
-                        // ★ লজিক আপডেট: শুধুমাত্র earn এবং refund পজিটিভ
                         const isPositive = txn.type === 'earn' || txn.type === 'refund';
                         
                         return (
@@ -197,17 +192,15 @@ export default function WalletPage() {
                                     <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
                                         isPositive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
                                     }`}>
-                                        {/* আইকন সিলেকশন */}
                                         {txn.type === 'earn' && <ArrowDownLeft className="h-5 w-5" />}
                                         {txn.type === 'redeem' && <ArrowUpRight className="h-5 w-5" />}
                                         {txn.type === 'refund' && <RotateCcw className="h-5 w-5" />}
-                                        {txn.type === 'expire' && <TimerOff className="h-5 w-5" />} {/* এক্সপায়ার আইকন */}
+                                        {txn.type === 'expire' && <TimerOff className="h-5 w-5" />}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold text-sm text-foreground capitalize">{txn.type}</p>
                                             
-                                            {/* ব্যাজ */}
                                             {txn.type === 'refund' && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">Returned</Badge>}
                                             {txn.type === 'expire' && <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">Expired</Badge>}
                                         </div>

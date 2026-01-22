@@ -3,32 +3,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyUser } from '@/lib/auth-utils'; // ★ ফিক্স: কুকি চেক করার হেল্পার
 
 const DB_NAME = 'BumbasKitchenDB';
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'coinTransactions';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // ★ ফিক্স: কুকি থেকে ইউজার ভেরিফাই করা হচ্ছে
+    const decoded = await verifyUser(request);
+
+    if (!decoded) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    let userId;
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      userId = decoded._id;
-    } catch (e) {
-      return NextResponse.json({ success: false, error: 'Invalid Token' }, { status: 401 });
-    }
+    const userId = decoded._id;
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
@@ -47,9 +37,8 @@ export async function GET(request: NextRequest) {
         .limit(20)
         .toArray();
 
-    // ★★★ FIX: _id কে id তে ম্যাপ করা ★★★
     const formattedTransactions = transactions.map(txn => ({
-        id: txn._id.toString(), // এটি ইউনিক কি হিসেবে ব্যবহার হবে
+        id: txn._id.toString(),
         type: txn.type,
         amount: txn.amount,
         description: txn.description,
@@ -61,7 +50,7 @@ export async function GET(request: NextRequest) {
         balance: user?.wallet?.currentBalance || 0,
         tier: user?.wallet?.tier || 'Bronze',
         totalSpent: user?.totalSpent || 0,
-        transactions: formattedTransactions // ফিক্সড ডেটা পাঠানো হচ্ছে
+        transactions: formattedTransactions
     });
 
   } catch (error: any) {

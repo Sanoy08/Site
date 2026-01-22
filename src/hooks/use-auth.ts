@@ -2,12 +2,13 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase"; 
+import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { auth, googleProvider } from "@/lib/firebase"; 
+import { signInWithPopup } from "firebase/auth";
 
 export type User = {
   id: string;
@@ -17,90 +18,83 @@ export type User = {
   phone?: string;
   address?: string;
   picture?: string;
-  dob?: string;
-  anniversary?: string;
 };
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
+  // 1. Check Session on Mount (Cookies automatically sent)
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-
-    if (storedUser) {
+    const checkSession = async () => {
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse user data", e);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        
+        if (data.success && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    
-    if (storedToken) {
-        setToken(storedToken);
-    }
+    };
 
-    setIsLoading(false);
-  }, []);
+    checkSession();
+  }, []); // Run once on mount
 
-  const login = useCallback((userData: User, newToken: string) => {
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', newToken);
+  // 2. Login (Just update state, cookie is set by server)
+  const login = useCallback((userData: User) => {
     setUser(userData);
-    setToken(newToken);
+    // No localStorage logic needed!
   }, []);
 
+  // 3. Logout (Call API to clear cookie)
   const logout = useCallback(async () => {
     try {
+      // Firebase Signout (Frontend)
       if (Capacitor.isNativePlatform()) {
         await FirebaseAuthentication.signOut();
       } else {
         await auth.signOut();
       }
+
+      // Backend Cookie Clear
+      await fetch('/api/auth/logout', { method: 'POST' });
+
+      setUser(null);
+      toast.success("Logged out successfully");
+      router.push('/login');
+      router.refresh();
+      
     } catch (e) {
-      console.error("Firebase signout error", e);
+      console.error("Logout error", e);
     }
-    
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    setUser(null);
-    setToken(null);
-    router.push('/login');
-    router.refresh();
   }, [router]);
 
-  // ★ New: Unified Google Login Function (Web + Mobile)
+  // 4. Google Login Wrapper
   const googleLogin = useCallback(async () => {
     setIsLoading(true);
     try {
       let idToken = "";
 
       if (Capacitor.isNativePlatform()) {
-        // ★★★ MOBILE FIX ★★★
-        
-        // 1. Google সাইন-ইন পপ-আপ ওপেন করুন এবং নেটিভ লেয়ারে অথেন্টিকেট করুন
         await FirebaseAuthentication.signInWithGoogle();
-
-        // 2. এরপর সরাসরি Firebase থেকে কারেন্ট ইউজার-এর টোকেনটি চান।
-        // এটি সেই টোকেন রিটার্ন করবে যার 'aud' (audience) হবে আপনার Firebase Project ID.
-        // আগের কোডে 'result.credential.idToken' নিচ্ছিলেন যা ছিল Google-এর টোকেন।
         const result = await FirebaseAuthentication.getIdToken();
         idToken = result.token;
-
       } else {
-        // 2. WEB FLOW (Firebase JS SDK)
         const result = await signInWithPopup(auth, googleProvider);
         idToken = await result.user.getIdToken();
       }
 
       if (!idToken) throw new Error("Failed to retrieve Firebase ID Token");
 
-      // 3. Send Token to Backend "Bridge" API
+      // Send to backend (Backend sets the cookie)
       const response = await fetch('/api/auth/firebase-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,8 +104,7 @@ export function useAuth() {
       const data = await response.json();
 
       if (data.success) {
-        // 4. Save backend session (keeps your existing cart/orders working)
-        login(data.user, data.token);
+        login(data.user); // Update local state
         return { success: true };
       } else {
         throw new Error(data.error || "Login failed on server");
@@ -125,5 +118,5 @@ export function useAuth() {
     }
   }, [login]);
 
-  return { user, token, isLoading, login, logout, googleLogin };
+  return { user, isLoading, login, logout, googleLogin };
 }

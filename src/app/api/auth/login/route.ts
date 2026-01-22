@@ -4,118 +4,58 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { z } from 'zod'; // npm install zod (যদি না থাকে)
-import { rateLimit } from '@/lib/rate-limit'; // উপরের তৈরি করা ফাইলটি
+import { responseWithCookie } from '@/lib/auth-utils'; // New Helper
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-// এনভায়রনমেন্ট ভেরিয়েবল চেক
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-// Zod স্কিমা (ইনপুট ভ্যালিডেশনের জন্য)
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
 export async function POST(request: NextRequest) {
   try {
-    // ১. IP Address বের করা এবং Rate Limit চেক করা
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    
-    // ১ মিনিটে ৫ বারের বেশি চেষ্টা করলে ব্লক করা হবে
-    if (!rateLimit(ip, 5, 60 * 1000)) {
-      return NextResponse.json(
-        { success: false, error: 'Too many login attempts. Please try again after 1 minute.' },
-        { status: 429 }
-      );
+    const { email, password } = await request.json();
+
+    if (!email || !password) {
+      return NextResponse.json({ success: false, error: 'Required fields missing' }, { status: 400 });
     }
 
-    const body = await request.json();
-
-    // ২. Zod দিয়ে ইনপুট ভ্যালিডেশন
-    const validation = loginSchema.safeParse(body);
-
-    if (!validation.success) {
-      return NextResponse.json(
-        { success: false, error: validation.error.errors[0].message },
-        { status: 400 }
-      );
-    }
-
-    const { email, password } = validation.data;
-
-    // ৩. ডেটাবেস কানেকশন
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    const usersCollection = db.collection(COLLECTION_NAME);
+    const user = await db.collection(COLLECTION_NAME).findOne({ email: email.toLowerCase() });
 
-    // ৪. ইউজার খোঁজা (Case-insensitive)
-    const user = await usersCollection.findOne({ email: email.toLowerCase() });
-
-    // ৫. ইউজার চেক এবং ভেরিফিকেশন স্ট্যাটাস দেখা
-    if (!user) {
-      // সিকিউরিটির জন্য আমরা নির্দিষ্ট করে বলব না যে "ইমেইল ভুল", যাতে হ্যাকার ইমেইল গেস করতে না পারে
-      return NextResponse.json(
-        { success: false, error: 'Invalid email or password.' },
-        { status: 401 }
-      );
+    if (!user || !user.isVerified) {
+      return NextResponse.json({ success: false, error: 'Invalid credentials or not verified' }, { status: 401 });
     }
 
-    if (!user.isVerified) {
-      return NextResponse.json(
-        { success: false, error: 'Account not verified. Please verify your OTP first.' },
-        { status: 403 } // 403 Forbidden
-      );
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // ৬. পাসওয়ার্ড ম্যাচ করা
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordMatch) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email or password.' },
-        { status: 401 }
-      );
-    }
-
-    // ৭. JWT টোকেন জেনারেট করা
+    // Generate Token
     const token = jwt.sign(
-      { 
-        _id: user._id.toString(), 
-        email: user.email, 
-        name: user.name, 
-        role: user.role || 'customer' // রোল না থাকলে কাস্টমার ধরা হবে
-      },
-      JWT_SECRET!,
+      { _id: user._id.toString(), email: user.email, name: user.name, role: user.role || 'customer' },
+      JWT_SECRET,
       { expiresIn: '30d' }
     );
 
-    // ৮. সফল রেসপন্স পাঠানো
-    return NextResponse.json({
-      success: true,
-      message: 'Login successful!',
-      token,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone,
-        address: user.address || null, // এড্রেস না থাকলে নাল
-        wallet: user.wallet || { currentBalance: 0 }
-      }
-    }, { status: 200 });
+    const userData = {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      address: user.address,
+      wallet: user.wallet
+    };
 
-  } catch (error: any) {
-    console.error("Login API Error:", error);
-    return NextResponse.json(
-      { success: false, error: 'Internal Server Error. Please try again later.' },
-      { status: 500 }
+    // ✅ Set Cookie and Return Response
+    return responseWithCookie(
+        { success: true, message: 'Login successful!', user: userData }, 
+        token
     );
+
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
   }
 }

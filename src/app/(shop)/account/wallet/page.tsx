@@ -37,23 +37,23 @@ export default function WalletPage() {
 
   const fetchWalletData = async () => {
       try {
-          // ★ ফিক্স: localStorage চেক এবং Authorization হেডার বাদ দেওয়া হয়েছে
           const res = await fetch('/api/wallet');
           const data = await res.json();
           
-          if (data.success) {
-              setBalance(data.balance);
-              setTier(data.tier);
-              setTotalSpent(data.totalSpent);
-              setTransactions(data.transactions);
+          // ★ ফিক্স: data.wallet চেক করা হচ্ছে
+          if (data.success && data.wallet) {
+              setBalance(data.wallet.balance || 0);
+              setTier(data.wallet.tier || 'Bronze');
+              setTotalSpent(data.wallet.totalSpent || 0);
+              // ★ ফিক্স: Array নিশ্চিত করা হচ্ছে
+              setTransactions(Array.isArray(data.wallet.transactions) ? data.wallet.transactions : []);
           } else {
-             // যদি অথেন্টিকেশন ফেইল করে
-             console.error(data.error);
+             console.error("Failed to load wallet data:", data.error);
           }
       } catch (e) {
           console.error("Wallet fetch error:", e);
       } finally {
-          setIsLoading(false); // ★ এটি এখন সবসময় কল হবে
+          setIsLoading(false);
       }
   };
 
@@ -76,10 +76,7 @@ export default function WalletPage() {
       try {
           const res = await fetch('/api/wallet/redeem', {
               method: 'POST',
-              headers: { 
-                  'Content-Type': 'application/json',
-                  // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে (Cookie অটোমেটিক যাবে)
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ coinsToRedeem: parseInt(redeemAmount) })
           });
           
@@ -106,7 +103,8 @@ export default function WalletPage() {
       return { next: 'Max', target: totalSpent, current: totalSpent }; 
   };
   const tierInfo = getNextTierInfo();
-  const progress = Math.min((tierInfo.current / tierInfo.target) * 100, 100);
+  // Progress calculation protected against division by zero
+  const progress = tierInfo.target > 0 ? Math.min((tierInfo.current / tierInfo.target) * 100, 100) : 100;
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
@@ -187,7 +185,7 @@ export default function WalletPage() {
                         const isPositive = txn.type === 'earn' || txn.type === 'refund';
                         
                         return (
-                            <div key={txn.id} className="flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow">
+                            <div key={txn.id || Math.random().toString()} className="flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex items-center gap-4">
                                     <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
                                         isPositive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
@@ -205,7 +203,7 @@ export default function WalletPage() {
                                             {txn.type === 'expire' && <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">Expired</Badge>}
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            {txn.description} • {new Date(txn.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                            {txn.description} • {txn.date ? new Date(txn.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
                                         </p>
                                     </div>
                                 </div>

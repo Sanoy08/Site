@@ -23,8 +23,6 @@ import { useDebounce } from '@/hooks/use-debounce';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { registerBackHandler } from '@/hooks/use-back-button';
-
-// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 interface SearchSheetProps {
@@ -65,7 +63,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     return () => registerBackHandler(null);
   }, [open, onOpenChange]);
 
-  // ৩. হিস্ট্রি লোড
+  // ৩. হিস্ট্রি লোড (LocalStorage for Search History is fine/safe)
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
     if (saved) {
@@ -215,7 +213,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                         className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group border border-transparent hover:border-border"
                       >
                         <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-muted shrink-0">
-                          {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
+                          {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
                           <Image 
                             src={optimizeImageUrl(rawUrl)} 
                             alt={product.name} 

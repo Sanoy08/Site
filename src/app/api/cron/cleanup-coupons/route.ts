@@ -2,19 +2,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
+import { verifyCron } from '@/lib/auth-utils'; // ★ হেল্পার ইমপোর্ট
 
-// ক্যাশিং বন্ধ (সবসময় ফ্রেশ চেক করার জন্য)
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
     // ১. সিকিউরিটি চেক
-    const authHeader = request.headers.get('authorization');
-    const { searchParams } = new URL(request.url);
-    const queryKey = searchParams.get('key');
-    const CRON_SECRET = process.env.CRON_SECRET;
-
-    if (authHeader !== `Bearer ${CRON_SECRET}` && queryKey !== CRON_SECRET) {
+    if (!verifyCron(request)) {
         return NextResponse.json({ success: false, error: 'Unauthorized access' }, { status: 401 });
     }
 
@@ -27,14 +22,11 @@ export async function GET(request: NextRequest) {
     // ২. ডিলিট করার শর্তসমূহ
     const result = await couponsCollection.deleteMany({
         $or: [
-            // শর্ত ১: মেয়াদ শেষ (Expiry Date পার হয়ে গেছে)
+            // মেয়াদ শেষ
             { expiryDate: { $lt: now.toISOString().split('T')[0] } }, 
-            
-            // শর্ত ২: ইনঅ্যাক্টিভ (Inactive)
+            // ইনঅ্যাক্টিভ
             { isActive: false },
-
-            // শর্ত ৩: ব্যবহারের লিমিট শেষ (Usage Limit Reached)
-            // (যাদের usageLimit আছে এবং timesUsed তার সমান বা বেশি)
+            // ব্যবহারের লিমিট শেষ
             {
                 $and: [
                     { usageLimit: { $exists: true, $ne: null, $gt: 0 } },

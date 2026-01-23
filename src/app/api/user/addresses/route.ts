@@ -3,23 +3,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
+// হেল্পার ফাংশন: এখন শুধু getUser থেকে আইডি নেবে
 async function getUserId(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded._id;
-  } catch { return null; }
+    const user = await getUser(request);
+    return user ? (user._id || user.id) : null;
 }
 
 export async function GET(request: NextRequest) {
@@ -84,7 +76,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ★★★ নতুন PUT মেথড (এডিট করার জন্য) ★★★
 export async function PUT(request: NextRequest) {
     const userId = await getUserId(request);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -100,7 +91,6 @@ export async function PUT(request: NextRequest) {
         const client = await clientPromise;
         const db = client.db(DB_NAME);
 
-        // যদি এই অ্যাড্রেসটি ডিফল্ট করা হয়, তবে বাকিগুলোর ডিফল্ট ফলস করা হবে
         if (isDefault) {
             await db.collection(COLLECTION_NAME).updateOne(
                 { _id: new ObjectId(userId), "savedAddresses.isDefault": true },
@@ -109,7 +99,6 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        // নির্দিষ্ট অ্যাড্রেসটি আপডেট করা
         await db.collection(COLLECTION_NAME).updateOne(
             { _id: new ObjectId(userId), "savedAddresses.id": id },
             { 

@@ -3,26 +3,18 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
-import { finalizeDelivery } from '@/lib/order-service'; // ★ Shared Logic Import
-
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
+import { finalizeDelivery } from '@/lib/order-service'; 
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 export async function POST(req: NextRequest) {
     try {
         const { orderId } = await req.json();
         
         // Auth Check
-        const authHeader = req.headers.get('authorization');
-        if(!authHeader) return NextResponse.json({success: false, error: "Unauthorized"}, {status: 401});
+        const currentUser = await getUser(req);
+        if(!currentUser) return NextResponse.json({success: false, error: "Unauthorized"}, {status: 401});
         
-        const token = authHeader.split(' ')[1];
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        const deliveryBoyId = new ObjectId(decoded._id);
+        const deliveryBoyId = new ObjectId(currentUser._id || currentUser.id);
 
         const client = await clientPromise;
         const db = client.db('BumbasKitchenDB');
@@ -30,7 +22,7 @@ export async function POST(req: NextRequest) {
 
         try {
             await session.withTransaction(async () => {
-                // ১. বেসিক ডেলিভারি ইনফো আপডেট (Status, DeliveredBy, Time)
+                // ১. বেসিক ডেলিভারি ইনফো আপডেট
                 await db.collection('orders').updateOne(
                     { _id: new ObjectId(orderId) },
                     { 
@@ -38,14 +30,14 @@ export async function POST(req: NextRequest) {
                             Status: "Delivered",
                             deliveredBy: deliveryBoyId,
                             deliveredAt: new Date(),
-                            paymentCollected: true, // ক্যাশ নেওয়া হয়েছে ধরে নিচ্ছি
+                            paymentCollected: true, 
                             cashDeposited: false
                         } 
                     },
                     { session }
                 );
 
-                // ২. এডমিনের মতো সব লজিক চালানো (Coin, Wallet, Notifications)
+                // ২. এডমিনের মতো সব লজিক চালানো
                 await finalizeDelivery(client, orderId, session);
             });
             

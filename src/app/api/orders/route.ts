@@ -3,37 +3,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
-import { sendNotificationToAdmins, sendNotificationToUser } from '@/lib/notification';
+import { sendNotificationToAdmins } from '@/lib/notification';
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'coinTransactions';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
 const COIN_VALUE = 1; 
 
 export async function POST(request: NextRequest) {
    try {
     const orderData = await request.json();
 
-    // ১. অথেন্টিকেশন
+    // ১. অথেন্টিকেশন (অপশনাল - ইউজার লগইন আছে কি না দেখা)
      let userIdToSave: ObjectId | null = null;
-     const authHeader = request.headers.get('authorization');
-     if (authHeader && authHeader.startsWith('Bearer ')) {
-       const token = authHeader.split(' ')[1];
-       try {
-         const decoded: any = jwt.verify(token, JWT_SECRET);
-         userIdToSave = new ObjectId(decoded._id);
-       } catch (e) { console.warn("Invalid token"); }
+     const currentUser = await getUser(request);
+     
+     if (currentUser) {
+         userIdToSave = new ObjectId(currentUser._id || currentUser.id);
      }
 
-      const client = await clientPromise;
+     const client = await clientPromise;
      const db = client.db(DB_NAME);
      const session = client.startSession();
 
@@ -46,7 +37,7 @@ export async function POST(request: NextRequest) {
              let coinsRedeemed = 0;
              let subtotal = parseFloat(orderData.subtotal);
 
-            // ২. কয়েন রিডিমশন (কাটা হবে, কিন্তু আর্ন হবে না)
+            // ২. কয়েন রিডিমশন
             if (userIdToSave && orderData.useCoins) {
                 const user = await db.collection(USERS_COLLECTION).findOne({ _id: userIdToSave }, { session });
                 const userBalance = user?.wallet?.currentBalance || 0;
@@ -58,14 +49,14 @@ export async function POST(request: NextRequest) {
                 finalDiscount = coinsRedeemed * COIN_VALUE;
 
                 if (coinsRedeemed > 0) {
-                    // ওয়ালেট থেকে কয়েন কাটা হচ্ছে
+                    // ওয়ালেট থেকে কয়েন কাটা
                     await db.collection(USERS_COLLECTION).updateOne(
                         { _id: userIdToSave },
                         { $inc: { "wallet.currentBalance": -coinsRedeemed } },
                         { session }
                     );
 
-                    // ট্রানজেকশন হিস্ট্রি (Redeem)
+                    // ট্রানজেকশন হিস্ট্রি
                     await db.collection(TRANSACTIONS_COLLECTION).insertOne({
                         userId: userIdToSave,
                         type: 'redeem',
@@ -77,9 +68,9 @@ export async function POST(request: NextRequest) {
             }
 
             // ৩. ফাইনাল প্রাইস ক্যালকুলেশন
-            const finalPrice = subtotal - finalDiscount; 
+            // const finalPrice = subtotal - finalDiscount; 
 
-            // ৪. অর্ডার সেভ করা (Status: Pending Verification)
+            // ৪. অর্ডার সেভ করা
             const newOrder = {
                 OrderNumber: orderNumber,
                 userId: userIdToSave,
@@ -93,10 +84,10 @@ export async function POST(request: NextRequest) {
                 PreferredDate: new Date(orderData.preferredDate),
                 Instructions: orderData.instructions,
                 Subtotal: subtotal,
-                Discount: orderData.discount || finalDiscount, // টোটাল ডিসকাউন্ট সেভ করা
+                Discount: orderData.discount || finalDiscount,
                 CouponCode: orderData.couponCode,
                 CoinsRedeemed: coinsRedeemed,
-                FinalPrice: orderData.total, // ফ্রন্টএন্ড থেকে আসা ক্যালকুলেটেড টোটাল
+                FinalPrice: orderData.total,
                 Items: orderData.items, 
                 Status: "Pending Verification", 
                 coinsAwarded: false, 
@@ -105,8 +96,7 @@ export async function POST(request: NextRequest) {
 
             await db.collection(ORDERS_COLLECTION).insertOne(newOrder, { session });
 
-            // ৫. নোটিফিকেশন (Dynamic Link Added)
-            // ★★★ লিংকে Order ID যোগ করা হলো যাতে ক্লিক করলে স্লাইডার খোলে ★★★
+            // ৫. নোটিফিকেশন
             sendNotificationToAdmins(
                 client,
                 "New Order (Pending) ⚠️",
@@ -133,7 +123,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to place order.' },
       { status: 500 }
-   
- );
+   );
   }
 }

@@ -2,29 +2,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const USERS_COLLECTION = 'users';
 const ORDERS_COLLECTION = 'orders';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
-}
 
 export async function GET(request: NextRequest) {
   try {
-    if (!await isAdmin(request)) {
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -47,7 +34,7 @@ export async function GET(request: NextRequest) {
           email: 1,
           role: 1,
           phone: 1,
-          createdAt: 1, // জয়েনিং ডেট
+          createdAt: 1, // জয়েনিং ডেট
           // অর্ডারের তথ্য থেকে পরিসংখ্যান বের করা
           totalSpent: { $sum: "$orders.FinalPrice" },
           lastOrder: { $max: "$orders.Timestamp" },

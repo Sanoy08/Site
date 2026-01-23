@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Navigation, Phone, MapPin, Package, ArrowRight, IndianRupee, ScanLine, Wallet, Bike, ChevronRight, Check, FileText, Info } from 'lucide-react';
+import { RefreshCw, Phone, MapPin, Package, ArrowRight, Wallet, Bike, ChevronRight, Check, FileText, Info, ScanLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
 import { 
@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/hooks/use-auth'; // ★ 1. Import useAuth
+// useAuth ইমপোর্ট থাকলেও টোকেন আর লাগবে না
+// import { useAuth } from '@/hooks/use-auth'; 
 
 export default function DeliveryHome() {
-  const { token } = useAuth(); // ★ 2. Get Token
+  // const { token } = useAuth(); // ★ টোকেন আর দরকার নেই
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -34,6 +35,7 @@ export default function DeliveryHome() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      // ★ কুকি অটোমেটিক যাবে
       const res = await fetch('/api/delivery/todays-feed');
       const data = await res.json();
       if (data.success) {
@@ -77,13 +79,13 @@ export default function DeliveryHome() {
   };
 
   const confirmDelivery = async () => {
-    if (!matchedOrder || !token) return; // টোকেন চেক
+    if (!matchedOrder) return; 
     try {
         const res = await fetch('/api/delivery/confirm', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` // ★ 3. Add Authorization Header
+                // 'Authorization': ... (বাদ দেওয়া হয়েছে)
             },
             body: JSON.stringify({ orderId: matchedOrder._id })
         });
@@ -339,7 +341,7 @@ export default function DeliveryHome() {
   );
 }
 
-// Swipe Button Component
+// Swipe Button Component (Same as before)
 function SwipeButton({ onConfirm }: { onConfirm: () => void }) {
     const [drag, setDrag] = useState(false);
     const [width, setWidth] = useState(0);

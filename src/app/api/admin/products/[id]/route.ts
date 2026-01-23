@@ -3,34 +3,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher';
-// ★ ১. ইম্পোর্ট করা হলো
 import { sendNotificationToAllUsers } from '@/lib/notification';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+export async function PUT(
+    request: NextRequest, 
+    props: { params: Promise<{ id: string }> }
+) {
   try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
-}
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    if (!await isAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { id } = await params;
+    // ২. params await করা (Next.js 15 Fix)
+    const params = await props.params;
+    const { id } = params;
     const body = await request.json();
     
     // ইমেজ অ্যারে ঠিক করা
@@ -54,20 +47,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       { $set: updateData }
     );
 
-    // ১. ক্যাশ রিফ্রেশ
+    // ৩. ক্যাশ রিফ্রেশ
     revalidatePath('/menus');
     revalidatePath('/');
 
-    // ২. রিয়েল-টাইম আপডেট (লাইভ ইউজারদের জন্য)
+    // ৪. রিয়েল-টাইম আপডেট (লাইভ ইউজারদের জন্য)
     await pusherServer.trigger('menu-updates', 'product-changed', {
         message: 'Menu updated',
         type: 'update'
     });
 
-    // ★ ৩. "Juicy" পুশ নোটিফিকেশন পাঠানো (সবার কাছে) ★
-    // আমরা আলাদা try-catch রাখছি যাতে নোটিফিকেশন এরর হলে মেইন আপডেট ক্র্যাশ না করে
+    // ★ ৫. "Juicy" পুশ নোটিফিকেশন পাঠানো (সবার কাছে) ★
     try {
-        // মেইন ইমেজটি নেওয়া হচ্ছে নোটিফিকেশনের জন্য
         const notificationImage = finalImages.length > 0 ? finalImages[0] : "";
         
         await sendNotificationToAllUsers(
@@ -87,11 +78,20 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+    request: NextRequest, 
+    props: { params: Promise<{ id: string }> }
+) {
   try {
-    if (!await isAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const { id } = await params;
+    // ২. params await করা
+    const params = await props.params;
+    const { id } = params;
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
@@ -100,7 +100,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     revalidatePath('/menus');
     revalidatePath('/');
 
-    // রিয়েল-টাইম ডিলিট নোটিফিকেশন
+    // রিয়েল-টাইম ডিলিট নোটিফিকেশন
     await pusherServer.trigger('menu-updates', 'product-changed', {
         message: 'Product removed from menu',
         type: 'delete'

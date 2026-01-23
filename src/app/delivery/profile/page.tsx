@@ -12,35 +12,35 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function DeliveryProfile() {
-  const { user, token, logout } = useAuth();
+  const { user, logout } = useAuth(); // ★ token রিমুভ করা হয়েছে
   const [stats, setStats] = useState({ cashInHand: 0, deliveredToday: 0 });
   const [pendingRequest, setPendingRequest] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   // Fetch Data
   const loadData = async () => {
-     if(!token) return;
+     if(!user) return; // ইউজার চেক
      
-     // 1. Get Stats (Cash in Hand)
-     fetch('/api/delivery/stats', { headers: { 'Authorization': `Bearer ${token}` }})
+     // 1. Get Stats (Cash in Hand) - কুকি অটোমেটিক যাবে
+     fetch('/api/delivery/stats')
         .then(res => res.json())
         .then(data => { if(data.success) setStats(data.stats); });
 
-     // 2. Check Pending Request
-     fetch('/api/delivery/deposit-request', { headers: { 'Authorization': `Bearer ${token}` }})
+     // 2. Check Pending Request - কুকি অটোমেটিক যাবে
+     fetch('/api/delivery/deposit-request')
         .then(res => res.json())
         .then(data => { if(data.success) setPendingRequest(data.pendingRequest); });
   };
 
-  useEffect(() => { loadData(); }, [token]);
+  useEffect(() => { loadData(); }, [user]);
 
   const handleDepositRequest = async () => {
-     if (!token) return;
+     if (!user) return;
      setLoading(true);
      try {
          const res = await fetch('/api/delivery/deposit-request', { 
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
+            // Headers নেই, কুকি যাবে
          });
          const data = await res.json();
          if(data.success) {

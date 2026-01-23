@@ -42,12 +42,12 @@ export default function NotificationPrompt() {
           status = Notification.permission;
         }
 
-        // ★★★ Logic Fix: যদি Already Granted হয়, পপআপ দেখানোর দরকার নেই ★★★
+        // যদি Already Granted হয়, পপআপ দেখানোর দরকার নেই
         if (status === 'granted') {
           return; 
         }
 
-        // যদি Denied না হয় (অর্থাৎ 'default' বা 'prompt'), তবেই ৩.৫ সেকেন্ড পর দেখাবো
+        // যদি Denied না হয় (অর্থাৎ 'default' বা 'prompt'), তবেই ৩.৫ সেকেন্ড পর দেখাবো
         if (status !== 'denied') {
           timeoutId = setTimeout(() => setIsOpen(true), 3500);
         }

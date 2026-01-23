@@ -3,32 +3,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION = 'specialDates';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-// এডমিন চেক করার হেল্পার ফাংশন
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
-}
 
 // GET: সব ইভেন্ট দেখা
 export async function GET(request: NextRequest) {
   try {
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক (GET এও যোগ করা হলো)
+    if (!await verifyAdmin(request)) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    // তারিখ অনুযায়ী সাজিয়ে পাঠানো (আসন্ন ইভেন্ট আগে)
+    // তারিখ অনুযায়ী সাজিয়ে পাঠানো (আসন্ন ইভেন্ট আগে)
     const events = await db.collection(COLLECTION).find({}).sort({ date: 1 }).toArray();
     
     return NextResponse.json({ 
@@ -50,7 +40,8 @@ export async function GET(request: NextRequest) {
 // POST: নতুন ইভেন্ট যোগ করা
 export async function POST(request: NextRequest) {
   try {
-    if (!await isAdmin(request)) {
+    // ২. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -83,7 +74,10 @@ export async function POST(request: NextRequest) {
 // DELETE: ইভেন্ট ডিলিট করা
 export async function DELETE(request: NextRequest) {
     try {
-      if (!await isAdmin(request)) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      // ৩. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+      if (!await verifyAdmin(request)) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
   
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');

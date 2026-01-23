@@ -3,31 +3,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
-import { sendNotificationToUser } from '@/lib/notification'; // নোটিফিকেশন ইউটিলিটি
+import { sendNotificationToUser } from '@/lib/notification';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-// অ্যাডমিন চেক হেল্পার
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
-}
 
 // ১. সব অর্ডার লোড করা (GET)
 export async function GET(request: NextRequest) {
   try {
-    if (!await isAdmin(request)) {
+    // ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -51,7 +37,8 @@ export async function GET(request: NextRequest) {
 // ২. অর্ডার স্ট্যাটাস আপডেট করা (PATCH)
 export async function PATCH(request: NextRequest) {
   try {
-    if (!await isAdmin(request)) {
+    // ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -93,13 +80,15 @@ export async function PATCH(request: NextRequest) {
              title = "Cooking Started";
         }
 
-        // ব্যাকগ্রাউন্ডে নোটিফিকেশন পাঠানো (await না করলেও চলবে, তবে এরর হ্যান্ডলিংয়ের জন্য রাখা ভালো)
+        // ব্যাকগ্রাউন্ডে নোটিফিকেশন পাঠানো
+        // Note: sendNotificationToUser(client, userId, title, message, image, link)
         await sendNotificationToUser(
             client,
             order.userId.toString(),
             title,
             message,
-            '/account/orders' // ক্লিক করলে এই লিংকে যাবে
+            "", // Image URL (Empty)
+            '/account/orders' // Link
         );
     }
 

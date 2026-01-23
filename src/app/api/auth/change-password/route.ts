@@ -3,31 +3,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি থেকে ইউজার পাওয়ার ফাংশন
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    let userId;
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      userId = decoded._id;
-    } catch (e) {
-      return NextResponse.json({ success: false, error: 'Invalid Token' }, { status: 401 });
+    // ১. ★★★ কুকি থেকে ইউজার ভেরিফিকেশন
+    const currentUser = await getUser(request);
+    if (!currentUser) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { currentPassword, newPassword } = await request.json();
@@ -44,19 +31,22 @@ export async function POST(request: NextRequest) {
     const db = client.db(DB_NAME);
     const usersCollection = db.collection(COLLECTION_NAME);
 
+    // currentUser._id বা currentUser.id যেটা Auth Utils রিটার্ন করে সেটা ব্যবহার করুন
+    const userId = currentUser._id || currentUser.id; 
+
     const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
 
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    // বর্তমান পাসওয়ার্ড চেক করা
+    // বর্তমান পাসওয়ার্ড চেক করা
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
         return NextResponse.json({ success: false, error: 'Incorrect current password.' }, { status: 400 });
     }
 
-    // নতুন পাসওয়ার্ড হ্যাশ করে সেভ করা
+    // নতুন পাসওয়ার্ড হ্যাশ করে সেভ করা
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await usersCollection.updateOne(
         { _id: new ObjectId(userId) },

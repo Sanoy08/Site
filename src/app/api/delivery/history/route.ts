@@ -3,21 +3,14 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 export async function GET(req: NextRequest) {
     try {
-        const authHeader = req.headers.get('authorization');
-        if(!authHeader) return NextResponse.json({success: false}, {status: 401});
-        const token = authHeader.split(' ')[1];
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        const deliveryBoyId = new ObjectId(decoded._id);
+        const currentUser = await getUser(req);
+        if(!currentUser) return NextResponse.json({success: false}, {status: 401});
+        
+        const deliveryBoyId = new ObjectId(currentUser._id || currentUser.id);
 
         const client = await clientPromise;
         const db = client.db('BumbasKitchenDB');
@@ -31,7 +24,7 @@ export async function GET(req: NextRequest) {
             Status: "Delivered",
             deliveredAt: { $gte: thirtyDaysAgo }
         })
-        .sort({ deliveredAt: -1 }) // একদম নতুন আগে
+        .sort({ deliveredAt: -1 }) 
         .project({ 
             OrderNumber: 1, 
             Name: 1, 

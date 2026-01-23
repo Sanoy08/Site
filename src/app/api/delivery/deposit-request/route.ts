@@ -3,28 +3,20 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
 import { sendNotificationToAdmins } from '@/lib/notification';
-
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 // GET: Check Current Request Status
 export async function GET(req: NextRequest) {
     try {
-        const authHeader = req.headers.get('authorization');
-        if(!authHeader) return NextResponse.json({success: false}, {status: 401});
-        const token = authHeader.split(' ')[1];
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        const deliveryBoyId = new ObjectId(decoded._id);
+        const currentUser = await getUser(req);
+        if(!currentUser) return NextResponse.json({success: false}, {status: 401});
+        
+        const deliveryBoyId = new ObjectId(currentUser._id || currentUser.id);
 
         const client = await clientPromise;
         const db = client.db('BumbasKitchenDB');
 
-        // Check if any pending request exists
         const pendingRequest = await db.collection('depositRequests').findOne({
             deliveryBoyId: deliveryBoyId,
             status: 'pending'
@@ -40,11 +32,10 @@ export async function GET(req: NextRequest) {
 // POST: Create New Request
 export async function POST(req: NextRequest) {
     try {
-        const authHeader = req.headers.get('authorization');
-        if(!authHeader) return NextResponse.json({success: false}, {status: 401});
-        const token = authHeader.split(' ')[1];
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        const deliveryBoyId = new ObjectId(decoded._id);
+        const currentUser = await getUser(req);
+        if(!currentUser) return NextResponse.json({success: false}, {status: 401});
+        
+        const deliveryBoyId = new ObjectId(currentUser._id || currentUser.id);
 
         const client = await clientPromise;
         const db = client.db('BumbasKitchenDB');
@@ -59,7 +50,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "You already have a pending request." });
         }
 
-        // 2. Calculate Total Cash in Hand (Only COD + Delivered + Not Deposited)
+        // 2. Calculate Total Cash in Hand
         const orders = await db.collection('orders').find({
             deliveredBy: deliveryBoyId,
             PaymentMethod: 'COD',
@@ -76,21 +67,20 @@ export async function POST(req: NextRequest) {
         // 3. Create Deposit Request
         const requestDoc = {
             deliveryBoyId,
-            deliveryBoyName: decoded.name, // Token থেকে নাম নেওয়া
+            deliveryBoyName: currentUser.name,
             amount: totalAmount,
-            orderIds: orders.map(o => o._id), // কোন কোন অর্ডারের টাকা
-            status: 'pending', // pending -> approved -> rejected
+            orderIds: orders.map(o => o._id), 
+            status: 'pending', 
             createdAt: new Date()
         };
 
         await db.collection('depositRequests').insertOne(requestDoc);
 
-        /// 4. Notify Admin (এখানে URL চেঞ্জ করা হলো)
+        // 4. Notify Admin
         await sendNotificationToAdmins(
             client, 
             "Cash Deposit Request 💰", 
-            `${decoded.name} wants to deposit ₹${totalAmount}.`,
-            // ★ আগে ছিল '/admin/reports', এখন পুরো লিঙ্ক:
+            `${currentUser.name} wants to deposit ₹${totalAmount}.`,
             "https://admin.bumbaskitchen.app/reports" 
         );
         return NextResponse.json({ success: true, message: "Deposit request sent!" });

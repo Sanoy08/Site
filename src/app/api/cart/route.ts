@@ -3,28 +3,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
 import { pusherServer } from '@/lib/pusher';
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-async function getUserId(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded._id;
-  } catch { return null; }
-}
 
 export async function GET(request: NextRequest) {
-  const userId = await getUserId(request);
+  // ১. ★★★ কুকি থেকে ইউজার আইডি
+  const currentUser = await getUser(request);
+  const userId = currentUser?._id || currentUser?.id;
+
   if (!userId) return NextResponse.json({ items: [] });
 
   try {
@@ -45,7 +34,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await getUserId(request);
+  // ২. ★★★ কুকি থেকে ইউজার আইডি
+  const currentUser = await getUser(request);
+  const userId = currentUser?._id || currentUser?.id;
+
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
@@ -60,8 +52,8 @@ export async function POST(request: NextRequest) {
         { 
             $set: { 
                 cart: items,
-                cartUpdatedAt: new Date(), // ★ সময় সেভ করা হচ্ছে
-                abandonedCartNotified: false // ★ নোটিফিকেশন ফ্ল্যাগ রিসেট
+                cartUpdatedAt: new Date(), 
+                abandonedCartNotified: false 
             } 
         }
     );

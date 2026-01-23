@@ -7,57 +7,35 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2, Home, User, MapPin, Bike, Bell } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/use-auth'; // ★★★ useAuth
 
 export default function DeliveryLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   
-  // আমরা শুরুতে কিছুই দেখাব না (isAuthorized = false)
+  // ★★★ useAuth হুক ব্যবহার করা হচ্ছে (এটি ইতিমধ্যেই সেশন চেক করে)
+  const { user, isLoading } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const verifyUser = async () => {
-      const token = localStorage.getItem('token');
-
-      // ১. টোকেন না থাকলে সোজা লগইন পেজে
-      if (!token) {
+    // লোডিং শেষ হলে চেক শুরু
+    if (!isLoading) {
+      if (!user) {
+        // লগইন না থাকলে
         router.replace('/login');
-        return;
+      } else if (user.role === 'admin' || user.role === 'delivery') {
+        // পারমিশন আছে
+        setIsAuthorized(true);
+      } else {
+        // লগইন আছে কিন্তু রোল কাস্টমার
+        toast.error("Unauthorized Access!");
+        router.replace('/');
       }
+    }
+  }, [user, isLoading, router]);
 
-      try {
-        // ২. সার্ভারকে জিজ্ঞাসা করা হচ্ছে এই টোকেনটি কার এবং তার রোল কি
-        // (লোকাল স্টোরেজের ডেটা আমরা বিশ্বাস করছি না)
-        const res = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.success && (data.user.role === 'admin' || data.user.role === 'delivery')) {
-          // ৩. সার্ভার যদি কনফার্ম করে যে ইনি অ্যাডমিন বা ডেলিভারি, তবেই এক্সেস
-          setIsAuthorized(true);
-        } else {
-          // ৪. টোকেন থাকলেও যদি রোল কাস্টমার হয় -> বের করে দাও
-          toast.error("Unauthorized Access!");
-          router.replace('/');
-        }
-      } catch (error) {
-        console.error("Auth verification failed", error);
-        router.replace('/login');
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    verifyUser();
-  }, [router]);
-
-  // যতক্ষণ সার্ভার চেক করছে, ততক্ষণ লোডিং দেখান (পেজের কিছুই দেখা যাবে না)
-  if (isChecking) {
+  // যতক্ষণ লোডিং বা চেকিং চলছে
+  if (isLoading || (!isAuthorized && user)) { // ইউজার আছে কিন্তু অথরাইজড হয়নি এমন অবস্থায় রেন্ডার বন্ধ
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
         <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
@@ -66,7 +44,7 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
     );
   }
 
-  // যদি চেকিং শেষ হয় কিন্তু পারমিশন না থাকে, কিছুই রেন্ডার করবেন না (রিডাইরেক্ট হবে)
+  // যদি অথরাইজড না হয়, কিছুই রেন্ডার করবেন না (রিডাইরেক্ট হবে)
   if (!isAuthorized) {
     return null;
   }

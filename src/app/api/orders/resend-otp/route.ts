@@ -4,24 +4,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 export async function POST(req: NextRequest) {
     try {
         const { orderId } = await req.json();
         
         // Auth check
-        const authHeader = req.headers.get('authorization');
-        if (!authHeader) return NextResponse.json({success: false}, {status: 401});
-        const token = authHeader.split(' ')[1];
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        const userId = decoded._id;
+        const currentUser = await getUser(req);
+        if (!currentUser) return NextResponse.json({success: false}, {status: 401});
+        
+        const userId = currentUser._id || currentUser.id;
 
         const client = await clientPromise;
         const db = client.db('BumbasKitchenDB');

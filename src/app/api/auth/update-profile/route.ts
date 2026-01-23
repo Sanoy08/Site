@@ -3,31 +3,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
 
 export async function PUT(request: NextRequest) {
   try {
-    // ১. অথেন্টিকেশন চেক
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // ১. ★★★ কুকি থেকে ইউজার ভেরিফিকেশন
+    const currentUser = await getUser(request);
+    if (!currentUser) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    let userId;
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      userId = decoded._id;
-    } catch (e) {
-      return NextResponse.json({ success: false, error: 'Invalid Token' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -44,9 +30,10 @@ export async function PUT(request: NextRequest) {
     const usersCollection = db.collection(COLLECTION_NAME);
 
     // ২. বর্তমান ইউজার ডেটা আনা (চেক করার জন্য)
-    const currentUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    const userId = currentUser._id || currentUser.id;
+    const currentDbUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
 
-    if (!currentUser) {
+    if (!currentDbUser) {
         return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
@@ -56,17 +43,17 @@ export async function PUT(request: NextRequest) {
     };
 
     // Birthday Check
-    if (!currentUser.dob && dob) {
+    if (!currentDbUser.dob && dob) {
         updateDoc.dob = dob;
-    } else if (currentUser.dob && dob && currentUser.dob !== dob) {
-        console.warn(`User ${userId} tried to change DOB from ${currentUser.dob} to ${dob}`);
+    } else if (currentDbUser.dob && dob && currentDbUser.dob !== dob) {
+        console.warn(`User ${userId} tried to change DOB from ${currentDbUser.dob} to ${dob}`);
     }
 
     // Anniversary Check
-    if (!currentUser.anniversary && anniversary) {
+    if (!currentDbUser.anniversary && anniversary) {
         updateDoc.anniversary = anniversary;
-    } else if (currentUser.anniversary && anniversary && currentUser.anniversary !== anniversary) {
-        console.warn(`User ${userId} tried to change Anniversary from ${currentUser.anniversary} to ${anniversary}`);
+    } else if (currentDbUser.anniversary && anniversary && currentDbUser.anniversary !== anniversary) {
+        console.warn(`User ${userId} tried to change Anniversary from ${currentDbUser.anniversary} to ${anniversary}`);
     }
 
     // ৪. ডাটাবেস আপডেট
@@ -76,8 +63,6 @@ export async function PUT(request: NextRequest) {
       { returnDocument: 'after' }
     );
 
-    // ★★★ FIX: result null কি না চেক করা হচ্ছে ★★★
-    // এই চেকটি না থাকলে TypeScript এরর দেয় কারণ result null হতে পারে
     if (!result) {
         return NextResponse.json({ success: false, error: 'Failed to update profile.' }, { status: 500 });
     }

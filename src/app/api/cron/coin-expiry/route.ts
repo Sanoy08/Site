@@ -3,24 +3,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
+import { verifyCron } from '@/lib/auth-utils'; // ★ হেল্পার ইমপোর্ট
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    const { searchParams } = new URL(request.url);
-    const queryKey = searchParams.get('key');
-    const CRON_SECRET = process.env.CRON_SECRET;
-
-    if (authHeader !== `Bearer ${CRON_SECRET}` && queryKey !== CRON_SECRET) {
+    // ১. সিকিউরিটি চেক
+    if (!verifyCron(request)) {
         return NextResponse.json({ success: false, error: 'Unauthorized access' }, { status: 401 });
     }
 
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
     const usersCollection = db.collection('users');
-    const transactionsCollection = db.collection('coinTransactions'); // ★ নতুন কালেকশন রেফারেন্স
+    const transactionsCollection = db.collection('coinTransactions');
 
     // --- লজিক ১: মেয়াদ শেষ (Expire) ---
     const ninetyDaysAgo = new Date();
@@ -34,11 +31,11 @@ export async function GET(request: NextRequest) {
     for (const user of expiredUsers) {
         const amountToExpire = user.wallet.currentBalance;
 
-        // ১. ট্রানজেকশন হিস্ট্রিতে এন্ট্রি যোগ করা (যাতে ওয়ালেটে দেখায়)
+        // ১. ট্রানজেকশন হিস্ট্রিতে এন্ট্রি যোগ করা
         if (amountToExpire > 0) {
             await transactionsCollection.insertOne({
                 userId: user._id,
-                type: 'expire', // নতুন টাইপ 'expire'
+                type: 'expire',
                 amount: amountToExpire,
                 description: 'Expired due to inactivity',
                 createdAt: new Date()
@@ -57,6 +54,7 @@ export async function GET(request: NextRequest) {
             user._id.toString(),
             "Coins Expired ⏳",
             `Your ${amountToExpire} coins have expired due to inactivity.`,
+            "", // Image URL empty
             '/account/wallet'
         );
     }
@@ -76,6 +74,7 @@ export async function GET(request: NextRequest) {
             user._id.toString(),
             "Coins Expiring Soon! ⏳",
             "Your coins will expire in 7 days. Order now to use them!",
+            "",
             '/menus'
         );
     }

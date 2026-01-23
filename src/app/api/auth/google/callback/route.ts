@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
+import { cookies } from 'next/headers'; // ★★★ কুকি ইমপোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // ১. কোড দিয়ে টোকেন আনা
+    // ১. কোড দিয়ে টোকেন আনা
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     const tokenData = await tokenRes.json();
     if (tokenData.error) throw new Error(tokenData.error_description);
 
-    // ২. টোকেন দিয়ে ইউজারের তথ্য আনা
+    // ২. টোকেন দিয়ে ইউজারের তথ্য আনা
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
@@ -84,10 +85,19 @@ export async function GET(request: NextRequest) {
 
     const appToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '30d' });
 
-    // ৫. লগইন শেষে ফ্রন্টএন্ডে পাঠানো
-    const redirectUrl = `${APP_URL}/google-callback?token=${encodeURIComponent(appToken)}&user=${encodeURIComponent(JSON.stringify(userPayload))}`;
-    
-    return NextResponse.redirect(redirectUrl);
+    // ৫. ★★★ কুকি সেট করা এবং রিডাইরেক্ট ★★★
+    // Next.js App Router এ কুকি সেট করার পদ্ধতি
+    const cookieStore = await cookies();
+    cookieStore.set('auth_token', appToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60 // 30 days
+    });
+
+    // ফ্রন্টএন্ডে রিডাইরেক্ট (টোকেন URL এ পাঠানোর দরকার নেই)
+    return NextResponse.redirect(`${APP_URL}/`);
 
   } catch (error) {
     console.error("Google Login Error:", error);

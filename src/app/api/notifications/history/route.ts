@@ -3,38 +3,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 const DB_NAME = 'BumbasKitchenDB';
 const NOTIFICATIONS_COLLECTION = 'notifications';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. টোকেন ভেরিফিকেশন
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // ১. কুকি থেকে ইউজার ভেরিফিকেশন
+    const currentUser = await getUser(request);
+    if (!currentUser) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    let userId;
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      userId = decoded._id;
-    } catch (e) {
-      return NextResponse.json({ success: false, error: 'Invalid Token' }, { status: 401 });
-    }
+    const userId = currentUser._id || currentUser.id;
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const notificationsCollection = db.collection(NOTIFICATIONS_COLLECTION);
 
-    // ২. নোটিফিকেশন খোঁজা (UserId স্ট্রিং বা অবজেক্ট আইডি হতে পারে)
+    // ২. নোটিফিকেশন খোঁজা
     const notifications = await notificationsCollection.find({
         $or: [
             { userId: userId }, 

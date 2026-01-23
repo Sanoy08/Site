@@ -8,29 +8,30 @@ import { Badge } from '@/components/ui/badge';
 import { formatPrice } from '@/lib/utils';
 import { Calendar, Clock, MapPin, CheckCircle2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useAuth } from '@/hooks/use-auth'; // ★★★ 1. Import useAuth
+import { useAuth } from '@/hooks/use-auth'; // ★★★ useAuth
 
 export default function DeliveryHistory() {
-    const { token } = useAuth(); // ★★★ 2. Get Token
+    const { user, isLoading: authLoading } = useAuth(); // ★ ইউজার অবজেক্ট
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!token) return; // টোকেন না থাকলে কল করব না
+        if (authLoading) return;
+        if (!user) {
+             setLoading(false);
+             return; 
+        }
 
-        fetch('/api/delivery/history', {
-            headers: {
-                'Authorization': `Bearer ${token}` // ★★★ 3. Add Header
-            }
-        })
+        // ★★★ হেডার ছাড়া ফেচ (কুকি যাবে)
+        fetch('/api/delivery/history')
         .then(res => res.json())
         .then(data => {
             if (data.success) setHistory(data.orders);
         })
         .finally(() => setLoading(false));
-    }, [token]); // টোকেন ডিপেন্ডেন্সি
+    }, [user, authLoading]);
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-[50vh] space-y-3">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />

@@ -2,30 +2,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
-import { pusherServer } from '@/lib/pusher'; // রিয়েল-টাইম আপডেটের জন্য
-import { sendNotificationToAllUsers } from '@/lib/notification'; // পুশ নোটিফিকেশনের জন্য
+import { pusherServer } from '@/lib/pusher'; 
+import { sendNotificationToAllUsers } from '@/lib/notification'; 
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
-
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  try {
-    const decoded: any = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    return decoded.role === 'admin';
-  } catch { return false; }
-}
 
 export async function GET(request: NextRequest) {
   try {
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const products = await db.collection(COLLECTION_NAME).find({}).toArray();
@@ -50,12 +41,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!await isAdmin(request)) {
+    // ২. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
+    if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const { name, description, price, category, imageUrls, featured, inStock } = body;
+
+    const imgArray = Array.isArray(imageUrls) ? imageUrls : (imageUrls ? [imageUrls] : []);
 
     // নতুন প্রোডাক্ট অবজেক্ট
     const newProduct = {
@@ -63,8 +57,7 @@ export async function POST(request: NextRequest) {
       Description: description,
       Price: parseFloat(price),
       Category: category,
-      // ইমেজ অ্যারে সঠিকভাবে সেভ করা হচ্ছে
-      ImageURLs: Array.isArray(imageUrls) ? imageUrls : (imageUrls ? [imageUrls] : []),
+      ImageURLs: imgArray,
       Bestseller: featured,
       InStock: inStock,
       CreatedAt: new Date()
@@ -76,24 +69,25 @@ export async function POST(request: NextRequest) {
 
     if (result.acknowledged) {
       
-      // ১. সার্ভার সাইড ক্যাশ রিফ্রেশ (On-Demand Revalidation)
+      // ১. সার্ভার সাইড ক্যাশ রিফ্রেশ
       revalidatePath('/menus');
       revalidatePath('/');
 
-      // ২. ক্লায়েন্ট সাইড রিয়েল-টাইম আপডেট (Pusher)
-      // এটি বর্তমানে ব্রাউজ করছেন এমন ইউজারদের পেজ রিফ্রেশ করবে
+      // ২. ক্লায়েন্ট সাইড রিয়েল-টাইম আপডেট (Pusher)
       await pusherServer.trigger('menu-updates', 'product-changed', {
         message: `New dish "${name}" added to the menu!`,
         type: 'add'
       });
 
-      // ৩. পুশ নোটিফিকেশন ব্রডকাস্ট (New Arrival)
-      // এটি সব সাবস্ক্রাইব করা ইউজারের ডিভাইসে নোটিফিকেশন পাঠাবে
+      // ৩. পুশ নোটিফিকেশন ব্রডকাস্ট
       try {
+          const mainImage = imgArray.length > 0 ? imgArray[0] : "";
+          
           await sendNotificationToAllUsers(
               client,
               "New Arrival! 🍲",
               `Check out our new dish: ${name}. Order now to taste the freshness!`,
+              mainImage, // ★ ইমেজ পাস করা হয়েছে
               `/menus`
           );
       } catch (notifError) {

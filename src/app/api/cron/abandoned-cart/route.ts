@@ -3,19 +3,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
+import { verifyCron } from '@/lib/auth-utils'; // ★ হেল্পার ইমপোর্ট
 
-// ব্রাউজার ক্যাশিং বন্ধ করার জন্য
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    const { searchParams } = new URL(request.url);
-    const queryKey = searchParams.get('key');
-
-    const CRON_SECRET = process.env.CRON_SECRET;
-
-    if (authHeader !== `Bearer ${CRON_SECRET}` && queryKey !== CRON_SECRET) {
+    // ১. সিকিউরিটি চেক
+    if (!verifyCron(request)) {
         return NextResponse.json({ success: false, error: 'Unauthorized access' }, { status: 401 });
     }
 
@@ -23,7 +18,7 @@ export async function GET(request: NextRequest) {
     const db = client.db('BumbasKitchenDB');
     const usersCollection = db.collection('users');
 
-    // টেস্টিংয়ের জন্য ১ মিনিট (প্রোডাকশনে ১২ ঘণ্টা করে দেবেন)
+    // টেস্টিংয়ের জন্য ১ মিনিট (প্রোডাকশনে ১২ ঘণ্টা বা প্রয়োজনমত সেট করবেন)
     const timeCheck = new Date(Date.now() - 1 * 60 * 1000); 
 
     const abandonedUsers = await usersCollection.find({
@@ -39,14 +34,13 @@ export async function GET(request: NextRequest) {
     let notifiedCount = 0;
 
     for (const user of abandonedUsers) {
-        // ★★★ ফিক্স: প্যারামিটার অর্ডার ঠিক করা হয়েছে ★★★
         await sendNotificationToUser(
             client,
             user._id.toString(),
             "You left something delicious! 😋",
             "Your cart is waiting. Complete your order before items run out!",
-            "", // ★ 5th param: Image URL (ফাঁকা রাখা হলো, চাইলে ফুডের ছবি দিতে পারেন)
-            "/cart" // ★ 6th param: Link (কার্ট পেজে যাবে)
+            "", 
+            "/cart" 
         );
 
         await usersCollection.updateOne(

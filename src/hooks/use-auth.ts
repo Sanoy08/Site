@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
@@ -46,12 +46,11 @@ export function useAuth() {
     };
 
     checkSession();
-  }, []); // Run once on mount
+  }, []); 
 
   // 2. Login (Just update state, cookie is set by server)
   const login = useCallback((userData: User) => {
     setUser(userData);
-    // No localStorage logic needed!
   }, []);
 
   // 3. Logout (Call API to clear cookie)

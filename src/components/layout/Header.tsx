@@ -46,26 +46,22 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
-  // আনরিড আছে কি না
   const [hasNewNotification, setHasNewNotification] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  // ★★★ UPDATED SCROLL LOGIC ★★★
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
     const handleScroll = () => {
-      // 1px স্ক্রল করলেই isScrolled true হবে
       if (window.scrollY > 0) {
         setIsScrolled(true);
       } else {
         setIsScrolled(false);
       }
 
-      // Auto-snap logic: যদি খুব সামান্য স্ক্রল করে ছেড়ে দেয়
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         if (window.scrollY > 0 && window.scrollY < 60) {
@@ -74,7 +70,7 @@ export function Header() {
             behavior: 'smooth'
           });
         }
-      }, 150); // স্ক্রল থামার ১৫০ms পর চেক করবে
+      }, 150);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -93,13 +89,9 @@ export function Header() {
   const checkNotifications = useCallback(async () => {
     if (!user) return;
     
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
+    // ★★★ Fix: Remove Token Logic & Header
     try {
-      const res = await fetch('/api/notifications/history', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch('/api/notifications/history');
       const data = await res.json();
       
       if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
@@ -154,11 +146,8 @@ export function Header() {
     return 'Good Evening';
   };
 
-  // ★★★ ADMIN REDIRECT FUNCTION ★★★
   const handleAdminClick = () => {
-      if (window.location.hostname === 'localhost') {
-         window.location.href = 'https://admin.bumbaskitchen.app';
-      } else {
+      if (typeof window !== 'undefined') {
          window.location.href = 'https://admin.bumbaskitchen.app';
       }
   };
@@ -166,13 +155,10 @@ export function Header() {
   return (
     <header 
         className={cn(
-            // বেস স্টাইল: ফিক্সড পজিশন, ট্রানজিশন ডিউরেশন ৫০০ms এবং স্মুথ ইজিং
             "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
-            
-            // ★★★ লজিক: স্ক্রল > ০ হলেই সলিড হয়ে যাবে, নাহলে ট্রান্সপারেন্ট এবং বড় ★★★
             isScrolled 
-              ? "bg-background/95 backdrop-blur-md shadow-sm border-border py-1" // Scrolled state: Solid & Small Padding
-              : "bg-transparent border-transparent py-3" // Initial state: Transparent & Large Padding
+              ? "bg-background/95 backdrop-blur-md shadow-sm border-border py-1" 
+              : "bg-transparent border-transparent py-3"
         )}
     >
     <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">

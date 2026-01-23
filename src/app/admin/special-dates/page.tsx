@@ -59,12 +59,10 @@ export default function SpecialDatesPage() {
 
   const fetchData = async () => {
     try {
-      // ★★★ Fix: Remove Token Logic
       const resEvents = await fetch('/api/admin/special-dates');
       const dataEvents = await resEvents.json();
       if (dataEvents.success) setEvents(dataEvents.events);
 
-      // ★★★ Fix: Remove Header
       const resCustomers = await fetch('/api/admin/customers-with-dates');
       const dataCustomers = await resCustomers.json();
       if (dataCustomers.success) setCustomerEvents(dataCustomers.events);
@@ -209,7 +207,6 @@ export default function SpecialDatesPage() {
         return;
     }
     setIsSaving(true);
-    // ★★★ Fix: Remove Token Logic
 
     try {
         let finalImageUrl = manualImageUrl; 
@@ -226,7 +223,6 @@ export default function SpecialDatesPage() {
             const expiryDate = expiryDateObj.toISOString().split('T')[0];
 
             try {
-                // ★★★ Fix: Remove Authorization Header
                 const couponRes = await fetch('/api/admin/coupons', {
                     method: 'POST',
                     headers: { 
@@ -241,7 +237,8 @@ export default function SpecialDatesPage() {
                         usageLimit: 1,
                         startDate: startDate,
                         expiryDate: expiryDate, 
-                        isActive: true
+                        isActive: true,
+                        isOneTime: true // ★★★ ADDED isOneTime: true ★★★
                     })
                 });
 
@@ -258,7 +255,6 @@ export default function SpecialDatesPage() {
             }
         }
 
-        // ★★★ Fix: Remove Authorization Header
         const res = await fetch('/api/admin/special-dates', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -282,9 +278,7 @@ export default function SpecialDatesPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    // ★★★ Fix: Remove Token Logic
     try {
-        // ★★★ Fix: Remove Headers
         await fetch(`/api/admin/special-dates?id=${deleteId}`, {
             method: 'DELETE',
         });

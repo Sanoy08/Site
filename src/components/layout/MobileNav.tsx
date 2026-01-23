@@ -16,7 +16,16 @@ const navLinks = [
 ];
 
 // যেসব পাথ-এ ন্যাভবার হাইড করতে চান
-const HIDE_PATHS = ['/admin', '/login', '/register', '/verify-otp', '/reset-password', '/forgot-password'];
+const HIDE_PATHS = [
+    '/admin', 
+    '/login', 
+    '/register', 
+    '/verify-otp', 
+    '/reset-password', 
+    '/forgot-password',
+    '/menus', // ★★★ FIX: প্রোডাক্ট ডিটেইলস পেজে ফুটার হাইড করা হলো
+    '/checkout'  // (Optional: চেকআউট পেজেও হাইড রাখা ভালো)
+];
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -26,7 +35,7 @@ export function MobileNav() {
     // ১. এডমিন সাবডোমেইন চেক
     const isAdminDomain = typeof window !== 'undefined' && window.location.hostname.includes('admin');
     
-    // ২. নির্দিষ্ট পাথ চেক (Login, Register, Admin ইত্যাদি)
+    // ২. নির্দিষ্ট পাথ চেক (Login, Register, Admin, Products ইত্যাদি)
     const isHiddenPath = HIDE_PATHS.some(path => pathname.startsWith(path));
 
     if (isAdminDomain || isHiddenPath) {

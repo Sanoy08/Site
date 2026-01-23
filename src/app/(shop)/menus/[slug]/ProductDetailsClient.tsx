@@ -2,6 +2,7 @@
 
 'use client';
 
+// ... (imports same as before)
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -21,11 +22,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-
-// ✅ Capacitor Share প্লাগইন ইমপোর্ট
 import { Share } from '@capacitor/share';
-
-// ✅ ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 const fallbackImage: ProductImage = { 
@@ -34,6 +31,7 @@ const fallbackImage: ProductImage = {
   alt: 'Placeholder Image' 
 };
 
+// ... (CustomShareIcon component same as before)
 const CustomShareIcon = ({ className }: { className?: string }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
@@ -77,11 +75,16 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
-    addItem(product, quantity);
-    toast.success(`Added ${quantity} ${product.name} to cart`);
+    
+    // ★★★ Fix: Pass 'false' to suppress the default provider toast
+    addItem(product, quantity, false);
+    
+    // ★★★ Custom Toast with 2s duration
+    toast.success(`Added ${quantity} ${product.name} to cart`, {
+        duration: 2000,
+    });
   };
 
-  // ✅ আপডেটেড শেয়ার ফাংশন (Capacitor এবং Web দুইটার জন্যই)
   const handleShare = async () => {
     const shareOptions = {
       title: product.name,
@@ -91,27 +94,24 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     };
 
     try {
-      // Capacitor Share প্রথমে ট্রাই করবে (App-এর জন্য বেস্ট)
       const canShare = await Share.canShare();
       if (canShare.value) {
         await Share.share(shareOptions);
       } else if (navigator.share) {
-        // Fallback to browser's navigator.share
         await navigator.share(shareOptions);
       } else {
-        // যদি কিছুই কাজ না করে, লিংক কপি করে দেবে
         await navigator.clipboard.writeText(window.location.href);
         toast.success("Link copied to clipboard!");
       }
     } catch (err) {
       console.log('Share failed:', err);
-      // এরর হলে অন্তত লিংক কপি করার ব্যবস্থা রাখা ভালো
       navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
     }
   };
 
   return (
+    // ... (rest of the component JSX same as before)
     <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden">
       
       {/* --- MOBILE TOP IMAGE SLIDER --- */}

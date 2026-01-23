@@ -6,7 +6,7 @@ import React, { createContext, useReducer, ReactNode, useEffect, useState, useCa
 import type { CartItem, Product } from '@/lib/types';
 import { toast } from 'sonner';
 import Pusher from 'pusher-js';
-import { useAuth } from '@/hooks/use-auth'; // ★★★ useAuth ইমপোর্ট
+import { useAuth } from '@/hooks/use-auth';
 
 const CART_STORAGE_KEY = 'bumbas-kitchen-cart';
 
@@ -91,19 +91,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [isDirty, setIsDirty] = useState(false); 
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // ★★★ useAuth থেকে ইউজার ইনফো (Token ডিকোড করার দরকার নেই)
   const { user, isLoading: authLoading } = useAuth();
 
-  // ডাটাবেস সিঙ্ক
   const syncToDatabase = useCallback(async (items: CartItem[]) => {
-      // ★ Fix: টোকেন চেক এবং হেডার রিমুভ করা হয়েছে
-      if (!user) return; // ইউজার না থাকলে সিঙ্ক হবে না
-      
+      if (!user) return;
       setIsSyncing(true);
       try {
           await fetch('/api/cart', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' }, // ★ Authorization Header বাদ
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ items })
           });
           setIsDirty(false);
@@ -111,9 +107,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       finally { setIsSyncing(false); }
   }, [user]);
 
-  // ইনিশিয়াল লোড
   useEffect(() => {
-    // Auth loading শেষ না হওয়া পর্যন্ত অপেক্ষা
     if (authLoading) return;
 
     const initializeCart = async () => {
@@ -129,7 +123,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
         if (user) {
             try {
-                // ★ Fix: হেডার ছাড়া রিকোয়েস্ট (কুকি যাবে)
                 const res = await fetch('/api/cart');
                 const data = await res.json();
                 if (data.success) {
@@ -138,29 +131,26 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
                 } else {
                     dispatch({ type: 'SET_CART', payload: { items: localItems } });
                     if (localItems.length > 0) {
-                         setIsDirty(true); // লোকাল আইটেম থাকলে সার্ভারে পাঠাতে হবে
+                         setIsDirty(true);
                     }
                 }
             } catch (e) {
                 dispatch({ type: 'SET_CART', payload: { items: localItems } });
             }
         } else {
-            // ইউজার না থাকলে শুধুই লোকাল স্টোরেজ
             dispatch({ type: 'SET_CART', payload: { items: localItems } });
         }
         setIsInitialized(true);
     };
     initializeCart();
-  }, [user, authLoading]); // user চেঞ্জ হলে রি-রান হবে
+  }, [user, authLoading]);
 
-  // স্টেট সেভ (Local Storage)
   useEffect(() => {
     if (isInitialized) {
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state));
     }
   }, [state, isInitialized]);
 
-  // পিরিওডিক সিঙ্ক
   useEffect(() => {
     const interval = setInterval(() => {
         if (user && isDirty && !isSyncing) syncToDatabase(state.items);
@@ -168,7 +158,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [isDirty, isSyncing, state.items, syncToDatabase, user]);
 
-  // ★★★ Pusher Fix: টোকেন ডিকোড না করে user.id ব্যবহার
   useEffect(() => {
       if (!user || !isInitialized) return;
 
@@ -176,7 +165,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
       });
       
-      // ★ user.id সরাসরি ব্যবহার
       const channel = pusher.subscribe(`user-${user.id}`);
       
       channel.bind('cart-updated', (data: any) => {
@@ -189,17 +177,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       return () => { pusher.unsubscribe(`user-${user.id}`); };
   }, [isInitialized, isSyncing, user]);
 
-  // অ্যাকশনস
-  const addItem = (product: Product, quantity: number = 1) => {
+  // ★★★ FIX: showToast অপশন যোগ করা হয়েছে (Default: true)
+  const addItem = (product: Product, quantity: number = 1, showToast: boolean = true) => {
     dispatch({ type: 'ADD_ITEM', payload: { product, quantity } });
     setIsDirty(true);
-    toast.success(`Added "${product.name}" to cart`);
+    if (showToast) {
+        toast.success(`Added "${product.name}" to cart`, { duration: 2000 }); // এখানেও ডিউরেশন ফিক্স করা হলো
+    }
   };
 
   const removeItem = (id: string) => {
     dispatch({ type: 'REMOVE_ITEM', payload: { id } });
     setIsDirty(true);
-    toast.info("Item removed");
+    toast.info("Item removed", { duration: 2000 });
   };
 
   const updateQuantity = (id: string, quantity: number) => {

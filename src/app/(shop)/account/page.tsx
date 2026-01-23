@@ -48,7 +48,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 
-// ★★★ IMPORT BACK HANDLER (New) ★★★
 import { registerBackHandler } from '@/hooks/use-back-button';
 
 // --- SCHEMAS ---
@@ -122,15 +121,12 @@ function SwipeableCalendar({
     setViewDate(newDate);
   };
 
-  // Swipe Logic
   const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const swipeThreshold = 50;
     if (info.offset.x < -swipeThreshold) {
-      // Swipe Left -> Next Month
       setDirection(1);
       setViewDate(addMonths(viewDate, 1));
     } else if (info.offset.x > swipeThreshold) {
-      // Swipe Right -> Previous Month
       setDirection(-1);
       setViewDate(subMonths(viewDate, 1));
     }
@@ -138,7 +134,6 @@ function SwipeableCalendar({
 
   return (
     <div className="flex flex-col items-center gap-4 p-4 bg-white overflow-hidden">
-        {/* Selectors */}
         <div className="flex gap-2 w-full max-w-xs z-20 relative">
             <Select 
                 value={months[getMonth(viewDate)]} 
@@ -171,7 +166,6 @@ function SwipeableCalendar({
             </Select>
         </div>
 
-        {/* Animated Swipe Area */}
         <div className="relative w-full overflow-hidden min-h-[350px]">
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
@@ -226,7 +220,6 @@ function SwipeableCalendar({
   );
 }
 
-// --- MENU ITEM ---
 const MenuItem = ({ icon: Icon, title, subtitle, onClick, href, isDestructive = false }: any) => {
     const content = (
         <div className={cn(
@@ -257,9 +250,8 @@ const MenuItem = ({ icon: Icon, title, subtitle, onClick, href, isDestructive = 
     return <div onClick={onClick}>{content}</div>;
 };
 
-// --- MAIN PAGE ---
 export default function AccountPage() {
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, isLoading: authLoading } = useAuth(); // ★ Add authLoading
   const router = useRouter();
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -276,7 +268,6 @@ export default function AccountPage() {
   const profileForm = useForm<ProfileFormValues>({ resolver: zodResolver(profileFormSchema), defaultValues: { firstName: '', lastName: '', email: '', dob: '', anniversary: '' } });
   const passwordForm = useForm<PasswordFormValues>({ resolver: zodResolver(passwordFormSchema), defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
 
-  // ★★★ BACK BUTTON LOGIC FOR EDIT PROFILE ★★★
   useEffect(() => {
     if (isEditProfileOpen) {
       registerBackHandler(() => setIsEditProfileOpen(false));
@@ -286,7 +277,6 @@ export default function AccountPage() {
     return () => registerBackHandler(null);
   }, [isEditProfileOpen]);
 
-  // ★★★ BACK BUTTON LOGIC FOR SECURITY/PASSWORD SHEET ★★★
   useEffect(() => {
     if (isSecurityOpen) {
       registerBackHandler(() => setIsSecurityOpen(false));
@@ -298,22 +288,24 @@ export default function AccountPage() {
     return () => registerBackHandler(null);
   }, [isSecurityOpen, isEditProfileOpen]);
 
-  // ★★★ NEW: Fetch Data with Cookie Auth (No localStorage) ★★★
+  // ★★★ FIX: Fetch Wallet Balance only when user is available
   useEffect(() => {
-    const fetchData = async () => {
+    if (!user) return; // Don't fetch if no user
+
+    const fetchWallet = async () => {
         try {
-            // Note: useAuth already fetches '/api/auth/me' on mount, so we don't need to do it here again.
-            // We just fetch the wallet balance.
-            
-            const resWallet = await fetch('/api/wallet'); // No headers needed
+            const resWallet = await fetch('/api/wallet');
             if (resWallet.ok) {
                 const walletData = await resWallet.json();
-                if (walletData.success) setWalletBalance(walletData.balance);
+                if (walletData.success && walletData.wallet) {
+                    setWalletBalance(walletData.wallet.balance || 0);
+                }
             }
-        } catch (e) { console.error("Error fetching data:", e); }
+        } catch (e) { console.error("Error fetching wallet:", e); }
     };
-    fetchData();
-  }, []);
+    
+    fetchWallet();
+  }, [user]); // Run when 'user' changes
 
   useEffect(() => {
     if (user) {
@@ -330,7 +322,6 @@ export default function AccountPage() {
   const onProfileSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
     try {
-        // ★★★ Fix: Remove Token & Headers
         const res = await fetch('/api/auth/update-profile', { 
             method: 'PUT', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -339,7 +330,7 @@ export default function AccountPage() {
         const resData = await res.json();
         if (!res.ok) throw new Error(resData.error);
         
-        login(resData.user); // Update local state
+        login(resData.user);
         
         toast.success("Profile Updated");
         setIsEditProfileOpen(false);
@@ -349,7 +340,6 @@ export default function AccountPage() {
   const onPasswordSubmit = async (data: PasswordFormValues) => {
     if (!user) return;
     try {
-        // ★★★ Fix: Remove Token & Headers
         const res = await fetch('/api/auth/change-password', { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -369,7 +359,8 @@ export default function AccountPage() {
   const hasDob = !!user?.dob && user.dob !== ""; // @ts-ignore
   const hasAnniversary = !!user?.anniversary && user.anniversary !== "";
 
-  if (!user) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>;
+  // Show loader while auth is initializing
+  if (authLoading || !user) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="bg-white min-h-screen pb-4">

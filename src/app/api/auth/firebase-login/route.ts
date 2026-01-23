@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       const newUser = {
         name: name || 'User',
         email: email.toLowerCase(),
-        image: picture,
+        picture: picture, // ★ Fix: 'image' -> 'picture' (Consistent with DB)
         firebaseUid: uid,
         role: 'customer',
         isVerified: true,
@@ -46,9 +46,18 @@ export async function POST(request: NextRequest) {
       { expiresIn: '30d' }
     );
 
-    // ✅ Set Cookie
+    // ✅ Set Cookie using helper
     return responseWithCookie(
-        { success: true, user: { id: user._id.toString(), name: user.name, email: user.email, role: user.role, image: user.image } },
+        { 
+            success: true, 
+            user: { 
+                id: user._id.toString(), 
+                name: user.name, 
+                email: user.email, 
+                role: user.role, 
+                picture: user.picture // ★ Fix: 'image' -> 'picture'
+            } 
+        },
         token
     );
 

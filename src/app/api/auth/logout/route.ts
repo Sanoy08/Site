@@ -5,8 +5,8 @@ import { NextResponse } from 'next/server';
 export async function POST() {
   const response = NextResponse.json({ success: true, message: 'Logged out' });
   
-  // Clear cookie by setting expired date
-  response.cookies.set('token', '', {
+  // ★★★ Fix: Cookie name must be 'auth_token'
+  response.cookies.set('auth_token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

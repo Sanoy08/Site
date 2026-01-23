@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
-import { verifyUser } from '@/lib/auth-utils'; // ★ ফিক্স: কুকি চেকার ইম্পোর্ট
+import { getUser } from '@/lib/auth-utils'; // ★ Fix: verifyUser -> getUser
 
 const DB_NAME = 'BumbasKitchenDB';
 const USERS_COLLECTION = 'users';
@@ -26,14 +26,14 @@ const toBoldUnicode = (text: string) => {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. ★ ফিক্স: কুকি থেকে ইউজার ভেরিফাই করা (ম্যানুয়াল হেডার চেক বাদ)
-    const decoded = await verifyUser(request);
+    // 1. ★ ফিক্স: কুকি থেকে ইউজার ভেরিফাই করা (getUser ব্যবহার করে)
+    const currentUser = await getUser(request);
 
-    if (!decoded) {
+    if (!currentUser) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = decoded._id;
+    const userId = currentUser._id || currentUser.id;
 
     // 2. ইনপুট ভ্যালিডেশন
     const { coinsToRedeem } = await request.json();

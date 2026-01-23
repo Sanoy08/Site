@@ -2,14 +2,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'coupons';
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. ★★★ সিকিউরিটি ফিক্স: এখন GET রিকোয়েস্টও অ্যাডমিন চেক করবে
+    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized Access' }, { status: 401 });
     }
@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       startDate: c.startDate,
       expiryDate: c.expiryDate,
       isActive: c.isActive,
-      timesUsed: c.timesUsed || 0
+      timesUsed: c.timesUsed || 0,
+      isOneTime: c.isOneTime || false // ফ্রন্টএন্ডে দেখানোর জন্য
     }));
 
     return NextResponse.json({ success: true, coupons: formattedCoupons }, { status: 200 });
@@ -68,7 +69,12 @@ export async function POST(request: NextRequest) {
       startDate: body.startDate,
       expiryDate: expiryDate,
       isActive: body.isActive ?? true,
-      timesUsed: 0, // শুরু ০ দিয়ে
+      
+      // ★★★ FIX: isOneTime এবং userId সাপোর্ট যোগ করা হলো
+      isOneTime: body.isOneTime || false, 
+      userId: body.userId ? body.userId : null, // যদি কোনো স্পেসিফিক ইউজারের জন্য হয়
+
+      timesUsed: 0, 
       createdAt: new Date()
     };
 

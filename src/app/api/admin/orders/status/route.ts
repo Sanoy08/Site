@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
-import { finalizeDelivery } from '@/lib/order-service'; // ★ Shared Logic Import
+import { finalizeDelivery } from '@/lib/order-service';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★ Import
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
@@ -16,6 +17,11 @@ const SUCCESS_STATUSES = ['Received', 'Delivered'];
 
 export async function PUT(request: NextRequest) {
   try {
+    // ★ ১. সিকিউরিটি ফিক্স
+    if (!await verifyAdmin(request)) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { orderId, status } = await request.json();
 
     console.log(`[API] Updating Status: Order ${orderId} -> ${status}`);
@@ -30,7 +36,6 @@ export async function PUT(request: NextRequest) {
 
     try {
         await session.withTransaction(async () => {
-            
             const order = await db.collection(ORDERS_COLLECTION).findOne({ _id: new ObjectId(orderId) }, { session });
             
             if (!order) {
@@ -39,7 +44,6 @@ export async function PUT(request: NextRequest) {
 
             let orderUpdate: any = { Status: status }; 
             
-            // OTP Logic (For Received Status)
             let generatedOtp = null;
             if (status === 'Received') {
                 generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -71,7 +75,6 @@ export async function PUT(request: NextRequest) {
                 }
             }
             
-            // ১. স্ট্যাটাস আপডেট
             await db.collection(ORDERS_COLLECTION).updateOne(
                 { _id: new ObjectId(orderId) },
                 { $set: orderUpdate },
@@ -83,14 +86,10 @@ export async function PUT(request: NextRequest) {
                 userId = new ObjectId(order.userId);
             }
 
-            // ২. লজিক: Delivered হলে Shared Function কল করা
             if (status === 'Delivered') {
-                // ★★★ এটি এখন Coins এবং Delivery Notification হ্যান্ডেল করবে ★★★
                 await finalizeDelivery(client, orderId, session);
             } 
-            // ৩. লজিক: Refund (Cancelled)
             else if (status === 'Cancelled' && userId && order.CoinsRedeemed > 0 && !order.coinsRefunded) {
-                // ... Refund Logic (Same as before) ...
                 await db.collection(USERS_COLLECTION).updateOne(
                     { _id: userId },
                     { 
@@ -124,8 +123,6 @@ export async function PUT(request: NextRequest) {
                 );
             }
 
-            // ৪. লজিক: অন্যান্য স্ট্যাটাসের নোটিফিকেশন (Delivered বাদে)
-            // কারণ Delivered হলে finalizeDelivery নিজেই নোটিফিকেশন পাঠাবে
             if (userId && status !== 'Delivered') {
                 let notifBody = `Order #${order.OrderNumber} is now ${status}.`;
                 

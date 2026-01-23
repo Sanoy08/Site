@@ -1,10 +1,12 @@
-// src/app/api/admin/notifications/presets/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★ Import
 
 export async function GET(request: NextRequest) {
+    // ★ 1. Admin Check
+    if (!await verifyAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
 
@@ -17,13 +19,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    // ★ 2. Admin Check
+    if (!await verifyAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json();
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
 
     await db.collection('notificationPresets').insertOne({
         ...body,
-        timeSlot: body.timeSlot || 'anytime', // ★ Default to anytime if missing
+        timeSlot: body.timeSlot || 'anytime',
         isActive: true,
         createdAt: new Date()
     });
@@ -32,6 +37,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+    // ★ 3. Admin Check
+    if (!await verifyAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     

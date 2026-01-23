@@ -1,11 +1,19 @@
+// src/app/api/admin/finance/approve-deposit/route.ts
+
 import { NextResponse, NextRequest } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★ Import
 
 export async function POST(req: NextRequest) {
     try {
-        const { requestId, action } = await req.json(); // action = 'approve' | 'reject'
+        // ★ ১. সিকিউরিটি ফিক্স
+        if (!await verifyAdmin(req)) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { requestId, action } = await req.json();
         
         const client = await clientPromise;
         const db = client.db('BumbasKitchenDB');
@@ -16,14 +24,12 @@ export async function POST(req: NextRequest) {
 
         if(action === 'approve') {
             await session.withTransaction(async () => {
-                // 1. Mark request as approved
                 await db.collection('depositRequests').updateOne(
                     { _id: new ObjectId(requestId) },
                     { $set: { status: 'approved', approvedAt: new Date() } },
                     { session }
                 );
 
-                // 2. Mark all linked orders as Deposited
                 await db.collection('orders').updateMany(
                     { _id: { $in: request.orderIds } },
                     { $set: { cashDeposited: true, depositRequestId: new ObjectId(requestId) } },
@@ -31,7 +37,6 @@ export async function POST(req: NextRequest) {
                 );
             });
 
-            // 3. Notify Delivery Boy
             await sendNotificationToUser(
                 client, 
                 request.deliveryBoyId.toString(), 
@@ -42,7 +47,6 @@ export async function POST(req: NextRequest) {
             );
 
         } else {
-            // Reject logic
             await db.collection('depositRequests').updateOne(
                 { _id: new ObjectId(requestId) },
                 { $set: { status: 'rejected' } }

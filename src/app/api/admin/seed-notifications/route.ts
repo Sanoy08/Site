@@ -2,9 +2,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
+import { verifyAdmin } from '@/lib/auth-utils'; // ★ ১. সিকিউরিটি চেক ইমপোর্ট
 
 export async function GET(request: NextRequest) {
   try {
+    // ★ ২. অ্যাডমিন ভেরিফিকেশন (সিকিউরিটি ফিক্স)
+    if (!await verifyAdmin(request)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
 

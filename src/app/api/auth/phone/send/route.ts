@@ -24,12 +24,10 @@ export async function POST(request: NextRequest) {
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+    const usersCollection = db.collection(USERS_COLLECTION);
 
-    // ১. চেক করা ইউজার আছে কিনা
-    const existingUser = await db.collection(USERS_COLLECTION).findOne({ phone: phone });
-
-    // ★ লজিক: যদি ইউজার না থাকে এবং নামও না দেওয়া হয় (তার মানে Login Page থেকে এসেছে)
-    // তাহলে আমরা তাকে আটকাবো।
+    // ১. লগইন লজিক চেক (Login Page থেকে আসলে নাম থাকে না)
+    const existingUser = await usersCollection.findOne({ phone: phone });
     if (!existingUser && !name) {
         return NextResponse.json({ 
             success: false, 
@@ -37,12 +35,28 @@ export async function POST(request: NextRequest) {
         }, { status: 404 });
     }
 
-    // ২. OTP জেনারেট
+    // ২. ★★★ ইমেল ডুপ্লিকেট চেক (New Fix) ★★★
+    if (email) {
+        // এমন ইউজার খোঁজো যার এই ইমেল আছে, কিন্তু ফোন নম্বর আলাদা
+        const duplicateEmailUser = await usersCollection.findOne({ 
+            email: email, 
+            phone: { $ne: phone } // $ne মানে Not Equal (বর্তমান নম্বর বাদে)
+        });
+
+        if (duplicateEmailUser) {
+            return NextResponse.json({ 
+                success: false, 
+                error: 'This email is already linked to another account.' 
+            }, { status: 409 });
+        }
+    }
+
+    // ৩. OTP জেনারেট
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otp, 10);
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); 
 
-    // ৩. ডাটাবেস আপডেট (রেজিস্টার বা লগইন উভয়ের জন্য)
+    // ৪. ডাটাবেস আপডেট লজিক
     const updateFields: any = {
         phone: phone, 
         otp: otpHash, 
@@ -50,31 +64,29 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
     };
 
-    // যদি রেজিস্টার পেজ থেকে নাম/ইমেল আসে, তবে তা আপডেট হবে
     if (name) updateFields.name = name;
     if (email) updateFields.email = email;
 
-    // নতুন ইউজারের ডিফল্ট ডাটা
     const setOnInsertFields: any = {
         createdAt: new Date(),
-        isVerified: false, // OTP ভেরিফাই হলে true হবে
+        isVerified: false,
         role: 'customer',
         wallet: { currentBalance: 0, tier: "Bronze" }
     };
 
-    // যদি ইমেল না দেয়, তবেই ডামি ইমেল বসবে (শুধুমাত্র নতুন একাউন্টের ক্ষেত্রে)
     if (!email) setOnInsertFields.email = `${phone}@no-email.com`;
 
-    await db.collection(USERS_COLLECTION).updateOne(
+    // ডাটাবেস আপডেট
+    await usersCollection.updateOne(
         { phone: phone },
         { 
             $set: updateFields,
             $setOnInsert: setOnInsertFields
         },
-        { upsert: true } // নতুন হলে তৈরি হবে (কারণ আমরা উপরে 'name' চেক করে নিয়েছি)
+        { upsert: true }
     );
 
-    // ৪. SMS পাঠানো
+    // ৫. SMS পাঠানো
     await db.collection(SMS_COLLECTION).insertOne({
         phone: phone,
         message: `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.`,
@@ -86,6 +98,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("Send OTP Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    
+    // মঙ্গোডিবির ডুপ্লিকেট এরর হ্যান্ডলিং (Safety Check)
+    if (error.code === 11000) {
+        return NextResponse.json({ 
+            success: false, 
+            error: 'Email or Phone already exists.' 
+        }, { status: 409 });
+    }
+
+    return NextResponse.json({ success: false, error: 'Server error occurred.' }, { status: 500 });
   }
 }

@@ -16,10 +16,10 @@ const COIN_VALUE = 1;
 
 export async function POST(request: NextRequest) {
   try {
-    const orderData = await request.json();
+    const orderData = await request.json(); // বডি একবারই রিড করা হলো
     const { items, couponCode, useCoins, address, deliveryAddress, orderType, name, altPhone, mealTime, preferredDate, instructions } = orderData;
 
-    // 1. Authentication
+    // ১. অথেন্টিকেশন
     const currentUser = await getUser(request);
     let userIdToSave: ObjectId | null = null;
     
@@ -35,13 +35,13 @@ export async function POST(request: NextRequest) {
     const db = client.db(DB_NAME);
     const session = client.startSession();
 
-    try {
-        let orderId = '';
+    // ★ নোটিফিকেশনের জন্য ভেরিয়েবলগুলো ট্রানজ্যাকশনের বাইরে ডিক্লেয়ার করা হলো
+    let orderId = '';
+    let finalAmountForLog = 0; 
 
+    try {
         await session.withTransaction(async () => {
-            // ---------------------------------------------------------
-            // 2. Server-Side Price Calculation (CRITICAL FIX)
-            // ---------------------------------------------------------
+            // ২. সার্ভার-সাইড প্রাইস ক্যালকুলেশন (Database থেকে)
             const productIds = items.map((item: any) => new ObjectId(item.id));
             const dbProducts = await db.collection(MENU_COLLECTION)
                 .find({ _id: { $in: productIds } }, { session })
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
                     throw new Error(`Product not found: ${item.name} (ID: ${item.id})`);
                 }
 
-                // Use the Price from Database, ignore client's price
+                // ডাটাবেস এর প্রাইস ব্যবহার করা হচ্ছে (ক্লায়েন্টের প্রাইস ইগনোর করা হলো)
                 const itemTotal = (dbProduct.Price || 0) * item.quantity;
                 calculatedSubtotal += itemTotal;
 
@@ -68,9 +68,7 @@ export async function POST(request: NextRequest) {
                 });
             }
 
-            // ---------------------------------------------------------
-            // 3. Coupon Validation & Application
-            // ---------------------------------------------------------
+            // ৩. কুপন ভ্যালিডেশন
             let couponDiscount = 0;
             let appliedCouponCode = null;
 
@@ -80,7 +78,6 @@ export async function POST(request: NextRequest) {
                 }, { session });
 
                 if (coupon) {
-                    // Check Validity
                     const now = new Date();
                     const expiryDate = coupon.expiryDate ? new Date(coupon.expiryDate) : null;
                     if (expiryDate) expiryDate.setHours(23, 59, 59, 999);
@@ -90,10 +87,7 @@ export async function POST(request: NextRequest) {
                         (!expiryDate || expiryDate >= now) &&
                         (calculatedSubtotal >= (coupon.minOrder || 0));
 
-                    // Check Usage Limits
                     const isLimitReached = coupon.usageLimit > 0 && (coupon.timesUsed || 0) >= coupon.usageLimit;
-                    
-                    // Check User Ownership (if coupon is specific to user)
                     const isUserValid = !coupon.userId || (userIdToSave && coupon.userId.toString() === userIdToSave.toString());
 
                     if (isValid && !isLimitReached && isUserValid) {
@@ -102,11 +96,9 @@ export async function POST(request: NextRequest) {
                         } else {
                             couponDiscount = coupon.value;
                         }
-                        // Cap discount at subtotal
                         couponDiscount = Math.min(couponDiscount, calculatedSubtotal);
                         appliedCouponCode = coupon.code;
 
-                        // Increment Coupon Usage
                         await db.collection(COUPONS_COLLECTION).updateOne(
                             { _id: coupon._id },
                             { $inc: { timesUsed: 1 } },
@@ -116,17 +108,13 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // ---------------------------------------------------------
-            // 4. Coin Redemption Logic
-            // ---------------------------------------------------------
+            // ৪. কয়েন রিডিমশন
             let coinsRedeemed = 0;
             let coinDiscount = 0;
 
             if (userIdToSave && useCoins) {
                 const user = await db.collection(USERS_COLLECTION).findOne({ _id: userIdToSave }, { session });
                 const userBalance = user?.wallet?.currentBalance || 0;
-
-                // Max redeemable is 50% of subtotal (Business Rule)
                 const maxRedeemableAmount = calculatedSubtotal * 0.5; 
                 const redeemableCoins = Math.floor(maxRedeemableAmount / COIN_VALUE);
 
@@ -134,14 +122,12 @@ export async function POST(request: NextRequest) {
                 coinDiscount = coinsRedeemed * COIN_VALUE;
 
                 if (coinsRedeemed > 0) {
-                    // Deduct Coins
                     await db.collection(USERS_COLLECTION).updateOne(
                         { _id: userIdToSave },
                         { $inc: { "wallet.currentBalance": -coinsRedeemed } },
                         { session }
                     );
 
-                    // Log Transaction
                     orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
                     
                     await db.collection(TRANSACTIONS_COLLECTION).insertOne({
@@ -158,18 +144,19 @@ export async function POST(request: NextRequest) {
                 orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
             }
 
-            // ---------------------------------------------------------
-            // 5. Final Calculation & Save
-            // ---------------------------------------------------------
+            // ৫. ফাইনাল ক্যালকুলেশন এবং সেভ
             const totalDiscount = couponDiscount + coinDiscount;
             const finalPrice = Math.max(0, calculatedSubtotal - totalDiscount);
+            
+            // ★ বাইরের ভেরিয়েবলে সঠিক মান রাখা হচ্ছে নোটিফিকেশনের জন্য
+            finalAmountForLog = finalPrice; 
 
             const newOrder = {
                 OrderNumber: orderId,
                 userId: userIdToSave,
                 Timestamp: new Date(),
                 Name: name,
-                Phone: altPhone, // Assuming primary phone is in User obj, but saving contact info for order is good
+                Phone: altPhone,
                 Address: address,
                 DeliveryAddress: deliveryAddress || address,
                 OrderType: orderType || 'Delivery',
@@ -181,10 +168,10 @@ export async function POST(request: NextRequest) {
                 Subtotal: calculatedSubtotal,
                 Discount: totalDiscount,
                 CouponCode: appliedCouponCode,
-                CouponDiscount: couponDiscount, // Keeping track specifically
+                CouponDiscount: couponDiscount,
                 CoinsRedeemed: coinsRedeemed,
                 CoinDiscount: coinDiscount,
-                FinalPrice: finalPrice,
+                FinalPrice: finalPrice, // ডাটাবেসে এই সঠিক প্রাইসটাই যাবে
                 
                 Items: validatedItems,
                 Status: "Pending Verification",
@@ -195,13 +182,12 @@ export async function POST(request: NextRequest) {
             await db.collection(ORDERS_COLLECTION).insertOne(newOrder, { session });
         });
 
-        // 6. Notifications (After Transaction Commit)
-        // Send notification to admin panel (non-blocking)
+        // ৬. নোটিফিকেশন (সঠিক প্রাইস সহ)
         sendNotificationToAdmins(
             client,
             "New Order (Pending) ⚠️",
-            // FIX: Use orderData.total instead of request.json['total']
-            `Order #${orderId} received. Amount: ₹${orderData.total || 'calculated'}`, 
+            // ★ ফিক্স: এখন আর request.json বা orderData.total নয়, বরং সার্ভারের হিসাব করা finalAmountForLog ব্যবহার হবে
+            `Order #${orderId} received. Amount: ₹${finalAmountForLog}`, 
             `https://admin.bumbaskitchen.app/orders?id=${orderId}`
         ).catch(err => console.error("Notification Error:", err));
 
@@ -209,12 +195,11 @@ export async function POST(request: NextRequest) {
             success: true, 
             message: "Order placed successfully!",
             orderId: orderId,
-            finalPrice: 0 // You might want to return the actual final price here
+            finalPrice: finalAmountForLog
         }, { status: 201 });
 
     } catch (error: any) {
         console.error("Transaction Error:", error);
-        // Transaction automatically aborts on error
         return NextResponse.json(
             { success: false, error: error.message || 'Failed to process order.' }, 
             { status: 500 }

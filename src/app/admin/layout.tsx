@@ -1,5 +1,3 @@
-// src/app/admin/layout.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,13 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, ShoppingBag, Utensils, TicketPercent, Users, 
-  Calendar, ImageIcon, Gift, BarChart3, Send, Settings, Menu, Moon, Sun, LogOut, CalendarDays, Loader2
+  Calendar, ImageIcon, Gift, BarChart3, Send, Settings, Menu, Moon, Sun, LogOut, CalendarDays, Loader2, Images 
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/use-auth'; 
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Images } from 'lucide-react';
 
 const adminNavLinks = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -37,19 +34,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // ১. Security Check & Redirect Logic
   useEffect(() => {
-    if (isLoading) return; // Wait until loading finishes
+    setIsMounted(true);
+  }, []);
 
+  // ১. Security Check & Redirect Logic (UPDATED)
+  useEffect(() => {
+    if (isLoading || !isMounted) return; 
+
+    // যদি ইউজার না থাকে
     if (!user) {
-        if (pathname !== '/login') router.replace('/login');
-    } else if (user.role !== 'admin') {
+        // আমরা সাবডোমেইনে আছি, তাই router.push('/login') কাজ করবে না।
+        // সোজা মেইন সাইটের লগইন পেজে পাঠাতে হবে।
+        window.location.href = 'https://bumbaskitchen.app/login';
+        return;
+    } 
+    
+    // যদি ইউজার থাকে কিন্তু অ্যাডমিন না হয়
+    if (user.role !== 'admin') {
         toast.error("Unauthorized: Admin Access Required");
-        // Force redirect to main site if not admin
-        window.location.href = 'https://www.bumbaskitchen.app'; 
+        window.location.href = 'https://bumbaskitchen.app'; 
     }
-  }, [user, isLoading, pathname, router]);
+  }, [user, isLoading, isMounted]);
 
   // ২. Dark Mode Logic
   useEffect(() => {
@@ -73,19 +81,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   // Loading State UI
-  if (isLoading) {
+  if (isLoading || !isMounted) {
     return (
-        <div className="h-screen w-full flex flex-col gap-4 items-center justify-center bg-muted/20">
+        <div className="h-screen w-full flex flex-col gap-4 items-center justify-center bg-[#f0f2f5] dark:bg-[#121212]">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-sm text-slate-500 font-medium">Verifying Session...</p>
+            <p className="text-sm text-slate-500 font-medium">Verifying Admin Access...</p>
         </div>
     );
   }
 
-  // Allow login page to render without layout wrapper
-  if (pathname === '/login') return <>{children}</>;
-
-  // Block rendering if unauthorized (double check)
+  // Block rendering if unauthorized (Safety Net)
   if (!user || user.role !== 'admin') return null;
 
   const currentTitle = adminNavLinks.find(link => link.href === pathname)?.label || 'Admin Panel';
@@ -105,7 +110,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3 custom-scrollbar">
           {adminNavLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href;
+            // Active link checking logic improved for admin subpaths
+            const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
+            
             return (
               <Link 
                 key={link.href} 
@@ -144,6 +151,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             
             <div className="flex items-center gap-4 sm:gap-6">
+                {/* Visit Store Button */}
+                <a href="https://bumbaskitchen.app" target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-full hover:bg-primary/20 transition-colors">
+                    <ShoppingBag className="w-4 h-4" />
+                    Visit Store
+                </a>
+
                  <div onClick={toggleTheme} className="w-14 h-7 bg-[#ccc] dark:bg-[#4A5568] rounded-full relative cursor-pointer flex items-center justify-between px-1.5 transition-colors duration-300">
                     <Moon className="w-3.5 h-3.5 text-[#f1c40f] z-10" />
                     <Sun className="w-3.5 h-3.5 text-[#f39c12] z-10" />

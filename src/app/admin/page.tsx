@@ -35,9 +35,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      // ★★★ Fix: Remove Token Check
       try {
-        // ★★★ Fix: Remove Header
         const res = await fetch('/api/admin/stats');
         const data = await res.json();
         
@@ -50,6 +48,7 @@ export default function AdminDashboardPage() {
         }
       } catch (error) {
         console.error("Dashboard Error:", error);
+        toast.error("Error fetching stats");
       } finally {
         setIsLoading(false);
       }
@@ -69,11 +68,11 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      {/* 1. Stats Cards Section (Responsive Grid) */}
+      {/* 1. Stats Cards Section */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         
         {/* Total Orders */}
-        <Card className="border-l-4 border-l-blue-500 shadow-sm">
+        <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4 sm:p-6 flex items-center justify-between">
             <div>
               <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Orders</p>
@@ -86,7 +85,7 @@ export default function AdminDashboardPage() {
         </Card>
 
         {/* Today's Revenue */}
-        <Card className="border-l-4 border-l-green-500 shadow-sm">
+        <Card className="border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4 sm:p-6 flex items-center justify-between">
             <div>
               <p className="text-xs sm:text-sm font-medium text-muted-foreground">Today's Revenue</p>
@@ -99,7 +98,7 @@ export default function AdminDashboardPage() {
         </Card>
 
         {/* Pending Orders */}
-        <Card className="border-l-4 border-l-orange-500 shadow-sm">
+        <Card className="border-l-4 border-l-orange-500 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4 sm:p-6 flex items-center justify-between">
             <div>
               <p className="text-xs sm:text-sm font-medium text-muted-foreground">Pending Orders</p>
@@ -112,7 +111,7 @@ export default function AdminDashboardPage() {
         </Card>
 
         {/* Total Customers */}
-        <Card className="border-l-4 border-l-purple-500 shadow-sm">
+        <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4 sm:p-6 flex items-center justify-between">
             <div>
               <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Customers</p>
@@ -125,11 +124,11 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
-      {/* 2. Charts Section (Responsive Height) */}
+      {/* 2. Charts Section */}
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         
         {/* Sales Trend Chart */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <TrendingUp className="h-5 w-5 text-primary" /> 
@@ -139,21 +138,33 @@ export default function AdminDashboardPage() {
             <CardContent className="h-[300px] sm:h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="month" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                        <XAxis 
+                            dataKey="month" 
+                            fontSize={12} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tick={{ fill: '#6b7280' }}
+                        />
+                        <YAxis 
+                            fontSize={12} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickFormatter={(value) => `₹${value}`} 
+                            tick={{ fill: '#6b7280' }}
+                        />
                         <Tooltip 
                             cursor={{fill: 'transparent'}}
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                         />
-                        <Bar dataKey="sales" fill="#84cc16" radius={[4, 4, 0, 0]} barSize={40} />
+                        <Bar dataKey="sales" fill="#4CAF50" radius={[4, 4, 0, 0]} barSize={40} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
         </Card>
 
         {/* Top Selling Items Chart */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader>
                 <CardTitle className="text-base sm:text-lg">Top 5 Selling Items</CardTitle>
             </CardHeader>
@@ -171,7 +182,7 @@ export default function AdminDashboardPage() {
                                 paddingAngle={5}
                                 dataKey="value"
                             >
-                                {topSellingData.map((entry, index) => (
+                                {topSellingData.map((entry: any, index: number) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>

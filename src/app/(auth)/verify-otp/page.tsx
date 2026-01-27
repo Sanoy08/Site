@@ -1,106 +1,190 @@
+// src/app/(auth)/verify-otp/page.tsx
+
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { toast } from 'sonner';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
-function VerifyForm() {
+const verifySchema = z.object({
+  otp: z.string().min(6, "OTP must be at least 6 characters."),
+  password: z.string().min(6, "Password must be at least 6 characters."),
+  phone: z.string().min(10, "Please enter a valid phone number."),
+});
+
+function VerifyOtpForm() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
-  const phone = searchParams.get('phone');
-  const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
 
-  useEffect(() => {
-    if (!phone) {
-      router.replace('/login');
+  const email = searchParams.get('email') || '';
+  const name = searchParams.get('name') || '';
+
+  const form = useForm<z.infer<typeof verifySchema>>({
+    resolver: zodResolver(verifySchema),
+    defaultValues: { otp: "", password: "", phone: "" },
+  });
+
+  // শুধুমাত্র নম্বর টাইপ করার লজিক
+  const handleNumericInput = (e: React.ChangeEvent<HTMLInputElement>, onChange: (...event: any[]) => void) => {
+    const value = e.target.value;
+    if (value === '' || /^\d+$/.test(value)) {
+      onChange(value);
     }
-  }, [phone, router]);
+  };
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  async function onSubmit(values: z.infer<typeof verifySchema>) {
+    if (!email) {
+        toast.error("Email missing. Please register again.");
+        router.push('/register');
+        return;
+    }
 
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/auth/verify-otp', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp }),
+        body: JSON.stringify({
+            email,
+            name,
+            otp: values.otp,
+            password: values.password,
+            phone: values.phone
+        }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error);
-
-      toast.success('Login Successful!');
-      
-      // রোল চেক করে রিডাইরেক্ট (যদিও Middleware হ্যান্ডেল করবে, তবুও ক্লায়েন্ট সাইডে ফাস্ট রেসপন্সের জন্য)
-      if (data.user.role === 'admin') {
-         // সাবডোমেইন লজিক থাকলে এখানে হ্যান্ডেল করতে পারেন, 
-         // আপাতত আমরা মেইন পেজে পাঠাচ্ছি, Middleware বাকিটা দেখবে
-         window.location.href = '/'; 
-      } else {
-         window.location.href = '/';
+      if (!res.ok) {
+        throw new Error(data.error || 'Verification failed');
       }
 
+      login(data.user, data.token);
+
+      toast.success("Account created successfully!");
+      router.push('/account');
+
     } catch (error: any) {
-      toast.error(error.message || 'Invalid OTP');
+      console.error(error);
+      toast.error(error.message || "An unexpected error occurred.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Verify OTP</CardTitle>
+    <div className="flex items-center justify-center min-h-[80vh] px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl">Verify OTP</CardTitle>
           <CardDescription>
-            Enter the 6-digit code sent to <br />
-            <span className="font-semibold text-gray-900">+91 {phone}</span>
+              An OTP has been sent to <strong>{email}</strong>.
+              <br />Enter it below to complete registration.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleVerify} className="space-y-4">
-            <div className="flex justify-center">
-              <Input
-                type="text"
-                placeholder="XXXXXX"
-                value={otp}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  if (val.length <= 6) setOtp(val);
-                }}
-                className="text-center text-2xl tracking-[0.5em] h-14 font-bold max-w-[200px]"
-                maxLength={6}
-                required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="grid gap-4">
+              
+              <FormField
+                control={form.control}
+                name="otp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>OTP Code</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter 6-digit OTP" 
+                        {...field} 
+                        // ★★★ FIX: নম্বর কিবোর্ড চালু করার জন্য inputMode="numeric" ★★★
+                        inputMode="numeric" 
+                        onChange={(e) => handleNumericInput(e, field.onChange)}
+                        maxLength={6}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <Button type="submit" className="w-full" disabled={loading || otp.length < 6}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Verify & Login'}
-            </Button>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Set Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder="******" 
+                            {...field}
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="text-center mt-4">
-              <Button variant="link" size="sm" onClick={() => router.push('/login')} className="text-gray-500">
-                Change Number
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="9876543210" 
+                        {...field} 
+                        // ★★★ FIX: নম্বর কিবোর্ড চালু করার জন্য inputMode="numeric" ★★★
+                        inputMode="numeric"
+                        onChange={(e) => handleNumericInput(e, field.onChange)}
+                        maxLength={10}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter className="flex flex-col">
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Verify & Create Account
               </Button>
-            </div>
+            </CardFooter>
           </form>
-        </CardContent>
+        </Form>
       </Card>
+    </div>
   );
 }
 
 export default function VerifyOtpPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Suspense fallback={<Loader2 className="h-8 w-8 animate-spin" />}>
-        <VerifyForm />
-      </Suspense>
-    </div>
-  );
+    return (
+        <Suspense fallback={<div className="flex justify-center pt-10"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <VerifyOtpForm />
+        </Suspense>
+    );
 }

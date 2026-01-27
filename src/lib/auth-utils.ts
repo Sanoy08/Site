@@ -16,11 +16,26 @@ export const cookieOptions = {
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
   path: '/',
-  // ★★★ এই লাইনটি ম্যাজিক: এটি কুকিকে সাবডোমেইনে কাজ করতে দেয়
+  // কুকি সাবডোমেইনে কাজ করার জন্য
   domain: process.env.NODE_ENV === 'production' ? '.bumbaskitchen.app' : undefined, 
   maxAge: 30 * 24 * 60 * 60, // 30 Days
 };
 
+// 2. ★★★ Verify Admin Helper (এটি মিসিং ছিল) ★★★
+export async function verifyAdmin(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+
+  if (!token) return false;
+
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    return decoded.role === 'admin';
+  } catch (error) {
+    return false;
+  }
+}
+
+// 3. Get User Helper
 export async function getUser(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value;
   if (!token) return null;
@@ -33,12 +48,14 @@ export async function getUser(request: NextRequest) {
   }
 }
 
+// 4. Response with Cookie Helper
 export function responseWithCookie(data: any, token: string, status = 200) {
   const response = NextResponse.json(data, { status });
   response.cookies.set(COOKIE_NAME, token, cookieOptions);
   return response;
 }
 
+// 5. Verify Cron Helper
 export function verifyCron(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');
   const { searchParams } = new URL(request.url);

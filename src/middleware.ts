@@ -1,68 +1,80 @@
 // src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose'; // Edge Runtime এ jose ব্যবহার করতে হয়
 
-export function middleware(request: NextRequest) {
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key');
+
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl;
-  const hostname = request.headers.get('host');
+  const hostname = request.headers.get('host') || '';
   const path = url.pathname;
-
-  // ১. স্ট্যাটিক ফাইল এবং API রিকোয়েস্টগুলো স্কিপ করুন (এগুলোতে কোনো বাধার দরকার নেই)
-  if (
-    path.startsWith('/_next/') || 
-    path.includes('.') || // images, favicon, etc.
-    path.startsWith('/api/')
-  ) {
+  
+  // স্ট্যাটিক ফাইল ইগনোর করুন
+  if (path.startsWith('/_next/') || path.includes('.') || path.startsWith('/api/')) {
     return NextResponse.next();
   }
 
-  if (!hostname) return NextResponse.next();
+  // সাবডোমেইন ডিটেকশন
+  // লোকালহোস্টে টেস্ট করার জন্য 'admin' সাবডোমেইন সিমুলেট করা কঠিন, তাই প্রোডাকশন লজিক
+  const isAdminDomain = hostname.startsWith('admin.');
 
-  // চেক করুন এটি অ্যাডমিন সাবডোমেইন কিনা
-  const isSubdomain = hostname.startsWith('admin.');
-
-  // ============================================================
-  // CASE 1: ইউজার যদি মেইন ডোমেইনে (www.bumbaskitchen.app) থাকে
-  // ============================================================
-  if (!isSubdomain) {
-    // যদি কেউ মেইন ডোমেইন দিয়ে /admin এ ঢোকার চেষ্টা করে -> তাকে 404 দেখাও
-    // এতে তারা বুঝতেই পারবে না যে অ্যাডমিন পেজ আছে।
-    if (path.startsWith('/admin')) {
-      return NextResponse.rewrite(new URL('/404', request.url));
+  // টোকেন যাচাই
+  const token = request.cookies.get('auth_token')?.value;
+  let userRole = '';
+  
+  if (token) {
+    try {
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      userRole = (payload.role as string) || 'customer';
+    } catch (e) {
+      // ইনভ্যালিড টোকেন
     }
-    // অন্য সব সাধারণ পেজের জন্য স্বাভাবিক আচরণ
-    return NextResponse.next();
   }
 
-  // ============================================================
-  // CASE 2: ইউজার যদি সাবডোমেইনে (admin.bumbaskitchen.app) থাকে
-  // ============================================================
-  if (isSubdomain) {
-    
-    // ২.১: যদি ইউজার ভুল করে URL এ '/admin' লিখে ফেলে (যেমন: admin.site.com/admin/products)
-    // তাহলে তাকে ক্লিন URL এ রিডাইরেক্ট করুন (admin.site.com/products)
+  // ==========================================
+  // CASE 1: অ্যাডমিন ডোমেইন সুরক্ষা (admin.bumbaskitchen.app)
+  // ==========================================
+  if (isAdminDomain) {
+    // ১. যদি লগইন না থাকে -> মেইন সাইটের লগইন পেজে পাঠাও
+    if (!token) {
+        const loginUrl = new URL('/login', 'https://bumbaskitchen.app'); 
+        // (লোকালহোস্টে কাজ করার জন্য hardcoded URL এর বদলে request.url রিপ্লেস করা ভালো)
+        return NextResponse.redirect(loginUrl);
+    }
+
+    // ২. লগইন আছে কিন্তু অ্যাডমিন না -> বের করে দাও
+    if (userRole !== 'admin') {
+        // মেইন ডোমেইনের হোমপেজে ফেরত
+        return NextResponse.redirect(new URL('/', 'https://bumbaskitchen.app'));
+    }
+
+    // ৩. সবকিছু ঠিক থাকলে -> URL Rewrite (ফোল্ডার ম্যাপ করা)
     if (path.startsWith('/admin')) {
-        // '/admin' অংশটি কেটে বাদ দেওয়া হচ্ছে
         const newPath = path.replace(/^\/admin/, '') || '/';
         return NextResponse.redirect(new URL(newPath, request.url));
     }
-
-    // ২.২: আসল কাজ (Rewrite)
-    // ইউজার দেখবে: admin.bumbaskitchen.app/products
-    // নেক্সটজেএস লোড করবে: /src/app/admin/products
     return NextResponse.rewrite(new URL(`/admin${path === '/' ? '' : path}`, request.url));
   }
+
+  // ==========================================
+  // CASE 2: মেইন ডোমেইন (www.bumbaskitchen.app)
+  // ==========================================
+  if (!isAdminDomain) {
+    // মেইন ডোমেইনে কেউ /admin এ এক্সেস করতে চাইলে 404 দেখাও (সিকিউরিটি)
+    if (path.startsWith('/admin')) {
+      return NextResponse.rewrite(new URL('/404', request.url));
+    }
+
+    // লগইন পেজে যদি অ্যাডমিন আসে, তাকে ড্যাশবোর্ডে পাঠাও
+    if (path === '/login' && token && userRole === 'admin') {
+       return NextResponse.redirect(new URL('/', 'https://admin.bumbaskitchen.app'));
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

@@ -1,5 +1,3 @@
-// src/app/(auth)/register/page.tsx
-
 'use client';
 
 import { useState } from 'react';
@@ -7,19 +5,17 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Loader2, ArrowRight, ChefHat, User, Mail, Phone, KeyRound, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowRight, ChefHat, User, Phone, KeyRound, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GoogleLogo } from '@/components/icons/GoogleLogo';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login, googleLogin } = useAuth();
+  const { login } = useAuth(); // Google Login Removed
   
-  // Form States
+  // Form States (Email Removed)
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   
   // OTP State
@@ -28,7 +24,6 @@ export default function RegisterPage() {
   
   // Loading States
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // 1. Send OTP Logic
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -36,11 +31,11 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // আমরা আগের ধাপে বানানো Phone API ব্যবহার করছি
+      // NOTE: We ARE sending 'name'. Backend will treat this as Register.
       const res = await fetch('/api/auth/phone/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone }), // নাম ও ইমেল অপশনাল হিসেবে সেভ হবে
+        body: JSON.stringify({ name, phone }), // No Email
       });
       const data = await res.json();
       
@@ -48,6 +43,7 @@ export default function RegisterPage() {
         setStep('otp');
         toast.success(`OTP sent to ${phone}`);
       } else {
+        // Backend now returns specific error "Account already exists"
         toast.error(data.error || 'Failed to send OTP');
       }
     } catch (error) {
@@ -71,7 +67,6 @@ export default function RegisterPage() {
       const data = await res.json();
       
       if (data.success) {
-        // লগইন সেশন সেট করা
         login(data.user, data.token);
         toast.success('Account created successfully!');
         router.push('/');
@@ -83,20 +78,6 @@ export default function RegisterPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // 3. Google Signup
-  const handleGoogleSignUp = async () => {
-    setIsGoogleLoading(true);
-    const result = await googleLogin();
-    
-    if (result.success) {
-      toast.success('Account created via Google!');
-      router.push('/');
-    } else {
-      toast.error(result.error || 'Google signup failed');
-    }
-    setIsGoogleLoading(false);
   };
 
   return (
@@ -145,15 +126,9 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-gray-900">Email (Optional)</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className="h-12 pl-10 border-gray-200 focus:border-primary focus:ring-primary" />
-                  </div>
-                </div>
+                {/* Email Field REMOVED */}
 
-                <Button type="submit" className="group h-12 w-full bg-primary text-white hover:bg-primary/90 font-medium" disabled={isLoading || isGoogleLoading}>
+                <Button type="submit" className="group h-12 w-full bg-primary text-white hover:bg-primary/90 font-medium" disabled={isLoading}>
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <span className="flex items-center gap-2">Send OTP <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>}
                 </Button>
               </form>
@@ -182,19 +157,8 @@ export default function RegisterPage() {
               </form>
             )}
 
-            {/* Social */}
-            {step === 'details' && (
-              <>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-200" /></div>
-                  <div className="relative flex justify-center text-xs uppercase tracking-wider"><span className="bg-white px-3 text-gray-500">Or sign up with</span></div>
-                </div>
-                <Button variant="outline" type="button" className="h-12 w-full gap-3 border-gray-200 bg-white text-[15px] font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900" onClick={handleGoogleSignUp} disabled={isLoading || isGoogleLoading}>
-                  {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleLogo className="h-5 w-5" />}
-                  Google
-                </Button>
-              </>
-            )}
+            {/* Google Signup REMOVED */}
+            
           </div>
 
           <p className="text-center text-sm text-gray-500">

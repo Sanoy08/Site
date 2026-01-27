@@ -11,18 +11,16 @@ import { Loader2, ArrowRight, ChefHat, Phone, KeyRound, ArrowLeft } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GoogleLogo } from '@/components/icons/GoogleLogo';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, googleLogin } = useAuth();
+  const { login } = useAuth(); // Google login removed from hook
   
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // 1. Send OTP
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -30,10 +28,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      // NOTE: We are NOT sending 'name'. Backend will treat this as Login.
       const res = await fetch('/api/auth/phone/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone }), 
       });
       const data = await res.json();
 
@@ -41,6 +40,7 @@ export default function LoginPage() {
         setStep('otp');
         toast.success('OTP Sent!');
       } else {
+        // Backend now returns specific error "Account not found"
         toast.error(data.error || 'Failed to send OTP');
       }
     } catch (error) {
@@ -66,8 +66,21 @@ export default function LoginPage() {
       if (data.success) {
         login(data.user, data.token);
         toast.success('Welcome back!');
-        router.push('/');
-        router.refresh();
+        
+        // ★★★ নতুন লজিক: রোল চেক করে রিডাইরেক্ট ★★★
+        if (data.user.role === 'admin') {
+            // অ্যাডমিন সাবডোমেইনে ফোর্স রিডাইরেক্ট
+            // (লোকালহোস্টে কাজ করার জন্য window.location.href ব্যবহার করা হচ্ছে)
+            if (process.env.NODE_ENV === 'production') {
+                window.location.href = 'https://admin.bumbaskitchen.app';
+            } else {
+                // লোকালহোস্টে সাবডোমেইন কাজ করে না, তাই সাধারণ রাউটিং
+                router.push('/admin/dashboard'); // বা যেখানে আপনার অ্যাডমিন পেজ আছে
+            }
+        } else {
+            router.push('/');
+        }
+        
       } else {
         toast.error(data.error || 'Invalid OTP');
       }
@@ -76,19 +89,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    const result = await googleLogin();
-    if (result.success) {
-      toast.success('Successfully logged in!');
-      router.push('/');
-      router.refresh();
-    } else {
-      toast.error(result.error || 'Google login failed');
-    }
-    setIsGoogleLoading(false);
   };
 
   return (
@@ -129,7 +129,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                <Button type="submit" className="group h-12 w-full bg-primary text-white hover:bg-primary/90 font-medium" disabled={isLoading || isGoogleLoading}>
+                <Button type="submit" className="group h-12 w-full bg-primary text-white hover:bg-primary/90 font-medium" disabled={isLoading}>
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <span className="flex items-center justify-center gap-2">Get OTP <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>}
                 </Button>
                 </form>
@@ -164,20 +164,9 @@ export default function LoginPage() {
                     </div>
                 </form>
             )}
+            
+            {/* Google Login Removed */}
 
-            {step === 'phone' && (
-                <>
-                    <div className="relative">
-                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-200" /></div>
-                    <div className="relative flex justify-center text-xs uppercase tracking-wider"><span className="bg-white px-3 text-gray-500">Or continue with</span></div>
-                    </div>
-
-                    <Button variant="outline" type="button" className="h-12 w-full gap-3 border-gray-200 bg-white text-[15px] font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900" onClick={handleGoogleSignIn} disabled={isLoading || isGoogleLoading}>
-                    {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleLogo className="h-5 w-5" />}
-                    Google
-                    </Button>
-                </>
-            )}
           </div>
 
           <p className="text-center text-sm text-gray-500">

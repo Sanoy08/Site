@@ -21,9 +21,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
-  Loader2, Cake, Heart, Lock, Eye, EyeOff, User, 
-  Phone, ShieldCheck, Sparkles, LogOut, CalendarIcon, // Mail removed
-  ChevronRight, ShoppingBag, MapPin, Wallet, TicketPercent
+  Loader2, Cake, Heart, User, Phone, Sparkles, LogOut, 
+  ChevronRight, ShoppingBag, MapPin, Wallet, TicketPercent, Lock // Lock icon kept for calendar usage
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -50,25 +49,14 @@ import { motion, AnimatePresence, PanInfo } from "framer-motion";
 
 import { registerBackHandler } from '@/hooks/use-back-button';
 
-// --- SCHEMAS (Email Removed) ---
+// --- SCHEMAS ---
 const profileFormSchema = z.object({
   firstName: z.string().min(2, 'Required'),
   lastName: z.string().min(2, 'Required'),
-  // email removed
   dob: z.string().optional(),
   anniversary: z.string().optional(),
 });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
-const passwordFormSchema = z.object({
-    currentPassword: z.string().min(1, "Required"),
-    newPassword: z.string().min(8, "Min 8 chars"),
-    confirmPassword: z.string(),
-}).refine(data => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-});
-type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 // --- CALENDAR CONSTANTS ---
 const months = [
@@ -255,18 +243,15 @@ export default function AccountPage() {
   const router = useRouter();
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [isSecurityOpen, setIsSecurityOpen] = useState(false);
-  const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
-
   const [isDobOpen, setIsDobOpen] = useState(false);
   const [isAnniversaryOpen, setIsAnniversaryOpen] = useState(false);
+  
   const [dobViewDate, setDobViewDate] = useState<Date>(new Date("2000-01-01"));
   const [anniversaryViewDate, setAnniversaryViewDate] = useState<Date>(new Date());
 
   const [walletBalance, setWalletBalance] = useState(0);
 
   const profileForm = useForm<ProfileFormValues>({ resolver: zodResolver(profileFormSchema), defaultValues: { firstName: '', lastName: '', dob: '', anniversary: '' } });
-  const passwordForm = useForm<PasswordFormValues>({ resolver: zodResolver(passwordFormSchema), defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
 
   useEffect(() => {
     if (isEditProfileOpen) {
@@ -276,17 +261,6 @@ export default function AccountPage() {
     }
     return () => registerBackHandler(null);
   }, [isEditProfileOpen]);
-
-  useEffect(() => {
-    if (isSecurityOpen) {
-      registerBackHandler(() => setIsSecurityOpen(false));
-    } else {
-      if (!isEditProfileOpen) {
-        registerBackHandler(null);
-      }
-    }
-    return () => registerBackHandler(null);
-  }, [isSecurityOpen, isEditProfileOpen]);
 
   useEffect(() => {
     if (!user) return; 
@@ -312,7 +286,6 @@ export default function AccountPage() {
       // @ts-ignore
       const uDob = user.dob || ''; // @ts-ignore
       const uAnniv = user.anniversary || '';
-      // Email removed from reset
       profileForm.reset({ firstName: parts[0], lastName: parts.slice(1).join(' '), dob: uDob, anniversary: uAnniv });
       if (uDob) setDobViewDate(new Date(uDob));
       if (uAnniv) setAnniversaryViewDate(new Date(uAnniv));
@@ -334,23 +307,6 @@ export default function AccountPage() {
         
         toast.success("Profile Updated");
         setIsEditProfileOpen(false);
-    } catch (e: any) { toast.error(e.message); }
-  };
-
-  const onPasswordSubmit = async (data: PasswordFormValues) => {
-    if (!user) return;
-    try {
-        const res = await fetch('/api/auth/change-password', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(data) 
-        });
-        const resData = await res.json();
-        if (!res.ok) throw new Error(resData.error);
-        
-        toast.success("Password Changed");
-        passwordForm.reset();
-        setIsSecurityOpen(false);
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -377,7 +333,6 @@ export default function AccountPage() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-bold text-gray-900 truncate">{user.name}</h2>
-                    {/* ★★★ CHANGED: Shown Phone Number instead of Email ★★★ */}
                     <p className="text-sm font-medium text-gray-500 mt-1 flex items-center gap-1.5">
                        <Phone className="h-3.5 w-3.5" />
                        +91 {user.phone}
@@ -402,8 +357,6 @@ export default function AccountPage() {
                                     <FormField control={profileForm.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={profileForm.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
-                                
-                                {/* ★★★ REMOVED: Email Field from Form ★★★ */}
                                 
                                 <div className="space-y-4 pt-2 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
                                     <h4 className="font-semibold text-sm text-gray-600 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-500" /> Special Dates</h4>
@@ -517,22 +470,7 @@ export default function AccountPage() {
             <MenuItem icon={Wallet} title="My Wallet & Coins" subtitle="Check balance and transaction history" href="/account/wallet" />
             <MenuItem icon={TicketPercent} title="My Coupons" subtitle="View available coupons for you" href="/account/coupons" />
 
-            <Sheet open={isSecurityOpen} onOpenChange={setIsSecurityOpen}>
-                <SheetTrigger asChild>
-                    <div className="w-full"><MenuItem icon={ShieldCheck} title="Login & Security" subtitle="Change password and security settings" /></div>
-                </SheetTrigger>
-                <SheetContent className="w-full sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <SheetHeader className="mb-6"><SheetTitle>Change Password</SheetTitle></SheetHeader>
-                    <Form {...passwordForm}>
-                        <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                            <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (<FormItem><FormLabel>Current Password</FormLabel><FormControl><div className="relative"><Input type={showPass.current ? "text" : "password"} {...field} className="rounded-xl h-11" /><button type="button" onClick={() => setShowPass(p => ({...p, current: !p.current}))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPass.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (<FormItem><FormLabel>New Password</FormLabel><FormControl><div className="relative"><Input type={showPass.new ? "text" : "password"} {...field} className="rounded-xl h-11" /><button type="button" onClick={() => setShowPass(p => ({...p, new: !p.new}))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPass.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Confirm Password</FormLabel><FormControl><div className="relative"><Input type={showPass.confirm ? "text" : "password"} {...field} className="rounded-xl h-11" /><button type="button" onClick={() => setShowPass(p => ({...p, confirm: !p.confirm}))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPass.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></FormControl><FormMessage /></FormItem>)} />
-                            <Button type="submit" className="w-full rounded-xl h-12" disabled={passwordForm.formState.isSubmitting}>{passwordForm.formState.isSubmitting ? "Updating..." : "Update Password"}</Button>
-                        </form>
-                    </Form>
-                </SheetContent>
-            </Sheet>
+            {/* Login & Security Removed */}
 
             <AlertDialog>
                 <AlertDialogTrigger asChild>

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { RefreshCcw, Loader2, Mail, Phone, Users, Search, ShoppingBag, IndianRupee, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
-import { useDebounce } from '@/hooks/use-debounce'; // Ensure you have this hook, or see note below
+import { useDebounce } from '@/hooks/use-debounce';
 
 type User = {
   id: string;
@@ -29,10 +29,8 @@ type User = {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  // Debounce search to avoid flooding API (wait 500ms after typing stops)
   const debouncedSearch = useDebounce(searchQuery, 500); 
 
-  // Pagination State
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -42,7 +40,6 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Build Query Params
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
@@ -54,7 +51,6 @@ export default function AdminUsersPage() {
 
       if (data.success) {
         setUsers(data.users);
-        // Set Pagination Data from Server
         if (data.pagination) {
             setTotalPages(data.pagination.totalPages);
             setTotalUsers(data.pagination.total);
@@ -70,18 +66,21 @@ export default function AdminUsersPage() {
     }
   };
 
-  // 1. Reset to Page 1 when search changes
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
 
-  // 2. Fetch when Page or Debounced Search changes
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, debouncedSearch]);
 
   const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'U';
+
+  // ★ Helper: ডামি ইমেল লুকানোর জন্য ফাংশন
+  const isRealEmail = (email: string) => {
+    return email && !email.includes('no-email.com');
+  };
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -103,8 +102,9 @@ export default function AdminUsersPage() {
         <div className="flex w-full sm:w-auto gap-3">
             <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                {/* ★ আপডেট: প্লেইসহোল্ডার থেকে ইমেল সরানো হলো */}
                 <Input 
-                    placeholder="Search name, email, phone..." 
+                    placeholder="Search name, phone..." 
                     className="pl-9 bg-background" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -116,7 +116,6 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Loading State */}
       {isLoading ? (
           <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : (
@@ -143,12 +142,14 @@ export default function AdminUsersPage() {
                             </div>
                             
                             <div className="space-y-1.5 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <Mail className="h-3.5 w-3.5 text-primary/60" /> {user.email}
+                                {/* ★ আপডেট: ফোন নম্বরকে প্রাধান্য দেওয়া হলো */}
+                                <div className="flex items-center gap-2 font-medium text-foreground">
+                                    <Phone className="h-3.5 w-3.5 text-primary" /> {user.phone}
                                 </div>
-                                {user.phone && user.phone !== 'N/A' && (
-                                    <div className="flex items-center gap-2">
-                                        <Phone className="h-3.5 w-3.5 text-primary/60" /> {user.phone}
+                                {/* ★ আপডেট: শুধুমাত্র রিয়েল ইমেল হলে দেখাবে */}
+                                {isRealEmail(user.email) && (
+                                    <div className="flex items-center gap-2 text-xs">
+                                        <Mail className="h-3.5 w-3.5 text-muted-foreground" /> {user.email}
                                     </div>
                                 )}
                             </div>
@@ -205,12 +206,14 @@ export default function AdminUsersPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <Mail className="h-3 w-3 text-primary/60" /> {user.email}
+                                            {/* ★ আপডেট: ফোন নম্বর মেইন করা হলো */}
+                                            <div className="flex items-center gap-2 text-sm font-medium">
+                                                <Phone className="h-3.5 w-3.5 text-primary" /> {user.phone}
                                             </div>
-                                            {user.phone && user.phone !== 'N/A' && (
+                                            {/* ★ আপডেট: রিয়েল ইমেল না হলে লুকানো হবে */}
+                                            {isRealEmail(user.email) && (
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <Phone className="h-3 w-3 text-primary/60" /> {user.phone}
+                                                    <Mail className="h-3 w-3 text-muted-foreground" /> {user.email}
                                                 </div>
                                             )}
                                         </div>
@@ -265,7 +268,7 @@ export default function AdminUsersPage() {
                 </CardFooter>
             </Card>
 
-            {/* Mobile Pagination (Separate control for mobile layout) */}
+            {/* Mobile Pagination */}
             <div className="flex md:hidden justify-between items-center pt-4">
                  <Button 
                     variant="outline" 

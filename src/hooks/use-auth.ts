@@ -5,11 +5,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
-import { Capacitor } from '@capacitor/core';
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { auth, googleProvider } from "@/lib/firebase"; 
-import { signInWithPopup } from "firebase/auth";
 
+// User Type Definition
 export type User = {
   id: string;
   name: string;
@@ -26,7 +23,8 @@ export function useAuth() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // 1. Check Session on Mount (Cookies automatically sent)
+  // 1. Check Session on Mount
+  // (Cookies are automatically sent by the browser to the /me API)
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -48,74 +46,38 @@ export function useAuth() {
     checkSession();
   }, []); 
 
-  // 2. Login (Just update state, cookie is set by server)
+  // 2. Login Action (Updates local state only)
+  // Note: The HTTP-only cookie is already set by the API response header
   const login = useCallback((userData: User) => {
     setUser(userData);
   }, []);
 
-  // 3. Logout (Call API to clear cookie)
+  // 3. Logout Action
   const logout = useCallback(async () => {
     try {
-      // Firebase Signout (Frontend)
-      if (Capacitor.isNativePlatform()) {
-        await FirebaseAuthentication.signOut();
-      } else {
-        await auth.signOut();
-      }
-
-      // Backend Cookie Clear
+      // Call Backend to clear the http-only cookie
       await fetch('/api/auth/logout', { method: 'POST' });
 
+      // Clear local state
       setUser(null);
       toast.success("Logged out successfully");
+      
+      // Redirect to login
       router.push('/login');
       router.refresh();
       
     } catch (e) {
       console.error("Logout error", e);
+      toast.error("Logout failed");
     }
   }, [router]);
 
-  // 4. Google Login Wrapper
-  const googleLogin = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      let idToken = "";
+  // Google Login function removed entirely as per requirement
 
-      if (Capacitor.isNativePlatform()) {
-        await FirebaseAuthentication.signInWithGoogle();
-        const result = await FirebaseAuthentication.getIdToken();
-        idToken = result.token;
-      } else {
-        const result = await signInWithPopup(auth, googleProvider);
-        idToken = await result.user.getIdToken();
-      }
-
-      if (!idToken) throw new Error("Failed to retrieve Firebase ID Token");
-
-      // Send to backend (Backend sets the cookie)
-      const response = await fetch('/api/auth/firebase-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        login(data.user); // Update local state
-        return { success: true };
-      } else {
-        throw new Error(data.error || "Login failed on server");
-      }
-
-    } catch (error: any) {
-      console.error("Google Login Error", error);
-      return { success: false, error: error.message };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [login]);
-
-  return { user, isLoading, login, logout, googleLogin };
+  return { 
+    user, 
+    isLoading, 
+    login, 
+    logout 
+  };
 }

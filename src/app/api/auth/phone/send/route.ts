@@ -1,3 +1,5 @@
+// src/app/api/auth/phone/send/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
@@ -9,7 +11,7 @@ const DB_NAME = 'BumbasKitchenDB';
 // Zod Schema (Email removed)
 const sendOtpSchema = z.object({
   phone: z.string().min(10, "Invalid phone number").regex(/^\d+$/, "Phone must contain only numbers"),
-  name: z.string().optional(), // Name optional (Login e thake na, Register e thake)
+  name: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -37,10 +39,9 @@ export async function POST(request: NextRequest) {
     
     const existingUser = await usersCollection.findOne({ phone });
 
-    // ★★★ STRICT LOGIC START ★★★
+    // ★★★ STRICT LOGIC START (আপনার লজিক ঠিক আছে) ★★★
 
-    // SCENARIO 1: LOGIN ATTEMPT (Name nei)
-    // Jodi User DB te na thake, kintu Login korar chesta kore -> ERROR
+    // Login Attempt (Name নেই, ইউজারও নেই) -> Error
     if (!name && !existingUser) {
         return NextResponse.json({ 
             success: false, 
@@ -48,15 +49,13 @@ export async function POST(request: NextRequest) {
         }, { status: 404 });
     }
 
-    // SCENARIO 2: REGISTER ATTEMPT (Name ache)
-    // Jodi User DB te already thake, kintu Register korar chesta kore -> ERROR
+    // Register Attempt (Name আছে, কিন্তু ইউজার অলরেডি আছে) -> Error
     if (name && existingUser) {
         return NextResponse.json({ 
             success: false, 
             error: 'Account already exists. Please Login.' 
         }, { status: 409 });
     }
-
     // ★★★ STRICT LOGIC END ★★★
 
     // 3. OTP Generate
@@ -74,13 +73,15 @@ export async function POST(request: NextRequest) {
         // Only update name if provided (Registration)
         if (name) updateFields.name = name;
 
-        // Default fields for new user
-        // Email remove kora hoyeche, kintu DB integrity er jonno dummy email dewa holo
+        // ★★★ FIX: Dummy Email Restore করা হলো ★★★
+        // এটা না থাকলে ২য় ইউজার সাইনআপ করার সময় ডাটাবেস Crash করবে (Duplicate Key Error)
         const setOnInsert: any = {
             createdAt: new Date(),
             isVerified: false,
             role: 'customer',
             wallet: { currentBalance: 0, tier: "Bronze" },
+            // আমরা ইউজারের ফোন নম্বর দিয়েই একটা ফেক ইমেল বানিয়ে দিচ্ছি
+            email: `${phone}@no-email.com` 
         };
 
         await usersCollection.updateOne(

@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Loader2, Cake, Heart, Lock, Eye, EyeOff, User, 
-  Mail, ShieldCheck, Save, Sparkles, LogOut, CalendarIcon,
+  Phone, ShieldCheck, Sparkles, LogOut, CalendarIcon, // Mail removed
   ChevronRight, ShoppingBag, MapPin, Wallet, TicketPercent
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -50,11 +50,11 @@ import { motion, AnimatePresence, PanInfo } from "framer-motion";
 
 import { registerBackHandler } from '@/hooks/use-back-button';
 
-// --- SCHEMAS ---
+// --- SCHEMAS (Email Removed) ---
 const profileFormSchema = z.object({
   firstName: z.string().min(2, 'Required'),
   lastName: z.string().min(2, 'Required'),
-  email: z.string().email(),
+  // email removed
   dob: z.string().optional(),
   anniversary: z.string().optional(),
 });
@@ -251,7 +251,7 @@ const MenuItem = ({ icon: Icon, title, subtitle, onClick, href, isDestructive = 
 };
 
 export default function AccountPage() {
-  const { user, login, logout, isLoading: authLoading } = useAuth(); // ★ Add authLoading
+  const { user, login, logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -265,7 +265,7 @@ export default function AccountPage() {
 
   const [walletBalance, setWalletBalance] = useState(0);
 
-  const profileForm = useForm<ProfileFormValues>({ resolver: zodResolver(profileFormSchema), defaultValues: { firstName: '', lastName: '', email: '', dob: '', anniversary: '' } });
+  const profileForm = useForm<ProfileFormValues>({ resolver: zodResolver(profileFormSchema), defaultValues: { firstName: '', lastName: '', dob: '', anniversary: '' } });
   const passwordForm = useForm<PasswordFormValues>({ resolver: zodResolver(passwordFormSchema), defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
 
   useEffect(() => {
@@ -288,9 +288,8 @@ export default function AccountPage() {
     return () => registerBackHandler(null);
   }, [isSecurityOpen, isEditProfileOpen]);
 
-  // ★★★ FIX: Fetch Wallet Balance only when user is available
   useEffect(() => {
-    if (!user) return; // Don't fetch if no user
+    if (!user) return; 
 
     const fetchWallet = async () => {
         try {
@@ -305,7 +304,7 @@ export default function AccountPage() {
     };
     
     fetchWallet();
-  }, [user]); // Run when 'user' changes
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -313,7 +312,8 @@ export default function AccountPage() {
       // @ts-ignore
       const uDob = user.dob || ''; // @ts-ignore
       const uAnniv = user.anniversary || '';
-      profileForm.reset({ firstName: parts[0], lastName: parts.slice(1).join(' '), email: user.email || '', dob: uDob, anniversary: uAnniv });
+      // Email removed from reset
+      profileForm.reset({ firstName: parts[0], lastName: parts.slice(1).join(' '), dob: uDob, anniversary: uAnniv });
       if (uDob) setDobViewDate(new Date(uDob));
       if (uAnniv) setAnniversaryViewDate(new Date(uAnniv));
     }
@@ -359,7 +359,6 @@ export default function AccountPage() {
   const hasDob = !!user?.dob && user.dob !== ""; // @ts-ignore
   const hasAnniversary = !!user?.anniversary && user.anniversary !== "";
 
-  // Show loader while auth is initializing
   if (authLoading || !user) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
@@ -378,8 +377,11 @@ export default function AccountPage() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-bold text-gray-900 truncate">{user.name}</h2>
-                    <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">+91 {user.phone || '----------'}</p>
+                    {/* ★★★ CHANGED: Shown Phone Number instead of Email ★★★ */}
+                    <p className="text-sm font-medium text-gray-500 mt-1 flex items-center gap-1.5">
+                       <Phone className="h-3.5 w-3.5" />
+                       +91 {user.phone}
+                    </p>
                 </div>
             </div>
             
@@ -400,7 +402,8 @@ export default function AccountPage() {
                                     <FormField control={profileForm.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={profileForm.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
-                                <FormField control={profileForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} disabled className="bg-gray-50 rounded-xl" /></FormControl></FormItem>)} />
+                                
+                                {/* ★★★ REMOVED: Email Field from Form ★★★ */}
                                 
                                 <div className="space-y-4 pt-2 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
                                     <h4 className="font-semibold text-sm text-gray-600 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-500" /> Special Dates</h4>

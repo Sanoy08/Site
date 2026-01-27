@@ -4,8 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { responseWithCookie } from '@/lib/auth-utils';
-import { rateLimit } from '@/lib/rate-limit'; // ★ Import
+import { responseWithCookie } from '@/lib/auth-utils'; // New Helper
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
@@ -13,15 +12,6 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function POST(request: NextRequest) {
   try {
-    // ★ 1. Rate Limiting (5 attempts per 60s)
-    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-    if (!rateLimit(ip, 5, 60 * 1000)) {
-      return NextResponse.json(
-        { success: false, error: 'Too many login attempts. Try again later.' }, 
-        { status: 429 }
-      );
-    }
-
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -58,6 +48,7 @@ export async function POST(request: NextRequest) {
       wallet: user.wallet
     };
 
+    // ✅ Set Cookie and Return Response
     return responseWithCookie(
         { success: true, message: 'Login successful!', user: userData }, 
         token

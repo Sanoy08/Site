@@ -7,7 +7,6 @@ import jwt from 'jsonwebtoken';
 import { sendNotificationToUser } from '@/lib/notification';
 import { responseWithCookie } from '@/lib/auth-utils';
 import { z } from 'zod';
-import { rateLimit } from '@/lib/rate-limit'; // ★ Import
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
@@ -23,15 +22,6 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // ★ 1. Rate Limiting
-    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-    if (!rateLimit(ip, 5, 60 * 1000)) {
-      return NextResponse.json(
-        { success: false, error: 'Too many attempts. Please wait.' }, 
-        { status: 429 }
-      );
-    }
-
     const body = await request.json();
     const validation = registerSchema.safeParse(body);
     
@@ -73,16 +63,19 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // Token
     const token = jwt.sign(
         { _id: userRecord._id.toString(), email: userRecord.email, name, role: 'customer' }, 
         JWT_SECRET, 
         { expiresIn: '30d' }
     );
 
+    // Notification (Optional fail-safe)
     try {
         await sendNotificationToUser(client, userRecord._id.toString(), "Welcome!", "Thanks for joining us!", '/menus');
     } catch (e) {}
 
+    // ✅ Return Response with Cookie
     return responseWithCookie(
         { success: true, message: 'Verified!', user: { id: userRecord._id.toString(), name, email: userRecord.email, role: 'customer' } },
         token,

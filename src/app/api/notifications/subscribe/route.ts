@@ -1,52 +1,45 @@
 // src/app/api/notifications/subscribe/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
+import { getUser } from '@/lib/auth-utils'; // ★ কুকি থেকে ইউজার বের করার ফাংশন
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'subscriptions';
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-if (!JWT_SECRET) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, jwtToken } = await request.json(); // 'token' is the FCM token
+    const { token } = await request.json(); // FCM Token
     
-    if (!token) return NextResponse.json({ success: false });
+    if (!token) return NextResponse.json({ success: false, error: "Token missing" });
 
-    let userId = null;
-    if (jwtToken) {
-      try {
-        const decoded: any = jwt.verify(jwtToken, JWT_SECRET);
-        userId = decoded._id;
-      } catch (e) {
-        console.warn("Invalid JWT during subscription");
-      }
-    }
-
+    // ১. কুকি থেকে ইউজার বের করা (Secure Way)
+    const user = await getUser(request);
+    
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // Store token. If user logs in/out, we might want to update the userId field.
+    // ২. ডাটাবেস আপডেট
+    // যদি ইউজার লগইন থাকে, তাহলে userId সেভ হবে। না থাকলে null.
+    const updateData: any = { 
+        token: token,
+        updatedAt: new Date(),
+        platform: 'android' 
+    };
+
+    if (user) {
+        updateData.userId = new ObjectId(user._id || user.id);
+    }
+
     await db.collection(COLLECTION_NAME).updateOne(
       { token: token },
-      { 
-          $set: { 
-              token, 
-              userId: userId ? new ObjectId(userId) : null,
-              updatedAt: new Date(),
-              platform: 'android' 
-          } 
-      },
+      { $set: updateData },
       { upsert: true }
     );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: "Subscription updated" });
   } catch (error: any) {
+    console.error("Sub Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

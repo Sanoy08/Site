@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 export const usePushNotification = () => {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user } = useAuth(); // ★ token দরকার নেই
   
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +71,7 @@ export const usePushNotification = () => {
       }
 
       if (Capacitor.getPlatform() === 'android') {
-        // ১. অ্যাডমিন চ্যানেল (আগের মতোই)
+        // ১. অ্যাডমিন চ্যানেল
         await PushNotifications.createChannel({
           id: 'admin_order_alert', 
           name: 'Admin Order Alerts',
@@ -83,7 +83,7 @@ export const usePushNotification = () => {
           sound: 'my_alert'
         });
 
-        // ২. ★ ইউজারদের জন্য নতুন কাস্টম সাউন্ড চ্যানেল ★
+        // ২. ইউজারদের জন্য চ্যানেল
         await PushNotifications.createChannel({
           id: 'user_notifications', 
           name: 'User Alerts', 
@@ -92,11 +92,11 @@ export const usePushNotification = () => {
           visibility: 1, 
           lights: true,
           vibration: true,
-          sound: 'user_alert' // ★ আপনার নতুন সাউন্ড ফাইলের নাম (user_alert.mp3)
+          sound: 'user_alert'
         });
       }
 
-      // Action Types (যদি ভিউ বাটন ক্লিক করতে চান)
+      // Action Types
       try {
         await (PushNotifications as any).registerActionTypes({
             types: [{
@@ -117,22 +117,25 @@ export const usePushNotification = () => {
     init();
 
     const registrationListener = PushNotifications.addListener('registration', async (fcmToken) => {
-      console.log('FCM Token:', fcmToken.value);
+      console.log('FCM Token Registered:', fcmToken.value);
       setIsSubscribed(true);
       
+      // Topic Subscription
       try {
           await FCM.subscribeTo({ topic: 'all_users' });
           if(user?.role === 'admin') await FCM.subscribeTo({ topic: 'admin_updates' });
       } catch(e) { console.error('Topic sub failed', e); }
 
-      if (token) {
-        try {
-            await fetch('/api/notifications/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: fcmToken.value, jwtToken: token }),
-            });
-        } catch (e) { console.error("Token sync failed", e); }
+      // ★★★ Server Sync Fix (Cookie Based) ★★★
+      try {
+        await fetch('/api/notifications/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: fcmToken.value }), // শুধু FCM Token যাবে, কুকি অটোমেটিক যাবে
+        });
+        console.log("FCM Token synced with server");
+      } catch (e) { 
+        console.error("Token sync failed", e); 
       }
     });
 
@@ -145,14 +148,11 @@ export const usePushNotification = () => {
 
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
       
-      // ★ চ্যানেল এবং সাউন্ড ডিটেকশন লজিক আপডেট ★
-      // যদি সার্ভার থেকে চ্যানেল আইডি না আসে, তবে ডিফল্ট হিসেবে 'user_notifications' ধরা হবে
       const channelId = notification.data?.android_channel_id || 'user_notifications'; 
-      
-      let soundName = 'user_alert'; // ডিফল্ট সাউন্ড (ইউজারদের জন্য)
+      let soundName = 'user_alert'; 
 
       if (channelId === 'admin_order_alert') {
-          soundName = 'my_alert'; // অ্যাডমিন সাউন্ড
+          soundName = 'my_alert'; 
       }
 
       await LocalNotifications.schedule({
@@ -162,7 +162,7 @@ export const usePushNotification = () => {
             body: notification.body || "",
             id: new Date().getTime(),
             schedule: { at: new Date(Date.now() + 100) },
-            sound: soundName, // ★ সঠিক সাউন্ড ফাইল বাজবে
+            sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
             extra: notification.data,
             smallIcon: "ic_stat_icon",
@@ -193,7 +193,7 @@ export const usePushNotification = () => {
       actionListener.then(l => l.remove());
       localActionListener.then(l => l.remove());
     };
-  }, [user, token, router, checkPermission]);
+  }, [user, router, checkPermission]); // ★ removed token dependency
 
   return { 
     isSubscribed, 

@@ -1,5 +1,3 @@
-// src/components/layout/Header.tsx
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -24,7 +22,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
-  Wallet, ChevronRight, Sparkles, 
+  Wallet, ChevronRight, Sparkles, Phone, 
   Instagram, Facebook, Heart, Settings, UtensilsCrossed,
   MessageCircle
 } from 'lucide-react';
@@ -89,7 +87,6 @@ export function Header() {
   const checkNotifications = useCallback(async () => {
     if (!user) return;
     
-    // ★★★ Fix: Remove Token Logic & Header
     try {
       const res = await fetch('/api/notifications/history');
       const data = await res.json();
@@ -197,6 +194,10 @@ export function Header() {
                                     <div className="space-y-1">
                                         <p className="text-xs text-white/80 font-medium">{getGreeting()},</p>
                                         <p className="font-bold text-xl leading-none tracking-tight">{user.name.split(' ')[0]}</p>
+                                        {/* ★ Mobile Phone Number (Space Removed) */}
+                                        <p className="text-xs text-white/70 font-medium flex items-center gap-1">
+                                            <Phone className="h-3 w-3" /> +91{user.phone}
+                                        </p>
                                     </div>
                                 </div>
                             ) : (
@@ -347,7 +348,11 @@ export function Header() {
                             <Sparkles className="h-3 w-3" /> {getGreeting()}
                         </p>
                         <p className="text-sm font-bold text-foreground truncate leading-tight">{user.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        
+                        {/* ★★★ CHANGED: Phone Number (Space Removed) ★★★ */}
+                        <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                            <Phone className="h-3 w-3" /> +91{user.phone}
+                        </p>
                     </div>
                     
                     <DropdownMenuGroup className="space-y-1">

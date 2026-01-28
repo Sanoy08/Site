@@ -8,14 +8,13 @@ import { z } from 'zod';
 
 const DB_NAME = 'BumbasKitchenDB';
 
-// Zod Schema (Email removed)
+// Zod Schema
 const sendOtpSchema = z.object({
   phone: z.string().min(10, "Invalid phone number").regex(/^\d+$/, "Phone must contain only numbers"),
   name: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
-  let session;
   try {
     // 1. Rate Limit
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
@@ -39,78 +38,68 @@ export async function POST(request: NextRequest) {
     
     const existingUser = await usersCollection.findOne({ phone });
 
-    // ★★★ STRICT LOGIC START (আপনার লজিক ঠিক আছে) ★★★
-
-    // Login Attempt (Name নেই, ইউজারও নেই) -> Error
+    // Logic Checks (Login vs Register)
     if (!name && !existingUser) {
-        return NextResponse.json({ 
-            success: false, 
-            error: 'Account not found. Please Register first.' 
-        }, { status: 404 });
+        return NextResponse.json({ success: false, error: 'Account not found. Please Register first.' }, { status: 404 });
     }
-
-    // Register Attempt (Name আছে, কিন্তু ইউজার অলরেডি আছে) -> Error
     if (name && existingUser) {
-        return NextResponse.json({ 
-            success: false, 
-            error: 'Account already exists. Please Login.' 
-        }, { status: 409 });
+        return NextResponse.json({ success: false, error: 'Account already exists. Please Login.' }, { status: 409 });
     }
-    // ★★★ STRICT LOGIC END ★★★
 
     // 3. OTP Generate
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otp, 10);
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); 
 
-    // 4. Transaction Start
-    session = client.startSession();
-    session.startTransaction();
+    // 4. Update User in DB ( OTP Save)
+    const updateFields: any = { phone, otp: otpHash, otpExpires, updatedAt: new Date() };
+    if (name) updateFields.name = name;
 
-    try {
-        const updateFields: any = { phone, otp: otpHash, otpExpires, updatedAt: new Date() };
+    const setOnInsert: any = {
+        createdAt: new Date(),
+        isVerified: false,
+        role: 'customer',
+        wallet: { currentBalance: 0, tier: "Bronze" },
+        email: `${phone}@no-email.com` // Dummy email
+    };
+
+    await usersCollection.updateOne(
+        { phone },
+        { $set: updateFields, $setOnInsert: setOnInsert },
+        { upsert: true }
+    );
+
+    // ★★★ 5. WEBHOOK CALL (New Implementation) ★★★
+    // সরাসরি আপনার ফোনকে কল করা হচ্ছে
+    const webhookBaseUrl = process.env.MACRODROID_WEBHOOK_URL;
+    
+    if (webhookBaseUrl) {
+        // মেসেজ তৈরি
+        const message = `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.`;
         
-        // Only update name if provided (Registration)
-        if (name) updateFields.name = name;
+        // URL প্যারামিটার হিসেবে ডাটা পাঠানো
+        // ফরম্যাট: URL/send_otp?phone=xxxxx&message=yyyy
+        const webhookUrl = `${webhookBaseUrl}send_otp?phone=${phone}&message=${encodeURIComponent(message)}`;
 
-        // ★★★ FIX: Dummy Email Restore করা হলো ★★★
-        // এটা না থাকলে ২য় ইউজার সাইনআপ করার সময় ডাটাবেস Crash করবে (Duplicate Key Error)
-        const setOnInsert: any = {
-            createdAt: new Date(),
-            isVerified: false,
-            role: 'customer',
-            wallet: { currentBalance: 0, tier: "Bronze" },
-            // আমরা ইউজারের ফোন নম্বর দিয়েই একটা ফেক ইমেল বানিয়ে দিচ্ছি
-            email: `${phone}@no-email.com` 
-        };
-
-        await usersCollection.updateOne(
-            { phone },
-            { $set: updateFields, $setOnInsert: setOnInsert },
-            { upsert: true, session }
-        );
-
-        // SMS Queue
-        await db.collection('smsQueue').insertOne({
-            phone,
-            message: `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.`,
-            status: 'pending',
-            createdAt: new Date()
-        }, { session });
-
-        await session.commitTransaction();
-
-    } catch (err) {
-        await session.abortTransaction();
-        throw err;
+        // আমরা await ব্যবহার করছি না যাতে ইউজারকে রেসপন্স দিতে দেরি না হয় (Fire and Forget)
+        fetch(webhookUrl)
+            .then(res => {
+                if(res.ok) console.log("Webhook Triggered Successfully 🚀");
+                else console.error("Webhook Failed", res.status);
+            })
+            .catch(err => console.error("Webhook Error", err));
+            
+    } else {
+        console.error("MACRODROID_WEBHOOK_URL is missing in .env");
     }
+
+    // SMS Queue তে আর সেভ করার দরকার নেই, কারণ আমরা লাইভ পাঠাচ্ছি।
+    // তবে আপনি চাইলে ব্যাকআপ বা লগের জন্য রাখতে পারেন।
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully.' });
 
   } catch (error: any) {
     console.error("OTP Error:", error);
     return NextResponse.json({ success: false, error: error.message || 'Server error' }, { status: 500 });
-  } finally {
-    if (session) await session.endSession();
   }
 }

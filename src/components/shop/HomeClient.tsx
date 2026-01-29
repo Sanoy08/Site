@@ -56,29 +56,24 @@ const testimonials = [
 ];
 
 export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
-  // Hero Carousel State
   const [heroApi, setHeroApi] = useState<CarouselApi>()
   const [heroCurrent, setHeroCurrent] = useState(0)
   const [heroCount, setHeroCount] = useState(0)
 
-  // Middle Slider State
   const [middleApi, setMiddleApi] = useState<CarouselApi>()
   const [middleCurrent, setMiddleCurrent] = useState(0)
   const [middleCount, setMiddleCount] = useState(0)
 
-  // Offers Slider State
   const [offersApi, setOffersApi] = useState<CarouselApi>()
   const [offersCurrent, setOffersCurrent] = useState(0)
   const [offersCount, setOffersCount] = useState(0)
 
-  // Bestsellers Slider State
   const [bestsellersApi, setBestsellersApi] = useState<CarouselApi>()
   const [bestsellersCurrent, setBestsellersCurrent] = useState(0)
   const [bestsellersCount, setBestsellersCount] = useState(0)
   
   const dailySpecial = allProducts.find(p => p.isDailySpecial);
 
-  // Helper Hook to handle carousel state updates
   const useCarouselEffect = (api: CarouselApi | undefined, setCount: (c: number) => void, setCurrent: (c: number) => void) => {
     useEffect(() => {
         if (!api) return;
@@ -90,7 +85,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
 
         updateState();
         api.on("select", updateState);
-        api.on("reInit", updateState); // Handle responsive resizing
+        api.on("reInit", updateState);
 
         return () => {
             api.off("select", updateState);
@@ -108,7 +103,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
     <div className="bg-background pb-20 md:pb-0">
       
       {/* 1. Hero Section */}
-      <section className="relative -mt-20 md:-mt-24 w-full">
+      {/* ★★★ পরিবর্তন: -mt-20 সরিয়ে ফেলা হয়েছে কারণ হেডার এখন Fixed ★★★ */}
+      <section className="relative w-full">
         {heroSlides.length > 0 ? (
           <>
             <Carousel setApi={setHeroApi} opts={{ loop: true }} plugins={[Autoplay({ delay: 5000 })]}>
@@ -126,7 +122,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                         className="object-contain" 
                         priority 
                       />
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
+                      {/* Gradient Overlay for better header visibility */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none"></div>
                     </Link>
                   </CarouselItem>
                 ))}

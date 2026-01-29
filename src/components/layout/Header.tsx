@@ -1,3 +1,5 @@
+// src/components/layout/Header.tsx
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -51,30 +53,18 @@ export function Header() {
   const { user, logout } = useAuth();
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
     const handleScroll = () => {
-      if (window.scrollY > 0) {
+      // ১০ পিক্সেলের বেশি স্ক্রল করলেই ব্যাকগ্রাউন্ড কালার আসবে
+      if (window.scrollY > 10) {
         setIsScrolled(true);
       } else {
         setIsScrolled(false);
       }
-
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (window.scrollY > 0 && window.scrollY < 60) {
-          window.scrollTo({
-            top: 60,
-            behavior: 'smooth'
-          });
-        }
-      }, 150);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
         window.removeEventListener('scroll', handleScroll);
-        clearTimeout(timeoutId);
     };
   }, []);
 
@@ -82,15 +72,11 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-
-  // SMART NOTIFICATION CHECKER
   const checkNotifications = useCallback(async () => {
     if (!user) return;
-    
     try {
       const res = await fetch('/api/notifications/history');
       const data = await res.json();
-      
       if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
         const latestNotification = data.notifications[0];
         const latestTime = new Date(latestNotification.createdAt).getTime();
@@ -119,13 +105,11 @@ export function Header() {
     window.addEventListener('focus', onFocus);
     const onUpdate = () => checkNotifications();
     window.addEventListener('notification-updated', onUpdate);
-
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('notification-updated', onUpdate);
     };
   }, [checkNotifications]);
-
 
   const handleLogout = () => {
       logout();
@@ -152,10 +136,11 @@ export function Header() {
   return (
     <header 
         className={cn(
-            "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
+            // ★★★ পরিবর্তন: sticky -> fixed, যাতে এটি হিরো ইমেজের উপরে ভাসে
+            "fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ease-in-out",
             isScrolled 
-              ? "bg-background/95 backdrop-blur-md shadow-sm border-border py-1" 
-              : "bg-transparent border-transparent py-3"
+              ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-border py-2" // স্ক্রল করলে ব্যাকগ্রাউন্ড আসবে
+              : "bg-transparent border-transparent py-4" // শুরুতে ট্রান্সপারেন্ট
         )}
     >
     <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
@@ -194,7 +179,6 @@ export function Header() {
                                     <div className="space-y-1">
                                         <p className="text-xs text-white/80 font-medium">{getGreeting()},</p>
                                         <p className="font-bold text-xl leading-none tracking-tight">{user.name.split(' ')[0]}</p>
-                                        {/* ★ Mobile Phone Number (Space Removed) */}
                                         <p className="text-xs text-white/70 font-medium flex items-center gap-1">
                                             <Phone className="h-3 w-3" /> +91{user.phone}
                                         </p>
@@ -261,7 +245,11 @@ export function Header() {
         </div>
         
         <nav className="hidden md:flex items-center justify-center absolute left-1/2 -translate-x-1/2">
-            <div className="flex items-center p-1 bg-background/50 backdrop-blur-md border border-border/40 rounded-full shadow-sm ring-1 ring-border/10">
+            <div className={cn(
+                "flex items-center p-1 rounded-full transition-all duration-300",
+                // স্ক্রল না করলে হালকা গ্লাস এফেক্ট, স্ক্রল করলে বর্ডার সহ
+                isScrolled ? "bg-background/50 backdrop-blur-md border border-border/40 shadow-sm ring-1 ring-border/10" : "bg-white/20 backdrop-blur-sm border border-white/20"
+            )}>
                 {navLinks.map(link => {
                     const isActive = pathname === link.href;
                     return (
@@ -269,7 +257,7 @@ export function Header() {
                             "px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 relative group",
                             isActive 
                                 ? "text-primary-foreground" 
-                                : "text-muted-foreground hover:text-foreground"
+                                : isScrolled ? "text-muted-foreground hover:text-foreground" : "text-gray-800 hover:text-black"
                         )}>
                             {isActive && (
                                 <span className="absolute inset-0 bg-primary rounded-full shadow-md -z-10 animate-in zoom-in-95 duration-200" />
@@ -290,7 +278,12 @@ export function Header() {
             className="hidden sm:flex relative w-[180px] lg:w-[240px] cursor-pointer group"
         >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            <div className="w-full rounded-full pl-10 pr-4 h-10 flex items-center text-sm text-muted-foreground bg-muted/30 border border-transparent hover:bg-muted/50 hover:border-border/50 transition-all">
+            <div className={cn(
+                "w-full rounded-full pl-10 pr-4 h-10 flex items-center text-sm transition-all",
+                isScrolled 
+                    ? "text-muted-foreground bg-muted/30 border border-transparent hover:bg-muted/50 hover:border-border/50" 
+                    : "text-gray-700 bg-white/40 border border-white/30 hover:bg-white/60"
+            )}>
                 Search food...
             </div>
             <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 pointer-events-none">
@@ -348,8 +341,6 @@ export function Header() {
                             <Sparkles className="h-3 w-3" /> {getGreeting()}
                         </p>
                         <p className="text-sm font-bold text-foreground truncate leading-tight">{user.name}</p>
-                        
-                        {/* ★★★ CHANGED: Phone Number (Space Removed) ★★★ */}
                         <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
                             <Phone className="h-3 w-3" /> +91{user.phone}
                         </p>

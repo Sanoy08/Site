@@ -34,16 +34,6 @@ export default function RegisterPage() {
     }
   }, [timeLeft, step]);
 
-  // ★★★ AUTO FOCUS KEYBOARD ON OTP STEP ★★★
-  useEffect(() => {
-    if (step === 'otp') {
-        const timer = setTimeout(() => {
-            inputRefs.current[0]?.focus();
-        }, 100);
-        return () => clearTimeout(timer);
-    }
-  }, [step]);
-
   const verifyRegisterLogic = async (otpValue: string) => {
     if (otpValue.length !== 6) return;
     
@@ -110,8 +100,25 @@ export default function RegisterPage() {
     }
   };
 
+  // 1. Send OTP Logic (With Validation)
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
+    // ★★★ INDIAN NUMBER VALIDATION ★★★
+    // Regex: Starts with 6-9, contains exactly 10 digits
+    const indianPhoneRegex = /^[6-9]\d{9}$/;
+
+    if (!phone) {
+        toast.error("Please enter your phone number");
+        return;
+    }
+
+    if (!indianPhoneRegex.test(phone)) {
+        toast.error("Invalid Indian Mobile Number! Must contain 10 digits and start with 6-9.");
+        return;
+    }
+    // ★★★ VALIDATION END ★★★
+
     setIsLoading(true);
 
     try {
@@ -127,7 +134,7 @@ export default function RegisterPage() {
         setCanResend(false);
         setTimeLeft(30);
         setOtp(['', '', '', '', '', '']);
-        toast.success(`OTP sent to ${phone}`);
+        toast.success(`OTP sent to +91 ${phone}`);
       } else {
         toast.error(data.error || 'Failed to send OTP');
       }
@@ -153,6 +160,7 @@ export default function RegisterPage() {
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm space-y-8 py-8">
 
+          {/* SAFE ILLUSTRATION */}
           <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
              <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
@@ -185,16 +193,23 @@ export default function RegisterPage() {
                   <Label htmlFor="phone" className="text-sm font-medium text-gray-900">Phone Number</Label>
                   <div className="relative group">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
+                    {/* Country Code Prefix Visual */}
+                    <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 border-r pr-2 h-5 flex items-center">+91</span>
                     <Input 
                         id="phone" 
                         type="tel"
                         inputMode="numeric"
+                        maxLength={10} // Restrict input length
                         placeholder="9876543210" 
                         value={phone} 
-                        onChange={(e) => setPhone(e.target.value)} 
+                        // Only allow numbers
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, ''); 
+                            if(val.length <= 10) setPhone(val);
+                        }} 
                         disabled={isLoading} 
                         required 
-                        className="h-12 pl-10 border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl" 
+                        className="h-12 pl-[4.5rem] border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl" 
                     />
                   </div>
                 </div>
@@ -213,7 +228,6 @@ export default function RegisterPage() {
                             <input
                                 key={index}
                                 ref={(el) => { inputRefs.current[index] = el }}
-                                // ★★★ UPDATED ATTRIBUTES & SIZING ★★★
                                 type="tel"
                                 inputMode="numeric"
                                 pattern="[0-9]*"

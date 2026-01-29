@@ -1,5 +1,6 @@
 // capacitor.config.ts
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 
 const config: CapacitorConfig = {
   appId: 'com.bumbaskitchen.app',
@@ -13,7 +14,6 @@ const config: CapacitorConfig = {
       'bumbaskitchen.app',
       '*.bumbaskitchen.app'
     ],
-    // ★ নতুন লাইন: ইন্টারনেট না থাকলে এই পেজটি দেখাবে
     // errorPath: 'offline.html',
   },
   android: {
@@ -23,6 +23,12 @@ const config: CapacitorConfig = {
     backgroundColor: "#7D9A4D" 
   },
   plugins: {
+    // ★★★ KEYBOARD SETTINGS (New) ★★★
+    Keyboard: {
+      resize: KeyboardResize.Body, // বা শুধু 'body'
+      style: KeyboardStyle.Dark,   // বা শুধু 'DARK'
+      resizeOnFullScreen: true,
+    },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },

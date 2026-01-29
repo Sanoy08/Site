@@ -1,6 +1,3 @@
-// src/app/(auth)/register/page.tsx
-
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -8,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Loader2, ArrowRight, ChefHat, User, Phone, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Loader2, ArrowRight, ChefHat, User, Phone, ArrowLeft, RefreshCw, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +25,6 @@ export default function RegisterPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
-  // Timer Logic
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -38,7 +34,6 @@ export default function RegisterPage() {
     }
   }, [timeLeft, step]);
 
-  // ★★★ CORE REGISTRATION LOGIC (Reusable) ★★★
   const verifyRegisterLogic = async (otpValue: string) => {
     if (otpValue.length !== 6) return;
     
@@ -65,11 +60,9 @@ export default function RegisterPage() {
     }
   };
 
-  // ★★★ HANDLE PASTE ★★★
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
-    
     if (!/^\d+$/.test(pastedData)) return;
 
     const newOtp = [...otp];
@@ -81,7 +74,6 @@ export default function RegisterPage() {
     const nextIndex = Math.min(pastedData.length, 5);
     inputRefs.current[nextIndex]?.focus();
 
-    // ★ Auto Verify on Paste
     if (pastedData.length === 6) {
         verifyRegisterLogic(pastedData);
     }
@@ -97,7 +89,6 @@ export default function RegisterPage() {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // ★ Auto Verify on Manual Type
     const combinedOtp = newOtp.join('');
     if (combinedOtp.length === 6 && index === 5 && value) {
         verifyRegisterLogic(combinedOtp);
@@ -110,7 +101,6 @@ export default function RegisterPage() {
     }
   };
 
-  // 1. Send OTP Logic
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsLoading(true);
@@ -139,7 +129,6 @@ export default function RegisterPage() {
     }
   };
 
-  // Wrapper for Form Submit
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const otpValue = otp.join('');
@@ -152,12 +141,18 @@ export default function RegisterPage() {
 
   return (
     <div className="fixed inset-0 z-[100] grid h-screen w-full grid-cols-1 overflow-hidden bg-white lg:grid-cols-2">
-      
-      {/* LEFT SIDE: Form */}
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm space-y-8 py-8">
+
+          {/* ★★★ SAFE & FREE ILLUSTRATION (Icon Based) ★★★ */}
+          <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
+             <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center relative">
+                <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
+                <UserPlus className="h-10 w-10 text-primary relative z-10" />
+             </div>
+          </div>
           
-          <div className="space-y-2">
+          <div className="space-y-2 text-center sm:text-left">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Create an <span className="text-primary">Account</span>
             </h1>
@@ -168,7 +163,6 @@ export default function RegisterPage() {
 
           <div className="space-y-6">
             
-            {/* STEP 1: Personal Details */}
             {step === 'details' && (
               <form onSubmit={handleSendOtp} className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
                 <div className="space-y-2">
@@ -202,11 +196,10 @@ export default function RegisterPage() {
               </form>
             )}
 
-            {/* STEP 2: OTP (Enhanced UI + Paste Support) */}
             {step === 'otp' && (
               <form onSubmit={handleRegisterSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                  <div className="space-y-4">
-                    <div className="flex justify-between gap-2">
+                    <div className="flex justify-center gap-2 sm:gap-3">
                         {otp.map((digit, index) => (
                             <input
                                 key={index}
@@ -216,9 +209,9 @@ export default function RegisterPage() {
                                 value={digit}
                                 onChange={(e) => handleOtpChange(index, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(index, e)}
-                                onPaste={handlePaste} // ★ Added Paste Handler
+                                onPaste={handlePaste}
                                 disabled={isLoading}
-                                className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50"
+                                className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50"
                             />
                         ))}
                     </div>
@@ -259,7 +252,6 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT SIDE: Image */}
       <div className="relative hidden h-full flex-col bg-gray-900 p-10 text-white lg:flex">
         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1556910103-1c02745a30bf?q=80&w=2070&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
         <div className="relative z-10 flex items-center gap-2 text-xl font-bold tracking-tight">

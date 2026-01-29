@@ -2,33 +2,69 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Loader2, ArrowRight, ChefHat, Phone, KeyRound, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowRight, ChefHat, Phone, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth(); // Google login removed from hook
+  const { login } = useAuth();
   
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   
   const [isLoading, setIsLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [canResend, setCanResend] = useState(false);
+
+  // Timer Logic
+  useEffect(() => {
+    if (step === 'otp' && timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0) {
+      setCanResend(true);
+    }
+  }, [timeLeft, step]);
+
+  // Handle OTP Input Change
+  const handleOtpChange = (index: number, value: string) => {
+    if (isNaN(Number(value))) return;
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Auto Focus Next
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto Verify if complete
+    if (index === 5 && value) {
+        // Optional: Trigger verify automatically
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
   // 1. Send OTP
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsLoading(true);
 
     try {
-      // NOTE: We are NOT sending 'name'. Backend will treat this as Login.
       const res = await fetch('/api/auth/phone/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -38,9 +74,10 @@ export default function LoginPage() {
 
       if (data.success) {
         setStep('otp');
+        setCanResend(false);
+        setTimeLeft(30);
         toast.success('OTP Sent!');
       } else {
-        // Backend now returns specific error "Account not found"
         toast.error(data.error || 'Failed to send OTP');
       }
     } catch (error) {
@@ -53,13 +90,19 @@ export default function LoginPage() {
   // 2. Verify OTP
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    const otpValue = otp.join('');
+    if (otpValue.length !== 6) {
+        toast.error("Please enter 6-digit OTP");
+        return;
+    }
+
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/auth/phone/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp }),
+        body: JSON.stringify({ phone, otp: otpValue }),
       });
       const data = await res.json();
 
@@ -67,20 +110,15 @@ export default function LoginPage() {
         login(data.user, data.token);
         toast.success('Welcome back!');
         
-        // ★★★ নতুন লজিক: রোল চেক করে রিডাইরেক্ট ★★★
         if (data.user.role === 'admin') {
-            // অ্যাডমিন সাবডোমেইনে ফোর্স রিডাইরেক্ট
-            // (লোকালহোস্টে কাজ করার জন্য window.location.href ব্যবহার করা হচ্ছে)
             if (process.env.NODE_ENV === 'production') {
                 window.location.href = 'https://admin.bumbaskitchen.app';
             } else {
-                // লোকালহোস্টে সাবডোমেইন কাজ করে না, তাই সাধারণ রাউটিং
-                router.push('/admin/dashboard'); // বা যেখানে আপনার অ্যাডমিন পেজ আছে
+                router.push('/admin/dashboard');
             }
         } else {
             router.push('/');
         }
-        
       } else {
         toast.error(data.error || 'Invalid OTP');
       }
@@ -103,7 +141,7 @@ export default function LoginPage() {
               Welcome <span className="text-primary">Back</span>
             </h1>
             <p className="text-base text-gray-500">
-              Sign in with your phone number
+              {step === 'phone' ? 'Sign in with your phone number' : `Enter code sent to +91 ${phone}`}
             </p>
           </div>
 
@@ -114,8 +152,8 @@ export default function LoginPage() {
                 <form onSubmit={handleSendOtp} className="space-y-5 animate-in fade-in slide-in-from-left-4">
                 <div className="space-y-2">
                     <Label htmlFor="phone" className="text-sm font-medium text-gray-900">Phone Number</Label>
-                    <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <div className="relative group">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                         <Input
                         id="phone"
                         type="tel"
@@ -124,48 +162,62 @@ export default function LoginPage() {
                         onChange={(e) => setPhone(e.target.value)}
                         required
                         disabled={isLoading}
-                        className="h-12 border-gray-200 bg-white pl-10 text-base focus:border-primary focus:ring-1 focus:ring-primary"
+                        className="h-12 border-gray-200 bg-white pl-10 text-base focus:border-primary focus:ring-1 focus:ring-primary rounded-xl"
                         />
                     </div>
                 </div>
 
-                <Button type="submit" className="group h-12 w-full bg-primary text-white hover:bg-primary/90 font-medium" disabled={isLoading}>
+                <Button type="submit" className="group h-12 w-full bg-primary text-white hover:bg-primary/90 font-medium rounded-xl shadow-lg shadow-primary/20" disabled={isLoading}>
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <span className="flex items-center justify-center gap-2">Get OTP <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>}
                 </Button>
                 </form>
             )}
 
-            {/* Step 2: OTP */}
+            {/* Step 2: OTP (Enhanced UI) */}
             {step === 'otp' && (
-                <form onSubmit={handleVerifyOtp} className="space-y-5 animate-in fade-in slide-in-from-right-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="otp" className="text-sm font-medium text-gray-900">Enter OTP</Label>
-                        <div className="relative">
-                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                            id="otp"
-                            placeholder="6-digit code"
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            required
-                            disabled={isLoading}
-                            className="h-12 border-gray-200 bg-white pl-10 text-base font-bold tracking-widest text-center focus:border-primary focus:ring-1 focus:ring-primary"
-                            />
+                <form onSubmit={handleVerifyOtp} className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                    <div className="space-y-4">
+                        <div className="flex justify-between gap-2">
+                            {otp.map((digit, index) => (
+                                <input
+                                    key={index}
+                                    ref={(el) => { inputRefs.current[index] = el }}
+                                    type="text"
+                                    maxLength={1}
+                                    value={digit}
+                                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                                    onKeyDown={(e) => handleKeyDown(index, e)}
+                                    className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900"
+                                />
+                            ))}
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500">Didn't receive code?</span>
+                            {canResend ? (
+                                <button 
+                                    type="button" 
+                                    onClick={() => handleSendOtp()} 
+                                    className="font-medium text-primary hover:underline flex items-center gap-1"
+                                >
+                                    <RefreshCw className="h-3 w-3" /> Resend
+                                </button>
+                            ) : (
+                                <span className="text-gray-400 font-medium">Resend in 00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
+                            )}
                         </div>
                     </div>
 
                     <div className="flex gap-3">
-                        <Button type="button" variant="outline" onClick={() => setStep('phone')} disabled={isLoading} className="h-12 w-1/3">
+                        <Button type="button" variant="outline" onClick={() => setStep('phone')} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back
                         </Button>
-                        <Button type="submit" className="h-12 w-2/3 bg-primary text-white hover:bg-primary/90" disabled={isLoading}>
+                        <Button type="submit" className="h-12 w-2/3 bg-primary text-white hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/20" disabled={isLoading}>
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Verify & Login'}
                         </Button>
                     </div>
                 </form>
             )}
-            
-            {/* Google Login Removed */}
 
           </div>
 

@@ -1,8 +1,5 @@
-// capacitor.config.ts
 import type { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
-// ★ ইম্পোর্ট করতে হবে (যদি এরর দেয়, তাহলে `npm install @capacitor/status-bar` দিন)
-import { Style } from '@capacitor/status-bar'; 
 
 const config: CapacitorConfig = {
   appId: 'com.bumbaskitchen.app',
@@ -21,7 +18,7 @@ const config: CapacitorConfig = {
     // @ts-ignore
     adjustMarginsForEdgeToEdge: 'disable',
     zoomEnabled: false,
-    backgroundColor: "#7D9A4D" 
+    backgroundColor: "#7D9A4D" // লোডিং এর সময় ব্যাকগ্রাউন্ড কালার
   },
   plugins: {
     Keyboard: {
@@ -29,12 +26,8 @@ const config: CapacitorConfig = {
       style: KeyboardStyle.Dark,
       resizeOnFullScreen: true,
     },
-    // ★★★ STATUS BAR SETTINGS (New) ★★★
-    StatusBar: {
-      style: Style.Light, // আইকন কালো হবে (Light Style মানে ব্যাকগ্রাউন্ড লাইট)
-      backgroundColor: '#FFFFFF', // ব্যাকগ্রাউন্ড সাদা
-      overlaysWebView: false, // ওয়েবভিউ এর উপরে ভাসবে না
-    },
+    // StatusBar কনফিগ এখান থেকে সরিয়ে দিয়েছি 
+    // কারণ আমরা এখন StatusBarLogic.tsx দিয়ে কন্ট্রোল করছি
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
@@ -43,7 +36,7 @@ const config: CapacitorConfig = {
       providers: ["google.com"],
     },
     SplashScreen: {
-      launchShowDuration: 0, // স্প্ল্যাশ স্ক্রিন বেশিক্ষণ আটকে থাকবে না
+      launchShowDuration: 0,
       launchAutoHide: false,
       backgroundColor: "#7D9A4D",
       androidSplashResourceName: "splash",

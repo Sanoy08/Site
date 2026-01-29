@@ -7,25 +7,27 @@ import { Capacitor } from '@capacitor/core';
 export default function StatusBarLogic() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      const setStatus = async () => {
+      const initStatusBar = async () => {
         try {
-          // ১. স্ট্যাটাস বারের ব্যাকগ্রাউন্ড সাদা করা
+          // ১. প্রথমে ওভারলে বন্ধ করা (সেফটি)
+          await StatusBar.setOverlaysWebView({ overlay: false });
+
+          // ২. রঙ পরিবর্তন: সবুজ -> সাদা
           await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
-          
-          // ২. আইকন এবং টেক্সট কালো করা (Style.Light মানে ব্যাকগ্রাউন্ড লাইট, টেক্সট ডার্ক)
+
+          // ৩. আইকন পরিবর্তন: সাদা -> কালো
+          // Style.Light মানে হলো "ব্যাকগ্রাউন্ড লাইট", তাই আইকন হবে ডার্ক (কালো)
           await StatusBar.setStyle({ style: Style.Light });
           
-          // ৩. অ্যান্ড্রয়েডে ওভারলে বন্ধ রাখা
-          await StatusBar.setOverlaysWebView({ overlay: false });
         } catch (e) {
-          console.error("Status bar error", e);
+          console.error("Status bar styling failed", e);
         }
       };
-      
+
       // অ্যাপ লোড হওয়ার সাথে সাথে কল হবে
-      setStatus();
+      initStatusBar();
     }
   }, []);
 
-  return null; // এটি কোনো UI রেন্ডার করবে না
+  return null;
 }

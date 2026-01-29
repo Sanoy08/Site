@@ -8,8 +8,8 @@ import { z } from 'zod';
 
 const DB_NAME = 'BumbasKitchenDB';
 
-// আপনার টপিক নাম (ntfy অ্যাপে যেটা দিয়েছেন)
-const NTFY_TOPIC = "bokachoda12"; 
+// ১. সিকিউরলি এনভায়রনমেন্ট ভেরিয়েবল থেকে টপিক নেওয়া
+const NTFY_TOPIC = process.env.NTFY_TOPIC;
 
 const sendOtpSchema = z.object({
   phone: z.string().min(10, "Invalid phone number").regex(/^\d+$/, "Phone must contain only numbers"),
@@ -18,6 +18,11 @@ const sendOtpSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // সার্ভার কনফিগারেশন চেক (ক্রিটিক্যাল)
+    if (!NTFY_TOPIC) {
+        return NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 });
+    }
+
     // 1. Rate Limit
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
     if (!rateLimit(ip, 3, 60 * 1000)) {
@@ -68,28 +73,22 @@ export async function POST(request: NextRequest) {
         { upsert: true }
     );
 
-    // ★★★ 5. NTFY PUSH (Fixed with AWAIT) ★★★
+    // ★★★ 5. NTFY PUSH (Clean & Silent) ★★★
     const message = `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.`;
 
     try {
-        const ntfyResponse = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+        await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
             method: 'POST',
             body: message,
             headers: {
-                'Title': phone, // এটা MacroDroid ধরবে
+                'Title': phone, // MacroDroid-এর জন্য টাইটেল
                 'Priority': 'high',
                 'Tags': 'sms'
             }
         });
-
-        // ডিবাগিং-এর জন্য লগ চেক করুন
-        if (!ntfyResponse.ok) {
-            console.error("NTFY Failed:", await ntfyResponse.text());
-        } else {
-            console.log(`NTFY Sent to ${NTFY_TOPIC} for ${phone}`);
-        }
     } catch (e) {
-        console.error("NTFY Network Error:", e);
+        // সাইলেন্টলি ফেইল করবে যাতে ইউজারের এক্সপেরিয়েন্স নষ্ট না হয়
+        // ক্রিটিক্যাল ডিবাগিং ছাড়া এখানে লগ রাখার দরকার নেই
     }
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully.' });

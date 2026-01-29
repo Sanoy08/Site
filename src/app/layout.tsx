@@ -17,6 +17,7 @@ import NotificationPrompt from '@/components/NotificationPrompt';
 import AppUrlListener from '@/components/AppUrlListener'; // ★ ১. ইম্পোর্ট করা হলো
 import { Chatbot } from "@/components/Chatbot";
 import { AppUpdater } from '@/components/AppUpdater'; // ইমপোর্ট
+import StatusBarLogic from '@/components/StatusBarLogic'; // ★ Import This
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -92,7 +93,7 @@ export default function RootLayout({
 
           {/* ★★★ ২. Deep Link Listener এখানে বসানো হলো ★★★ */}
           <AppUrlListener />
-
+          <StatusBarLogic /> {/* ★ Add StatusBarLogic Component Here ★ */}
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />

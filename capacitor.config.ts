@@ -1,6 +1,8 @@
+// capacitor.config.ts
 import type { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
-import { Style } from '@capacitor/status-bar'; // ★ ইম্পোর্ট করতে হবে
+// ★ ইম্পোর্ট করতে হবে (যদি এরর দেয়, তাহলে `npm install @capacitor/status-bar` দিন)
+import { Style } from '@capacitor/status-bar'; 
 
 const config: CapacitorConfig = {
   appId: 'com.bumbaskitchen.app',
@@ -14,36 +16,25 @@ const config: CapacitorConfig = {
       'bumbaskitchen.app',
       '*.bumbaskitchen.app'
     ],
-    // errorPath: 'offline.html',
   },
   android: {
     // @ts-ignore
     adjustMarginsForEdgeToEdge: 'disable',
     zoomEnabled: false,
-    // ★ অ্যাপ ওপেন হওয়ার সময় ব্যাকগ্রাউন্ড কালার (সাদা করে দেওয়া হলো)
-    backgroundColor: "#FFFFFF" 
+    backgroundColor: "#7D9A4D" 
   },
   plugins: {
-    // ★★★ 1. KEYBOARD SETTINGS (To fix input hiding) ★★★
     Keyboard: {
       resize: KeyboardResize.Body,
       style: KeyboardStyle.Dark,
       resizeOnFullScreen: true,
     },
-    
-    // ★★★ 2. STATUS BAR SETTINGS (Colour Change) ★★★
+    // ★★★ STATUS BAR SETTINGS (New) ★★★
     StatusBar: {
-      overlaysWebView: false,
-      
-      // ★ style: 'LIGHT' মানে আইকনগুলো কালো (Dark) হবে (সাদা ব্যাকগ্রাউন্ডের জন্য)
-      // ★ style: 'DARK' মানে আইকনগুলো সাদা (White) হবে (ডার্ক ব্যাকগ্রাউন্ডের জন্য)
-      // @ts-ignore
-      style: 'LIGHT', 
-      
-      // ★ স্ট্যাটাস বারের ব্যাকগ্রাউন্ড কালার (এখানে সাদা দেওয়া হলো)
-      backgroundColor: '#FFFFFF', 
+      style: Style.Light, // আইকন কালো হবে (Light Style মানে ব্যাকগ্রাউন্ড লাইট)
+      backgroundColor: '#FFFFFF', // ব্যাকগ্রাউন্ড সাদা
+      overlaysWebView: false, // ওয়েবভিউ এর উপরে ভাসবে না
     },
-
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
@@ -52,9 +43,9 @@ const config: CapacitorConfig = {
       providers: ["google.com"],
     },
     SplashScreen: {
-      launchShowDuration: 2000, // একটু বাড়িয়ে দেওয়া হলো যাতে লোডিং স্মুথ লাগে
-      launchAutoHide: true,
-      backgroundColor: "#FFFFFF", // স্প্ল্যাশ স্ক্রিনের ব্যাকগ্রাউন্ডও সাদা
+      launchShowDuration: 0, // স্প্ল্যাশ স্ক্রিন বেশিক্ষণ আটকে থাকবে না
+      launchAutoHide: false,
+      backgroundColor: "#7D9A4D",
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP",
       showSpinner: false,

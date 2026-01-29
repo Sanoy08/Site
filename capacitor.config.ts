@@ -20,7 +20,7 @@ const config: CapacitorConfig = {
     // @ts-ignore
     adjustMarginsForEdgeToEdge: 'disable',
     zoomEnabled: false,
-    backgroundColor: "#7D9A4D" 
+    backgroundColor: "#ffffff" 
   },
   plugins: {
     // ★★★ KEYBOARD SETTINGS (New) ★★★
@@ -43,7 +43,7 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 0,
       launchAutoHide: false,
-      backgroundColor: "#7D9A4D",
+      backgroundColor: "#ffffff",
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP",
       showSpinner: false,

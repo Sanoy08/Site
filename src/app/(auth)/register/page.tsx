@@ -20,7 +20,6 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   
-  // OTP State (Array for 6 boxes)
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [step, setStep] = useState<'details' | 'otp'>('details');
@@ -39,14 +38,69 @@ export default function RegisterPage() {
     }
   }, [timeLeft, step]);
 
+  // ★★★ CORE REGISTRATION LOGIC (Reusable) ★★★
+  const verifyRegisterLogic = async (otpValue: string) => {
+    if (otpValue.length !== 6) return;
+    
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/phone/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp: otpValue }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        login(data.user, data.token);
+        toast.success('Account created successfully!');
+        router.push('/');
+      } else {
+        toast.error(data.error || 'Verification failed');
+        setIsLoading(false);
+      }
+    } catch (error) {
+      toast.error('Registration failed.');
+      setIsLoading(false);
+    }
+  };
+
+  // ★★★ HANDLE PASTE ★★★
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').slice(0, 6);
+    
+    if (!/^\d+$/.test(pastedData)) return;
+
+    const newOtp = [...otp];
+    pastedData.split('').forEach((char, index) => {
+        if (index < 6) newOtp[index] = char;
+    });
+    setOtp(newOtp);
+
+    const nextIndex = Math.min(pastedData.length, 5);
+    inputRefs.current[nextIndex]?.focus();
+
+    // ★ Auto Verify on Paste
+    if (pastedData.length === 6) {
+        verifyRegisterLogic(pastedData);
+    }
+  };
+
   const handleOtpChange = (index: number, value: string) => {
     if (isNaN(Number(value))) return;
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
+    }
+
+    // ★ Auto Verify on Manual Type
+    const combinedOtp = newOtp.join('');
+    if (combinedOtp.length === 6 && index === 5 && value) {
+        verifyRegisterLogic(combinedOtp);
     }
   };
 
@@ -73,6 +127,7 @@ export default function RegisterPage() {
         setStep('otp');
         setCanResend(false);
         setTimeLeft(30);
+        setOtp(['', '', '', '', '', '']);
         toast.success(`OTP sent to ${phone}`);
       } else {
         toast.error(data.error || 'Failed to send OTP');
@@ -84,37 +139,15 @@ export default function RegisterPage() {
     }
   };
 
-  // 2. Verify OTP & Create Account
-  const handleRegister = async (e: React.FormEvent) => {
+  // Wrapper for Form Submit
+  const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const otpValue = otp.join('');
     if (otpValue.length !== 6) {
         toast.error("Please enter 6-digit OTP");
         return;
     }
-
-    setIsLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/phone/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp: otpValue }),
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        login(data.user, data.token);
-        toast.success('Account created successfully!');
-        router.push('/');
-      } else {
-        toast.error(data.error || 'Verification failed');
-      }
-    } catch (error) {
-      toast.error('Registration failed.');
-    } finally {
-      setIsLoading(false);
-    }
+    verifyRegisterLogic(otpValue);
   };
 
   return (
@@ -169,9 +202,9 @@ export default function RegisterPage() {
               </form>
             )}
 
-            {/* STEP 2: OTP (Enhanced UI) */}
+            {/* STEP 2: OTP (Enhanced UI + Paste Support) */}
             {step === 'otp' && (
-              <form onSubmit={handleRegister} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+              <form onSubmit={handleRegisterSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                  <div className="space-y-4">
                     <div className="flex justify-between gap-2">
                         {otp.map((digit, index) => (
@@ -183,7 +216,9 @@ export default function RegisterPage() {
                                 value={digit}
                                 onChange={(e) => handleOtpChange(index, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(index, e)}
-                                className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900"
+                                onPaste={handlePaste} // ★ Added Paste Handler
+                                disabled={isLoading}
+                                className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50"
                             />
                         ))}
                     </div>

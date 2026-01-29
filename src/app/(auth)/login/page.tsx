@@ -35,11 +35,72 @@ export default function LoginPage() {
     }
   }, [timeLeft, step]);
 
+  // ★★★ CORE VERIFICATION LOGIC (Reusable) ★★★
+  const verifyOtpLogic = async (otpValue: string) => {
+    if (otpValue.length !== 6) return;
+    
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/phone/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp: otpValue }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        login(data.user, data.token);
+        toast.success('Welcome back!');
+        
+        if (data.user.role === 'admin') {
+            if (process.env.NODE_ENV === 'production') {
+                window.location.href = 'https://admin.bumbaskitchen.app';
+            } else {
+                router.push('/admin/dashboard');
+            }
+        } else {
+            router.push('/');
+        }
+      } else {
+        toast.error(data.error || 'Invalid OTP');
+        setIsLoading(false); // Only stop loading on error, otherwise we are redirecting
+      }
+    } catch (error) {
+      toast.error('Login failed');
+      setIsLoading(false);
+    }
+  };
+
+  // ★★★ HANDLE PASTE (Fixes Copy-Paste Issue) ★★★
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').slice(0, 6);
+    
+    if (!/^\d+$/.test(pastedData)) return; // Only allow numbers
+
+    const newOtp = [...otp];
+    pastedData.split('').forEach((char, index) => {
+        if (index < 6) newOtp[index] = char;
+    });
+    setOtp(newOtp);
+
+    // Focus on the next empty box or the last box
+    const nextIndex = Math.min(pastedData.length, 5);
+    inputRefs.current[nextIndex]?.focus();
+
+    // ★ Auto Verify if 6 digits pasted
+    if (pastedData.length === 6) {
+        verifyOtpLogic(pastedData);
+    }
+  };
+
   // Handle OTP Input Change
   const handleOtpChange = (index: number, value: string) => {
     if (isNaN(Number(value))) return;
+    
     const newOtp = [...otp];
-    newOtp[index] = value;
+    // Allow only last character if user types multiple in one box (edge case)
+    newOtp[index] = value.substring(value.length - 1); 
     setOtp(newOtp);
 
     // Auto Focus Next
@@ -47,9 +108,10 @@ export default function LoginPage() {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto Verify if complete
-    if (index === 5 && value) {
-        // Optional: Trigger verify automatically
+    // ★ Auto Verify on Manual Entry
+    const combinedOtp = newOtp.join('');
+    if (combinedOtp.length === 6 && index === 5 && value) {
+        verifyOtpLogic(combinedOtp);
     }
   };
 
@@ -76,6 +138,7 @@ export default function LoginPage() {
         setStep('otp');
         setCanResend(false);
         setTimeLeft(30);
+        setOtp(['', '', '', '', '', '']); // Clear OTP
         toast.success('OTP Sent!');
       } else {
         toast.error(data.error || 'Failed to send OTP');
@@ -87,46 +150,15 @@ export default function LoginPage() {
     }
   };
 
-  // 2. Verify OTP
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  // Wrapper for Form Submit
+  const handleVerifySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const otpValue = otp.join('');
     if (otpValue.length !== 6) {
         toast.error("Please enter 6-digit OTP");
         return;
     }
-
-    setIsLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/phone/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp: otpValue }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        login(data.user, data.token);
-        toast.success('Welcome back!');
-        
-        if (data.user.role === 'admin') {
-            if (process.env.NODE_ENV === 'production') {
-                window.location.href = 'https://admin.bumbaskitchen.app';
-            } else {
-                router.push('/admin/dashboard');
-            }
-        } else {
-            router.push('/');
-        }
-      } else {
-        toast.error(data.error || 'Invalid OTP');
-      }
-    } catch (error) {
-      toast.error('Login failed');
-    } finally {
-      setIsLoading(false);
-    }
+    verifyOtpLogic(otpValue);
   };
 
   return (
@@ -173,9 +205,9 @@ export default function LoginPage() {
                 </form>
             )}
 
-            {/* Step 2: OTP (Enhanced UI) */}
+            {/* Step 2: OTP (Enhanced UI + Paste Support) */}
             {step === 'otp' && (
-                <form onSubmit={handleVerifyOtp} className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                <form onSubmit={handleVerifySubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4">
                     <div className="space-y-4">
                         <div className="flex justify-between gap-2">
                             {otp.map((digit, index) => (
@@ -187,7 +219,9 @@ export default function LoginPage() {
                                     value={digit}
                                     onChange={(e) => handleOtpChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
-                                    className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900"
+                                    onPaste={handlePaste} // ★ Added Paste Handler
+                                    disabled={isLoading}
+                                    className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50"
                                 />
                             ))}
                         </div>

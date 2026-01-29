@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
+  // Timer Logic
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -31,6 +32,17 @@ export default function LoginPage() {
       setCanResend(true);
     }
   }, [timeLeft, step]);
+
+  // ★★★ AUTO FOCUS KEYBOARD ON OTP STEP ★★★
+  useEffect(() => {
+    if (step === 'otp') {
+        // একটু ডিলে দেওয়া হলো যাতে DOM রেন্ডার হওয়ার সময় পায়
+        const timer = setTimeout(() => {
+            inputRefs.current[0]?.focus();
+        }, 100);
+        return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   const verifyOtpLogic = async (otpValue: string) => {
     if (otpValue.length !== 6) return;
@@ -150,7 +162,6 @@ export default function LoginPage() {
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28">
         <div className="mx-auto w-full max-w-sm space-y-8">
 
-          {/* ★★★ SAFE & FREE ILLUSTRATION (Icon Based) ★★★ */}
           <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
              <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
@@ -176,7 +187,8 @@ export default function LoginPage() {
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                         <Input
                         id="phone"
-                        type="tel"
+                        type="tel" // Opens numeric keypad
+                        inputMode="numeric" // Ensures mobile keypad
                         placeholder="9876543210"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
@@ -201,14 +213,19 @@ export default function LoginPage() {
                                 <input
                                     key={index}
                                     ref={(el) => { inputRefs.current[index] = el }}
-                                    type="text"
+                                    // ★★★ UPDATED INPUT ATTRIBUTES ★★★
+                                    type="tel" // Opens number pad on mobile
+                                    inputMode="numeric" // Forces numeric keyboard
+                                    pattern="[0-9]*" // iOS fallback
+                                    autoComplete="one-time-code" // Auto-fill from SMS
                                     maxLength={1}
                                     value={digit}
                                     onChange={(e) => handleOtpChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     onPaste={handlePaste}
                                     disabled={isLoading}
-                                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50"
+                                    // ★★★ UPDATED SIZING (Bigger) ★★★
+                                    className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary"
                                 />
                             ))}
                         </div>

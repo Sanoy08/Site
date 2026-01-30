@@ -1,6 +1,8 @@
+// src/app/(shop)/menus/MenusClient.tsx
+
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react'; // useRef যোগ করা হয়েছে
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -50,11 +52,10 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // --- Refs for Scroll Logic (New) ---
+  // --- Refs for Scroll Logic ---
   const categoryContainerRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<string, HTMLButtonElement> | null>(null);
 
-  // Initialize Map for refs
   if (!itemsRef.current) {
     itemsRef.current = new Map();
   }
@@ -86,7 +87,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
     
-    // Page scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (categoryFromUrl) {
@@ -97,7 +97,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     }
   }, [searchParams]);
 
-  // ★★★ AUTO SCROLL CATEGORY TO CENTER (New Logic) ★★★
+  // AUTO SCROLL CATEGORY TO CENTER
   useEffect(() => {
     const container = categoryContainerRef.current;
     const selectedItem = itemsRef.current?.get(activeCategory);
@@ -107,7 +107,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
         const itemLeft = selectedItem.offsetLeft;
         const itemWidth = selectedItem.offsetWidth;
 
-        // ক্যালকুলেশন: বাটনটিকে ঠিক মাঝখানে আনার জন্য
         const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2);
 
         container.scrollTo({
@@ -115,9 +114,8 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
             behavior: 'smooth'
         });
     }
-  }, [activeCategory]); // activeCategory চেঞ্জ হলেই এটি রান করবে
+  }, [activeCategory]);
 
-  // Sync Temp State when Sheet Opens
   useEffect(() => {
     if (isFilterOpen) {
         setTempSortBy(sortBy);
@@ -131,7 +129,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       setIsFilterOpen(false); 
   };
 
-  // AI Search Logic
   useEffect(() => {
       if (searchQuery.length < 3) {
           setAiSearchResults(null);
@@ -162,7 +159,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       else router.push(`/menus?category=${category.toLowerCase()}`);
   };
 
-  // Filtering Logic
   const filteredProducts = useMemo(() => {
       let result = (searchQuery.length >= 3 && aiSearchResults) ? aiSearchResults : initialProducts;
 
@@ -309,17 +305,17 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                   </div>
               </div>
 
-              {/* Category Slider (Refs Added) */}
+              {/* Category Slider (Gap Reduced) */}
               <div 
-                ref={categoryContainerRef} // ★ কন্টেইনার রেফারেন্স যোগ করা হয়েছে
-                className="flex gap-4 md:gap-8 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right"
+                ref={categoryContainerRef}
+                // ★★★ CHANGED: gap-4 -> gap-2 and md:gap-8 -> md:gap-4 ★★★
+                className="flex gap-2 md:gap-4 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right"
               >
                   {CATEGORIES.map((cat, idx) => {
                       const isActive = activeCategory === cat.name;
                       return (
                           <button
                               key={idx}
-                              // ★ প্রতিটি বাটনকে ম্যাপে সেভ করা হচ্ছে
                               ref={(el) => {
                                 if (el) itemsRef.current?.set(cat.name, el);
                               }}

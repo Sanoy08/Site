@@ -1,8 +1,6 @@
-// src/app/(shop)/menus/MenusClient.tsx
-
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react'; // useRef যোগ করা হয়েছে
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -52,6 +50,15 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   
+  // --- Refs for Scroll Logic (New) ---
+  const categoryContainerRef = useRef<HTMLDivElement>(null);
+  const itemsRef = useRef<Map<string, HTMLButtonElement> | null>(null);
+
+  // Initialize Map for refs
+  if (!itemsRef.current) {
+    itemsRef.current = new Map();
+  }
+  
   // --- Main States ---
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,7 +66,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const [showVegOnly, setShowVegOnly] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   
-  // --- Temporary States (For Mobile Sheet) ---
+  // --- Temporary States ---
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [tempSortBy, setTempSortBy] = useState('recommended');
   const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
@@ -75,21 +82,40 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ★★★ URL Sync & Scroll to Top Logic (Fixed) ★★★
+  // URL Sync & Page Scroll Logic
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
     
-    // ১. URL বা ক্যাটাগরি বদলালে পেজ টপে নিয়ে যাবে
+    // Page scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // ২. ক্যাটাগরি স্টেট আপডেট করবে
     if (categoryFromUrl) {
         const matched = CATEGORIES.find(c => c.name.toLowerCase() === categoryFromUrl.toLowerCase());
         if (matched) setActiveCategory(matched.name);
     } else {
         setActiveCategory('All');
     }
-  }, [searchParams]); // searchParams বদলালেই এই এফেক্ট রান হবে
+  }, [searchParams]);
+
+  // ★★★ AUTO SCROLL CATEGORY TO CENTER (New Logic) ★★★
+  useEffect(() => {
+    const container = categoryContainerRef.current;
+    const selectedItem = itemsRef.current?.get(activeCategory);
+
+    if (container && selectedItem) {
+        const containerWidth = container.offsetWidth;
+        const itemLeft = selectedItem.offsetLeft;
+        const itemWidth = selectedItem.offsetWidth;
+
+        // ক্যালকুলেশন: বাটনটিকে ঠিক মাঝখানে আনার জন্য
+        const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2);
+
+        container.scrollTo({
+            left: scrollPosition,
+            behavior: 'smooth'
+        });
+    }
+  }, [activeCategory]); // activeCategory চেঞ্জ হলেই এটি রান করবে
 
   // Sync Temp State when Sheet Opens
   useEffect(() => {
@@ -99,14 +125,13 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     }
   }, [isFilterOpen, sortBy, showVegOnly]);
 
-  // Apply Filters Handler
   const handleApplyFilters = () => {
       setSortBy(tempSortBy);
       setShowVegOnly(tempShowVegOnly);
       setIsFilterOpen(false); 
   };
 
-  // AI Search Logic (Debounced)
+  // AI Search Logic
   useEffect(() => {
       if (searchQuery.length < 3) {
           setAiSearchResults(null);
@@ -133,16 +158,14 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
 
 
   const handleCategoryChange = (category: string) => {
-      // এখানে স্টেট আপডেট করার দরকার নেই, URL আপডেট করলেই useEffect কাজ করবে
-      if (category === 'All') router.push('/menus'); // scroll: false সরিয়ে দেওয়া হলো
+      if (category === 'All') router.push('/menus');
       else router.push(`/menus?category=${category.toLowerCase()}`);
   };
 
-  // Advanced Filtering Logic
+  // Filtering Logic
   const filteredProducts = useMemo(() => {
       let result = (searchQuery.length >= 3 && aiSearchResults) ? aiSearchResults : initialProducts;
 
-      // Category Filter
       if (activeCategory !== 'All') {
           result = result.filter(p => {
               const catName = p.category.name.toLowerCase();
@@ -161,7 +184,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           });
       }
 
-      // Local Search Filter
       if (searchQuery && searchQuery.length < 3) {
           const q = searchQuery.toLowerCase();
           result = result.filter(p => 
@@ -170,7 +192,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           );
       }
 
-      // Veg Only Filter
       if (showVegOnly) {
           result = result.filter(p => 
               p.category.name.toLowerCase().includes('veg') || 
@@ -180,7 +201,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           );
       }
 
-      // Sorting
       if (sortBy === 'price-low') result = [...result].sort((a, b) => a.price - b.price);
       else if (sortBy === 'price-high') result = [...result].sort((a, b) => b.price - a.price);
       else if (sortBy === 'rating') result = [...result].sort((a, b) => b.rating - a.rating);
@@ -198,7 +218,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       )}>
           <div className="container space-y-2"> 
               
-              {/* Top Row (Search & Filters) */}
+              {/* Top Row */}
               <div className="flex gap-3 items-center">
                   <div className="relative flex-grow">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -289,13 +309,20 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                   </div>
               </div>
 
-              {/* Category Slider */}
-              <div className="flex gap-4 md:gap-8 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right">
+              {/* Category Slider (Refs Added) */}
+              <div 
+                ref={categoryContainerRef} // ★ কন্টেইনার রেফারেন্স যোগ করা হয়েছে
+                className="flex gap-4 md:gap-8 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right"
+              >
                   {CATEGORIES.map((cat, idx) => {
                       const isActive = activeCategory === cat.name;
                       return (
                           <button
                               key={idx}
+                              // ★ প্রতিটি বাটনকে ম্যাপে সেভ করা হচ্ছে
+                              ref={(el) => {
+                                if (el) itemsRef.current?.set(cat.name, el);
+                              }}
                               onClick={() => handleCategoryChange(cat.name)}
                               className={cn(
                                   "flex flex-col items-center gap-1.5 min-w-[70px] group transition-all duration-300 p-1 rounded-xl",

@@ -157,7 +157,8 @@ export function Header() {
         className={cn(
             "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
             isScrolled 
-              ? "bg-background/95 backdrop-blur-md shadow-sm border-border py-1" 
+              // ★★★ CHANGED: Solid White Background (No transparency/blur) ★★★
+              ? "bg-white shadow-md border-gray-200 py-1" 
               : "bg-transparent border-transparent py-3"
         )}
     >
@@ -197,7 +198,7 @@ export function Header() {
                                     <div className="space-y-1">
                                         <p className="text-xs text-white/80 font-medium">{getGreeting()},</p>
                                         <p className="font-bold text-xl leading-none tracking-tight">{user.name.split(' ')[0]}</p>
-                                        {/* ★ Mobile Phone Number (Space Removed) */}
+                                        {/* Mobile Phone Number */}
                                         <p className="text-xs text-white/70 font-medium flex items-center gap-1">
                                             <Phone className="h-3 w-3" /> +91{user.phone}
                                         </p>
@@ -352,7 +353,6 @@ export function Header() {
                         </p>
                         <p className="text-sm font-bold text-foreground truncate leading-tight">{user.name}</p>
                         
-                        {/* ★★★ CHANGED: Phone Number (Space Removed) ★★★ */}
                         <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
                             <Phone className="h-3 w-3" /> +91{user.phone}
                         </p>

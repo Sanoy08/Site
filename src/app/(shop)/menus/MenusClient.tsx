@@ -29,8 +29,6 @@ import {
 } from "@/components/ui/sheet";
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
-
-// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 // --- Category Data ---
@@ -77,16 +75,21 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // URL Sync
+  // ★★★ URL Sync & Scroll to Top Logic (Fixed) ★★★
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
+    
+    // ১. URL বা ক্যাটাগরি বদলালে পেজ টপে নিয়ে যাবে
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // ২. ক্যাটাগরি স্টেট আপডেট করবে
     if (categoryFromUrl) {
         const matched = CATEGORIES.find(c => c.name.toLowerCase() === categoryFromUrl.toLowerCase());
         if (matched) setActiveCategory(matched.name);
     } else {
         setActiveCategory('All');
     }
-  }, [searchParams]);
+  }, [searchParams]); // searchParams বদলালেই এই এফেক্ট রান হবে
 
   // Sync Temp State when Sheet Opens
   useEffect(() => {
@@ -130,9 +133,9 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
 
 
   const handleCategoryChange = (category: string) => {
-      setActiveCategory(category);
-      if (category === 'All') router.push('/menus', { scroll: false });
-      else router.push(`/menus?category=${category.toLowerCase()}`, { scroll: false });
+      // এখানে স্টেট আপডেট করার দরকার নেই, URL আপডেট করলেই useEffect কাজ করবে
+      if (category === 'All') router.push('/menus'); // scroll: false সরিয়ে দেওয়া হলো
+      else router.push(`/menus?category=${category.toLowerCase()}`);
   };
 
   // Advanced Filtering Logic
@@ -303,13 +306,12 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                                   "relative h-12 w-12 rounded-full overflow-hidden border-2 transition-all",
                                   isActive ? "border-primary shadow-md ring-2 ring-primary/20" : "border-transparent group-hover:border-muted-foreground/30"
                               )}>
-                                  {/* ✅ ক্যাটাগরি ইমেজ অপটিমাইজেশন (Future Proofing) */}
                                   <Image 
                                     src={optimizeImageUrl(cat.image)} 
                                     alt={cat.name} 
                                     fill 
                                     className="object-cover" 
-                                    unoptimized={true} // লোকাল ফাইলের জন্য ঠিক আছে, Cloudinary হলে প্রক্সি কাজ করবে
+                                    unoptimized={true}
                                   />
                               </div>
                               <span className={cn(
@@ -329,7 +331,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       <div className="container pt-2 pb-8 min-h-[60vh]">
         {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards">
-                {/* ProductCard এর ভেতরে optimizeImageUrl আগেই লাগানো হয়েছে, তাই এখানে কিছু করতে হবে না */}
                 {filteredProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                 ))}

@@ -33,7 +33,6 @@ import { CartSheet } from '@/components/shop/CartSheet';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { SearchSheet } from '@/components/shop/SearchSheet';
-import layout from '@/app/(shop)/account/layout';
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Sparkles },
@@ -157,8 +156,8 @@ export function Header() {
         className={cn(
             "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
             isScrolled 
-              // ★★★ CHANGED: Solid White Background (No transparency/blur) ★★★
-              ? "bg-white shadow-md border-gray-200 py-1" 
+              // ★★★ CHANGED: Removed shadow-md ★★★
+              ? "bg-white border-gray-200 py-1" 
               : "bg-transparent border-transparent py-3"
         )}
     >

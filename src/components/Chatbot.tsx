@@ -128,7 +128,7 @@ export function Chatbot() {
   }
 
   return (
-    <div className="fixed bottom-24 z-[100] flex flex-col gap-4 w-full sm:w-auto sm:right-6 pointer-events-none font-sans">
+    <div className="fixed bottom-20 z-[100] flex flex-col gap-4 w-full sm:w-auto sm:right-6 pointer-events-none font-sans">
       <AnimatePresence>
         {isOpen && (
           <>

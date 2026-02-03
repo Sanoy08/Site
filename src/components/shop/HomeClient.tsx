@@ -156,12 +156,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       </section>
 
       {/* 2. Category Slider */}
-      <section className="py-6 md:py-10 bg-background">
+      <section className="py-8 md:py-12 bg-background">
           <div className="container">
-              <div className="flex items-center justify-between mb-4 px-1">
-                  <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                      <Utensils className="h-5 w-5 text-primary" /> What's on your mind?
-                  </h3>
+              {/* ★★★ STANDARDIZED HEADING ★★★ */}
+              <div className="text-center mb-8">
+                 <h2 className="text-3xl font-bold font-headline mb-2">What's on your mind? 😋</h2>
+                 <p className="text-muted-foreground">Explore our wide range of categories.</p>
               </div>
               
               <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 pt-2 px-1 scrollbar-hide md:justify-center">
@@ -256,9 +256,10 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {dailySpecial && (
         <section className="py-16 bg-amber-50/50">
             <div className="container">
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl md:text-4xl font-bold font-headline text-primary">Today's Special</h2>
-                    <p className="text-muted-foreground mt-2">Freshly prepared just for you.</p>
+                {/* ★★★ STANDARDIZED HEADING ★★★ */}
+                <div className="text-center mb-12">
+                    <h2 className="text-3xl font-bold font-headline mb-2">Today's Special 🌟</h2>
+                    <p className="text-muted-foreground">Freshly prepared just for you.</p>
                 </div>
 
                 <div className="max-w-md mx-auto bg-white p-4 rounded-3xl shadow-xl border border-amber-100 hover:shadow-2xl transition-shadow duration-300">
@@ -296,12 +297,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {offers.length > 0 && (
         <section className="py-16 bg-background">
           <div className="container">
-            <div className="flex justify-between items-end mb-10">
-                <div>
-                    <h2 className="text-3xl font-bold font-headline text-gray-900">Hot Offers 🔥</h2>
-                    <p className="text-muted-foreground mt-1">Grab the best deals before they are gone.</p>
-                </div>
+            {/* ★★★ STANDARDIZED HEADING ★★★ */}
+            <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold font-headline mb-2">Hot Offers 🔥</h2>
+                <p className="text-muted-foreground">Grab the best deals before they are gone.</p>
             </div>
+            
             <Carousel setApi={setOffersApi} opts={{ align: "start", loop: true }} className="w-full">
                 <CarouselContent>
                     {offers.map((offer) => (
@@ -345,7 +346,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
         </section>
       )}
 
-      {/* 7. Bestsellers */}
+      {/* 7. Bestsellers (REFERENCE STANDARD) */}
        <section className="py-16 md:py-24 bg-background">
         <div className="container">
           <div className="text-center mb-12">
@@ -400,7 +401,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {/* 8. Testimonials */}
       <section className="py-16 bg-slate-50">
         <div className="container">
-          <h2 className="text-3xl font-bold text-center mb-12 font-headline">Happy Tummies 😊</h2>
+          {/* ★★★ STANDARDIZED HEADING ★★★ */}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold font-headline mb-2">Happy Tummies 😊</h2>
+            <p className="text-muted-foreground">What our customers say about us.</p>
+          </div>
+          
             <Carousel plugins={[Autoplay({ delay: 4000 })]} opts={{ align: "start", loop: true }} className="w-full max-w-4xl mx-auto">
                 <CarouselContent>
                     {testimonials.map((testimonial, index) => (

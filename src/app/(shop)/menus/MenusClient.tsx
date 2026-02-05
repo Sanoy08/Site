@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -13,25 +13,16 @@ import {
   UtensilsCrossed, ArrowUpDown, Leaf, Loader2
 } from 'lucide-react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet";
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/imageUtils';
+import { motion } from 'framer-motion';
 
-// --- Category Data ---
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp" }, 
     { name: "Chicken", image: "/Categories/7.webp" },
@@ -52,29 +43,35 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // --- Refs for Scroll Logic ---
+  // Refs
   const categoryContainerRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<string, HTMLButtonElement> | null>(null);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
-  if (!itemsRef.current) {
-    itemsRef.current = new Map();
-  }
+  if (!itemsRef.current) itemsRef.current = new Map();
   
-  // --- Main States ---
+  // States
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('recommended');
   const [showVegOnly, setShowVegOnly] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   
-  // --- Temporary States ---
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [tempSortBy, setTempSortBy] = useState('recommended');
-  const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
+  // Pagination States
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // AI Search States
   const [aiSearchResults, setAiSearchResults] = useState<Product[] | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
+  const [isAiSearching, setIsAiSearching] = useState(false);
+
+  // Filter Sheet States
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [tempSortBy, setTempSortBy] = useState('recommended');
+  const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
 
   // Scroll Detection
   useEffect(() => {
@@ -83,10 +80,22 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // URL Sync & Page Scroll Logic
+  // Footer Hiding Logic
+  useEffect(() => {
+    const footer = document.querySelector('footer');
+    const shouldHideFooter = hasMore || (searchQuery.length >= 3 && isAiSearching);
+    
+    if (footer) {
+        footer.style.display = shouldHideFooter ? 'none' : '';
+    }
+    return () => {
+        if (footer) footer.style.display = '';
+    };
+  }, [hasMore, searchQuery, isAiSearching]);
+
+  // URL Sync
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
-    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (categoryFromUrl) {
@@ -97,45 +106,26 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     }
   }, [searchParams]);
 
-  // AUTO SCROLL CATEGORY TO CENTER
+  // Auto Scroll Category Button
   useEffect(() => {
     const container = categoryContainerRef.current;
     const selectedItem = itemsRef.current?.get(activeCategory);
-
     if (container && selectedItem) {
-        const containerWidth = container.offsetWidth;
-        const itemLeft = selectedItem.offsetLeft;
-        const itemWidth = selectedItem.offsetWidth;
-
-        const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2);
-
-        container.scrollTo({
-            left: scrollPosition,
-            behavior: 'smooth'
-        });
+        const scrollPosition = selectedItem.offsetLeft - (container.offsetWidth / 2) + (selectedItem.offsetWidth / 2);
+        container.scrollTo({ left: scrollPosition, behavior: 'smooth' });
     }
   }, [activeCategory]);
 
+  // ★★★ AI Search Logic (Fixed) ★★★
   useEffect(() => {
-    if (isFilterOpen) {
-        setTempSortBy(sortBy);
-        setTempShowVegOnly(showVegOnly);
-    }
-  }, [isFilterOpen, sortBy, showVegOnly]);
-
-  const handleApplyFilters = () => {
-      setSortBy(tempSortBy);
-      setShowVegOnly(tempShowVegOnly);
-      setIsFilterOpen(false); 
-  };
-
-  useEffect(() => {
+      // যদি ৩ অক্ষরের কম হয়
       if (searchQuery.length < 3) {
           setAiSearchResults(null);
+          setIsAiSearching(false); // ★ FIX: লোডার বন্ধ করার জন্য এই লাইনটি যোগ করা হয়েছে
           return;
       }
 
-      setIsSearching(true);
+      setIsAiSearching(true);
       const timeoutId = setTimeout(async () => {
           try {
               const res = await fetch(`/api/search?q=${searchQuery}`);
@@ -146,75 +136,107 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           } catch (error) {
               console.error("Search error:", error);
           } finally {
-              setIsSearching(false);
+              setIsAiSearching(false);
           }
       }, 500);
 
       return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
+  // Data Fetching Function
+  const fetchProducts = useCallback(async (reset = false) => {
+    if (searchQuery.length >= 3) return;
+
+    setIsLoading(true);
+    const nextPage = reset ? 1 : page + 1;
+    
+    try {
+        const queryParams = new URLSearchParams({
+            page: nextPage.toString(),
+            limit: '12',
+            category: activeCategory,
+            sort: sortBy,
+            vegOnly: showVegOnly.toString(),
+            search: searchQuery
+        });
+
+        const res = await fetch(`/api/products?${queryParams}`);
+        const data = await res.json();
+
+        if (data.success) {
+            if (reset) {
+                setProducts(data.products);
+            } else {
+                setProducts(prev => {
+                    const existingIds = new Set(prev.map(p => p.id));
+                    const uniqueNewProducts = data.products.filter((p: Product) => !existingIds.has(p.id));
+                    return [...prev, ...uniqueNewProducts];
+                });
+            }
+            setHasMore(data.hasMore);
+            setPage(nextPage);
+        }
+    } catch (error) {
+        console.error("Failed to load products", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [activeCategory, sortBy, showVegOnly, searchQuery, page]);
+
+  // Filter Change Effect
+  useEffect(() => {
+      if (isInitialLoad) {
+          setIsInitialLoad(false);
+          return;
+      }
+      if (searchQuery.length < 3) {
+          fetchProducts(true);
+      }
+  }, [activeCategory, sortBy, showVegOnly, searchQuery]);
+
+  // Infinite Scroll Logic
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && searchQuery.length < 3) {
+          fetchProducts(false);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, isLoading, fetchProducts, searchQuery]);
+
+  const handleApplyFilters = () => {
+      setSortBy(tempSortBy);
+      setShowVegOnly(tempShowVegOnly);
+      setIsFilterOpen(false); 
+  };
 
   const handleCategoryChange = (category: string) => {
       if (category === 'All') router.push('/menus');
       else router.push(`/menus?category=${category.toLowerCase()}`);
   };
 
-  const filteredProducts = useMemo(() => {
-      let result = (searchQuery.length >= 3 && aiSearchResults) ? aiSearchResults : initialProducts;
-
-      if (activeCategory !== 'All') {
-          result = result.filter(p => {
-              const catName = p.category.name.toLowerCase();
-              const prodName = p.name.toLowerCase();
-              const targetCat = activeCategory.toLowerCase();
-
-              if (activeCategory === 'Veg') {
-                  return (
-                      catName.includes('veg') || 
-                      catName.includes('paneer') || 
-                      prodName.includes('veg') || 
-                      prodName.includes('paneer')
-                  );
-              }
-              return catName.includes(targetCat);
-          });
-      }
-
-      if (searchQuery && searchQuery.length < 3) {
-          const q = searchQuery.toLowerCase();
-          result = result.filter(p => 
-              p.name.toLowerCase().includes(q) || 
-              p.description.toLowerCase().includes(q)
-          );
-      }
-
-      if (showVegOnly) {
-          result = result.filter(p => 
-              p.category.name.toLowerCase().includes('veg') || 
-              p.category.name.toLowerCase().includes('paneer') ||
-              p.name.toLowerCase().includes('veg') || 
-              p.name.toLowerCase().includes('paneer')
-          );
-      }
-
-      if (sortBy === 'price-low') result = [...result].sort((a, b) => a.price - b.price);
-      else if (sortBy === 'price-high') result = [...result].sort((a, b) => b.price - a.price);
-      else if (sortBy === 'rating') result = [...result].sort((a, b) => b.rating - a.rating);
-      
-      return result;
-  }, [initialProducts, aiSearchResults, activeCategory, searchQuery, sortBy, showVegOnly]);
+  // Display Logic
+  const displayProducts = (searchQuery.length >= 3 && aiSearchResults) ? aiSearchResults : products;
+  const isDisplayLoading = isLoading || (searchQuery.length >= 3 && isAiSearching);
 
   return (
     <div className="min-h-screen bg-gray-50/50">
       
-      {/* --- HEADER & FILTERS --- */}
-      <div className={cn(
-          "sticky top-[60px] z-30 bg-background transition-all duration-300 border-b",
-          isScrolled ? "shadow-md py-2" : "pt-3 pb-0"
-      )}>
+      {/* HEADER & FILTERS */}
+      <div className={cn("sticky top-[60px] z-30 bg-background transition-all duration-300 border-b", isScrolled ? "shadow-md py-2" : "pt-3 pb-0")}>
           <div className="container space-y-2"> 
-              
-              {/* Top Row */}
               <div className="flex gap-3 items-center">
                   <div className="relative flex-grow">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -225,10 +247,10 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                           onChange={(e) => setSearchQuery(e.target.value)}
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {isSearching ? (
+                          {isAiSearching ? (
                               <Loader2 className="h-4 w-4 animate-spin text-primary" />
                           ) : searchQuery ? (
-                              <button onClick={() => { setSearchQuery(''); setAiSearchResults(null); }} className="text-muted-foreground hover:text-foreground p-1">
+                              <button onClick={() => { setSearchQuery(''); setAiSearchResults(null); setIsAiSearching(false); }} className="text-muted-foreground hover:text-foreground p-1">
                                   <X className="h-4 w-4" />
                               </button>
                           ) : null}
@@ -305,20 +327,14 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                   </div>
               </div>
 
-              {/* Category Slider (Gap Reduced) */}
-              <div 
-                ref={categoryContainerRef}
-                // ★★★ CHANGED: gap-4 -> gap-2 and md:gap-8 -> md:gap-4 ★★★
-                className="flex gap-2 md:gap-4 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right"
-              >
+              {/* Category Slider */}
+              <div ref={categoryContainerRef} className="flex gap-2 md:gap-4 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right">
                   {CATEGORIES.map((cat, idx) => {
                       const isActive = activeCategory === cat.name;
                       return (
                           <button
                               key={idx}
-                              ref={(el) => {
-                                if (el) itemsRef.current?.set(cat.name, el);
-                              }}
+                              ref={(el) => { if (el) itemsRef.current?.set(cat.name, el); }}
                               onClick={() => handleCategoryChange(cat.name)}
                               className={cn(
                                   "flex flex-col items-center gap-1.5 min-w-[70px] group transition-all duration-300 p-1 rounded-xl",
@@ -331,16 +347,10 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                               )}>
                                   <Image 
                                     src={optimizeImageUrl(cat.image)} 
-                                    alt={cat.name} 
-                                    fill 
-                                    className="object-cover" 
-                                    unoptimized={true}
+                                    alt={cat.name} fill className="object-cover" unoptimized={true}
                                   />
                               </div>
-                              <span className={cn(
-                                  "text-xs font-bold transition-colors",
-                                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                              )}>
+                              <span className={cn("text-xs font-bold transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
                                   {cat.name}
                               </span>
                           </button>
@@ -352,31 +362,64 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
 
       {/* --- PRODUCTS GRID --- */}
       <div className="container pt-2 pb-8 min-h-[60vh]">
-        {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards">
-                {filteredProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                ))}
-            </div>
+        {displayProducts.length > 0 ? (
+            <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards">
+                    {displayProducts.map((product) => (
+                        <motion.div
+                            key={product.id}
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: false, margin: "-10%" }}
+                            transition={{ duration: 0.4, ease: "easeOut" }}
+                        >
+                            <ProductCard product={product} />
+                        </motion.div>
+                    ))}
+                </div>
+                
+                {/* Infinite Scroll Trigger - শুধু নরমাল মোডে দেখাবে, AI সার্চে নয় */}
+                {hasMore && searchQuery.length < 3 && (
+                    <div 
+                        ref={observerTarget} 
+                        className="flex justify-center items-center py-8"
+                    >
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground animate-pulse">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <span className="text-xs font-medium">Loading deliciousness...</span>
+                        </div>
+                    </div>
+                )}
+            </>
         ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-in zoom-in duration-300">
-                <div className="h-40 w-40 bg-muted/30 rounded-full flex items-center justify-center relative">
-                    <UtensilsCrossed className="h-16 w-16 text-muted-foreground/30" />
-                    <Search className="h-8 w-8 text-primary absolute bottom-8 right-8 bg-white rounded-full p-1 shadow-md" />
+            // No Products State
+            !isDisplayLoading && (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-in zoom-in duration-300">
+                    <div className="h-40 w-40 bg-muted/30 rounded-full flex items-center justify-center relative">
+                        <UtensilsCrossed className="h-16 w-16 text-muted-foreground/30" />
+                        <Search className="h-8 w-8 text-primary absolute bottom-8 right-8 bg-white rounded-full p-1 shadow-md" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800">No items found!</h2>
+                        <p className="text-muted-foreground mt-2 max-w-xs mx-auto leading-relaxed">
+                            We couldn't find any dishes matching "{searchQuery}". Try changing the category or search term.
+                        </p>
+                    </div>
+                    <Button 
+                        onClick={() => { setActiveCategory('All'); setSearchQuery(''); setShowVegOnly(false); setAiSearchResults(null); setIsAiSearching(false); router.push('/menus'); }} 
+                        className="rounded-full px-8 shadow-lg shadow-primary/20"
+                    >
+                        Clear All Filters
+                    </Button>
                 </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800">No items found!</h2>
-                    <p className="text-muted-foreground mt-2 max-w-xs mx-auto leading-relaxed">
-                        We couldn't find any dishes matching your filters. Try changing the category or search term.
-                    </p>
-                </div>
-                <Button 
-                    onClick={() => { setActiveCategory('All'); setSearchQuery(''); setShowVegOnly(false); setAiSearchResults(null); }} 
-                    className="rounded-full px-8 shadow-lg shadow-primary/20"
-                >
-                    Clear All Filters
-                </Button>
-            </div>
+            )
+        )}
+        
+        {/* Loading State when list is empty */}
+        {isDisplayLoading && displayProducts.length === 0 && (
+             <div className="flex justify-center py-20">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
         )}
       </div>
     </div>

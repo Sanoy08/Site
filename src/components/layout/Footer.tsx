@@ -1,11 +1,32 @@
 // src/components/layout/Footer.tsx
 
+'use client';
+
+import { useState, useEffect } from "react";
 import { Logo } from "@/components/layout/Logo";
 import { Facebook, Instagram, Twitter, Download, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export function Footer() {
+  // ★★★ Capacitor Check Logic ★★★
+  const [isNativeApp, setIsNativeApp] = useState(false);
+
+  useEffect(() => {
+    // চেক করা হচ্ছে অ্যাপটি Capacitor-এর ভেতরে চলছে কিনা
+    if (typeof window !== 'undefined') {
+      const isCapacitor = (window as any).Capacitor?.isNative;
+      if (isCapacitor) {
+        setIsNativeApp(true);
+      }
+    }
+  }, []);
+
+  // যদি Capacitor (Native App) হয়, তাহলে ফুটার কিছুই রিটার্ন করবে না (হাইড হয়ে যাবে)
+  if (isNativeApp) {
+    return null;
+  }
+
   return (
     <footer className="bg-card border-t">
       <div className="container py-12">

@@ -241,10 +241,11 @@ export default function CheckoutPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  const { couponCode, couponDiscount, useCoins } = checkoutState;
+  // ★★★ FIX: Extract coinDiscount directly from checkoutState 
+  // (It was saved in SummaryPage)
+  const { couponCode, couponDiscount, useCoins, coinDiscount: savedCoinDiscount } = checkoutState;
 
   const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
-  const [walletBalance, setWalletBalance] = useState(0);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -294,18 +295,6 @@ export default function CheckoutPage() {
     toast.success("Address updated!");
   };
 
-  // ★★★ Fix: Remove Token & Header
-  useEffect(() => {
-      const fetchWallet = async () => {
-          try {
-              const res = await fetch('/api/wallet');
-              const data = await res.json();
-              if(data.success) setWalletBalance(data.balance);
-          } catch(e) {}
-      };
-      if (user) fetchWallet();
-  }, [user]);
-
   useEffect(() => {
     if (!isLoading && !isInitialized) return;
     
@@ -347,7 +336,6 @@ export default function CheckoutPage() {
         if (!user) return;
         let savedAddress = '';
         try {
-            // ★★★ Fix: Remove Token & Header
             const res = await fetch('/api/user/addresses');
             const data = await res.json();
             if (data.success && Array.isArray(data.addresses)) {
@@ -376,8 +364,8 @@ export default function CheckoutPage() {
     else if (watch('deliveryAddress') === primaryAddress) setValue('deliveryAddress', '');
   }, [isSameAsAddress, primaryAddress, setValue, watch]);
 
-  const maxCoinDiscount = totalPrice * 0.5;
-  const coinDiscountAmount = useCoins ? Math.min(walletBalance, Math.floor(maxCoinDiscount)) : 0;
+  // ★★★ FIX: Calculation Logic Simplified ★★★
+  const coinDiscountAmount = useCoins ? (savedCoinDiscount || 0) : 0;
   const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
 
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
@@ -408,21 +396,19 @@ export default function CheckoutPage() {
     }
 
     setIsSubmitting(true);
-    // ★★★ Fix: Remove Token Logic
     try {
         const orderPayload = {
             ...values,
             items: state.items,
             subtotal: totalPrice,
             total: finalTotal,
-            discount: couponDiscount + coinDiscountAmount,
+            discount: couponDiscount + coinDiscountAmount, // Combine discounts
             couponCode: couponCode,
             useCoins: useCoins,
             orderType: orderType,
             deliveryAddress: orderType === 'delivery' ? (values.deliveryAddress || values.address) : undefined,
         };
 
-        // ★★★ Fix: Remove Header
         const res = await fetch('/api/orders', {
             method: 'POST',
             headers: {

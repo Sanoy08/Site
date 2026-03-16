@@ -30,14 +30,19 @@ export default function OrderSummaryPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [useCoins, setUseCoins] = useState(false);
 
-  // 1. Fetch Wallet Balance
+  // 1. Fetch Wallet Balance (★★★ FIXED HERE ★★★)
   useEffect(() => {
       const fetchWallet = async () => {
           try {
               const res = await fetch('/api/wallet');
               const data = await res.json();
-              if(data.success) setWalletBalance(data.balance);
-          } catch(e) {}
+              // data.balance এর বদলে data.wallet.balance হবে
+              if(data.success && data.wallet) {
+                  setWalletBalance(data.wallet.balance || 0);
+              }
+          } catch(e) {
+              console.error("Failed to fetch wallet balance:", e);
+          }
       };
       if (user) fetchWallet();
   }, [user]);
@@ -113,7 +118,8 @@ export default function OrderSummaryPage() {
       setCheckoutData({
           couponCode: couponDiscount > 0 ? couponCode : '',
           couponDiscount: couponDiscount,
-          useCoins: useCoins
+          useCoins: useCoins,
+          coinDiscount: coinDiscountAmount // Optional: if you need to pass it to the next step
       });
       router.push('/checkout');
   };

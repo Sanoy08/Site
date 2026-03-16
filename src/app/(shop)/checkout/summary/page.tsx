@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { optimizeImageUrl } from '@/lib/imageUtils';
+import { cn } from '@/lib/utils';
 
 export default function OrderSummaryPage() {
   const { state, totalPrice, itemCount, isInitialized, setCheckoutData } = useCart();
@@ -32,7 +33,6 @@ export default function OrderSummaryPage() {
   // 1. Fetch Wallet Balance
   useEffect(() => {
       const fetchWallet = async () => {
-          // ★★★ Fix: Remove Token & Header
           try {
               const res = await fetch('/api/wallet');
               const data = await res.json();
@@ -142,39 +142,47 @@ export default function OrderSummaryPage() {
                 {/* --- LEFT COLUMN: OFFERS & ITEMS --- */}
                 <div className="lg:col-span-7 space-y-6">
                     
-                    {/* Coin Card */}
-                    {walletBalance > 0 && (
-                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 p-6 text-white shadow-lg transition-all hover:shadow-xl group">
+                    {/* Coin Card (এখন সবসময় দেখাবে) */}
+                    <div className={cn(
+                        "relative overflow-hidden rounded-2xl p-6 text-white shadow-lg transition-all group",
+                        walletBalance > 0 
+                            ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 hover:shadow-xl" 
+                            : "bg-gradient-to-br from-gray-400 to-gray-500" // ব্যালেন্স না থাকলে গ্রে দেখাবে
+                    )}>
+                        {walletBalance > 0 && (
                             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-white/20 rounded-full blur-3xl opacity-50 group-hover:scale-110 transition-transform"></div>
-                            
-                            <div className="relative z-10 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-14 w-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-inner border border-white/30">
-                                        <Coins className="h-8 w-8 text-white drop-shadow-md" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-xl drop-shadow-sm flex items-center gap-2">
-                                            Bumba Coins
-                                            <Sparkles className="h-4 w-4 text-yellow-200 animate-pulse" />
-                                        </h3>
-                                        <p className="text-yellow-100 text-sm font-medium">Available Balance: {walletBalance}</p>
-                                    </div>
+                        )}
+                        
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="h-14 w-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-inner border border-white/30">
+                                    <Coins className="h-8 w-8 text-white drop-shadow-md" />
                                 </div>
-                                <Switch 
-                                    checked={useCoins} 
-                                    onCheckedChange={handleCoinToggle}
-                                    className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 border-2 border-white/50"
-                                />
+                                <div>
+                                    <h3 className="font-bold text-xl drop-shadow-sm flex items-center gap-2">
+                                        Bumba Coins
+                                        {walletBalance > 0 && <Sparkles className="h-4 w-4 text-yellow-200 animate-pulse" />}
+                                    </h3>
+                                    <p className="text-white/90 text-sm font-medium">
+                                        {walletBalance > 0 ? `Available Balance: ${walletBalance}` : "No coins available yet."}
+                                    </p>
+                                </div>
                             </div>
-                            
-                            {useCoins && (
-                                <div className="mt-4 pt-4 border-t border-white/20 flex justify-between items-center text-sm font-medium animate-in slide-in-from-top-2">
-                                    <span className="text-yellow-50">Savings applied</span>
-                                    <span className="text-2xl font-bold text-white drop-shadow-md">- {formatPrice(coinDiscountAmount)}</span>
-                                </div>
-                            )}
+                            <Switch 
+                                checked={useCoins} 
+                                onCheckedChange={handleCoinToggle}
+                                disabled={walletBalance === 0} // ব্যালেন্স না থাকলে বাটন ডিজেবল
+                                className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 border-2 border-white/50 disabled:opacity-50"
+                            />
                         </div>
-                    )}
+                        
+                        {useCoins && walletBalance > 0 && (
+                            <div className="mt-4 pt-4 border-t border-white/20 flex justify-between items-center text-sm font-medium animate-in slide-in-from-top-2">
+                                <span className="text-yellow-50">Savings applied</span>
+                                <span className="text-2xl font-bold text-white drop-shadow-md">- {formatPrice(coinDiscountAmount)}</span>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Coupon Card */}
                     <div className="bg-white rounded-xl border-2 border-dashed border-gray-200 overflow-hidden relative shadow-sm hover:border-primary/30 transition-colors">

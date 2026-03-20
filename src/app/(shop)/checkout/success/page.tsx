@@ -25,12 +25,18 @@ function OrderSuccessContent() {
   const name = searchParams.get('name') || 'Guest';
   const amount = searchParams.get('amount') || '0';
 
-  // State to control animation phases
-  // 0 = Initial Tick drawing in center
-  // 1 = Tick moves up, content expands
   const [animationStage, setAnimationStage] = useState(0);
 
+  // ★★★ STRICT SCROLL LOCK LOGIC ★★★
   useEffect(() => {
+      // Body এবং HTML এর স্ক্রল পুরোপুরি লক করা
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.overflow = 'hidden';
+
       // Sound Effect Play
       const audio = new Audio("/Elements/success.mp3");
       audio.volume = 0.5;
@@ -41,14 +47,23 @@ function OrderSuccessContent() {
           setAnimationStage(1);
       }, 1500);
 
-      return () => clearTimeout(timer);
+      return () => {
+          // পেজ আনমাউন্ট হলে স্ক্রল আবার নরমাল করে দেওয়া
+          document.body.style.overflow = '';
+          document.body.style.position = '';
+          document.body.style.width = '';
+          document.body.style.height = '';
+          document.body.style.touchAction = '';
+          document.documentElement.style.overflow = '';
+          clearTimeout(timer);
+      };
   }, []);
 
-  // Calculate estimated coins (Assuming 5% reward for UI display)
   const earnedCoins = Math.max(1, Math.floor(parseFloat(amount) * 0.05));
 
   return (
-    <div className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4 font-sans">
+    // ★ touch-none এবং overscroll-none যোগ করা হয়েছে
+    <div className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden touch-none overscroll-none bg-gradient-to-b from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4 font-sans">
       
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
@@ -57,22 +72,20 @@ function OrderSuccessContent() {
       <motion.div 
         layout
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="w-full max-w-[380px] relative z-10 flex flex-col bg-white/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-green-500/10 border border-white p-6 sm:p-8"
+        className="w-full max-w-[380px] relative z-10 flex flex-col bg-white/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-green-500/10 border border-white p-6 sm:p-8 pointer-events-auto"
       >
-          {/* 1. Animated Success Tick (Always visible, moves via layout) */}
+          {/* 1. Animated Success Tick */}
           <motion.div 
               layout
               className="relative w-24 h-24 mx-auto flex items-center justify-center shrink-0 z-20"
               style={{ marginTop: animationStage === 0 ? '40px' : '0px', marginBottom: animationStage === 0 ? '40px' : '16px' }}
           >
-              {/* Outer pulsing ring */}
               <motion.div 
                   animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   className="absolute inset-0 bg-green-100 rounded-full"
               ></motion.div>
               
-              {/* SVG Circle and Tick */}
               <svg className="w-full h-full drop-shadow-md z-10" viewBox="0 0 100 100">
                   <motion.circle
                       cx="50" cy="50" r="45"
@@ -94,7 +107,6 @@ function OrderSuccessContent() {
                   />
               </svg>
 
-              {/* Sparkles appear only in Stage 1 */}
               <AnimatePresence>
                   {animationStage === 1 && (
                       <>
@@ -143,7 +155,7 @@ function OrderSuccessContent() {
                           </div>
                       </div>
 
-                      {/* ★★★ NEW: Coins Earned Section ★★★ */}
+                      {/* Coins Earned Section */}
                       <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 p-3 shadow-inner">
                           <div className="absolute -right-4 -top-4 w-16 h-16 bg-amber-400/20 rounded-full blur-xl"></div>
                           <div className="flex items-center justify-between relative z-10">
@@ -203,7 +215,7 @@ function OrderSuccessContent() {
 export default function OrderSuccessPage() {
   return (
     <Suspense fallback={
-      <div className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-white flex flex-col items-center justify-center">
+      <div className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-white flex flex-col items-center justify-center touch-none overscroll-none">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
         <p className="text-muted-foreground font-medium text-sm animate-pulse">Confirming your order...</p>
       </div>

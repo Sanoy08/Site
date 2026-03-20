@@ -26,10 +26,11 @@ function OrderSuccessContent() {
   const amount = searchParams.get('amount') || '0';
 
   const [animationStage, setAnimationStage] = useState(0);
-  const [earnRate, setEarnRate] = useState(2); // Default Bronze Rate
+  
+  // ★ FIX: প্রথমে null রাখা হয়েছে, যাতে ডাটা আসার আগে ভুল ক্যালকুলেশন না দেখায়
+  const [earnRate, setEarnRate] = useState<number | null>(null);
 
-  // ★★★ SECURE WALLET FETCHING LOGIC ★★★
-  // ইউজারের আসল টায়ার (Tier) জানার জন্য ডাটাবেস থেকে ডাটা ফেচ করা হচ্ছে
+  // Secure Wallet Fetching Logic
   useEffect(() => {
       const getWalletData = async () => {
           try {
@@ -38,7 +39,6 @@ function OrderSuccessContent() {
               if (data.success && data.wallet) {
                   const totalSpent = data.wallet.totalSpent || 0;
                   
-                  // একদম ব্যাকএন্ডের (order-service.ts) মতো সেম লজিক
                   if (totalSpent >= 15000) {
                       setEarnRate(6); // Gold Tier
                   } else if (totalSpent >= 5000) {
@@ -46,9 +46,12 @@ function OrderSuccessContent() {
                   } else {
                       setEarnRate(2); // Bronze Tier
                   }
+              } else {
+                  setEarnRate(2); // API fail হলে fallback Bronze
               }
           } catch (e) {
               console.error("Failed to fetch wallet info");
+              setEarnRate(2); // Error হলে fallback
           }
       };
       
@@ -85,9 +88,10 @@ function OrderSuccessContent() {
       };
   }, []);
 
-  // ★★★ EXACT COIN CALCULATION ★★★
+  // Coin Calculation
   const parsedAmount = parseFloat(amount) || 0;
-  const earnedCoins = Math.floor((parsedAmount * earnRate) / 100);
+  // earnRate null থাকলে ডিফল্ট ২ ধরে ব্যাকগ্রাউন্ডে ক্যালকুলেট করে রাখবে
+  const earnedCoins = Math.floor((parsedAmount * (earnRate || 2)) / 100);
 
   return (
     <div className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden touch-none overscroll-none bg-white flex flex-col items-center justify-center p-6 font-sans">
@@ -164,8 +168,9 @@ function OrderSuccessContent() {
                           </div>
                       </div>
 
-                      {/* Coins Earned Section (Only show if coins > 0) */}
-                      {earnedCoins > 0 && (
+                      {/* Coins Earned Section */}
+                      {/* ★ FIX: ডাটা লোড হওয়ার আগে Loader দেখাবে */}
+                      {(earnRate === null || earnedCoins > 0) && (
                           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 p-3.5 shadow-sm">
                               <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-400/20 rounded-full blur-2xl"></div>
                               <div className="flex items-center justify-between relative z-10">
@@ -178,8 +183,18 @@ function OrderSuccessContent() {
                                           <p className="text-[11px] text-amber-700/80 font-medium leading-tight mt-0.5">Credited after delivery</p>
                                       </div>
                                   </div>
-                                  <div className="text-right shrink-0">
-                                      <span className="text-xl font-extrabold text-amber-600 drop-shadow-sm">+{earnedCoins}</span>
+                                  <div className="text-right shrink-0 flex items-center justify-end min-w-[50px]">
+                                      {earnRate === null ? (
+                                          <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                                      ) : (
+                                          <motion.span 
+                                              initial={{ opacity: 0, scale: 0.5 }}
+                                              animate={{ opacity: 1, scale: 1 }}
+                                              className="text-xl font-extrabold text-amber-600 drop-shadow-sm"
+                                          >
+                                              +{earnedCoins}
+                                          </motion.span>
+                                      )}
                                   </div>
                               </div>
                           </div>

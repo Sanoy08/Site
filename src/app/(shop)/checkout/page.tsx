@@ -473,41 +473,42 @@ export default function CheckoutPage() {
       </AlertDialog>
 
       {/* ★ NEW: Save Address Popup */}
-      <Dialog open={showSaveAddressPrompt} onOpenChange={(open) => !open && setShowSaveAddressPrompt(false)}>
-          <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
-              <div className="p-6 bg-primary/5 border-b border-primary/10">
-                  <DialogTitle className="flex items-center gap-2 text-xl">
-                      <Save className="h-5 w-5 text-primary" /> Save this address?
-                  </DialogTitle>
-                  <p className="text-sm text-muted-foreground mt-2">
-                      We noticed you don't have any saved addresses. Would you like to save this one for faster checkout next time?
-                  </p>
-              </div>
-              
-              <div className="p-6 space-y-4">
-                  <div className="space-y-2">
-                      <FormLabel>Label (e.g. Home, Office)</FormLabel>
-                      <Input 
-                          value={addressLabel} 
-                          onChange={(e) => setAddressLabel(e.target.value)} 
-                          className="h-11 rounded-xl"
-                      />
-                  </div>
-                  <div className="p-3 bg-muted/30 rounded-xl border text-sm text-muted-foreground line-clamp-2">
-                      {orderType === 'delivery' ? (pendingOrderValues?.deliveryAddress || pendingOrderValues?.address) : pendingOrderValues?.address}
-                  </div>
-              </div>
-              
-              <DialogFooter className="p-6 pt-0 sm:justify-between flex-row gap-2">
-                  <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => handleSaveAddressAndContinue(false)}>
-                      No, just order
-                  </Button>
-                  <Button className="flex-1 rounded-xl h-11 shadow-md shadow-primary/20" onClick={() => handleSaveAddressAndContinue(true)}>
-                      Yes, save it
-                  </Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
+<Dialog open={showSaveAddressPrompt} onOpenChange={(open) => !open && setShowSaveAddressPrompt(false)}>
+    <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
+        <div className="p-6 bg-primary/5 border-b border-primary/10">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+                <Save className="h-5 w-5 text-primary" /> Save this address?
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+                We noticed you don't have any saved addresses. Would you like to save this one for faster checkout next time?
+            </p>
+        </div>
+        
+        <div className="p-6 space-y-4">
+            <div className="space-y-2">
+                {/* ✅ FIX: FormLabel এর বদলে নরমাল label ব্যবহার করা হয়েছে */}
+                <label className="text-sm font-medium leading-none">Label (e.g. Home, Office)</label>
+                <Input 
+                    value={addressLabel} 
+                    onChange={(e) => setAddressLabel(e.target.value)} 
+                    className="h-11 rounded-xl"
+                />
+            </div>
+            <div className="p-3 bg-muted/30 rounded-xl border text-sm text-muted-foreground line-clamp-2">
+                {orderType === 'delivery' ? (pendingOrderValues?.deliveryAddress || pendingOrderValues?.address) : pendingOrderValues?.address}
+            </div>
+        </div>
+        
+        <DialogFooter className="p-6 pt-0 sm:justify-between flex-row gap-2">
+            <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => handleSaveAddressAndContinue(false)}>
+                No, just order
+            </Button>
+            <Button className="flex-1 rounded-xl h-11 shadow-md shadow-primary/20" onClick={() => handleSaveAddressAndContinue(true)}>
+                Yes, save it
+            </Button>
+        </DialogFooter>
+    </DialogContent>
+</Dialog>
 
       {/* Mobile Summary Accordion */}
       <div className="lg:hidden mb-6">

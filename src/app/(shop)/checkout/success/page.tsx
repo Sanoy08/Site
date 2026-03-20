@@ -27,10 +27,11 @@ function OrderSuccessContent() {
 
   const [animationStage, setAnimationStage] = useState(0);
   
-  // ★ FIX: প্রথমে null রাখা হয়েছে, যাতে ডাটা আসার আগে ভুল ক্যালকুলেশন না দেখায়
-  const [earnRate, setEarnRate] = useState<number | null>(null);
+  // Wallet states
+  const [earnRate, setEarnRate] = useState(2); // Default Bronze Rate
+  const [isWalletLoading, setIsWalletLoading] = useState(true); // ★ নতুন লোডিং স্টেট
 
-  // Secure Wallet Fetching Logic
+  // ★★★ SECURE WALLET FETCHING LOGIC ★★★
   useEffect(() => {
       const getWalletData = async () => {
           try {
@@ -46,12 +47,11 @@ function OrderSuccessContent() {
                   } else {
                       setEarnRate(2); // Bronze Tier
                   }
-              } else {
-                  setEarnRate(2); // API fail হলে fallback Bronze
               }
           } catch (e) {
               console.error("Failed to fetch wallet info");
-              setEarnRate(2); // Error হলে fallback
+          } finally {
+              setIsWalletLoading(false); // ★ ফেচিং শেষ হলে লোডিং ফলস
           }
       };
       
@@ -67,15 +67,13 @@ function OrderSuccessContent() {
       document.body.style.touchAction = 'none';
       document.documentElement.style.overflow = 'hidden';
 
-      // Sound Effect Play
       const audio = new Audio("/Elements/success.mp3");
       audio.volume = 0.5;
       audio.play().catch((e) => console.log("Audio autoplay blocked", e));
 
-      // Trigger the layout expansion after 1.5 seconds
       const timer = setTimeout(() => {
           setAnimationStage(1);
-      }, 1000);
+      }, 1500);
 
       return () => {
           document.body.style.overflow = '';
@@ -88,10 +86,8 @@ function OrderSuccessContent() {
       };
   }, []);
 
-  // Coin Calculation
   const parsedAmount = parseFloat(amount) || 0;
-  // earnRate null থাকলে ডিফল্ট ২ ধরে ব্যাকগ্রাউন্ডে ক্যালকুলেট করে রাখবে
-  const earnedCoins = Math.floor((parsedAmount * (earnRate || 2)) / 100);
+  const earnedCoins = Math.floor((parsedAmount * earnRate) / 100);
 
   return (
     <div className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden touch-none overscroll-none bg-white flex flex-col items-center justify-center p-6 font-sans">
@@ -169,36 +165,34 @@ function OrderSuccessContent() {
                       </div>
 
                       {/* Coins Earned Section */}
-                      {/* ★ FIX: ডাটা লোড হওয়ার আগে Loader দেখাবে */}
-                      {(earnRate === null || earnedCoins > 0) && (
-                          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 p-3.5 shadow-sm">
-                              <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-400/20 rounded-full blur-2xl"></div>
-                              <div className="flex items-center justify-between relative z-10">
-                                  <div className="flex items-center gap-3.5">
-                                      <div className="bg-white p-2 rounded-full shadow-sm border border-amber-100 shrink-0">
-                                          <Coins className="h-5 w-5 text-amber-500" />
-                                      </div>
-                                      <div>
-                                          <p className="text-xs font-bold text-amber-950 uppercase tracking-wide">Coins on the way!</p>
-                                          <p className="text-[11px] text-amber-700/80 font-medium leading-tight mt-0.5">Credited after delivery</p>
-                                      </div>
+                      {/* ★ এখানে isWalletLoading চেক করা হয়েছে */}
+                      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 p-3.5 shadow-sm">
+                          <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-400/20 rounded-full blur-2xl"></div>
+                          <div className="flex items-center justify-between relative z-10">
+                              <div className="flex items-center gap-3.5">
+                                  <div className="bg-white p-2 rounded-full shadow-sm border border-amber-100 shrink-0">
+                                      <Coins className="h-5 w-5 text-amber-500" />
                                   </div>
-                                  <div className="text-right shrink-0 flex items-center justify-end min-w-[50px]">
-                                      {earnRate === null ? (
-                                          <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
-                                      ) : (
-                                          <motion.span 
-                                              initial={{ opacity: 0, scale: 0.5 }}
-                                              animate={{ opacity: 1, scale: 1 }}
-                                              className="text-xl font-extrabold text-amber-600 drop-shadow-sm"
-                                          >
-                                              +{earnedCoins}
-                                          </motion.span>
-                                      )}
+                                  <div>
+                                      <p className="text-xs font-bold text-amber-950 uppercase tracking-wide">Coins on the way!</p>
+                                      <p className="text-[11px] text-amber-700/80 font-medium leading-tight mt-0.5">Credited after delivery</p>
                                   </div>
                               </div>
+                              <div className="text-right shrink-0">
+                                  {isWalletLoading ? (
+                                      <div className="flex items-center justify-end h-6 w-12 bg-amber-100/50 rounded animate-pulse"></div>
+                                  ) : (
+                                      <motion.span 
+                                          initial={{ opacity: 0, scale: 0.5 }}
+                                          animate={{ opacity: 1, scale: 1 }}
+                                          className="text-xl font-extrabold text-amber-600 drop-shadow-sm inline-block"
+                                      >
+                                          +{earnedCoins > 0 ? earnedCoins : 1}
+                                      </motion.span>
+                                  )}
+                              </div>
                           </div>
-                      )}
+                      </div>
 
                       {/* Tracker Alert */}
                       <div className="bg-blue-50/60 border border-blue-100/80 rounded-2xl p-3.5 flex items-center gap-3.5">
@@ -237,7 +231,6 @@ function OrderSuccessContent() {
   );
 }
 
-// Suspense Wrapper for SearchParams
 export default function OrderSuccessPage() {
   return (
     <Suspense fallback={

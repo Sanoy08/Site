@@ -151,28 +151,62 @@ export default function OrderSummaryPage() {
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
         
-        {/* ★ NEW: Delivery Charge Notice Dialog ★ */}
+        {/* ★ PREMIUM DELIVERY CHARGE NOTICE DIALOG ★ */}
         <AlertDialog open={showDeliveryInfo} onOpenChange={setShowDeliveryInfo}>
-          <AlertDialogContent className="rounded-2xl max-w-[90%] md:max-w-md">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-xl text-primary">
-                 <MapPin className="h-6 w-6" />
-                 Delivery Information
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-[15px] text-foreground/80 mt-3 leading-relaxed">
-                Bumba's Kitchen provides <strong>Free Delivery</strong> within a 2km radius of our store.
-                <br/><br/>
-                If your delivery location is <strong>beyond 2km</strong>, a minimal delivery charge will apply based on the distance. We will calculate and inform you about this charge via <strong>WhatsApp</strong> after you place the order.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-row sm:justify-end gap-3 mt-4">
-              <AlertDialogCancel className="mt-0 flex-1 sm:flex-none rounded-xl h-11">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={confirmProceed} className="flex-1 sm:flex-none rounded-xl h-11 shadow-md shadow-primary/20">
-                I Understand & Continue
-              </AlertDialogAction>
-            </AlertDialogFooter>
+          <AlertDialogContent className="rounded-[2rem] max-w-[90%] md:max-w-[420px] p-0 overflow-hidden border-0 shadow-2xl">
+              
+              {/* Header Graphic Area */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 pb-5 flex flex-col items-center justify-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+                  <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl"></div>
+                  
+                  <div className="h-16 w-16 bg-white rounded-full shadow-md flex items-center justify-center relative z-10 mb-3 border border-blue-100">
+                      <MapPin className="h-8 w-8 text-blue-500" />
+                      <div className="absolute -bottom-1 -right-1 bg-amber-400 rounded-full p-1 border-2 border-white shadow-sm">
+                          <AlertCircle className="h-3 w-3 text-white" />
+                      </div>
+                  </div>
+                  <AlertDialogTitle className="text-xl font-bold text-center text-blue-950 relative z-10">
+                      Delivery Information
+                  </AlertDialogTitle>
+              </div>
+
+              {/* Content Area */}
+              <div className="p-6 pt-4 bg-white">
+                  <AlertDialogDescription asChild>
+                      <div className="text-[14px] text-gray-600 leading-relaxed text-center space-y-3">
+                          
+                          <div className="bg-green-50/50 border border-green-100 rounded-xl p-3.5 flex items-start gap-3 text-left">
+                              <div className="mt-0.5 bg-green-100 p-1.5 rounded-full shrink-0">
+                                  <CheckCircle2 className="h-4 w-4 text-green-600"/>
+                              </div>
+                              <p className="text-green-900/90 text-sm">
+                                  Enjoy <strong>Free Delivery</strong> if your location is within a <strong>2km radius</strong> of our kitchen!
+                              </p>
+                          </div>
+                          
+                          <div className="bg-amber-50/50 border border-amber-100/50 rounded-xl p-3.5 flex items-start gap-3 text-left">
+                              <div className="mt-0.5 bg-amber-100 p-1.5 rounded-full shrink-0">
+                                  <AlertCircle className="h-4 w-4 text-amber-600"/>
+                              </div>
+                              <p className="text-amber-900/90 text-sm">
+                                  For distances <strong>beyond 2km</strong>, a minimal delivery fee will apply. We’ll calculate and confirm this with you via WhatsApp.
+                              </p>
+                          </div>
+
+                      </div>
+                  </AlertDialogDescription>
+
+                  <AlertDialogFooter className="flex-row gap-3 mt-7 sm:justify-between w-full">
+                      <AlertDialogCancel className="mt-0 flex-1 rounded-xl h-12 text-gray-500 font-bold border-gray-200 hover:bg-gray-50">
+                          Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction onClick={confirmProceed} className="flex-1 rounded-xl h-12 shadow-lg shadow-primary/20 font-bold bg-primary hover:bg-primary/90 text-white transition-transform active:scale-[0.98]">
+                          Got it, Continue
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+              </div>
+
           </AlertDialogContent>
         </AlertDialog>
 
@@ -195,12 +229,12 @@ export default function OrderSummaryPage() {
                 {/* --- LEFT COLUMN: OFFERS & ITEMS --- */}
                 <div className="lg:col-span-7 space-y-6">
                     
-                    {/* Coin Card */}
+                    {/* Coin Card (এখন সবসময় দেখাবে) */}
                     <div className={cn(
                         "relative overflow-hidden rounded-2xl p-6 text-white shadow-lg transition-all group",
                         walletBalance > 0 
                             ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 hover:shadow-xl" 
-                            : "bg-gradient-to-br from-gray-400 to-gray-500" 
+                            : "bg-gradient-to-br from-gray-400 to-gray-500" // ব্যালেন্স না থাকলে গ্রে দেখাবে
                     )}>
                         {walletBalance > 0 && (
                             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-white/20 rounded-full blur-3xl opacity-50 group-hover:scale-110 transition-transform"></div>
@@ -224,7 +258,7 @@ export default function OrderSummaryPage() {
                             <Switch 
                                 checked={useCoins} 
                                 onCheckedChange={handleCoinToggle}
-                                disabled={walletBalance === 0} 
+                                disabled={walletBalance === 0} // ব্যালেন্স না থাকলে বাটন ডিজেবল
                                 className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 border-2 border-white/50 disabled:opacity-50"
                             />
                         </div>
@@ -341,7 +375,6 @@ export default function OrderSummaryPage() {
                                     <span>Delivery Fee</span>
                                     <span className="text-green-600 font-bold flex items-center gap-1">
                                         FREE*
-                                        {/* Optional Info Icon for clarity */}
                                         <AlertCircle className="h-3 w-3 text-muted-foreground" />
                                     </span>
                                 </div>

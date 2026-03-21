@@ -9,7 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { formatPrice } from '@/lib/utils';
-import { Loader2, ArrowRight, Ticket, Coins, Check, ShoppingBag, X, Sparkles, Receipt, Wallet, CheckCircle2 } from 'lucide-react';
+import { 
+    Loader2, ArrowRight, Ticket, Coins, Check, ShoppingBag, 
+    X, Sparkles, Receipt, Wallet, CheckCircle2, MapPin, AlertCircle 
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { Switch } from '@/components/ui/switch';
@@ -17,6 +20,16 @@ import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function OrderSummaryPage() {
   const { state, totalPrice, itemCount, isInitialized, setCheckoutData } = useCart();
@@ -30,13 +43,15 @@ export default function OrderSummaryPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [useCoins, setUseCoins] = useState(false);
 
-  // 1. Fetch Wallet Balance (★★★ FIXED HERE ★★★)
+  // Delivery Info Dialog State
+  const [showDeliveryInfo, setShowDeliveryInfo] = useState(false);
+
+  // 1. Fetch Wallet Balance
   useEffect(() => {
       const fetchWallet = async () => {
           try {
               const res = await fetch('/api/wallet');
               const data = await res.json();
-              // data.balance এর বদলে data.wallet.balance হবে
               if(data.success && data.wallet) {
                   setWalletBalance(data.wallet.balance || 0);
               }
@@ -113,14 +128,21 @@ export default function OrderSummaryPage() {
   const coinDiscountAmount = useCoins ? Math.min(walletBalance, Math.floor(maxCoinDiscount)) : 0;
   const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
 
-  // 6. Proceed Handler
-  const handleProceed = () => {
+  // 6. Proceed Handlers
+  const handleProceedClick = () => {
+      // বাটনে ক্লিক করলে সরাসরি না গিয়ে পপআপ দেখাবে
+      setShowDeliveryInfo(true);
+  };
+
+  const confirmProceed = () => {
+      // পপআপ থেকে "I Understand" করলে চেকআউট পেজে যাবে
       setCheckoutData({
           couponCode: couponDiscount > 0 ? couponCode : '',
           couponDiscount: couponDiscount,
           useCoins: useCoins,
-          coinDiscount: coinDiscountAmount // Optional: if you need to pass it to the next step
+          coinDiscount: coinDiscountAmount 
       });
+      setShowDeliveryInfo(false);
       router.push('/checkout');
   };
 
@@ -129,6 +151,31 @@ export default function OrderSummaryPage() {
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
         
+        {/* ★ NEW: Delivery Charge Notice Dialog ★ */}
+        <AlertDialog open={showDeliveryInfo} onOpenChange={setShowDeliveryInfo}>
+          <AlertDialogContent className="rounded-2xl max-w-[90%] md:max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-xl text-primary">
+                 <MapPin className="h-6 w-6" />
+                 Delivery Information
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-[15px] text-foreground/80 mt-3 leading-relaxed">
+                Bumba's Kitchen provides <strong>Free Delivery</strong> within a 2km radius of our store.
+                <br/><br/>
+                If your delivery location is <strong>beyond 2km</strong>, a minimal delivery charge will apply based on the distance. We will calculate and inform you about this charge via <strong>WhatsApp</strong> after you place the order.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-row sm:justify-end gap-3 mt-4">
+              <AlertDialogCancel className="mt-0 flex-1 sm:flex-none rounded-xl h-11">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={confirmProceed} className="flex-1 sm:flex-none rounded-xl h-11 shadow-md shadow-primary/20">
+                I Understand & Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Progress Steps */}
         <div className="bg-white border-b py-4 mb-8">
             <div className="container max-w-5xl mx-auto flex items-center justify-center gap-4 text-sm font-medium text-muted-foreground">
@@ -148,12 +195,12 @@ export default function OrderSummaryPage() {
                 {/* --- LEFT COLUMN: OFFERS & ITEMS --- */}
                 <div className="lg:col-span-7 space-y-6">
                     
-                    {/* Coin Card (এখন সবসময় দেখাবে) */}
+                    {/* Coin Card */}
                     <div className={cn(
                         "relative overflow-hidden rounded-2xl p-6 text-white shadow-lg transition-all group",
                         walletBalance > 0 
                             ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 hover:shadow-xl" 
-                            : "bg-gradient-to-br from-gray-400 to-gray-500" // ব্যালেন্স না থাকলে গ্রে দেখাবে
+                            : "bg-gradient-to-br from-gray-400 to-gray-500" 
                     )}>
                         {walletBalance > 0 && (
                             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-white/20 rounded-full blur-3xl opacity-50 group-hover:scale-110 transition-transform"></div>
@@ -177,7 +224,7 @@ export default function OrderSummaryPage() {
                             <Switch 
                                 checked={useCoins} 
                                 onCheckedChange={handleCoinToggle}
-                                disabled={walletBalance === 0} // ব্যালেন্স না থাকলে বাটন ডিজেবল
+                                disabled={walletBalance === 0} 
                                 className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 border-2 border-white/50 disabled:opacity-50"
                             />
                         </div>
@@ -292,7 +339,11 @@ export default function OrderSummaryPage() {
                                 </div>
                                 <div className="flex justify-between text-gray-600 text-sm">
                                     <span>Delivery Fee</span>
-                                    <span className="text-green-600 font-bold">FREE</span>
+                                    <span className="text-green-600 font-bold flex items-center gap-1">
+                                        FREE*
+                                        {/* Optional Info Icon for clarity */}
+                                        <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                                    </span>
                                 </div>
 
                                 {/* Savings */}
@@ -332,7 +383,7 @@ export default function OrderSummaryPage() {
 
                         {/* Proceed Button */}
                         <Button 
-                            onClick={handleProceed} 
+                            onClick={handleProceedClick} 
                             size="lg" 
                             className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-between px-8"
                         >

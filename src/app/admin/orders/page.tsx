@@ -161,17 +161,20 @@ function AdminOrdersContent() {
       }
   };
 
-  const handleDownloadInvoice = (order: Order) => {
+  const handleDownloadInvoice = async (order: Order) => {
+      // toast.loading ব্যবহার করে ইউজারকে বোঝানো যে প্রসেস চলছে
+      const toastId = toast.loading("Generating Invoice..."); 
       try {
           if (typeof generateInvoice === 'function') {
-            generateInvoice(order);
-            toast.success("Invoice downloaded");
+            await generateInvoice(order); // ★ FIX: await যোগ করা হয়েছে
+            toast.success("Invoice downloaded successfully", { id: toastId });
           } else {
-            toast.error("Invoice generator not found");
+            toast.error("Invoice generator not found", { id: toastId });
           }
-      } catch (e) {
-          console.error(e);
-          toast.error("Failed to generate invoice");
+      } catch (e: any) {
+          console.error("PDF Error:", e);
+          // স্পেসিফিক এরর মেসেজ দেখানো
+          toast.error(e.message || "Failed to generate invoice", { id: toastId });
       }
   };
 

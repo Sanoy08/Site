@@ -129,13 +129,7 @@ export default function OrderSummaryPage() {
   const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
 
   // 6. Proceed Handlers
-  const handleProceedClick = () => {
-      // বাটনে ক্লিক করলে সরাসরি না গিয়ে পপআপ দেখাবে
-      setShowDeliveryInfo(true);
-  };
-
   const confirmProceed = () => {
-      // পপআপ থেকে "I Understand" করলে চেকআউট পেজে যাবে
       setCheckoutData({
           couponCode: couponDiscount > 0 ? couponCode : '',
           couponDiscount: couponDiscount,
@@ -144,6 +138,16 @@ export default function OrderSummaryPage() {
       });
       setShowDeliveryInfo(false);
       router.push('/checkout');
+  };
+
+  const handleProceedClick = () => {
+      // ★ যদি বিল 1000 টাকার বেশি হয়, সরাসরি চেকআউট পেজে যাবে
+      if (finalTotal > 1000) {
+          confirmProceed();
+      } else {
+          // নাহলে পপআপ দেখাবে
+          setShowDeliveryInfo(true);
+      }
   };
 
   if (isLoading || !isInitialized) return <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -229,12 +233,12 @@ export default function OrderSummaryPage() {
                 {/* --- LEFT COLUMN: OFFERS & ITEMS --- */}
                 <div className="lg:col-span-7 space-y-6">
                     
-                    {/* Coin Card (এখন সবসময় দেখাবে) */}
+                    {/* Coin Card */}
                     <div className={cn(
                         "relative overflow-hidden rounded-2xl p-6 text-white shadow-lg transition-all group",
                         walletBalance > 0 
                             ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 hover:shadow-xl" 
-                            : "bg-gradient-to-br from-gray-400 to-gray-500" // ব্যালেন্স না থাকলে গ্রে দেখাবে
+                            : "bg-gradient-to-br from-gray-400 to-gray-500" 
                     )}>
                         {walletBalance > 0 && (
                             <div className="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-white/20 rounded-full blur-3xl opacity-50 group-hover:scale-110 transition-transform"></div>
@@ -258,7 +262,7 @@ export default function OrderSummaryPage() {
                             <Switch 
                                 checked={useCoins} 
                                 onCheckedChange={handleCoinToggle}
-                                disabled={walletBalance === 0} // ব্যালেন্স না থাকলে বাটন ডিজেবল
+                                disabled={walletBalance === 0} 
                                 className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 border-2 border-white/50 disabled:opacity-50"
                             />
                         </div>

@@ -1,3 +1,5 @@
+// src/app/(shop)/account/addresses/page.tsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,14 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { MoreVertical, Plus, MapPin, Loader2, Trash2, Pencil, Home, Briefcase, FileText } from "lucide-react";
+import { MoreVertical, Plus, MapPin, Loader2, Trash2, Pencil, Home, Briefcase } from "lucide-react";
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
-
-// ★ Import generateInvoice for testing
-// @ts-ignore
-import { generateInvoice } from '@/lib/invoiceGenerator';
 
 type Address = {
     id: string;
@@ -39,8 +37,9 @@ export default function AccountAddressesPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     const fetchAddresses = async () => {
+        // ★ ফিক্স: localStorage টোকেন চেক বাদ দেওয়া হয়েছে
         try {
-            const res = await fetch('/api/user/addresses'); 
+            const res = await fetch('/api/user/addresses'); // ★ ফিক্স: হেডার রিমুভ করা হয়েছে
             const data = await res.json();
             if (data.success) {
                 setAddresses(data.addresses);
@@ -78,6 +77,8 @@ export default function AccountAddressesPage() {
         }
 
         setIsSaving(true);
+        // ★ ফিক্স: localStorage টোকেন গেট বাদ দেওয়া হয়েছে
+
         try {
             const method = editingId ? 'PUT' : 'POST';
             const body = editingId ? { ...formData, id: editingId } : formData;
@@ -86,6 +87,7 @@ export default function AccountAddressesPage() {
                 method: method,
                 headers: { 
                     'Content-Type': 'application/json',
+                    // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে
                 },
                 body: JSON.stringify(body)
             });
@@ -108,9 +110,12 @@ export default function AccountAddressesPage() {
     const confirmDelete = async () => {
         if (!deleteId) return;
         setIsDeleting(true);
+        // ★ ফিক্স: localStorage টোকেন গেট বাদ দেওয়া হয়েছে
+
         try {
             const res = await fetch(`/api/user/addresses?id=${deleteId}`, {
                 method: 'DELETE',
+                // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে
             });
             if (res.ok) {
                 toast.success("Address deleted");
@@ -133,49 +138,10 @@ export default function AccountAddressesPage() {
         return <MapPin className="h-5 w-5" />;
     };
 
-    // ★★★ Test Invoice Function ★★★
-    const handleTestInvoice = async () => {
-        const toastId = toast.loading("Generating Test Invoice...");
-        
-        // Dummy Order Data
-        const dummyOrder = {
-            OrderNumber: "TST-9999",
-            Timestamp: new Date().toISOString(),
-            Name: "Test User",
-            Phone: "9876543210",
-            Address: "123, Test Street, Dummy Layout, Kolkata - 700001",
-            OrderType: "online", // Paid Status
-            Subtotal: 800,
-            Discount: 50,
-            ReceivedAmount: 750,
-            FinalPrice: 750,
-            Items: [
-                { name: "Chicken Biryani Premium", quantity: 2, price: 250 },
-                { name: "Mutton Kosha", quantity: 1, price: 300 }
-            ]
-        };
-
-        try {
-            await generateInvoice(dummyOrder);
-            toast.success("Test Invoice Downloaded!", { id: toastId });
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to generate invoice", { id: toastId });
-        }
-    };
-
     if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto pb-24">
-            
-            {/* ★ Test Invoice Button (Only for testing) ★ */}
-            <div className="flex justify-end mb-4">
-                <Button variant="secondary" onClick={handleTestInvoice} className="gap-2 border shadow-sm">
-                    <FileText className="h-4 w-4" /> Download Test Invoice
-                </Button>
-            </div>
-
             <Card className="border-none shadow-none sm:border sm:shadow-sm">
                 <CardHeader className="px-0 sm:px-6">
                     <div className="flex justify-between items-center">

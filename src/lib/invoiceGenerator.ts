@@ -1,12 +1,38 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// Safe image loader
-const loadImage = (src: string): Promise<HTMLImageElement | null> => {
+// ★ FIX: Image Compressor to drastically reduce PDF size
+const loadAndCompressImage = (src: string): Promise<string | null> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      // Max width সেট করে দেওয়া হলো, যাতে বড় ইমেজ ছোট হয়ে যায়
+      const MAX_WIDTH = 400;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > MAX_WIDTH) {
+        height = Math.round((height * MAX_WIDTH) / width);
+        width = MAX_WIDTH;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      
+      if (ctx) {
+        // PNG এর ট্রান্সপারেন্ট ব্যাকগ্রাউন্ড যেন কালো না হয়ে যায়, তাই সাদা ফিল করা হলো
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        // JPEG হিসেবে 70% কোয়ালিটিতে কনভার্ট করা হচ্ছে (সাইজ কমানোর জন্য)
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      } else {
+        resolve(null);
+      }
+    };
     img.onerror = () => {
         console.warn(`Could not load image: ${src}`);
         resolve(null); 
@@ -39,11 +65,11 @@ export const generateInvoice = async (order: any) => {
       const textDark = "#333333";
 
       // ------------------------------------------
-      // 1️⃣ LOAD IMAGES (Logo + Signature)
+      // 1️⃣ LOAD & COMPRESS IMAGES (Logo + Signature)
       // ------------------------------------------
       const [logo, signature] = await Promise.all([
-          loadImage("/LOGO.png"),
-          loadImage("/signature.png") 
+          loadAndCompressImage("/LOGO.png"),
+          loadAndCompressImage("/signature.png") 
       ]);
 
       // ------------------------------------------
@@ -68,7 +94,8 @@ export const generateInvoice = async (order: any) => {
       // 3️⃣ LOGO & COMPANY INFO
       // ------------------------------------------
       if (logo) {
-          doc.addImage(logo, "PNG", margin, 45, 80, 80);
+          // Image format changed to JPEG for better compression
+          doc.addImage(logo, "JPEG", margin, 45, 80, 80, "logo", "FAST");
       }
 
       const textX = logo ? margin + 90 : margin;
@@ -152,7 +179,6 @@ export const generateInvoice = async (order: any) => {
 
       autoTable(doc, {
         startY: y,
-        // ★ FIX: পেজের নিচে সামারি বসানোর জন্য জায়গা ছেড়ে দেওয়া হলো
         margin: { bottom: 230 }, 
         head: [["SL.", "Description", "Qty", "Price", "Amount"]],
         body: tableData,
@@ -184,8 +210,6 @@ export const generateInvoice = async (order: any) => {
       // ------------------------------------------
       // 7️⃣ BOTTOM SECTION (Fixed at the bottom)
       // ------------------------------------------
-      
-      // ★ FIX: পেজের হাইট অনুযায়ী ফিক্সড পজিশন সেট করা হলো
       const summaryY = pageHeight - 210; 
       const summaryX = pageWidth - margin - 220;
 
@@ -257,11 +281,10 @@ export const generateInvoice = async (order: any) => {
       doc.setFontSize(11);
       doc.text("Bumba's Kitchen", margin + 22, footerY + 29);
 
-      // ★ Right Footer (Actual Signature Image - Moved UP) ★
+      // Right Footer (Signature Image)
       if (signature) {
-          // 1280x645 ratio ~ 2:1 -> width 110, height 55
-          // ★ FIX: Signature কে আরও ওপরে (footerY - 70) তে বসানো হলো
-          doc.addImage(signature, "PNG", pageWidth - margin - 120, footerY - 60, 110, 55);
+          // Format changed to JPEG
+          doc.addImage(signature, "JPEG", pageWidth - margin - 120, footerY - 60, 110, 55, "sign", "FAST");
       } else {
           doc.setFont("times", "italic");
           doc.setFontSize(28);

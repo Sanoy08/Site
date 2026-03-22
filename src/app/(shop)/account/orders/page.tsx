@@ -2,18 +2,22 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatPrice } from '@/lib/utils';
-import { Loader2, Package, Calendar, MapPin, ChevronRight, Clock, Utensils, ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { Loader2, Package, Calendar, MapPin, ChevronRight, Clock, Utensils, ShoppingBag, CheckCircle2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { optimizeImageUrl } from '@/lib/imageUtils';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+
+// @ts-ignore
+import { generateInvoice } from '@/lib/invoiceGenerator';
 
 type Order = {
   _id: string;
@@ -23,34 +27,41 @@ type Order = {
   FinalPrice: number;
   Subtotal: number;
   Discount: number;
+  ReceivedAmount?: number;
   Items: any[];
   OrderType: string;
   Address: string;
   DeliveryAddress?: string;
   MealTime: string;
   PreferredDate: string;
+  Name: string; 
+  Phone: string; 
 };
 
-export default function AccountOrdersPage() {
+function AccountOrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // URL থেকে id নেওয়া হচ্ছে
+  const selectedOrderId = searchParams.get('id');
+
   // Modal State
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
-        // ★ ফিক্স: localStorage টোকেন চেক বাদ দেওয়া হয়েছে
         try {
-            // ★ ফিক্স: কুকি অটোমেটিক যাবে তাই হেডার বাদ
             const res = await fetch('/api/user/orders');
             const data = await res.json();
             
             if (data.success) {
                 setOrders(data.orders);
             } else {
-                // যদি লগইন না থাকে বা এরর হয়
                 console.error("Failed:", data.error);
             }
         } catch (e) {
@@ -64,6 +75,36 @@ export default function AccountOrdersPage() {
     fetchOrders();
   }, []);
 
+  // ★★★ URL Change effect ★★★
+  useEffect(() => {
+      if (selectedOrderId && orders.length > 0) {
+          const order = orders.find(o => o.OrderNumber === selectedOrderId);
+          if (order) {
+              setSelectedOrder(order);
+              setIsModalOpen(true);
+          }
+      } else {
+          setIsModalOpen(false);
+      }
+  }, [selectedOrderId, orders]);
+
+  // ★★★ Handle Click (Set URL) ★★★
+  const handleOrderClick = (orderNumber: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('id', orderNumber);
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  // ★★★ Handle Close Modal (Remove URL param) ★★★
+  const handleCloseModal = (isOpen: boolean) => {
+      if (!isOpen) {
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete('id');
+          router.push(`${pathname}?${params.toString()}`, { scroll: false });
+          setIsModalOpen(false);
+      }
+  };
+
   const getStatusColor = (status: string) => {
       const s = status?.toLowerCase() || '';
       if (s === 'delivered') return 'bg-green-100 text-green-700 border-green-200';
@@ -71,6 +112,21 @@ export default function AccountOrdersPage() {
       if (s === 'cooking' || s === 'processing') return 'bg-orange-100 text-orange-700 border-orange-200';
       if (s === 'out for delivery') return 'bg-blue-100 text-blue-700 border-blue-200';
       return 'bg-gray-100 text-gray-700 border-gray-200';
+  };
+
+  const handleDownloadInvoice = async (order: Order) => {
+      const toastId = toast.loading("Generating Invoice...");
+      try {
+          if (typeof generateInvoice === 'function') {
+            await generateInvoice(order);
+            toast.success("Invoice downloaded successfully", { id: toastId });
+          } else {
+            toast.error("Invoice generator not found", { id: toastId });
+          }
+      } catch (e: any) {
+          console.error("PDF Error:", e);
+          toast.error(e.message || "Failed to generate invoice", { id: toastId });
+      }
   };
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -121,15 +177,12 @@ export default function AccountOrdersPage() {
               orders.map((order) => (
                   <div 
                     key={order._id}
-                    onClick={() => { setSelectedOrder(order); setIsModalOpen(true); }}
+                    onClick={() => handleOrderClick(order.OrderNumber)} // ★ FIX: Call URL updater
                     className="group bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer relative overflow-hidden"
                   >
-                      {/* Hover Indicator */}
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                       <div className="flex flex-col md:flex-row justify-between gap-4">
-                          
-                          {/* Left Info */}
                           <div className="space-y-3">
                               <div className="flex items-center gap-3">
                                   <span className="font-mono font-bold text-lg text-gray-800">#{order.OrderNumber}</span>
@@ -150,7 +203,6 @@ export default function AccountOrdersPage() {
                               </div>
                           </div>
 
-                          {/* Right Price & Arrow */}
                           <div className="flex items-center justify-between md:justify-end gap-6 mt-2 md:mt-0">
                               <div className="text-right">
                                   <p className="text-sm text-muted-foreground mb-0.5">Total Amount</p>
@@ -165,7 +217,8 @@ export default function AccountOrdersPage() {
       </div>
 
       {/* --- 3. Order Details Modal --- */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      {/* ★ FIX: onOpenChange updater */}
+      <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0 gap-0 rounded-2xl">
             {selectedOrder && (
                 <>
@@ -181,7 +234,6 @@ export default function AccountOrdersPage() {
 
                     <div className="p-6 space-y-6">
                         
-                        {/* Items List */}
                         <div className="space-y-4">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Items Ordered</h4>
                             <div className="space-y-3">
@@ -201,10 +253,10 @@ export default function AccountOrdersPage() {
                                                     />
                                                 </div>
 
-                                                <div className="h-6 w-6 bg-primary/10 rounded-md flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                                                    {item.quantity}x
+                                                <div className="flex flex-col">
+                                                    <p className="text-sm font-medium text-gray-800">{item.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{item.quantity}x {formatPrice(item.price)}</p>
                                                 </div>
-                                                <p className="text-sm font-medium text-gray-800">{item.name}</p>
                                             </div>
                                             <p className="text-sm font-bold text-gray-600">{formatPrice(item.price * item.quantity)}</p>
                                         </div>
@@ -213,28 +265,26 @@ export default function AccountOrdersPage() {
                             </div>
                         </div>
 
-                        {/* Delivery Info */}
-                        <div className="bg-gray-50 p-4 rounded-xl space-y-3 border">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Delivery Info</h4>
+                        <div className="bg-gray-50 p-4 rounded-xl space-y-4 border">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Delivery Info</h4>
                             <div className="flex items-start gap-3">
                                 <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                                 <div>
                                     <p className="font-medium text-sm">Address</p>
-                                    <p className="text-sm text-muted-foreground leading-snug">{selectedOrder.DeliveryAddress || selectedOrder.Address}</p>
+                                    <p className="text-sm text-muted-foreground leading-snug mt-0.5">{selectedOrder.DeliveryAddress || selectedOrder.Address}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <Clock className="h-5 w-5 text-primary shrink-0" />
+                            <div className="flex items-start gap-3">
+                                <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                                 <div>
                                     <p className="font-medium text-sm">Preferred Time</p>
-                                    <p className="text-sm text-muted-foreground capitalize">
-                                        {selectedOrder.PreferredDate ? new Date(selectedOrder.PreferredDate).toLocaleDateString() : 'N/A'} • {selectedOrder.MealTime || 'N/A'}
+                                    <p className="text-sm text-muted-foreground mt-0.5 capitalize">
+                                        {selectedOrder.PreferredDate ? new Date(selectedOrder.PreferredDate).toLocaleDateString('en-GB') : 'N/A'} • {selectedOrder.MealTime || 'N/A'}
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Payment Summary */}
                         <div className="space-y-2 pt-2">
                             <div className="flex justify-between text-sm text-muted-foreground">
                                 <span>Subtotal</span>
@@ -253,9 +303,11 @@ export default function AccountOrdersPage() {
                             </div>
                         </div>
 
-                        {/* Invoice Button */}
-                        <Button className="w-full mt-4" onClick={() => toast.info("Invoice download coming soon!")}>
-                            Download Invoice
+                        <Button 
+                            className="w-full mt-6 shadow-md gap-2" 
+                            onClick={() => handleDownloadInvoice(selectedOrder)}
+                        >
+                            <Download className="h-4 w-4" /> Download Invoice
                         </Button>
 
                     </div>
@@ -265,4 +317,13 @@ export default function AccountOrdersPage() {
       </Dialog>
     </div>
   );
+}
+
+// ★★★ Suspense Boundary Add kora hoyeche ★★★
+export default function AccountOrdersPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+            <AccountOrdersContent />
+        </Suspense>
+    );
 }

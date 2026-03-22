@@ -3,8 +3,10 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
+// ★ নতুন প্লাগিন ইমপোর্ট করা হলো
+import { FileOpener } from '@capacitor-community/file-opener';
 
+// ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -56,17 +58,24 @@ export const generateInvoice = async (order: any) => {
       const pageHeight = doc.internal.pageSize.height;
       const margin = 40;
 
+      // Exact Colors
       const oliveDark = "#4A5D23"; 
       const oliveTopBar = "#C3CD49"; 
       const greyBar = "#EAEAEA"; 
       const rowHighlight = "#EAF0CD"; 
       const textDark = "#333333";
 
+      // ------------------------------------------
+      // 1️⃣ LOAD IMAGES
+      // ------------------------------------------
       const [logo, signature] = await Promise.all([
           loadAndCompressImage("/LOGO.png"),
           loadAndCompressImage("/signature.png") 
       ]);
 
+      // ------------------------------------------
+      // 2️⃣ TOP BANNER
+      // ------------------------------------------
       doc.setFillColor(oliveTopBar);
       doc.rect(0, 0, pageWidth, 40, "F");
 
@@ -81,6 +90,9 @@ export const generateInvoice = async (order: any) => {
       doc.setFontSize(10);
       doc.text("ORIGINAL FOR RECIPIENT", margin + 125, 24);
 
+      // ------------------------------------------
+      // 3️⃣ LOGO & COMPANY INFO
+      // ------------------------------------------
       if (logo) {
           doc.addImage(logo, "JPEG", margin, 45, 80, 80, "logo", "FAST");
       }
@@ -96,6 +108,9 @@ export const generateInvoice = async (order: any) => {
       doc.setFontSize(12);
       doc.text("Mobile: 8240690254", textX, 105);
 
+      // ------------------------------------------
+      // 4️⃣ RECEIPT DETAILS BAR
+      // ------------------------------------------
       let y = 140;
       
       doc.setDrawColor(oliveDark);
@@ -110,6 +125,7 @@ export const generateInvoice = async (order: any) => {
       doc.setTextColor(textDark);
       doc.setFontSize(10);
       
+      // Row 1
       doc.setFont("helvetica", "bold");
       doc.text("Receipt No", margin + 10, y + 17);
       doc.setFont("helvetica", "normal");
@@ -120,6 +136,7 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text(`: ${new Date(order.Timestamp).toLocaleDateString("en-GB")}`, pageWidth - margin - 110, y + 17);
 
+      // Row 2 
       doc.setFont("helvetica", "bold");
       doc.text("Order Status", margin + 10, y + 33);
       doc.setFont("helvetica", "normal");
@@ -131,7 +148,10 @@ export const generateInvoice = async (order: any) => {
       const paymentMode = order.OrderType?.toLowerCase() === 'online' || order.OrderType?.toLowerCase() === 'prepaid' ? 'Paid Online' : 'Cash on Delivery';
       doc.text(`: ${paymentMode}`, pageWidth - margin - 110, y + 33);
 
-      y += 65;
+      // ------------------------------------------
+      // 5️⃣ BILL TO SECTION
+      // ------------------------------------------
+      y += 65; 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(oliveDark);
@@ -153,6 +173,9 @@ export const generateInvoice = async (order: any) => {
 
       y += (addrLines.length * 15) + 10;
 
+      // ------------------------------------------
+      // 6️⃣ TABLE SECTION
+      // ------------------------------------------
       const tableData = order.Items.map((item: any, i: number) => [
         (i + 1).toString(),
         item.name,
@@ -178,6 +201,9 @@ export const generateInvoice = async (order: any) => {
         columnStyles: { 0: { halign: "center", cellWidth: 40 }, 1: { halign: "left", cellWidth: 220 }, 2: { halign: "center", cellWidth: 60 }, 3: { halign: "center", cellWidth: 90 }, 4: { halign: "center", cellWidth: 100 } },
       });
 
+      // ------------------------------------------
+      // 7️⃣ BOTTOM SECTION (Summary & QR)
+      // ------------------------------------------
       const summaryY = pageHeight - 210; 
       const summaryX = pageWidth - margin - 220;
 
@@ -285,16 +311,14 @@ export const generateInvoice = async (order: any) => {
                   recursive: true
               });
 
-              // 3. Open Share/View Dialog
-              await Share.share({
-                  title: 'Invoice',
-                  text: `Invoice for Order #${order.OrderNumber}`,
-                  url: savedFile.uri,
-                  dialogTitle: 'Open Invoice'
+              // 3. ★ OPEN DIRECTLY IN PDF VIEWER
+              await FileOpener.open({
+                  filePath: savedFile.uri,
+                  contentType: 'application/pdf',
               });
               
           } catch (err) {
-              console.error('File saving/sharing error:', err);
+              console.error('File saving/opening error:', err);
               throw new Error("Could not save or open PDF on device.");
           }
       } else {

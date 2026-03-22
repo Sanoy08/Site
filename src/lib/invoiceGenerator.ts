@@ -1,22 +1,23 @@
-// src/lib/invoiceGenerator.ts
-
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import QRCode from "qrcode";
 
-// Load image using promise with safe fallback
+// Safe image loader
 const loadImage = (src: string): Promise<HTMLImageElement | null> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
-    // ★ FIX: Error হলে reject না করে null রিটার্ন করবে, যাতে PDF জেনারেশন আটকে না যায়।
     img.onerror = () => {
         console.warn(`Could not load image: ${src}`);
         resolve(null); 
     };
     img.src = src;
   });
+};
+
+// Formatter for price
+const formatRs = (amount: number) => {
+    return `Rs. ${Number(amount).toFixed(2)}`;
 };
 
 export const generateInvoice = async (order: any) => {
@@ -30,257 +31,256 @@ export const generateInvoice = async (order: any) => {
       const pageHeight = doc.internal.pageSize.height;
       const margin = 40;
 
-      // Brand Colors
-      const olive = "#516117";
-      const oliveLight = "#A4A841";
-      const highlightRow = "#E6EFBF";
-      const darkText = "#2f2f2f";
+      // Exact Colors
+      const oliveDark = "#4A5D23"; 
+      const oliveTopBar = "#C3CD49"; 
+      const greyBar = "#EAEAEA"; 
+      const rowHighlight = "#EAF0CD"; 
+      const textDark = "#333333";
 
       // ------------------------------------------
-      // 1️⃣ LOAD LOGO (Safe Load)
+      // 1️⃣ LOAD IMAGES (Logo + Signature)
       // ------------------------------------------
-      const logo = await loadImage("/LOGO.png");
-
-      // ------------------------------------------
-      // 2️⃣ ADD WATERMARK
-      // ------------------------------------------
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(200, 200, 200);
-      doc.setFontSize(90);
-      doc.text("BUMBA’S", pageWidth / 2, pageHeight / 2 - 50, {
-        align: "center",
-        opacity: 0.08,
-      });
-      doc.text("KITCHEN", pageWidth / 2, pageHeight / 2 + 40, {
-        align: "center",
-        opacity: 0.08,
-      });
-
-      // ------------------------------------------
-      // 3️⃣ HEADER BAR (Premium Gradient)
-      // ------------------------------------------
-      doc.setFillColor(oliveLight);
-      doc.rect(0, 0, pageWidth, 55, "F");
-
-      doc.setFillColor("#C9CF58");
-      doc.roundedRect(pageWidth - 200, 12, 180, 28, 6, 6, "F");
-
-      doc.setFontSize(12);
-      doc.setTextColor(olive);
-      doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 110, 30, {
-        align: "center",
-      });
-
-      // ------------------------------------------
-      // 4️⃣ LOGO + Title Block
-      // ------------------------------------------
-      // ★ FIX: লোগো লোড হলে তবেই এড করবে
-      if (logo) {
-          doc.addImage(logo, "PNG", margin, 70, 95, 95);
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(26);
-      doc.setTextColor(olive);
-      // লোগো না থাকলে টেক্সট একটু বামে সরিয়ে দেওয়া
-      const titleX = logo ? margin + 120 : margin; 
-      doc.text("BUMBA’S KITCHEN", titleX, 110);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(13);
-      doc.text("Mobile: 82406 90254", titleX, 135);
-
-      // Receipt info
-      doc.setFontSize(13);
-      doc.setTextColor(olive);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Receipt No : ${order.OrderNumber}`, pageWidth - margin, 110, {
-        align: "right",
-      });
-
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        `Date : ${new Date(order.Timestamp).toLocaleDateString("en-GB")}`,
-        pageWidth - margin,
-        135,
-        { align: "right" }
-      );
-
-      // Divider
-      doc.setDrawColor(olive);
-      doc.setLineWidth(1.2);
-      doc.line(margin, 170, pageWidth - margin, 170);
-
-      // ------------------------------------------
-      // 5️⃣ BILL TO → Premium Card
-      // ------------------------------------------
-      let y = 200;
-
-      doc.setFillColor("#fefefe");
-      doc.roundedRect(margin, y - 10, pageWidth - margin * 2, 90, 8, 8, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(olive);
-      doc.setFontSize(15);
-      doc.text("Bill To", margin + 10, y + 10);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(12);
-      doc.setTextColor(darkText);
-
-      y += 30;
-      doc.text(`Name: ${order.Name}`, margin + 20, y);
-
-      y += 18;
-      const addr = order.DeliveryAddress || order.Address || "N/A";
-      const lines = doc.splitTextToSize(addr, 400);
-      doc.text("Address:", margin + 20, y);
-      doc.text(lines, margin + 90, y);
-
-      y += 22 + (lines.length - 1) * 14;
-
-      // ------------------------------------------
-      // 6️⃣ TABLE – Ultra Premium
-      // ------------------------------------------
-      const tableData = order.Items.map((item: any, i: number) => [
-        i + 1,
-        doc.splitTextToSize(item.name, 260),
-        item.quantity,
-        item.price.toFixed(2),
-        (item.quantity * item.price).toFixed(2),
+      const [logo, signature] = await Promise.all([
+          loadImage("/LOGO.png"),
+          loadImage("/signature.png") 
       ]);
 
+      // ------------------------------------------
+      // 2️⃣ TOP BANNER
+      // ------------------------------------------
+      doc.setFillColor(oliveTopBar);
+      doc.rect(0, 0, pageWidth, 40, "F");
+
+      doc.setTextColor("#ffffff");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("BILL OF SUPPLY", margin, 25);
+
+      // Outlined Box inside Banner
+      doc.setDrawColor("#ffffff");
+      doc.setLineWidth(1);
+      doc.roundedRect(margin + 115, 10, 160, 20, 4, 4);
+      doc.setFontSize(10);
+      doc.text("ORIGINAL FOR RECIPIENT", margin + 125, 24);
+
+      // ------------------------------------------
+      // 3️⃣ LOGO & COMPANY INFO
+      // ------------------------------------------
+      if (logo) {
+          doc.addImage(logo, "PNG", margin, 45, 80, 80);
+      }
+
+      const textX = logo ? margin + 90 : margin;
+      
+      doc.setTextColor(oliveDark);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("BUMBA'S KITCHEN", textX, 85);
+
+      doc.setTextColor(textDark);
+      doc.setFontSize(12);
+      doc.text("Mobile: 8240690254", textX, 105);
+
+      // ------------------------------------------
+      // 4️⃣ RECEIPT DETAILS BAR
+      // ------------------------------------------
+      let y = 140;
+      
+      doc.setDrawColor(oliveDark);
+      doc.setLineWidth(1.5);
+      doc.line(margin, y, pageWidth - margin, y);
+
+      doc.setFillColor(greyBar);
+      doc.rect(margin, y + 2, pageWidth - margin * 2, 22, "F");
+
+      doc.line(margin, y + 26, pageWidth - margin, y + 26);
+
+      doc.setTextColor(textDark);
+      doc.setFontSize(10);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Receipt No", margin + 10, y + 17);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${order.OrderNumber}`, margin + 80, y + 17);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Date", pageWidth - margin - 120, y + 17);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${new Date(order.Timestamp).toLocaleDateString("en-GB")}`, pageWidth - margin - 80, y + 17);
+
+      // ------------------------------------------
+      // 5️⃣ BILL TO SECTION
+      // ------------------------------------------
+      y += 50;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(oliveDark);
+      doc.text("Bill to", margin, y);
+
+      y += 15;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(textDark);
+      
+      doc.text("Name", margin, y);
+      doc.text(`: ${order.Name}`, margin + 60, y);
+
+      y += 15;
+      const addr = order.DeliveryAddress || order.Address || "No Address Provided";
+      const addrLines = doc.splitTextToSize(`: ${addr}`, 400);
+      doc.text("Address", margin, y);
+      doc.text(addrLines, margin + 60, y);
+
+      y += (addrLines.length * 15) + 10;
+
+      // ------------------------------------------
+      // 6️⃣ TABLE SECTION
+      // ------------------------------------------
+      const tableData = order.Items.map((item: any, i: number) => [
+        (i + 1).toString(),
+        item.name,
+        item.quantity.toString(),
+        formatRs(item.price),
+        formatRs(item.quantity * item.price),
+      ]);
+
+      const minRows = 6;
+      while (tableData.length < minRows) {
+          tableData.push(["", "", "", "", ""]);
+      }
+
       autoTable(doc, {
-        startY: y + 10,
-        head: [["SL", "Description", "Qty", "Price", "Amount"]],
+        startY: y,
+        // ★ FIX: পেজের নিচে সামারি বসানোর জন্য জায়গা ছেড়ে দেওয়া হলো
+        margin: { bottom: 230 }, 
+        head: [["SL.", "Description", "Qty", "Price", "Amount"]],
         body: tableData,
-        theme: "grid",
+        theme: "plain",
         headStyles: {
-          fillColor: olive,
-          textColor: "#fff",
-          fontSize: 12,
+          fillColor: oliveDark,
+          textColor: "#ffffff",
+          fontSize: 11,
+          fontStyle: "bold",
           halign: "center",
         },
-        styles: {
-          fontSize: 12,
-          textColor: darkText,
-          cellPadding: 6,
-          lineColor: "#cccccc",
-          lineWidth: 0.4,
+        bodyStyles: {
+          fontSize: 10,
+          textColor: textDark,
+          cellPadding: 8,
         },
         alternateRowStyles: {
-          fillColor: highlightRow,
+          fillColor: rowHighlight,
         },
         columnStyles: {
           0: { halign: "center", cellWidth: 40 },
-          1: { cellWidth: 260 },
+          1: { halign: "left", cellWidth: 220 },
           2: { halign: "center", cellWidth: 60 },
-          3: { halign: "right", cellWidth: 80 },
-          4: { halign: "right", cellWidth: 90 },
+          3: { halign: "center", cellWidth: 90 },
+          4: { halign: "center", cellWidth: 100 },
         },
       });
 
-      const tableY = (doc as any).lastAutoTable.finalY + 30;
+      // ------------------------------------------
+      // 7️⃣ BOTTOM SECTION (Fixed at the bottom)
+      // ------------------------------------------
+      
+      // ★ FIX: পেজের হাইট অনুযায়ী ফিক্সড পজিশন সেট করা হলো
+      const summaryY = pageHeight - 210; 
+      const summaryX = pageWidth - margin - 220;
 
-      // ------------------------------------------
-      // 7️⃣ PAYMENT BADGE
-      // ------------------------------------------
+      // Left Side: Terms
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor("#fff");
+      doc.setFontSize(11);
+      doc.setTextColor(textDark);
+      doc.text("Terms and Conditions", margin, summaryY);
 
-      const isPaid = order.OrderType === "Prepaid" || order.OrderType === "online"; // Adjusted for potential order types
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor("#555555");
+      doc.text("1. Goods once sold will not be taken back or exchanged", margin, summaryY + 15);
+      doc.text("2. All disputes are subject to jurisdiction only", margin, summaryY + 28);
 
-      doc.setFillColor(isPaid ? "#2ecc71" : "#e74c3c");
-      doc.roundedRect(pageWidth - 160, tableY - 50, 120, 35, 8, 8, "F");
-
-      doc.text(isPaid ? "PAID" : "UNPAID", pageWidth - 100, tableY - 26, {
-        align: "center",
-      });
-
-      // ------------------------------------------
-      // 8️⃣ SUMMARY BOX – Premium Card
-      // ------------------------------------------
-      const summaryX = pageWidth - 260;
-      let sy = tableY;
-
-      doc.setFillColor("#ffffff");
-      doc.setDrawColor(oliveLight);
-      doc.setLineWidth(2);
-      doc.roundedRect(summaryX, sy, 220, 140, 10, 10);
-
+      // Right Side: Summary
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(olive);
+      doc.setFontSize(11);
+      doc.setTextColor(textDark);
 
-      // ★ FIX: Ensure Fallback values if fields are missing
       const subtotal = order.Subtotal || order.FinalPrice || 0;
       const discount = order.Discount || 0;
       const received = order.ReceivedAmount || 0;
+      const finalPrice = order.FinalPrice || 0;
 
-      const summaryFields = [
-        ["Sub Total", subtotal],
-        ["Discount", discount],
-        ["Received", received],
-      ];
+      doc.text("Sub Total", summaryX, summaryY);
+      doc.text(formatRs(subtotal), pageWidth - margin, summaryY, { align: "right" });
 
-      sy += 30;
-      summaryFields.forEach(([label, value]) => {
-        doc.text(label as string, summaryX + 15, sy);
-        doc.text(`${(value as number).toFixed(2)}`, summaryX + 205, sy, { align: "right" });
-        sy += 22;
-      });
+      doc.text("Discount", summaryX, summaryY + 20);
+      doc.text(formatRs(discount), pageWidth - margin, summaryY + 20, { align: "right" });
 
-      // Grand Total (highlight)
-      doc.setFillColor(olive);
-      doc.roundedRect(summaryX, sy, 220, 38, 10, 10, "F");
+      doc.text("Received Amount", summaryX, summaryY + 40);
+      doc.text(formatRs(received), pageWidth - margin, summaryY + 40, { align: "right" });
 
-      doc.setTextColor("#fff");
-      doc.setFontSize(16);
-      doc.text("Grand Total", summaryX + 15, sy + 26);
-      doc.text((order.FinalPrice || 0).toFixed(2), summaryX + 205, sy + 26, {
-        align: "right",
-      });
+      // Grand Total Box
+      doc.setFillColor(oliveDark);
+      doc.rect(summaryX - 15, summaryY + 50, 250, 25, "F");
+      
+      doc.setTextColor("#ffffff");
+      doc.setFontSize(12);
+      doc.text("Grand Total", summaryX, summaryY + 67);
+      doc.text(formatRs(finalPrice), pageWidth - margin, summaryY + 67, { align: "right" });
 
       // ------------------------------------------
-      // 9️⃣ QR CODE
+      // 8️⃣ FOOTER (Thank You & Signature)
       // ------------------------------------------
-      const qrData = `${order.OrderNumber}|${order.Timestamp}|${order.Name}`;
-      try {
-          const qrBase64 = await QRCode.toDataURL(qrData);
-          doc.addImage(qrBase64, "PNG", margin, sy - 10, 120, 120);
-      } catch (qrErr) {
-          console.warn("Failed to generate QR Code", qrErr);
+      const footerY = pageHeight - 50;
+
+      // Left Footer
+      doc.setFont("times", "bolditalic");
+      doc.setFontSize(18);
+      doc.setTextColor("#000000");
+      doc.text("Thank You & Order Again", margin, footerY - 5);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(textDark);
+      doc.text("HEALTHY FOOD RESTAURANT", margin, footerY + 10);
+
+      // Facebook
+      doc.setFillColor(oliveDark);
+      doc.circle(margin + 8, footerY + 25, 8, "F");
+      doc.setTextColor("#ffffff");
+      doc.setFontSize(12);
+      doc.text("f", margin + 6, footerY + 29); 
+      
+      doc.setTextColor(textDark);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Bumba's Kitchen", margin + 22, footerY + 29);
+
+      // ★ Right Footer (Actual Signature Image - Moved UP) ★
+      if (signature) {
+          // 1280x645 ratio ~ 2:1 -> width 110, height 55
+          // ★ FIX: Signature কে আরও ওপরে (footerY - 70) তে বসানো হলো
+          doc.addImage(signature, "PNG", pageWidth - margin - 120, footerY - 60, 110, 55);
+      } else {
+          doc.setFont("times", "italic");
+          doc.setFontSize(28);
+          doc.setTextColor("#333333");
+          doc.text("Bumba", pageWidth - margin - 60, footerY - 20, { align: "center" });
       }
 
-      // ------------------------------------------
-      // 🔟 SIGNATURE LINE
-      // ------------------------------------------
-      const footerY = pageHeight - 120;
-
-      doc.setDrawColor("#444");
-      doc.line(pageWidth - 200, footerY + 20, pageWidth - 50, footerY + 20);
-
-      doc.setFontSize(12);
-      doc.text("Authorized Signatory", pageWidth - 125, footerY + 35, {
-        align: "center",
-      });
-
-      // ------------------------------------------
-      // 1️⃣1️⃣ FOOTER WITH ICONS
-      // ------------------------------------------
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(20);
-      doc.setTextColor("#000");
-      doc.text("Thank You & Order Again ❤️", margin, pageHeight - 50);
-
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor("#000000");
+      doc.text("AUTHORISED SIGNATORY FOR", pageWidth - margin, footerY + 10, { align: "right" });
+      
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(13);
-      doc.text("Healthy Food Restaurant", margin, pageHeight - 30);
+      doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
       doc.save(`Invoice_${order.OrderNumber}.pdf`);
+      
   } catch (error) {
-      console.error("Error inside generateInvoice:", error);
-      throw error; // Re-throw so the UI can catch it and show toast
+      console.error("PDF Generation Error:", error);
+      throw error;
   }
 };

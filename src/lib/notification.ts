@@ -136,7 +136,13 @@ export async function sendNotificationToAllUsers(
 }
 
 // ৩. অ্যাডমিন নোটিফিকেশন (অপরিবর্তিত - অ্যাডমিন সাউন্ড থাকবে)
-export async function sendNotificationToAdmins(client: MongoClient, title: string, body: string, url: string = '/admin/orders') {
+export async function sendNotificationToAdmins(
+  client: MongoClient, 
+  title: string, 
+  body: string, 
+  url: string = '/admin/orders',
+  alertType: 'order' | 'info' = 'order' // ★ নতুন প্যারামিটার: ডিফল্ট 'order'
+) {
   try {
     const db = client.db(DB_NAME);
     const admins = await db.collection(USERS_COLLECTION).find({ role: 'admin' }).toArray();
@@ -160,20 +166,25 @@ export async function sendNotificationToAdmins(client: MongoClient, title: strin
     const tokens = tokenDocs.map(t => t.token);
 
     if (tokens.length > 0) {
+        
+        // ★ alertType অনুযায়ী চ্যানেল এবং সাউন্ড ঠিক করা হচ্ছে
+        const channelId = alertType === 'order' ? 'admin_order_alert' : 'user_notifications';
+        const soundName = alertType === 'order' ? 'my_alert' : 'user_alert'; 
+
         await messaging.sendEachForMulticast({
             tokens,
             notification: { title, body },
             data: { 
               url,
-              android_channel_id: 'admin_order_alert' 
+              android_channel_id: channelId // ডাইনামিক চ্যানেল
             },
             android: {
                 priority: 'high',
                 notification: {
                     icon: 'ic_stat_icon',
                     color: '#f97316',
-                    channelId: 'admin_order_alert', 
-                    sound: 'my_alert', 
+                    channelId: channelId,  // ডাইনামিক চ্যানেল
+                    sound: soundName,      // ডাইনামিক সাউন্ড
                     defaultSound: false, 
                     defaultVibrateTimings: true
                 }

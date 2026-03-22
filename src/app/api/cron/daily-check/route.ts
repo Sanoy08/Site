@@ -47,13 +47,14 @@ export async function GET(request: NextRequest) {
     const upcomingAnniversaries = await usersCollection.countDocuments({ anniversary: { $regex: nextWeekString + '$' } });
     const totalUpcoming = upcomingBirthdays + upcomingAnniversaries;
 
-    if (totalUpcoming > 0) {
+   if (totalUpcoming > 0) {
         // অ্যাডমিনদের কাছে নোটিফিকেশন পাঠানো হচ্ছে
         await sendNotificationToAdmins(
             client,
             "Upcoming Special Dates! 📅",
             `${totalUpcoming} customers have a birthday or anniversary exactly 1 week from today. Click to view!`,
-            "https://admin.bumbaskitchen.app/special-dates/upcoming" // লিংকে ক্লিক করলে নতুন পেজে যাবে
+            "https://admin.bumbaskitchen.app/special-dates/upcoming",
+            "info" // ★★★ এই 'info' প্যারামিটারটি যোগ করতে হবে
         );
     }
 

@@ -1,14 +1,14 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 
-// ★ FIX: Image Compressor to drastically reduce PDF size
+// ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      // Max width সেট করে দেওয়া হলো, যাতে বড় ইমেজ ছোট হয়ে যায়
       const MAX_WIDTH = 400;
       let width = img.width;
       let height = img.height;
@@ -23,11 +23,9 @@ const loadAndCompressImage = (src: string): Promise<string | null> => {
       const ctx = canvas.getContext("2d");
       
       if (ctx) {
-        // PNG এর ট্রান্সপারেন্ট ব্যাকগ্রাউন্ড যেন কালো না হয়ে যায়, তাই সাদা ফিল করা হলো
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
-        // JPEG হিসেবে 70% কোয়ালিটিতে কনভার্ট করা হচ্ছে (সাইজ কমানোর জন্য)
         resolve(canvas.toDataURL("image/jpeg", 0.7));
       } else {
         resolve(null);
@@ -41,7 +39,6 @@ const loadAndCompressImage = (src: string): Promise<string | null> => {
   });
 };
 
-// Formatter for price
 const formatRs = (amount: number) => {
     return `Rs. ${Number(amount).toFixed(2)}`;
 };
@@ -65,7 +62,7 @@ export const generateInvoice = async (order: any) => {
       const textDark = "#333333";
 
       // ------------------------------------------
-      // 1️⃣ LOAD & COMPRESS IMAGES (Logo + Signature)
+      // 1️⃣ LOAD IMAGES
       // ------------------------------------------
       const [logo, signature] = await Promise.all([
           loadAndCompressImage("/LOGO.png"),
@@ -83,7 +80,6 @@ export const generateInvoice = async (order: any) => {
       doc.setFontSize(12);
       doc.text("BILL OF SUPPLY", margin, 25);
 
-      // Outlined Box inside Banner
       doc.setDrawColor("#ffffff");
       doc.setLineWidth(1);
       doc.roundedRect(margin + 115, 10, 160, 20, 4, 4);
@@ -94,7 +90,6 @@ export const generateInvoice = async (order: any) => {
       // 3️⃣ LOGO & COMPANY INFO
       // ------------------------------------------
       if (logo) {
-          // Image format changed to JPEG for better compression
           doc.addImage(logo, "JPEG", margin, 45, 80, 80, "logo", "FAST");
       }
 
@@ -110,7 +105,7 @@ export const generateInvoice = async (order: any) => {
       doc.text("Mobile: 8240690254", textX, 105);
 
       // ------------------------------------------
-      // 4️⃣ RECEIPT DETAILS BAR
+      // 4️⃣ RECEIPT DETAILS BAR (Updated with Status)
       // ------------------------------------------
       let y = 140;
       
@@ -118,28 +113,42 @@ export const generateInvoice = async (order: any) => {
       doc.setLineWidth(1.5);
       doc.line(margin, y, pageWidth - margin, y);
 
+      // ★ বক্সের হাইট ২২ থেকে ৪০ করা হলো ২ লাইনের জন্য
       doc.setFillColor(greyBar);
-      doc.rect(margin, y + 2, pageWidth - margin * 2, 22, "F");
+      doc.rect(margin, y + 2, pageWidth - margin * 2, 40, "F");
 
-      doc.line(margin, y + 26, pageWidth - margin, y + 26);
+      doc.line(margin, y + 44, pageWidth - margin, y + 44);
 
       doc.setTextColor(textDark);
       doc.setFontSize(10);
       
+      // Row 1
       doc.setFont("helvetica", "bold");
       doc.text("Receipt No", margin + 10, y + 17);
       doc.setFont("helvetica", "normal");
-      doc.text(`: ${order.OrderNumber}`, margin + 80, y + 17);
+      doc.text(`: ${order.OrderNumber}`, margin + 85, y + 17);
 
       doc.setFont("helvetica", "bold");
-      doc.text("Date", pageWidth - margin - 120, y + 17);
+      doc.text("Date", pageWidth - margin - 150, y + 17);
       doc.setFont("helvetica", "normal");
-      doc.text(`: ${new Date(order.Timestamp).toLocaleDateString("en-GB")}`, pageWidth - margin - 80, y + 17);
+      doc.text(`: ${new Date(order.Timestamp).toLocaleDateString("en-GB")}`, pageWidth - margin - 110, y + 17);
+
+      // Row 2 (★ NEW: Status & Payment)
+      doc.setFont("helvetica", "bold");
+      doc.text("Order Status", margin + 10, y + 33);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${order.Status || 'Processing'}`, margin + 85, y + 33);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Payment", pageWidth - margin - 150, y + 33);
+      doc.setFont("helvetica", "normal");
+      const paymentMode = order.OrderType?.toLowerCase() === 'online' || order.OrderType?.toLowerCase() === 'prepaid' ? 'Paid Online' : 'Cash on Delivery';
+      doc.text(`: ${paymentMode}`, pageWidth - margin - 110, y + 33);
 
       // ------------------------------------------
       // 5️⃣ BILL TO SECTION
       // ------------------------------------------
-      y += 50;
+      y += 65; // Y একটু নিচে নামানো হলো
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(oliveDark);
@@ -208,7 +217,7 @@ export const generateInvoice = async (order: any) => {
       });
 
       // ------------------------------------------
-      // 7️⃣ BOTTOM SECTION (Fixed at the bottom)
+      // 7️⃣ BOTTOM SECTION (Summary & QR)
       // ------------------------------------------
       const summaryY = pageHeight - 210; 
       const summaryX = pageWidth - margin - 220;
@@ -224,6 +233,25 @@ export const generateInvoice = async (order: any) => {
       doc.setTextColor("#555555");
       doc.text("1. Goods once sold will not be taken back or exchanged", margin, summaryY + 15);
       doc.text("2. All disputes are subject to jurisdiction only", margin, summaryY + 28);
+
+      // ★ NEW: Order Link QR Code
+      try {
+          const orderLink = `https://www.bumbaskitchen.app/account/orders?id=${order.OrderNumber}`;
+          const qrBase64 = await QRCode.toDataURL(orderLink, { 
+              type: 'image/jpeg', 
+              quality: 0.8,
+              margin: 1,
+              color: { dark: "#000000", light: "#ffffff" } 
+          });
+          
+          doc.addImage(qrBase64, "JPEG", margin, summaryY + 45, 60, 60, "qr", "FAST");
+          
+          doc.setFontSize(8);
+          doc.setTextColor("#777777");
+          doc.text("Scan to view order", margin, summaryY + 115);
+      } catch (err) {
+          console.warn("QR generation failed", err);
+      }
 
       // Right Side: Summary
       doc.setFont("helvetica", "bold");
@@ -283,8 +311,7 @@ export const generateInvoice = async (order: any) => {
 
       // Right Footer (Signature Image)
       if (signature) {
-          // Format changed to JPEG
-          doc.addImage(signature, "JPEG", pageWidth - margin - 120, footerY - 60, 110, 55, "sign", "FAST");
+          doc.addImage(signature, "JPEG", pageWidth - margin - 120, footerY - 70, 110, 55, "sign", "FAST");
       } else {
           doc.setFont("times", "italic");
           doc.setFontSize(28);

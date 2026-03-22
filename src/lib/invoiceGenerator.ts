@@ -1,8 +1,10 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
-// ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -54,24 +56,17 @@ export const generateInvoice = async (order: any) => {
       const pageHeight = doc.internal.pageSize.height;
       const margin = 40;
 
-      // Exact Colors
       const oliveDark = "#4A5D23"; 
       const oliveTopBar = "#C3CD49"; 
       const greyBar = "#EAEAEA"; 
       const rowHighlight = "#EAF0CD"; 
       const textDark = "#333333";
 
-      // ------------------------------------------
-      // 1️⃣ LOAD IMAGES
-      // ------------------------------------------
       const [logo, signature] = await Promise.all([
           loadAndCompressImage("/LOGO.png"),
           loadAndCompressImage("/signature.png") 
       ]);
 
-      // ------------------------------------------
-      // 2️⃣ TOP BANNER
-      // ------------------------------------------
       doc.setFillColor(oliveTopBar);
       doc.rect(0, 0, pageWidth, 40, "F");
 
@@ -86,9 +81,6 @@ export const generateInvoice = async (order: any) => {
       doc.setFontSize(10);
       doc.text("ORIGINAL FOR RECIPIENT", margin + 125, 24);
 
-      // ------------------------------------------
-      // 3️⃣ LOGO & COMPANY INFO
-      // ------------------------------------------
       if (logo) {
           doc.addImage(logo, "JPEG", margin, 45, 80, 80, "logo", "FAST");
       }
@@ -104,16 +96,12 @@ export const generateInvoice = async (order: any) => {
       doc.setFontSize(12);
       doc.text("Mobile: 8240690254", textX, 105);
 
-      // ------------------------------------------
-      // 4️⃣ RECEIPT DETAILS BAR (Updated with Status)
-      // ------------------------------------------
       let y = 140;
       
       doc.setDrawColor(oliveDark);
       doc.setLineWidth(1.5);
       doc.line(margin, y, pageWidth - margin, y);
 
-      // ★ বক্সের হাইট ২২ থেকে ৪০ করা হলো ২ লাইনের জন্য
       doc.setFillColor(greyBar);
       doc.rect(margin, y + 2, pageWidth - margin * 2, 40, "F");
 
@@ -122,7 +110,6 @@ export const generateInvoice = async (order: any) => {
       doc.setTextColor(textDark);
       doc.setFontSize(10);
       
-      // Row 1
       doc.setFont("helvetica", "bold");
       doc.text("Receipt No", margin + 10, y + 17);
       doc.setFont("helvetica", "normal");
@@ -133,7 +120,6 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text(`: ${new Date(order.Timestamp).toLocaleDateString("en-GB")}`, pageWidth - margin - 110, y + 17);
 
-      // Row 2 (★ NEW: Status & Payment)
       doc.setFont("helvetica", "bold");
       doc.text("Order Status", margin + 10, y + 33);
       doc.setFont("helvetica", "normal");
@@ -145,10 +131,7 @@ export const generateInvoice = async (order: any) => {
       const paymentMode = order.OrderType?.toLowerCase() === 'online' || order.OrderType?.toLowerCase() === 'prepaid' ? 'Paid Online' : 'Cash on Delivery';
       doc.text(`: ${paymentMode}`, pageWidth - margin - 110, y + 33);
 
-      // ------------------------------------------
-      // 5️⃣ BILL TO SECTION
-      // ------------------------------------------
-      y += 65; // Y একটু নিচে নামানো হলো
+      y += 65;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(oliveDark);
@@ -170,9 +153,6 @@ export const generateInvoice = async (order: any) => {
 
       y += (addrLines.length * 15) + 10;
 
-      // ------------------------------------------
-      // 6️⃣ TABLE SECTION
-      // ------------------------------------------
       const tableData = order.Items.map((item: any, i: number) => [
         (i + 1).toString(),
         item.name,
@@ -192,37 +172,15 @@ export const generateInvoice = async (order: any) => {
         head: [["SL.", "Description", "Qty", "Price", "Amount"]],
         body: tableData,
         theme: "plain",
-        headStyles: {
-          fillColor: oliveDark,
-          textColor: "#ffffff",
-          fontSize: 11,
-          fontStyle: "bold",
-          halign: "center",
-        },
-        bodyStyles: {
-          fontSize: 10,
-          textColor: textDark,
-          cellPadding: 8,
-        },
-        alternateRowStyles: {
-          fillColor: rowHighlight,
-        },
-        columnStyles: {
-          0: { halign: "center", cellWidth: 40 },
-          1: { halign: "left", cellWidth: 220 },
-          2: { halign: "center", cellWidth: 60 },
-          3: { halign: "center", cellWidth: 90 },
-          4: { halign: "center", cellWidth: 100 },
-        },
+        headStyles: { fillColor: oliveDark, textColor: "#ffffff", fontSize: 11, fontStyle: "bold", halign: "center" },
+        bodyStyles: { fontSize: 10, textColor: textDark, cellPadding: 8 },
+        alternateRowStyles: { fillColor: rowHighlight },
+        columnStyles: { 0: { halign: "center", cellWidth: 40 }, 1: { halign: "left", cellWidth: 220 }, 2: { halign: "center", cellWidth: 60 }, 3: { halign: "center", cellWidth: 90 }, 4: { halign: "center", cellWidth: 100 } },
       });
 
-      // ------------------------------------------
-      // 7️⃣ BOTTOM SECTION (Summary & QR)
-      // ------------------------------------------
       const summaryY = pageHeight - 210; 
       const summaryX = pageWidth - margin - 220;
 
-      // Left Side: Terms
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(textDark);
@@ -234,18 +192,10 @@ export const generateInvoice = async (order: any) => {
       doc.text("1. Goods once sold will not be taken back or exchanged", margin, summaryY + 15);
       doc.text("2. All disputes are subject to jurisdiction only", margin, summaryY + 28);
 
-      // ★ NEW: Order Link QR Code
       try {
           const orderLink = `https://www.bumbaskitchen.app/account/orders?id=${order.OrderNumber}`;
-          const qrBase64 = await QRCode.toDataURL(orderLink, { 
-              type: 'image/jpeg', 
-              quality: 0.8,
-              margin: 1,
-              color: { dark: "#000000", light: "#ffffff" } 
-          });
-          
+          const qrBase64 = await QRCode.toDataURL(orderLink, { type: 'image/jpeg', quality: 0.8, margin: 1, color: { dark: "#000000", light: "#ffffff" } });
           doc.addImage(qrBase64, "JPEG", margin, summaryY + 45, 60, 60, "qr", "FAST");
-          
           doc.setFontSize(8);
           doc.setTextColor("#777777");
           doc.text("Scan to view order", margin, summaryY + 115);
@@ -253,7 +203,6 @@ export const generateInvoice = async (order: any) => {
           console.warn("QR generation failed", err);
       }
 
-      // Right Side: Summary
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(textDark);
@@ -272,7 +221,6 @@ export const generateInvoice = async (order: any) => {
       doc.text("Received Amount", summaryX, summaryY + 40);
       doc.text(formatRs(received), pageWidth - margin, summaryY + 40, { align: "right" });
 
-      // Grand Total Box
       doc.setFillColor(oliveDark);
       doc.rect(summaryX - 15, summaryY + 50, 250, 25, "F");
       
@@ -281,12 +229,8 @@ export const generateInvoice = async (order: any) => {
       doc.text("Grand Total", summaryX, summaryY + 67);
       doc.text(formatRs(finalPrice), pageWidth - margin, summaryY + 67, { align: "right" });
 
-      // ------------------------------------------
-      // 8️⃣ FOOTER (Thank You & Signature)
-      // ------------------------------------------
       const footerY = pageHeight - 50;
 
-      // Left Footer
       doc.setFont("times", "bolditalic");
       doc.setFontSize(18);
       doc.setTextColor("#000000");
@@ -297,7 +241,6 @@ export const generateInvoice = async (order: any) => {
       doc.setTextColor(textDark);
       doc.text("HEALTHY FOOD RESTAURANT", margin, footerY + 10);
 
-      // Facebook
       doc.setFillColor(oliveDark);
       doc.circle(margin + 8, footerY + 25, 8, "F");
       doc.setTextColor("#ffffff");
@@ -309,7 +252,6 @@ export const generateInvoice = async (order: any) => {
       doc.setFontSize(11);
       doc.text("Bumba's Kitchen", margin + 22, footerY + 29);
 
-      // Right Footer (Signature Image)
       if (signature) {
           doc.addImage(signature, "JPEG", pageWidth - margin - 120, footerY - 70, 110, 55, "sign", "FAST");
       } else {
@@ -327,7 +269,38 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      doc.save(`Invoice_${order.OrderNumber}.pdf`);
+      const fileName = `Invoice_${order.OrderNumber}.pdf`;
+
+      // ★★★ CAPACITOR NATIVE DOWNLOAD & OPEN LOGIC ★★★
+      if (Capacitor.isNativePlatform()) {
+          try {
+              // 1. Convert PDF to Base64
+              const pdfBase64 = doc.output('datauristring').split(',')[1];
+              
+              // 2. Save to device
+              const savedFile = await Filesystem.writeFile({
+                  path: fileName,
+                  data: pdfBase64,
+                  directory: Directory.Documents, // Saved in Documents folder
+                  recursive: true
+              });
+
+              // 3. Open Share/View Dialog
+              await Share.share({
+                  title: 'Invoice',
+                  text: `Invoice for Order #${order.OrderNumber}`,
+                  url: savedFile.uri,
+                  dialogTitle: 'Open Invoice'
+              });
+              
+          } catch (err) {
+              console.error('File saving/sharing error:', err);
+              throw new Error("Could not save or open PDF on device.");
+          }
+      } else {
+          // Web Fallback
+          doc.save(fileName);
+      }
       
   } catch (error) {
       console.error("PDF Generation Error:", error);

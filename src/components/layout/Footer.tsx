@@ -30,7 +30,7 @@ export function Footer() {
                 </p>
                 <Button asChild className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20 gap-2">
                     {/* ★★★ MAGIC LINK USED HERE ★★★ */}
-                    <a href="/download/android">
+                    <a href="http://bumbaskitchen.app/bumbas-kitchen.apk">
                         <Download className="h-4 w-4" />
                         Download for Android
                     </a>

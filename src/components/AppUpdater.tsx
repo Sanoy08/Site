@@ -134,63 +134,69 @@ export function AppUpdater() {
   };
 
   return (
-    <Dialog open={showUpdate} onOpenChange={() => {}}>
-      <DialogContent 
-        // ★ [&>button]:hidden যোগ করা হয়েছে যাতে ডিফল্ট ক্রস(X) বাটনটি হাইড হয়ে যায়
-        className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden" 
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
-        
-        <div className="relative w-full h-48 bg-muted">
-            <img 
-                src="https://res.cloudinary.com/dhhfisazd/image/upload/v1774462065/unnamed_wdwhvd.jpg" 
-                alt="App Update Required"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.classList.add('bg-gradient-to-r', 'from-orange-400', 'to-red-500');
-                }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                <Badge variant="destructive" className="bg-red-600 text-white font-bold tracking-widest border-0">
-                    UPDATE REQUIRED
-                </Badge>
-            </div>
-        </div>
+    <>
+      {/* ★ সুপার ওভারলে: চ্যাটবট এবং ব্যাকগ্রাউন্ডের সবকিছু হাইড করে দেবে ★ */}
+      {showUpdate && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99998]" />
+      )}
 
-        <div className="p-6">
-            <DialogHeader className="text-left space-y-1.5">
-                <DialogTitle className="flex items-center gap-2 text-2xl font-black text-gray-900">
-                    <Rocket className="h-6 w-6 text-primary" /> App Update
-                </DialogTitle>
-                {/* ★ লেখা অনেক কমিয়ে দেওয়া হয়েছে */}
-                <DialogDescription className="text-base text-gray-600">
-                    Please update to version <strong className="text-primary">{updateInfo.latestVersion}</strong> to continue using Bumba's Kitchen.
-                </DialogDescription>
-            </DialogHeader>
-            
-            <DialogFooter className="sm:justify-center pt-5">
-                <Button 
-                    onClick={handleDownloadAndInstall} 
-                    disabled={isDownloading}
-                    className="w-full gap-2 text-lg h-14 rounded-xl shadow-lg hover:scale-[1.02] transition-transform"
-                >
-                    {isDownloading ? (
-                        <>
-                            <Loader2 className="h-6 w-6 animate-spin" /> 
-                            {downloadProgress > 0 ? `Downloading ${downloadProgress}%` : 'Starting...'}
-                        </>
-                    ) : (
-                        <>
-                            <Download className="h-6 w-6" /> Update Now
-                        </>
-                    )}
-                </Button>
-            </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <Dialog open={showUpdate} onOpenChange={() => {}}>
+        <DialogContent 
+          // ★ !z-[99999] দেওয়া হয়েছে যাতে এটি সুপার ওভারলের ঠিক ওপরে থাকে
+          className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden !z-[99999]" 
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          
+          <div className="relative w-full h-48 bg-muted">
+              <img 
+                  src="https://res.cloudinary.com/dhhfisazd/image/upload/v1774462065/unnamed_wdwhvd.jpg" 
+                  alt="App Update Required"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.classList.add('bg-gradient-to-r', 'from-orange-400', 'to-red-500');
+                  }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                  <Badge variant="destructive" className="bg-red-600 text-white font-bold tracking-widest border-0">
+                      UPDATE REQUIRED
+                  </Badge>
+              </div>
+          </div>
+
+          <div className="p-6">
+              <DialogHeader className="text-left space-y-1.5">
+                  <DialogTitle className="flex items-center gap-2 text-2xl font-black text-gray-900">
+                      <Rocket className="h-6 w-6 text-primary" /> App Update
+                  </DialogTitle>
+                  <DialogDescription className="text-base text-gray-600">
+                      Please update to version <strong className="text-primary">{updateInfo.latestVersion}</strong> to continue using Bumba's Kitchen.
+                  </DialogDescription>
+              </DialogHeader>
+              
+              <DialogFooter className="sm:justify-center pt-5">
+                  <Button 
+                      onClick={handleDownloadAndInstall} 
+                      disabled={isDownloading}
+                      className="w-full gap-2 text-lg h-14 rounded-xl shadow-lg hover:scale-[1.02] transition-transform"
+                  >
+                      {isDownloading ? (
+                          <>
+                              <Loader2 className="h-6 w-6 animate-spin" /> 
+                              {downloadProgress > 0 ? `Downloading ${downloadProgress}%` : 'Starting...'}
+                          </>
+                      ) : (
+                          <>
+                              <Download className="h-6 w-6" /> Update Now
+                          </>
+                      )}
+                  </Button>
+              </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

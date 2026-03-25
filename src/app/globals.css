@@ -67,7 +67,7 @@
     --ring: 84 34% 45%;
   }
 
-  /* ★★★ STRICT SELECTION DISABLE ★★★ */
+  /* ★★★ STRICT SELECTION DISABLE & HIDE SCROLLBAR ★★★ */
   * {
     @apply border-border;
     -webkit-tap-highlight-color: transparent;
@@ -81,8 +81,20 @@
 
     /* লং প্রেস মেনু (iOS/Android) বন্ধ */
     -webkit-touch-callout: none !important;
+
+    /* ★ Firefox এবং Edge এর জন্য স্ক্রলবার হাইড */
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
   
+  /* ★ Chrome, Safari এবং Capacitor WebView এর জন্য স্ক্রলবার হাইড */
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
   /* ইনপুট ফিল্ডে ফোকাস এবং টাইপ করার স্টাইল */
   input, textarea {
     /* সিলেকশন বন্ধ থাকলেও কার্সার যেন দেখা যায় এবং টাইপ করা যায় */

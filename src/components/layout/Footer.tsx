@@ -1,11 +1,29 @@
 // src/components/layout/Footer.tsx
 
+'use client'; // ★ ১. ফাইলটিকে ক্লায়েন্ট কম্পোনেন্ট করা হলো
+
+import { useEffect, useState } from "react";
 import { Logo } from "@/components/layout/Logo";
 import { Facebook, Instagram, Twitter, Download, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Capacitor } from '@capacitor/core'; // ★ ২. ক্যাপাসিটর ইমপোর্ট করা হলো
 
 export function Footer() {
+  const [isNativeApp, setIsNativeApp] = useState(false);
+
+  useEffect(() => {
+    // ★ ৩. চেক করা হচ্ছে ইউজার অ্যাপে আছে কিনা
+    if (Capacitor.isNativePlatform()) {
+      setIsNativeApp(true);
+    }
+  }, []);
+
+  // ★ ৪. যদি নেটিভ অ্যাপ হয়, তবে ফুটার রিটার্ন করবে না (Hide হয়ে যাবে)
+  if (isNativeApp) {
+    return null;
+  }
+
   return (
     <footer className="bg-card border-t">
       <div className="container py-12">
@@ -20,7 +38,7 @@ export function Footer() {
                 </p>
             </div>
 
-            {/* ★★★ App Download Section Updated ★★★ */}
+            {/* App Download Section */}
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2">
                     <Smartphone className="h-4 w-4 text-primary" /> Get our Mobile App
@@ -29,7 +47,6 @@ export function Footer() {
                     Download the official app for the best experience.
                 </p>
                 <Button asChild className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20 gap-2">
-                    {/* ★★★ MAGIC LINK USED HERE ★★★ */}
                     <a href="http://bumbaskitchen.app/bumbas-kitchen.apk">
                         <Download className="h-4 w-4" />
                         Download for Android

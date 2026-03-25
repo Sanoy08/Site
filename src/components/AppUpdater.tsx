@@ -137,7 +137,7 @@ export function AppUpdater() {
     <>
       {/* ★ সুপার ওভারলে: চ্যাটবট এবং ব্যাকগ্রাউন্ডের সবকিছু হাইড করে দেবে ★ */}
       {showUpdate && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99998]" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-[99998]" />
       )}
 
       <Dialog open={showUpdate} onOpenChange={() => {}}>

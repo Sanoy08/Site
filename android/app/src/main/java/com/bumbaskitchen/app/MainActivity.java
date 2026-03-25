@@ -2,6 +2,7 @@ package com.bumbaskitchen.app;
 
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.WebView; // ★ এটি ইমপোর্ট করা হলো
 import androidx.activity.EdgeToEdge;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -17,7 +18,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // 1. Enable Edge-to-Edge (Required for Android 15+)
-        // This makes system bars transparent and allows us to control the background
         EdgeToEdge.enable(this);
 
         // 2. Register Plugins
@@ -27,8 +27,14 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
-        // 3. Apply Global Top Padding (Safe Area)
-        // This listener finds the exact height of the Status Bar and pushes the WebView down
+        // ★ 3. Android Native WebView থেকে স্ক্রলবার চিরতরে বন্ধ করার কোড ★
+        WebView webView = this.bridge.getWebView();
+        if (webView != null) {
+            webView.setVerticalScrollBarEnabled(false);
+            webView.setHorizontalScrollBarEnabled(false);
+        }
+
+        // 4. Apply Global Top Padding (Safe Area)
         View rootView = findViewById(android.R.id.content);
         ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());

@@ -3,8 +3,8 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-// ★ নতুন প্লাগিন ইমপোর্ট করা হলো
-import { FileOpener } from '@capacitor-community/file-opener';
+// ★ FileOpener বাদ দিয়ে Share ইমপোর্ট করা হলো
+import { Share } from '@capacitor/share';
 
 // ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
@@ -297,32 +297,33 @@ export const generateInvoice = async (order: any) => {
 
       const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ CAPACITOR NATIVE DOWNLOAD & OPEN LOGIC ★★★
+      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
           try {
               // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
               
-              // 2. Save to device
+              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
               const savedFile = await Filesystem.writeFile({
                   path: fileName,
                   data: pdfBase64,
-                  directory: Directory.Documents, // Saved in Documents folder
-                  recursive: true
+                  directory: Directory.Cache 
               });
 
-              // 3. ★ OPEN DIRECTLY IN PDF VIEWER
-              await FileOpener.open({
-                  filePath: savedFile.uri,
-                  contentType: 'application/pdf',
+              // 3. ★ SHARE DIALOG OPEN করা
+              await Share.share({
+                  title: 'Invoice',
+                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
+                  url: savedFile.uri, // Saved file uri
+                  dialogTitle: 'Share Invoice'
               });
               
           } catch (err) {
-              console.error('File saving/opening error:', err);
-              throw new Error("Could not save or open PDF on device.");
+              console.error('File saving/sharing error:', err);
+              throw new Error("Could not share PDF on device.");
           }
       } else {
-          // Web Fallback
+          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
           doc.save(fileName);
       }
       

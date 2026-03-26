@@ -63,10 +63,11 @@ export function AppUpdater() {
     if (!updateInfo.apkUrl) return;
 
     setIsDownloading(true);
-    setDownloadProgress(10); 
+    setDownloadProgress(0); 
     toast.info("Starting download...");
 
     try {
+        // ★★★ Real-time Download Logic using Fetch Stream ★★★
         const response = await fetch(updateInfo.apkUrl, {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
@@ -74,21 +75,45 @@ export function AppUpdater() {
 
         if (!response.ok) throw new Error("Network response was not ok");
 
-        setDownloadProgress(50); 
-        const blob = await response.blob();
+        // মোট ফাইলের সাইজ নেওয়া
+        const contentLength = response.headers.get('content-length');
+        const total = contentLength ? parseInt(contentLength, 10) : 0;
+        let loaded = 0;
+
+        const reader = response.body?.getReader();
+        const chunks = [];
+
+        if (reader) {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                chunks.push(value);
+                loaded += value.byteLength;
+
+                if (total) {
+                    // পার্সেন্টেজ ক্যালকুলেট করা (max 95% পর্যন্ত, বাকিটা সেভ হওয়ার সময়)
+                    const percent = Math.round((loaded / total) * 100);
+                    setDownloadProgress(Math.min(percent, 95));
+                }
+            }
+        }
+
+        const blob = new Blob(chunks);
+        setDownloadProgress(96); // File is converting
 
         const base64Data = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64 = reader.result as string;
+            const fileReader = new FileReader();
+            fileReader.onloadend = () => {
+                const base64 = fileReader.result as string;
                 const base64Raw = base64.split(',')[1]; 
                 resolve(base64Raw);
             };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
+            fileReader.onerror = reject;
+            fileReader.readAsDataURL(blob);
         });
 
-        setDownloadProgress(80); 
+        setDownloadProgress(98); // File is saving to device
 
         const fileName = 'update.apk';
 
@@ -105,7 +130,7 @@ export function AppUpdater() {
             directory: Directory.Cache,
         });
 
-        setDownloadProgress(100); 
+        setDownloadProgress(100); // Download & Save Complete!
 
         const uriResult = await Filesystem.getUri({
             path: fileName,
@@ -135,14 +160,12 @@ export function AppUpdater() {
 
   return (
     <>
-      {/* ★ সুপার ওভারলে: চ্যাটবট এবং ব্যাকগ্রাউন্ডের সবকিছু হাইড করে দেবে ★ */}
       {showUpdate && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-[99998]" />
       )}
 
       <Dialog open={showUpdate} onOpenChange={() => {}}>
         <DialogContent 
-          // ★ !z-[99999] দেওয়া হয়েছে যাতে এটি সুপার ওভারলের ঠিক ওপরে থাকে
           className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden !z-[99999]" 
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
@@ -175,7 +198,24 @@ export function AppUpdater() {
                   </DialogDescription>
               </DialogHeader>
               
-              <DialogFooter className="sm:justify-center pt-5">
+              <DialogFooter className="sm:justify-center pt-5 flex flex-col gap-3 w-full">
+                  
+                  {/* ★★★ Real-time Progress Bar UI ★★★ */}
+                  {isDownloading && (
+                      <div className="w-full space-y-2 mb-2 animate-in fade-in">
+                          <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wide">
+                              <span>Downloading...</span>
+                              <span>{downloadProgress}%</span>
+                          </div>
+                          <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden border">
+                              <div 
+                                  className="h-full bg-primary transition-all duration-300 ease-out" 
+                                  style={{ width: `${downloadProgress}%` }} 
+                              />
+                          </div>
+                      </div>
+                  )}
+
                   <Button 
                       onClick={handleDownloadAndInstall} 
                       disabled={isDownloading}
@@ -184,7 +224,7 @@ export function AppUpdater() {
                       {isDownloading ? (
                           <>
                               <Loader2 className="h-6 w-6 animate-spin" /> 
-                              {downloadProgress > 0 ? `Downloading ${downloadProgress}%` : 'Starting...'}
+                              {downloadProgress === 100 ? 'Installing...' : 'Please Wait...'}
                           </>
                       ) : (
                           <>

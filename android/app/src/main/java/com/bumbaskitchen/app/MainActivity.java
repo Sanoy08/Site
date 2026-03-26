@@ -2,9 +2,7 @@ package com.bumbaskitchen.app;
 
 import android.os.Bundle;
 import android.view.View;
-import android.webkit.WebView; 
-import android.graphics.Color; // ★ কালার ইমপোর্ট করা হলো
-import android.graphics.drawable.ColorDrawable; // ★ ব্যাকগ্রাউন্ড ড্রয়েবল ইমপোর্ট করা হলো
+import android.webkit.WebView; // ★ এটি ইমপোর্ট করা হলো
 import androidx.activity.EdgeToEdge;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -29,20 +27,14 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
-        // ★ 3. ব্যাকগ্রাউন্ড লোগো ফিক্স: পেছনের ব্যাকগ্রাউন্ড সাদা করে দেওয়া হলো ★
-        getWindow().setBackgroundDrawable(new ColorDrawable(Color.WHITE));
-
-        // 4. Android Native WebView থেকে স্ক্রলবার চিরতরে বন্ধ করার কোড
+        // ★ 3. Android Native WebView থেকে স্ক্রলবার চিরতরে বন্ধ করার কোড ★
         WebView webView = this.bridge.getWebView();
         if (webView != null) {
             webView.setVerticalScrollBarEnabled(false);
             webView.setHorizontalScrollBarEnabled(false);
-            
-            // ★ WebView এর নিজস্ব ব্যাকগ্রাউন্ডও সাদা করে দেওয়া হলো ★
-            webView.setBackgroundColor(Color.WHITE);
         }
 
-        // 5. Apply Global Top Padding (Safe Area)
+        // 4. Apply Global Top Padding (Safe Area)
         View rootView = findViewById(android.R.id.content);
         ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());

@@ -1,3 +1,5 @@
+// src/lib/invoiceGenerator.ts
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";

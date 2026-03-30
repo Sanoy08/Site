@@ -1,14 +1,11 @@
-// src/app/(shop)/menus/[slug]/ProductDetailsClient.tsx
-
 'use client';
 
-// ... (imports same as before)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban } from 'lucide-react';
+import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban, Heart } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import type { Product, Image as ProductImage } from '@/lib/types';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -31,14 +28,8 @@ const fallbackImage: ProductImage = {
   alt: 'Placeholder Image' 
 };
 
-// ... (CustomShareIcon component same as before)
 const CustomShareIcon = ({ className }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="0 0 640 640" 
-    className={className}
-    fill="currentColor"
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" className={className} fill="currentColor">
     <path d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L169.3 201.4C156.8 213.9 156.8 234.2 169.3 246.7C181.8 259.2 202.1 259.2 214.6 246.7L288 173.3L288 384C288 401.7 302.3 416 320 416C337.7 416 352 401.7 352 384L352 173.3L425.4 246.7C437.9 259.2 458.2 259.2 470.7 246.7C483.2 234.2 483.2 213.9 470.7 201.4L342.7 73.4zM160 416C160 398.3 145.7 384 128 384C110.3 384 96 398.3 96 416L96 480C96 533 139 576 192 576L448 576C501 576 544 533 544 480L544 416C544 398.3 529.7 384 512 384C494.3 384 480 398.3 480 416L480 480C480 497.7 465.7 512 448 512L192 512C174.3 512 160 497.7 160 480L160 416z"/>
   </svg>
 );
@@ -59,6 +50,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   const [activeSlide, setActiveSlide] = useState(0);
 
+  // ★★★ NEW: States & Refs for Sticky Bar & Favorites
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  const inlineCartRef = useRef<HTMLDivElement>(null);
+
+  // 1. Carousel Logic
   useEffect(() => {
     if (!api) return;
     setCount(api.scrollSnapList().length);
@@ -73,16 +70,48 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     if (api) api.scrollTo(activeSlide);
   }, [activeSlide, api]);
 
+  // 2. Favorites Logic (Local Storage)
+  useEffect(() => {
+    const savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
+    setIsFavorite(savedFavs.some((fav: any) => fav.id === product.id));
+  }, [product.id]);
+
+  const toggleFavorite = () => {
+    let savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
+    if (isFavorite) {
+        savedFavs = savedFavs.filter((fav: any) => fav.id !== product.id);
+        toast.info("Removed from favorites");
+    } else {
+        savedFavs.push({ id: product.id, name: product.name, image: displayImages[0].url, price: product.price });
+        toast.success("Added to favorites! ❤️", { duration: 2000 });
+    }
+    localStorage.setItem('bumbas_favorites', JSON.stringify(savedFavs));
+    setIsFavorite(!isFavorite);
+  };
+
+  // 3. Intersection Observer (Show/Hide Mobile Sticky Bar)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+        ([entry]) => {
+            // যদি ইনলাইন বাটনটি স্ক্রিনে দেখা না যায়, তবে বটম স্টিকি বারটি দেখাবে
+            setShowStickyBar(!entry.isIntersecting);
+        },
+        { rootMargin: "-80px 0px 0px 0px", threshold: 0 } 
+    );
+
+    if (inlineCartRef.current) {
+        observer.observe(inlineCartRef.current);
+    }
+
+    return () => {
+        if (inlineCartRef.current) observer.unobserve(inlineCartRef.current);
+    };
+  }, []);
+
   const handleAddToCart = () => {
     if (isOutOfStock) return;
-    
-    // ★★★ Fix: Pass 'false' to suppress the default provider toast
     addItem(product, quantity, false);
-    
-    // ★★★ Custom Toast with 2s duration
-    toast.success(`Added ${quantity} ${product.name} to cart`, {
-        duration: 2000,
-    });
+    toast.success(`Added ${quantity} ${product.name} to cart`, { duration: 2000 });
   };
 
   const handleShare = async () => {
@@ -92,7 +121,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       url: window.location.href,
       dialogTitle: 'Share this dish',
     };
-
     try {
       const canShare = await Share.canShare();
       if (canShare.value) {
@@ -104,15 +132,13 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         toast.success("Link copied to clipboard!");
       }
     } catch (err) {
-      console.log('Share failed:', err);
       navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
     }
   };
 
   return (
-    // ... (rest of the component JSX same as before)
-    <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden">
+    <div className="bg-white min-h-screen pb-6 w-full max-w-[100vw] overflow-x-hidden">
       
       {/* --- MOBILE TOP IMAGE SLIDER --- */}
       <div className="md:hidden w-full relative group">
@@ -143,13 +169,19 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* Share Button (Mobile) */}
-         <div className="absolute top-4 right-4 flex justify-end z-20">
+         {/* ★ NEW: Action Buttons (Share & Favorite) on Mobile */}
+         <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
              <button 
                 onClick={handleShare} 
-                className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors"
+                className="bg-white/90 p-2.5 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors"
              >
                  <CustomShareIcon className="h-5 w-5" />
+             </button>
+             <button 
+                onClick={toggleFavorite} 
+                className="bg-white/90 p-2.5 rounded-full shadow-sm hover:bg-white transition-colors"
+             >
+                 <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
              </button>
          </div>
 
@@ -193,13 +225,19 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                  )}
 
-                 {/* Share Button (Desktop) */}
-                 <div className="absolute top-4 right-4">
+                 {/* ★ NEW: Action Buttons (Share & Favorite) on Desktop */}
+                 <div className="absolute top-4 right-4 flex flex-col gap-3">
                      <button 
                         onClick={handleShare} 
                         className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors"
                      >
                          <CustomShareIcon className="h-5 w-5" />
+                     </button>
+                     <button 
+                        onClick={toggleFavorite} 
+                        className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 transition-colors"
+                     >
+                         <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
                      </button>
                  </div>
              </div>
@@ -272,40 +310,43 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 </p>
             </div>
 
-            <div className="hidden md:block mt-8">
+            {/* ★★★ INLINE ADD TO CART SECTION (Observed by IntersectionObserver) ★★★ */}
+            <div ref={inlineCartRef} className="mt-6 md:mt-8">
                 {!isOutOfStock ? (
-                    <div className="flex gap-4">
-                        <div className="flex items-center border rounded-xl h-12 w-32 bg-gray-50">
-                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus /></Button>
-                            <span className="flex-1 text-center font-bold text-lg">{quantity}</span>
-                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <div className="flex items-center justify-between border rounded-xl h-14 bg-gray-50/80 px-2 sm:w-36">
+                            <Button variant="ghost" className="h-full px-3 hover:bg-gray-200/50" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus className="h-4 w-4" /></Button>
+                            <span className="flex-1 text-center font-bold text-lg select-none">{quantity}</span>
+                            <Button variant="ghost" className="h-full px-3 hover:bg-gray-200/50" onClick={() => setQuantity(q => q + 1)}><Plus className="h-4 w-4" /></Button>
                         </div>
-                        <Button className="flex-1 h-12 rounded-xl text-lg font-bold" onClick={handleAddToCart}>
-                            <ShoppingCart className="mr-2" /> Add to Cart — {formatPrice(product.price * quantity)}
+                        <Button className="flex-1 h-14 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all" onClick={handleAddToCart}>
+                            <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart — {formatPrice(product.price * quantity)}
                         </Button>
                     </div>
                 ) : (
-                    <div className="w-full p-4 bg-gray-100 text-gray-500 rounded-xl text-center font-medium border border-gray-200">
-                        Currently Unavailable
+                    <div className="w-full p-4 bg-gray-100 text-gray-500 rounded-xl text-center font-medium border border-gray-200 flex items-center justify-center gap-2">
+                        <Ban className="h-5 w-5" /> Currently Unavailable
                     </div>
                 )}
             </div>
 
-            <div className="mt-8">
-                <h3 className="font-bold text-lg mb-2 text-gray-900">Description</h3>
+            {/* ★★★ BETTER DESCRIPTION SECTION ★★★ */}
+            <div className="mt-8 bg-gray-50/50 p-5 md:p-6 rounded-2xl border border-gray-100">
+                <h3 className="font-bold text-lg mb-3 text-gray-900">About this dish</h3>
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
-                    {product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients."}
+                    {product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients. Perfect for a hearty meal, bringing you the traditional flavors straight to your plate."}
                 </p>
             </div>
+
           </div>
         </div>
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
-            <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
+            <div className="mt-12 lg:mt-24 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
-                    <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
-                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900">Complete Your Meal</h2>
+                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1 text-sm md:text-base">
                         See all <ChevronRight className="h-4 w-4" />
                     </Link>
                 </div>
@@ -318,23 +359,28 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         )}
       </div>
 
-      {/* MOBILE ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40">
+      {/* ★★★ STICKY MOBILE ACTION BAR (Only shows when inline cart is out of view) ★★★ */}
+      <div 
+        className={cn(
+            "fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] transition-transform duration-300 ease-in-out pb-safe",
+            showStickyBar ? "translate-y-0" : "translate-y-full"
+        )}
+      >
         {!isOutOfStock ? (
             <div className="flex gap-3 items-center">
-                 <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg h-12 px-1">
-                    <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus /></Button>
+                 <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl h-12 px-1">
+                    <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus className="h-4 w-4" /></Button>
                     <span className="w-8 text-center font-bold text-lg">{quantity}</span>
-                    <Button variant="ghost" size="icon" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setQuantity(q => q + 1)}><Plus className="h-4 w-4" /></Button>
                 </div>
-                <Button className="flex-1 h-12 rounded-lg font-bold flex justify-between px-6" onClick={handleAddToCart}>
+                <Button className="flex-1 h-12 rounded-xl font-bold flex items-center justify-between px-5 shadow-lg shadow-primary/20" onClick={handleAddToCart}>
                     <span>Add Item</span>
-                    <span>{formatPrice(product.price * quantity)}</span>
+                    <span className="text-lg">{formatPrice(product.price * quantity)}</span>
                 </Button>
             </div>
         ) : (
-             <Button disabled className="w-full h-12 rounded-lg font-bold bg-muted text-muted-foreground">
-                <Ban className="h-4 w-4 mr-2" /> Item Sold Out
+             <Button disabled className="w-full h-12 rounded-xl font-bold bg-muted text-muted-foreground flex items-center justify-center gap-2">
+                <Ban className="h-4 w-4" /> Sold Out
             </Button>
         )}
       </div>

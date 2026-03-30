@@ -54,14 +54,15 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const isNonVeg = ['Chicken', 'Mutton', 'Egg', 'Fish'].includes(product.category?.name || '');
 
   const [activeSlide, setActiveSlide] = useState(0);
-
-  // ★ Favorite State & Logic
   const [isFavorite, setIsFavorite] = useState(false);
 
-  // ★ Intersection Observer State & Ref
-  const [showBottomBar, setShowBottomBar] = useState(false);
+  // ★ States for Layout Logic
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isInlineVisible, setIsInlineVisible] = useState(true);
+  const [randomItems, setRandomItems] = useState<Product[]>([]);
   const inlineCartRef = useRef<HTMLDivElement>(null);
 
+  // Carousel Logic
   useEffect(() => {
     if (!api) return;
     setCount(api.scrollSnapList().length);
@@ -76,13 +77,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     if (api) api.scrollTo(activeSlide);
   }, [activeSlide, api]);
 
-  // ★ Check Local Storage for Favorites on load
+  // Favorites Logic
   useEffect(() => {
     const savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
     setIsFavorite(savedFavs.some((fav: any) => fav.id === product.id));
   }, [product.id]);
 
-  // ★ Toggle Favorite
   const toggleFavorite = () => {
     let savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
     if (isFavorite) {
@@ -96,33 +96,43 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     setIsFavorite(!isFavorite);
   };
 
-  // ★ Intersection Observer for Bottom Bar
+  // ★ 1. Scroll Listener (পেজের ওপরে থাকলে বার হাইড করবে)
+  useEffect(() => {
+    const handleScroll = () => {
+        setIsScrolled(window.scrollY > 150);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // ★ 2. Intersection Observer (ইনলাইন কার্ট ভিজিবিলিটি চেক করবে)
   useEffect(() => {
     const observer = new IntersectionObserver(
         ([entry]) => {
-            // যদি ইনলাইন Add to Cart সেকশনটি ভিউপোর্টের বাইরে যায়, তবে showBottomBar true হবে
-            setShowBottomBar(!entry.isIntersecting);
+            setIsInlineVisible(entry.isIntersecting);
         },
         { threshold: 0 } 
     );
-
-    if (inlineCartRef.current) {
-        observer.observe(inlineCartRef.current);
-    }
-
+    if (inlineCartRef.current) observer.observe(inlineCartRef.current);
     return () => {
         if (inlineCartRef.current) observer.unobserve(inlineCartRef.current);
     };
   }, []);
 
+  // ★ 3. Random Items Generator
+  useEffect(() => {
+      // Complete your meal এর জন্য র্যান্ডমলি আইটেম শাফল করা হলো
+      const shuffled = [...relatedProducts].sort(() => 0.5 - Math.random());
+      setRandomItems(shuffled.slice(0, 5));
+  }, [relatedProducts]);
+
+  // পেজ স্ক্রল করা হয়েছে এবং ইনলাইন কার্ট দেখা যাচ্ছে না, তবেই বটম বার দেখাবে!
+  const showBottomBar = isScrolled && !isInlineVisible;
+
   const handleAddToCart = () => {
     if (isOutOfStock) return;
-    
     addItem(product, quantity, false);
-    
-    toast.success(`Added ${quantity} ${product.name} to cart`, {
-        duration: 2000,
-    });
+    toast.success(`Added ${quantity} ${product.name} to cart`, { duration: 2000 });
   };
 
   const handleShare = async () => {
@@ -132,7 +142,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       url: window.location.href,
       dialogTitle: 'Share this dish',
     };
-
     try {
       const canShare = await Share.canShare();
       if (canShare.value) {
@@ -144,7 +153,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         toast.success("Link copied to clipboard!");
       }
     } catch (err) {
-      console.log('Share failed:', err);
       navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
     }
@@ -182,33 +190,23 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* ★ Share & Favorite Buttons (Mobile) */}
+         {/* Share & Favorite Buttons (Mobile) */}
          <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
-             <button 
-                onClick={handleShare} 
-                className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors"
-             >
+             <button onClick={handleShare} className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors">
                  <CustomShareIcon className="h-5 w-5" />
              </button>
-             <button 
-                onClick={toggleFavorite} 
-                className="bg-white/90 p-2 rounded-full shadow-sm hover:bg-white transition-colors"
-             >
+             <button onClick={toggleFavorite} className="bg-white/90 p-2 rounded-full shadow-sm hover:bg-white transition-colors">
                  <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
              </button>
          </div>
 
-         {/* Dots */}
          {displayImages.length > 1 && (
              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
                  {displayImages.map((_, idx) => (
                      <button
                         key={idx}
                         onClick={() => api?.scrollTo(idx)}
-                        className={cn(
-                            "h-1.5 rounded-full transition-all shadow-sm pointer-events-auto",
-                            current === idx + 1 ? "w-4 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80"
-                        )}
+                        className={cn("h-1.5 rounded-full transition-all shadow-sm pointer-events-auto", current === idx + 1 ? "w-4 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80")}
                      />
                  ))}
              </div>
@@ -238,18 +236,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                  )}
 
-                 {/* ★ Share & Favorite Buttons (Desktop) */}
+                 {/* Share & Favorite Buttons (Desktop) */}
                  <div className="absolute top-4 right-4 flex flex-col gap-2">
-                     <button 
-                        onClick={handleShare} 
-                        className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors"
-                     >
+                     <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors">
                          <CustomShareIcon className="h-5 w-5" />
                      </button>
-                     <button 
-                        onClick={toggleFavorite} 
-                        className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 transition-colors"
-                     >
+                     <button onClick={toggleFavorite} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 transition-colors">
                          <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
                      </button>
                  </div>
@@ -262,18 +254,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                          <button 
                            key={idx}
                            onClick={() => setActiveSlide(idx)}
-                           className={cn(
-                               "relative w-full aspect-square overflow-hidden transition-all",
-                               activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
-                           )}
+                           className={cn("relative w-full aspect-square overflow-hidden transition-all", activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100")}
                          >
-                           <Image 
-                             src={optimizeImageUrl(img.url)} 
-                             alt="thumb" 
-                             fill 
-                             sizes="20vw"
-                             className="object-cover"
-                           />
+                           <Image src={optimizeImageUrl(img.url)} alt="thumb" fill sizes="20vw" className="object-cover" />
                          </button>
                      ))}
                  </div>
@@ -284,10 +267,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           <div className="flex flex-col h-full md:pt-2">
             <div className="space-y-3 md:space-y-4">
                 <div className="flex items-center justify-between">
-                     <div className={cn(
-                        "px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-md flex items-center gap-1.5",
-                        isNonVeg ? "border-red-200 text-red-700 bg-red-50" : "border-green-200 text-green-700 bg-green-50"
-                    )}>
+                     <div className={cn("px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-md flex items-center gap-1.5", isNonVeg ? "border-red-200 text-red-700 bg-red-50" : "border-green-200 text-green-700 bg-green-50")}>
                         <div className={cn("w-2 h-2 rounded-full", isNonVeg ? "bg-red-600" : "bg-green-600")}></div>
                         {isNonVeg ? 'Non-Veg' : 'Veg'}
                     </div>
@@ -323,7 +303,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 </p>
             </div>
 
-            {/* ★ INLINE ADD TO CART (Mobile & Desktop) */}
+            {/* INLINE ADD TO CART */}
             <div ref={inlineCartRef} className="mt-8">
                 {!isOutOfStock ? (
                     <div className="flex flex-col sm:flex-row gap-4">
@@ -343,7 +323,20 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ ORIGINAL DESCRIPTION (Unchanged) */}
+            {/* ★ NEW: YOU MAY ALSO LIKE SECTION (Same Category) */}
+            {relatedProducts.length > 0 && (
+                <div className="mt-10 pt-4">
+                    <h3 className="font-bold text-lg mb-4 text-gray-900">You may also like</h3>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        {/* প্রথম ৪টি আইটেম দেখানো হচ্ছে */}
+                        {relatedProducts.slice(0, 4).map((p) => (
+                            <ProductCard key={p.id} product={p} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ORIGINAL DESCRIPTION SECTION (No extra margins/design) */}
             <div className="mt-8">
                 <h3 className="font-bold text-lg mb-2 text-gray-900">Description</h3>
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
@@ -353,8 +346,8 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           </div>
         </div>
 
-        {/* Related Products */}
-        {relatedProducts.length > 0 && (
+        {/* ★ COMPLETE YOUR MEAL (Random Items) */}
+        {randomItems.length > 0 && (
             <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
                     <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
@@ -363,7 +356,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </Link>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
-                    {relatedProducts.map((p) => (
+                    {randomItems.map((p) => (
                         <ProductCard key={p.id} product={p} />
                     ))}
                 </div>
@@ -371,7 +364,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         )}
       </div>
 
-      {/* ★ MOBILE ACTION BAR (Only shows when scrolled past inline cart) */}
+      {/* MOBILE ACTION BAR (Only shows when scrolled past inline cart) */}
       <div 
         className={cn(
             "fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40 transition-transform duration-300",

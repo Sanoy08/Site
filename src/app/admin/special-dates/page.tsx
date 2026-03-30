@@ -55,6 +55,9 @@ export default function SpecialDatesPage() {
   const [type, setType] = useState<'birthday' | 'anniversary' | 'other'>("birthday");
   const [manualImageUrl, setManualImageUrl] = useState("");
 
+  // ★ কুপন কোড স্টেটে রাখা হচ্ছে যাতে ক্যানভাস এবং ডাটাবেস সেভ-এ একই কোড থাকে
+  const [currentCouponCode, setCurrentCouponCode] = useState("");
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const fetchData = async () => {
@@ -76,13 +79,29 @@ export default function SpecialDatesPage() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // ★★★ NEW: Random Coupon Code Generator ★★★
+  const generateRandomCoupon = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let randomPart = '';
+      // ৬ অক্ষরের র্যান্ডম কোড জেনারেট করা
+      for (let i = 0; i < 6; i++) {
+          randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return `${randomPart}`; // ফরম্যাট: X7K9P2
+  };
+
   useEffect(() => {
     if (isDialogOpen && (type === 'birthday' || type === 'anniversary') && title && date) {
+        // মডাল খুললেই প্রথমে একবার একটি নতুন কোড জেনারেট করে নেওয়া হচ্ছে
+        if (!currentCouponCode) {
+            setCurrentCouponCode(generateRandomCoupon());
+        }
+        
         setTimeout(() => {
             if (canvasRef.current) drawOnCanvas(canvasRef.current);
         }, 500);
     }
-  }, [isDialogOpen, title, date, type]);
+  }, [isDialogOpen, title, date, type, currentCouponCode]);
 
   const handlePreCheck = (cust: CustomerEvent) => {
       const alreadyExists = events.some(e => 
@@ -100,6 +119,9 @@ export default function SpecialDatesPage() {
   };
 
   const handleOpenDialog = (prefill?: CustomerEvent) => {
+      // নতুন ইভেন্ট খোলার সময় কোড রিসেট করা হচ্ছে যাতে নতুন কোড তৈরি হয়
+      setCurrentCouponCode(""); 
+
       if (prefill) {
           setTitle(prefill.name);
           const dateObj = new Date(prefill.nextDate);
@@ -114,17 +136,6 @@ export default function SpecialDatesPage() {
       setIsDialogOpen(true);
       setIsWarningOpen(false); 
       setPendingCustomer(null);
-  };
-
-  const generateCouponCode = (name: string, dateStr: string, eventType: string) => {
-      const nameParts = name.trim().split(" ");
-      const firstInitial = nameParts[0] ? nameParts[0][0].toUpperCase() : "";
-      const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1][0].toUpperCase() : "";
-      
-      const day = new Date(dateStr).getDate();
-      const codeSuffix = eventType === 'anniversary' ? 'ANNI' : 'BDAY';
-      
-      return `${firstInitial}${lastInitial}${codeSuffix}${day}`;
   };
 
   const drawOnCanvas = async (canvas: HTMLCanvasElement) => {
@@ -173,12 +184,11 @@ export default function SpecialDatesPage() {
         ctx.fillText(line1, centerX, 1470-40);
         ctx.fillText(line2, centerX, 1560-40);
 
-        const couponCode = generateCouponCode(title, date, type);
-        
+        // ★ এখানে স্টেট থেকে সেভ করা র্যান্ডম কোডটি ব্যবহার করা হচ্ছে
         ctx.fillStyle = "#f2ce00"; 
         ctx.font = "700 85px Poppins, sans-serif"; 
         
-        ctx.fillText(`Use code: ${couponCode}`, centerX, 1736-15);
+        ctx.fillText(`Use code: ${currentCouponCode}`, centerX, 1736-15);
 
     } catch (e) {
         console.error("Canvas drawing error:", e);
@@ -212,7 +222,9 @@ export default function SpecialDatesPage() {
         let finalImageUrl = manualImageUrl; 
 
         if (type === 'birthday' || type === 'anniversary') {
-            const couponCode = generateCouponCode(title, date, type);
+            
+            // ★ স্টেট থেকে র্যান্ডম কোডটি নেওয়া হচ্ছে
+            const couponCodeToSave = currentCouponCode;
             
             const startDateObj = new Date(date);
             startDateObj.setDate(startDateObj.getDate() - 1);
@@ -229,7 +241,7 @@ export default function SpecialDatesPage() {
                         'Content-Type': 'application/json', 
                     },
                     body: JSON.stringify({
-                        code: couponCode,
+                        code: couponCodeToSave, // ★ র্যান্ডম কোডটি ডাটাবেসে সেভ হবে
                         description: `${type === 'birthday' ? 'Birthday' : 'Anniversary'} Special for ${title}`,
                         discountType: 'percentage',
                         value: 5,
@@ -238,7 +250,7 @@ export default function SpecialDatesPage() {
                         startDate: startDate,
                         expiryDate: expiryDate, 
                         isActive: true,
-                        isOneTime: true // ★★★ ADDED isOneTime: true ★★★
+                        isOneTime: true 
                     })
                 });
 
@@ -368,7 +380,6 @@ export default function SpecialDatesPage() {
                                     <div key={event.id} className={`flex items-center gap-4 p-4 rounded-xl border bg-card hover:shadow-sm transition-all ${past ? 'opacity-60' : ''}`}>
                                         <div className="h-20 w-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted relative border">
                                             {event.imageUrl ? (
-                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
                                                 <Image 
                                                     src={optimizeImageUrl(event.imageUrl)} 
                                                     alt={event.title} 

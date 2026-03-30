@@ -55,7 +55,6 @@ export default function SpecialDatesPage() {
   const [type, setType] = useState<'birthday' | 'anniversary' | 'other'>("birthday");
   const [manualImageUrl, setManualImageUrl] = useState("");
 
-  // ★ কুপন কোড স্টেটে রাখা হচ্ছে যাতে ক্যানভাস এবং ডাটাবেস সেভ-এ একই কোড থাকে
   const [currentCouponCode, setCurrentCouponCode] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -79,11 +78,10 @@ export default function SpecialDatesPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // ★★★ NEW: Random Coupon Code Generator ★★★
+  // ★★★ UPDATED: Random Coupon Code Generator (BK-XXXXXX) ★★★
   const generateRandomCoupon = () => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let randomPart = '';
-      // ৬ অক্ষরের র্যান্ডম কোড জেনারেট করা
       for (let i = 0; i < 6; i++) {
           randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
       }
@@ -92,7 +90,6 @@ export default function SpecialDatesPage() {
 
   useEffect(() => {
     if (isDialogOpen && (type === 'birthday' || type === 'anniversary') && title && date) {
-        // মডাল খুললেই প্রথমে একবার একটি নতুন কোড জেনারেট করে নেওয়া হচ্ছে
         if (!currentCouponCode) {
             setCurrentCouponCode(generateRandomCoupon());
         }
@@ -119,7 +116,6 @@ export default function SpecialDatesPage() {
   };
 
   const handleOpenDialog = (prefill?: CustomerEvent) => {
-      // নতুন ইভেন্ট খোলার সময় কোড রিসেট করা হচ্ছে যাতে নতুন কোড তৈরি হয়
       setCurrentCouponCode(""); 
 
       if (prefill) {
@@ -184,7 +180,6 @@ export default function SpecialDatesPage() {
         ctx.fillText(line1, centerX, 1470-40);
         ctx.fillText(line2, centerX, 1560-40);
 
-        // ★ এখানে স্টেট থেকে সেভ করা র্যান্ডম কোডটি ব্যবহার করা হচ্ছে
         ctx.fillStyle = "#f2ce00"; 
         ctx.font = "700 85px Poppins, sans-serif"; 
         
@@ -223,7 +218,6 @@ export default function SpecialDatesPage() {
 
         if (type === 'birthday' || type === 'anniversary') {
             
-            // ★ স্টেট থেকে র্যান্ডম কোডটি নেওয়া হচ্ছে
             const couponCodeToSave = currentCouponCode;
             
             const startDateObj = new Date(date);
@@ -241,7 +235,7 @@ export default function SpecialDatesPage() {
                         'Content-Type': 'application/json', 
                     },
                     body: JSON.stringify({
-                        code: couponCodeToSave, // ★ র্যান্ডম কোডটি ডাটাবেসে সেভ হবে
+                        code: couponCodeToSave, 
                         description: `${type === 'birthday' ? 'Birthday' : 'Anniversary'} Special for ${title}`,
                         discountType: 'percentage',
                         value: 5,

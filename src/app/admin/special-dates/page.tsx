@@ -87,7 +87,7 @@ export default function SpecialDatesPage() {
       for (let i = 0; i < 6; i++) {
           randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      return `${randomPart}`; // ফরম্যাট: X7K9P2
+      return `BUMBA-${randomPart}`; // ফরম্যাট: BUMBA-X7K9P2
   };
 
   useEffect(() => {

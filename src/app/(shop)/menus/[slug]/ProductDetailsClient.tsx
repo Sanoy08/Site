@@ -61,7 +61,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const [randomItems, setRandomItems] = useState<Product[]>([]);
   const inlineCartRef = useRef<HTMLDivElement>(null);
 
-  // ★ Description Parsing Logic for "Top Highlights"
+  // Description Parsing Logic for "Top Highlights"
   const rawDescription = product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.";
   let highlights: string[] = [];
   let cleanDescriptionText = rawDescription;
@@ -70,12 +70,8 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   if (rawDescription.startsWith(highlightPrefix)) {
       const closingBracketIndex = rawDescription.indexOf(")");
       if (closingBracketIndex !== -1) {
-          // Extract the string inside the brackets (excluding the prefix and the closing bracket)
           const highlightStr = rawDescription.substring(highlightPrefix.length, closingBracketIndex);
-          // Split by ';' and clean up extra spaces
           highlights = highlightStr.split(';').map(item => item.trim()).filter(item => item.length > 0);
-          
-          // The rest of the string after the closing bracket is the actual description
           cleanDescriptionText = rawDescription.substring(closingBracketIndex + 1).trim();
       }
   }
@@ -84,6 +80,25 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const [showFullDesc, setShowFullDesc] = useState(false);
   const DESC_LIMIT = 350;
   const isLongDescription = cleanDescriptionText.length > DESC_LIMIT;
+
+  // ★ Function to format description text (Bold between bullet and colon)
+  const formatDescription = (text: string) => {
+    return text.split('\n').map((line, idx) => {
+        // রেগুলার এক্সপ্রেশন চেক করবে লাইনটি • দিয়ে শুরু হয়ে মাঝে : আছে কিনা
+        const match = line.match(/^(\s*•\s*)([^:]+)(:.*)$/);
+        if (match) {
+            return (
+                <span key={idx}>
+                    {match[1]}
+                    <span className="font-bold text-gray-900">{match[2]}</span>
+                    {match[3]}
+                    {'\n'}
+                </span>
+            );
+        }
+        return <span key={idx}>{line}{'\n'}</span>;
+    });
+  };
 
   // Carousel Logic
   useEffect(() => {
@@ -340,7 +355,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ YOU MAY ALSO LIKE SECTION (Slider Carousel) */}
+            {/* ★ YOU MAY ALSO LIKE SECTION */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
@@ -371,20 +386,22 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
             {/* ★ UPDATED DESCRIPTION SECTION */}
             <div className="mt-10">
-                <h3 className="font-bold text-xl mb-4 text-gray-900 border-b border-gray-200 pb-2">Description</h3>
+                {/* ★ Underline Added Here */}
+                <h3 className="inline-block font-bold text-xl mb-5 text-gray-900 border-b-2 border-gray-900 pb-1">
+                    About This Dish :
+                </h3>
                 
                 {/* Highlights Section */}
                 {highlights.length > 0 && (
                     <div className="mb-5 bg-orange-50/50 border border-orange-100 rounded-xl p-4">
                         <h4 className="font-semibold text-[15px] text-orange-800 mb-3 flex items-center gap-2">
-                            <Star className="w-4 h-4 fill-orange-500 text-orange-500" /> Top Highlights
+                            <Star className="w-4 h-4 fill-orange-500 text-orange-500" /> Delicious Details :
                         </h4>
                         <ul className="space-y-2">
                             {highlights.map((hl, idx) => {
-                                // Split key and value (e.g., "XXX: fsfsdfsdf")
                                 const parts = hl.split(':');
                                 const key = parts[0];
-                                const val = parts.slice(1).join(':').trim(); // Join back in case value has colons
+                                const val = parts.slice(1).join(':').trim();
                                 
                                 return (
                                     <li key={idx} className="text-sm text-gray-700 flex items-start gap-2.5">
@@ -399,11 +416,13 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                 )}
 
-                {/* Main Description with Show More/Less */}
+                {/* Main Description with Formatted Text (Bold bullets) */}
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
-                    {isLongDescription && !showFullDesc 
-                        ? `${cleanDescriptionText.substring(0, DESC_LIMIT)}...` 
-                        : cleanDescriptionText}
+                    {formatDescription(
+                        isLongDescription && !showFullDesc 
+                            ? `${cleanDescriptionText.substring(0, DESC_LIMIT)}...` 
+                            : cleanDescriptionText
+                    )}
                 </p>
                 {isLongDescription && (
                     <button 
@@ -417,7 +436,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           </div>
         </div>
 
-        {/* ★ COMPLETE YOUR MEAL (Random 8 Items from any category) */}
+        {/* ★ COMPLETE YOUR MEAL */}
         {randomItems.length > 0 && (
             <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
@@ -426,7 +445,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                         See all <ChevronRight className="h-4 w-4" />
                     </Link>
                 </div>
-                {/* Responsive Grid for 8 items */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
                     {randomItems.map((p) => (
                         <ProductCard key={p.id} product={p} />

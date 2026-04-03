@@ -7,7 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban, Heart } from 'lucide-react';
+import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban, Heart, CheckCircle2 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import type { Product, Image as ProductImage } from '@/lib/types';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -19,8 +19,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,     // <-- Added for arrows
-  CarouselPrevious, // <-- Added for arrows
+  CarouselNext,
+  CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Share } from '@capacitor/share';
@@ -60,6 +60,30 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const [isInlineVisible, setIsInlineVisible] = useState(true);
   const [randomItems, setRandomItems] = useState<Product[]>([]);
   const inlineCartRef = useRef<HTMLDivElement>(null);
+
+  // ★ Description Parsing Logic for "Top Highlights"
+  const rawDescription = product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.";
+  let highlights: string[] = [];
+  let cleanDescriptionText = rawDescription;
+
+  const highlightPrefix = "(Top Highlights:-";
+  if (rawDescription.startsWith(highlightPrefix)) {
+      const closingBracketIndex = rawDescription.indexOf(")");
+      if (closingBracketIndex !== -1) {
+          // Extract the string inside the brackets (excluding the prefix and the closing bracket)
+          const highlightStr = rawDescription.substring(highlightPrefix.length, closingBracketIndex);
+          // Split by ';' and clean up extra spaces
+          highlights = highlightStr.split(';').map(item => item.trim()).filter(item => item.length > 0);
+          
+          // The rest of the string after the closing bracket is the actual description
+          cleanDescriptionText = rawDescription.substring(closingBracketIndex + 1).trim();
+      }
+  }
+
+  // State for Show More / Show Less Description
+  const [showFullDesc, setShowFullDesc] = useState(false);
+  const DESC_LIMIT = 350;
+  const isLongDescription = cleanDescriptionText.length > DESC_LIMIT;
 
   // Carousel Logic
   useEffect(() => {
@@ -113,7 +137,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     };
   }, []);
 
-  // ★ Fetch Random 8 Products for "Complete Your Meal"
+  // Fetch Random 8 Products for "Complete Your Meal"
   useEffect(() => {
       const fetchRandomProducts = async () => {
           try {
@@ -321,13 +345,15 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-lg text-gray-900">You may also like</h3>
+                        <div className="text-xs font-medium text-gray-400 flex items-center gap-1 md:hidden">
+                            Swipe <ChevronRight className="h-3 w-3" />
+                        </div>
                     </div>
                     <Carousel 
                         opts={{ align: "start", dragFree: true }} 
                         className="w-full relative"
                     >
                         <CarouselContent className="-ml-3 sm:-ml-4">
-                            {/* Modified basis classes to ensure the last card always peeks out naturally */}
                             {relatedProducts.map((p) => (
                                 <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%]">
                                     <ProductCard product={p} />
@@ -335,7 +361,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                             ))}
                         </CarouselContent>
                         
-                        {/* Desktop Navigation Arrows (hidden on mobile, positioned safely) */}
                         <div className="hidden md:block">
                             <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
                             <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
@@ -344,12 +369,50 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 </div>
             )}
 
-            {/* ORIGINAL DESCRIPTION SECTION */}
-            <div className="mt-8">
-                <h3 className="font-bold text-lg mb-2 text-gray-900">Description</h3>
+            {/* ★ UPDATED DESCRIPTION SECTION */}
+            <div className="mt-10">
+                <h3 className="font-bold text-xl mb-4 text-gray-900 border-b border-gray-200 pb-2">Description</h3>
+                
+                {/* Highlights Section */}
+                {highlights.length > 0 && (
+                    <div className="mb-5 bg-orange-50/50 border border-orange-100 rounded-xl p-4">
+                        <h4 className="font-semibold text-[15px] text-orange-800 mb-3 flex items-center gap-2">
+                            <Star className="w-4 h-4 fill-orange-500 text-orange-500" /> Top Highlights
+                        </h4>
+                        <ul className="space-y-2">
+                            {highlights.map((hl, idx) => {
+                                // Split key and value (e.g., "XXX: fsfsdfsdf")
+                                const parts = hl.split(':');
+                                const key = parts[0];
+                                const val = parts.slice(1).join(':').trim(); // Join back in case value has colons
+                                
+                                return (
+                                    <li key={idx} className="text-sm text-gray-700 flex items-start gap-2.5">
+                                        <CheckCircle2 className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+                                        <span>
+                                            <span className="font-semibold text-gray-900">{key.trim()}:</span> {val}
+                                        </span>
+                                    </li>
+                                )
+                            })}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Main Description with Show More/Less */}
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
-                    {product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients."}
+                    {isLongDescription && !showFullDesc 
+                        ? `${cleanDescriptionText.substring(0, DESC_LIMIT)}...` 
+                        : cleanDescriptionText}
                 </p>
+                {isLongDescription && (
+                    <button 
+                        onClick={() => setShowFullDesc(!showFullDesc)}
+                        className="mt-2 text-primary font-semibold text-sm hover:underline focus:outline-none"
+                    >
+                        {showFullDesc ? "Show less" : "Show more"}
+                    </button>
+                )}
             </div>
           </div>
         </div>

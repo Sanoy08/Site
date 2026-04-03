@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation'; // ★ useRouter ইমপোর্ট করা হলো
 import { formatPrice } from '@/lib/utils';
 import { Heart, HeartCrack, Loader2, Trash2, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from 'sonner';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// ★ slug প্রপার্টি অ্যাড করা হলো
 type FavoriteItem = {
   id: string;
   slug?: string; 
@@ -24,6 +24,7 @@ type FavoriteItem = {
 export default function AccountFavoritesPage() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter(); // ★ router ইনিশিয়ালাইজ করা হলো
 
   // Local Storage থেকে ডেটা লোড করা
   useEffect(() => {
@@ -32,11 +33,8 @@ export default function AccountFavoritesPage() {
     setLoading(false);
   }, []);
 
-  // আইটেম রিমুভ করার ফাংশন
-  const removeFavorite = (e: React.MouseEvent, id: string, name: string) => {
-    e.preventDefault(); 
-    e.stopPropagation();
-    
+  // আইটেম রিমুভ করার ফাংশন (এখন আর ইভেন্ট প্রিভেন্ট করার দরকার নেই)
+  const removeFavorite = (id: string, name: string) => {
     const updatedFavs = favorites.filter((fav) => fav.id !== id);
     setFavorites(updatedFavs);
     localStorage.setItem('bumbas_favorites', JSON.stringify(updatedFavs));
@@ -65,44 +63,49 @@ export default function AccountFavoritesPage() {
             ) : favorites.length > 0 ? (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {favorites.map((item) => {
-                        // ★ id এর বদলে slug দিয়ে লিংক তৈরি করা হচ্ছে (পুরোনো ডেটার জন্য ফলব্যাক হিসেবে id রাখা হলো)
                         const hrefLink = `/menus/${item.slug || item.id}`;
 
                         return (
-                            <Link href={hrefLink} key={item.id}>
-                                <div className="group bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md hover:border-red-300 transition-all cursor-pointer relative overflow-hidden">
-                                    
-                                    {/* Left Indicator Line */}
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                    
-                                    {/* Image */}
-                                    <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gray-50 shrink-0 border border-gray-100">
-                                        <Image 
-                                            src={optimizeImageUrl(item.image)} 
-                                            alt={item.name} 
-                                            fill 
-                                            sizes="64px"
-                                            className="object-cover"
-                                        />
-                                    </div>
-
-                                    {/* Details */}
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-semibold text-gray-900 truncate text-base">{item.name}</h3>
-                                        <p className="text-primary font-bold text-sm mt-0.5">{formatPrice(item.price)}</p>
-                                    </div>
-
-                                    {/* Remove Button */}
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full shrink-0 z-10"
-                                        onClick={(e) => removeFavorite(e, item.id, item.name)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                            // ★ <Link> এর বদলে <div> এবং onClick ব্যবহার করা হলো
+                            <div 
+                                key={item.id}
+                                onClick={() => router.push(hrefLink)}
+                                className="group bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md hover:border-red-300 transition-all cursor-pointer relative overflow-hidden"
+                            >
+                                {/* Left Indicator Line */}
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                
+                                {/* Image */}
+                                <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gray-50 shrink-0 border border-gray-100">
+                                    <Image 
+                                        src={optimizeImageUrl(item.image)} 
+                                        alt={item.name} 
+                                        fill 
+                                        sizes="64px"
+                                        className="object-cover"
+                                    />
                                 </div>
-                            </Link>
+
+                                {/* Details */}
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-gray-900 truncate text-base">{item.name}</h3>
+                                    <p className="text-primary font-bold text-sm mt-0.5">{formatPrice(item.price)}</p>
+                                </div>
+
+                                {/* Remove Button */}
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full shrink-0 z-10"
+                                    onClick={(e) => {
+                                        // ★ শুধু এই বাটনের ক্লিকটাই কাজ করবে, পেজ চেঞ্জ হবে না
+                                        e.stopPropagation();
+                                        removeFavorite(item.id, item.name);
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         );
                     })}
                 </div>

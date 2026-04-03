@@ -34,6 +34,11 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { SearchSheet } from '@/components/shop/SearchSheet';
 
+// ★ New Imports for Admin Switch feature
+import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
+import { Switch } from "@/components/ui/switch";
+
 const navLinks = [
   { href: '/', label: 'Home', icon: Sparkles },
   { href: '/menus', label: 'Menu', icon: UtensilsCrossed },
@@ -47,6 +52,10 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
   const [hasNewNotification, setHasNewNotification] = useState(false);
+
+  // ★ New States for Admin Switch
+  const [isNativeApp, setIsNativeApp] = useState(false);
+  const [isAdminAppDefault, setIsAdminAppDefault] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -84,6 +93,17 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  // ★ Native App Checker & Load Preference
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      setIsNativeApp(true);
+      const loadPref = async () => {
+        const { value } = await Preferences.get({ key: 'app_mode' });
+        setIsAdminAppDefault(value === 'admin');
+      };
+      loadPref();
+    }
+  }, []);
 
   // SMART NOTIFICATION CHECKER
   const checkNotifications = useCallback(async () => {
@@ -149,6 +169,15 @@ export function Header() {
       if (typeof window !== 'undefined') {
          window.location.href = 'https://admin.bumbaskitchen.app';
       }
+  };
+
+  // ★ Handle Toggle Switch
+  const handleToggleAdminMode = async (checked: boolean) => {
+    setIsAdminAppDefault(checked);
+    await Preferences.set({ key: 'app_mode', value: checked ? 'admin' : 'user' });
+    if (checked) {
+      window.location.href = 'https://admin.bumbaskitchen.app';
+    }
   };
 
   return (
@@ -386,6 +415,23 @@ export function Header() {
                                 <Settings className="mr-3 h-4 w-4 text-amber-600" />
                                 Admin Dashboard
                             </DropdownMenuItem>
+                            
+                            {/* ★ New Toggle for App Users Only ★ */}
+                            {isNativeApp && (
+                                <div 
+                                    className="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-lg bg-primary/10 border border-primary/20 cursor-default" 
+                                    onClick={(e) => e.stopPropagation()} // Menu বন্ধ হওয়া আটকাতে
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-primary">Admin App Mode</span>
+                                        <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">Open admin panel by default</span>
+                                    </div>
+                                    <Switch 
+                                        checked={isAdminAppDefault} 
+                                        onCheckedChange={handleToggleAdminMode}
+                                    />
+                                </div>
+                            )}
                         </>
                     )}
                     

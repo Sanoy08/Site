@@ -1,11 +1,14 @@
+// src/app/(shop)/menus/[slug]/ProductDetailsClient.tsx
+
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+// ... (imports same as before)
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban, Heart } from 'lucide-react';
+import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import type { Product, Image as ProductImage } from '@/lib/types';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -28,6 +31,7 @@ const fallbackImage: ProductImage = {
   alt: 'Placeholder Image' 
 };
 
+// ... (CustomShareIcon component same as before)
 const CustomShareIcon = ({ className }: { className?: string }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
@@ -54,15 +58,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const isNonVeg = ['Chicken', 'Mutton', 'Egg', 'Fish'].includes(product.category?.name || '');
 
   const [activeSlide, setActiveSlide] = useState(0);
-  const [isFavorite, setIsFavorite] = useState(false);
 
-  // ★ States for Layout Logic
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isInlineVisible, setIsInlineVisible] = useState(true);
-  const [randomItems, setRandomItems] = useState<Product[]>([]);
-  const inlineCartRef = useRef<HTMLDivElement>(null);
-
-  // Carousel Logic
   useEffect(() => {
     if (!api) return;
     setCount(api.scrollSnapList().length);
@@ -77,62 +73,16 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     if (api) api.scrollTo(activeSlide);
   }, [activeSlide, api]);
 
-  // Favorites Logic
-  useEffect(() => {
-    const savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
-    setIsFavorite(savedFavs.some((fav: any) => fav.id === product.id));
-  }, [product.id]);
-
-  const toggleFavorite = () => {
-    let savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
-    if (isFavorite) {
-        savedFavs = savedFavs.filter((fav: any) => fav.id !== product.id);
-        toast.info("Removed from favorites");
-    } else {
-        savedFavs.push({ id: product.id, name: product.name, image: displayImages[0].url, price: product.price });
-        toast.success("Added to favorites! ❤️", { duration: 2000 });
-    }
-    localStorage.setItem('bumbas_favorites', JSON.stringify(savedFavs));
-    setIsFavorite(!isFavorite);
-  };
-
-  // ★ 1. Scroll Listener (পেজের ওপরে থাকলে বার হাইড করবে)
-  useEffect(() => {
-    const handleScroll = () => {
-        setIsScrolled(window.scrollY > 150);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // ★ 2. Intersection Observer (ইনলাইন কার্ট ভিজিবিলিটি চেক করবে)
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-        ([entry]) => {
-            setIsInlineVisible(entry.isIntersecting);
-        },
-        { threshold: 0 } 
-    );
-    if (inlineCartRef.current) observer.observe(inlineCartRef.current);
-    return () => {
-        if (inlineCartRef.current) observer.unobserve(inlineCartRef.current);
-    };
-  }, []);
-
-  // ★ 3. Random Items Generator
-  useEffect(() => {
-      // Complete your meal এর জন্য র্যান্ডমলি আইটেম শাফল করা হলো
-      const shuffled = [...relatedProducts].sort(() => 0.5 - Math.random());
-      setRandomItems(shuffled.slice(0, 5));
-  }, [relatedProducts]);
-
-  // পেজ স্ক্রল করা হয়েছে এবং ইনলাইন কার্ট দেখা যাচ্ছে না, তবেই বটম বার দেখাবে!
-  const showBottomBar = isScrolled && !isInlineVisible;
-
   const handleAddToCart = () => {
     if (isOutOfStock) return;
+    
+    // ★★★ Fix: Pass 'false' to suppress the default provider toast
     addItem(product, quantity, false);
-    toast.success(`Added ${quantity} ${product.name} to cart`, { duration: 2000 });
+    
+    // ★★★ Custom Toast with 2s duration
+    toast.success(`Added ${quantity} ${product.name} to cart`, {
+        duration: 2000,
+    });
   };
 
   const handleShare = async () => {
@@ -142,6 +92,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       url: window.location.href,
       dialogTitle: 'Share this dish',
     };
+
     try {
       const canShare = await Share.canShare();
       if (canShare.value) {
@@ -153,12 +104,14 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         toast.success("Link copied to clipboard!");
       }
     } catch (err) {
+      console.log('Share failed:', err);
       navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
     }
   };
 
   return (
+    // ... (rest of the component JSX same as before)
     <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden">
       
       {/* --- MOBILE TOP IMAGE SLIDER --- */}
@@ -190,23 +143,27 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* Share & Favorite Buttons (Mobile) */}
-         <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
-             <button onClick={handleShare} className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors">
+         {/* Share Button (Mobile) */}
+         <div className="absolute top-4 right-4 flex justify-end z-20">
+             <button 
+                onClick={handleShare} 
+                className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors"
+             >
                  <CustomShareIcon className="h-5 w-5" />
-             </button>
-             <button onClick={toggleFavorite} className="bg-white/90 p-2 rounded-full shadow-sm hover:bg-white transition-colors">
-                 <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
              </button>
          </div>
 
+         {/* Dots */}
          {displayImages.length > 1 && (
              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
                  {displayImages.map((_, idx) => (
                      <button
                         key={idx}
                         onClick={() => api?.scrollTo(idx)}
-                        className={cn("h-1.5 rounded-full transition-all shadow-sm pointer-events-auto", current === idx + 1 ? "w-4 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80")}
+                        className={cn(
+                            "h-1.5 rounded-full transition-all shadow-sm pointer-events-auto",
+                            current === idx + 1 ? "w-4 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80"
+                        )}
                      />
                  ))}
              </div>
@@ -236,13 +193,13 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                  )}
 
-                 {/* Share & Favorite Buttons (Desktop) */}
-                 <div className="absolute top-4 right-4 flex flex-col gap-2">
-                     <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors">
+                 {/* Share Button (Desktop) */}
+                 <div className="absolute top-4 right-4">
+                     <button 
+                        onClick={handleShare} 
+                        className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors"
+                     >
                          <CustomShareIcon className="h-5 w-5" />
-                     </button>
-                     <button onClick={toggleFavorite} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 transition-colors">
-                         <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
                      </button>
                  </div>
              </div>
@@ -254,9 +211,18 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                          <button 
                            key={idx}
                            onClick={() => setActiveSlide(idx)}
-                           className={cn("relative w-full aspect-square overflow-hidden transition-all", activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100")}
+                           className={cn(
+                               "relative w-full aspect-square overflow-hidden transition-all",
+                               activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
+                           )}
                          >
-                           <Image src={optimizeImageUrl(img.url)} alt="thumb" fill sizes="20vw" className="object-cover" />
+                           <Image 
+                             src={optimizeImageUrl(img.url)} 
+                             alt="thumb" 
+                             fill 
+                             sizes="20vw"
+                             className="object-cover"
+                           />
                          </button>
                      ))}
                  </div>
@@ -267,7 +233,10 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           <div className="flex flex-col h-full md:pt-2">
             <div className="space-y-3 md:space-y-4">
                 <div className="flex items-center justify-between">
-                     <div className={cn("px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-md flex items-center gap-1.5", isNonVeg ? "border-red-200 text-red-700 bg-red-50" : "border-green-200 text-green-700 bg-green-50")}>
+                     <div className={cn(
+                        "px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-md flex items-center gap-1.5",
+                        isNonVeg ? "border-red-200 text-red-700 bg-red-50" : "border-green-200 text-green-700 bg-green-50"
+                    )}>
                         <div className={cn("w-2 h-2 rounded-full", isNonVeg ? "bg-red-600" : "bg-green-600")}></div>
                         {isNonVeg ? 'Non-Veg' : 'Veg'}
                     </div>
@@ -303,17 +272,16 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 </p>
             </div>
 
-            {/* INLINE ADD TO CART */}
-            <div ref={inlineCartRef} className="mt-8">
+            <div className="hidden md:block mt-8">
                 {!isOutOfStock ? (
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex items-center justify-between border rounded-xl h-12 sm:w-32 bg-gray-50 px-1">
-                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus className="h-4 w-4" /></Button>
+                    <div className="flex gap-4">
+                        <div className="flex items-center border rounded-xl h-12 w-32 bg-gray-50">
+                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus /></Button>
                             <span className="flex-1 text-center font-bold text-lg">{quantity}</span>
-                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => q + 1)}><Plus className="h-4 w-4" /></Button>
+                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
                         </div>
                         <Button className="flex-1 h-12 rounded-xl text-lg font-bold" onClick={handleAddToCart}>
-                            <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart — {formatPrice(product.price * quantity)}
+                            <ShoppingCart className="mr-2" /> Add to Cart — {formatPrice(product.price * quantity)}
                         </Button>
                     </div>
                 ) : (
@@ -323,20 +291,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ NEW: YOU MAY ALSO LIKE SECTION (Same Category) */}
-            {relatedProducts.length > 0 && (
-                <div className="mt-10 pt-4">
-                    <h3 className="font-bold text-lg mb-4 text-gray-900">You may also like</h3>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                        {/* প্রথম ৪টি আইটেম দেখানো হচ্ছে */}
-                        {relatedProducts.slice(0, 4).map((p) => (
-                            <ProductCard key={p.id} product={p} />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* ORIGINAL DESCRIPTION SECTION (No extra margins/design) */}
             <div className="mt-8">
                 <h3 className="font-bold text-lg mb-2 text-gray-900">Description</h3>
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
@@ -346,8 +300,8 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           </div>
         </div>
 
-        {/* ★ COMPLETE YOUR MEAL (Random Items) */}
-        {randomItems.length > 0 && (
+        {/* Related Products */}
+        {relatedProducts.length > 0 && (
             <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
                     <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
@@ -356,7 +310,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </Link>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
-                    {randomItems.map((p) => (
+                    {relatedProducts.map((p) => (
                         <ProductCard key={p.id} product={p} />
                     ))}
                 </div>
@@ -364,13 +318,8 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         )}
       </div>
 
-      {/* MOBILE ACTION BAR (Only shows when scrolled past inline cart) */}
-      <div 
-        className={cn(
-            "fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40 transition-transform duration-300",
-            showBottomBar ? "translate-y-0" : "translate-y-full"
-        )}
-      >
+      {/* MOBILE ACTION BAR */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40">
         {!isOutOfStock ? (
             <div className="flex gap-3 items-center">
                  <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg h-12 px-1">

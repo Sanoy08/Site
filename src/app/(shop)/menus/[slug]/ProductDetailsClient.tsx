@@ -2,13 +2,12 @@
 
 'use client';
 
-// ... (imports same as before)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban } from 'lucide-react';
+import { Plus, Minus, Star, ShoppingCart, ChevronRight, Info, Ban, Heart } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import type { Product, Image as ProductImage } from '@/lib/types';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -31,14 +30,8 @@ const fallbackImage: ProductImage = {
   alt: 'Placeholder Image' 
 };
 
-// ... (CustomShareIcon component same as before)
 const CustomShareIcon = ({ className }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="0 0 640 640" 
-    className={className}
-    fill="currentColor"
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" className={className} fill="currentColor">
     <path d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L169.3 201.4C156.8 213.9 156.8 234.2 169.3 246.7C181.8 259.2 202.1 259.2 214.6 246.7L288 173.3L288 384C288 401.7 302.3 416 320 416C337.7 416 352 401.7 352 384L352 173.3L425.4 246.7C437.9 259.2 458.2 259.2 470.7 246.7C483.2 234.2 483.2 213.9 470.7 201.4L342.7 73.4zM160 416C160 398.3 145.7 384 128 384C110.3 384 96 398.3 96 416L96 480C96 533 139 576 192 576L448 576C501 576 544 533 544 480L544 416C544 398.3 529.7 384 512 384C494.3 384 480 398.3 480 416L480 480C480 497.7 465.7 512 448 512L192 512C174.3 512 160 497.7 160 480L160 416z"/>
   </svg>
 );
@@ -58,7 +51,15 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const isNonVeg = ['Chicken', 'Mutton', 'Egg', 'Fish'].includes(product.category?.name || '');
 
   const [activeSlide, setActiveSlide] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
 
+  // States for Layout Logic
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isInlineVisible, setIsInlineVisible] = useState(true);
+  const [randomItems, setRandomItems] = useState<Product[]>([]);
+  const inlineCartRef = useRef<HTMLDivElement>(null);
+
+  // Carousel Logic
   useEffect(() => {
     if (!api) return;
     setCount(api.scrollSnapList().length);
@@ -73,16 +74,67 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     if (api) api.scrollTo(activeSlide);
   }, [activeSlide, api]);
 
+  // Favorites Logic
+  useEffect(() => {
+    const savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
+    setIsFavorite(savedFavs.some((fav: any) => fav.id === product.id));
+  }, [product.id]);
+
+  const toggleFavorite = () => {
+    let savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
+    if (isFavorite) {
+        savedFavs = savedFavs.filter((fav: any) => fav.id !== product.id);
+        toast.info("Removed from favorites");
+    } else {
+        savedFavs.push({ id: product.id, name: product.name, image: displayImages[0].url, price: product.price });
+        toast.success("Added to favorites! ❤️", { duration: 2000 });
+    }
+    localStorage.setItem('bumbas_favorites', JSON.stringify(savedFavs));
+    setIsFavorite(!isFavorite);
+  };
+
+  // Scroll & Intersection Observers
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 150);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+        ([entry]) => setIsInlineVisible(entry.isIntersecting),
+        { threshold: 0 } 
+    );
+    if (inlineCartRef.current) observer.observe(inlineCartRef.current);
+    return () => {
+        if (inlineCartRef.current) observer.unobserve(inlineCartRef.current);
+    };
+  }, []);
+
+  // ★ Fetch Random 8 Products for "Complete Your Meal"
+  useEffect(() => {
+      const fetchRandomProducts = async () => {
+          try {
+              const res = await fetch('/api/products');
+              const data = await res.json();
+              if (data.success && data.products) {
+                  const allOtherProducts = data.products.filter((p: Product) => p.id !== product.id);
+                  const shuffled = allOtherProducts.sort(() => 0.5 - Math.random());
+                  setRandomItems(shuffled.slice(0, 8));
+              }
+          } catch (e) {
+              console.error("Failed to fetch random products", e);
+          }
+      };
+      fetchRandomProducts();
+  }, [product.id]);
+
+  const showBottomBar = isScrolled && !isInlineVisible;
+
   const handleAddToCart = () => {
     if (isOutOfStock) return;
-    
-    // ★★★ Fix: Pass 'false' to suppress the default provider toast
     addItem(product, quantity, false);
-    
-    // ★★★ Custom Toast with 2s duration
-    toast.success(`Added ${quantity} ${product.name} to cart`, {
-        duration: 2000,
-    });
+    toast.success(`Added ${quantity} ${product.name} to cart`, { duration: 2000 });
   };
 
   const handleShare = async () => {
@@ -92,7 +144,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       url: window.location.href,
       dialogTitle: 'Share this dish',
     };
-
     try {
       const canShare = await Share.canShare();
       if (canShare.value) {
@@ -104,14 +155,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         toast.success("Link copied to clipboard!");
       }
     } catch (err) {
-      console.log('Share failed:', err);
       navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
     }
   };
 
   return (
-    // ... (rest of the component JSX same as before)
     <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden">
       
       {/* --- MOBILE TOP IMAGE SLIDER --- */}
@@ -129,12 +178,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                             className={cn("object-cover", isOutOfStock && "grayscale opacity-80")}
                             priority={index === 0}
                         />
-
                         {isOutOfStock && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/10 z-10">
-                                <span className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold text-lg shadow-lg transform -rotate-6">
-                                    SOLD OUT
-                                </span>
+                                <span className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold text-lg shadow-lg transform -rotate-6">SOLD OUT</span>
                             </div>
                         )}
                     </div>
@@ -143,27 +189,22 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </CarouselContent>
          </Carousel>
 
-         {/* Share Button (Mobile) */}
-         <div className="absolute top-4 right-4 flex justify-end z-20">
-             <button 
-                onClick={handleShare} 
-                className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors"
-             >
+         <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+             <button onClick={handleShare} className="bg-white/90 p-2 rounded-full shadow-sm text-gray-700 hover:bg-white transition-colors">
                  <CustomShareIcon className="h-5 w-5" />
+             </button>
+             <button onClick={toggleFavorite} className="bg-white/90 p-2 rounded-full shadow-sm hover:bg-white transition-colors">
+                 <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
              </button>
          </div>
 
-         {/* Dots */}
          {displayImages.length > 1 && (
              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
                  {displayImages.map((_, idx) => (
                      <button
                         key={idx}
                         onClick={() => api?.scrollTo(idx)}
-                        className={cn(
-                            "h-1.5 rounded-full transition-all shadow-sm pointer-events-auto",
-                            current === idx + 1 ? "w-4 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80"
-                        )}
+                        className={cn("h-1.5 rounded-full transition-all shadow-sm pointer-events-auto", current === idx + 1 ? "w-4 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80")}
                      />
                  ))}
              </div>
@@ -184,63 +225,44 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     className={cn("object-cover transition-all duration-500", isOutOfStock && "grayscale opacity-80")}
                     priority
                  />
-
                  {isOutOfStock && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                        <span className="bg-red-600 text-white px-8 py-3 rounded-xl font-bold text-2xl shadow-xl transform -rotate-12">
-                            SOLD OUT
-                        </span>
+                        <span className="bg-red-600 text-white px-8 py-3 rounded-xl font-bold text-2xl shadow-xl transform -rotate-12">SOLD OUT</span>
                     </div>
                  )}
-
-                 {/* Share Button (Desktop) */}
-                 <div className="absolute top-4 right-4">
-                     <button 
-                        onClick={handleShare} 
-                        className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors"
-                     >
+                 <div className="absolute top-4 right-4 flex flex-col gap-2">
+                     <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors">
                          <CustomShareIcon className="h-5 w-5" />
+                     </button>
+                     <button onClick={toggleFavorite} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 transition-colors">
+                         <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
                      </button>
                  </div>
              </div>
 
-             {/* Thumbnails */}
              {displayImages.length > 1 && (
                  <div className="grid grid-cols-4 gap-0 w-full">
                      {displayImages.map((img, idx) => (
                          <button 
                            key={idx}
                            onClick={() => setActiveSlide(idx)}
-                           className={cn(
-                               "relative w-full aspect-square overflow-hidden transition-all",
-                               activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100"
-                           )}
+                           className={cn("relative w-full aspect-square overflow-hidden transition-all", activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100")}
                          >
-                           <Image 
-                             src={optimizeImageUrl(img.url)} 
-                             alt="thumb" 
-                             fill 
-                             sizes="20vw"
-                             className="object-cover"
-                           />
+                           <Image src={optimizeImageUrl(img.url)} alt="thumb" fill sizes="20vw" className="object-cover" />
                          </button>
                      ))}
                  </div>
              )}
           </div>
           
-          {/* PRODUCT INFO */}
-          <div className="flex flex-col h-full md:pt-2">
+          {/* PRODUCT INFO (min-w-0 added here to prevent layout shifting) */}
+          <div className="flex flex-col h-full md:pt-2 min-w-0">
             <div className="space-y-3 md:space-y-4">
                 <div className="flex items-center justify-between">
-                     <div className={cn(
-                        "px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-md flex items-center gap-1.5",
-                        isNonVeg ? "border-red-200 text-red-700 bg-red-50" : "border-green-200 text-green-700 bg-green-50"
-                    )}>
+                     <div className={cn("px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-md flex items-center gap-1.5", isNonVeg ? "border-red-200 text-red-700 bg-red-50" : "border-green-200 text-green-700 bg-green-50")}>
                         <div className={cn("w-2 h-2 rounded-full", isNonVeg ? "bg-red-600" : "bg-green-600")}></div>
                         {isNonVeg ? 'Non-Veg' : 'Veg'}
                     </div>
-
                     {product.rating > 0 && (
                         <div className="flex items-center gap-1 text-sm font-bold bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-100">
                             {product.rating} <Star className="w-3.5 h-3.5 fill-green-700" />
@@ -272,16 +294,17 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 </p>
             </div>
 
-            <div className="hidden md:block mt-8">
+            {/* INLINE ADD TO CART */}
+            <div ref={inlineCartRef} className="mt-8">
                 {!isOutOfStock ? (
-                    <div className="flex gap-4">
-                        <div className="flex items-center border rounded-xl h-12 w-32 bg-gray-50">
-                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus /></Button>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex items-center justify-between border rounded-xl h-12 sm:w-32 bg-gray-50 px-1">
+                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus className="h-4 w-4" /></Button>
                             <span className="flex-1 text-center font-bold text-lg">{quantity}</span>
-                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
+                            <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => q + 1)}><Plus className="h-4 w-4" /></Button>
                         </div>
                         <Button className="flex-1 h-12 rounded-xl text-lg font-bold" onClick={handleAddToCart}>
-                            <ShoppingCart className="mr-2" /> Add to Cart — {formatPrice(product.price * quantity)}
+                            <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart — {formatPrice(product.price * quantity)}
                         </Button>
                     </div>
                 ) : (
@@ -291,6 +314,26 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
+            {/* ★ YOU MAY ALSO LIKE SECTION (Slider Carousel) */}
+            {relatedProducts.length > 0 && (
+                <div className="mt-10 pt-4 w-full min-w-0">
+                    <h3 className="font-bold text-lg mb-4 text-gray-900">You may also like</h3>
+                    <Carousel 
+                        opts={{ align: "start", dragFree: true }} 
+                        className="w-full"
+                    >
+                        <CarouselContent className="-ml-3 sm:-ml-4">
+                            {relatedProducts.map((p) => (
+                                <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-1/2 sm:basis-1/2 lg:basis-1/2">
+                                    <ProductCard product={p} />
+                                </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                    </Carousel>
+                </div>
+            )}
+
+            {/* ORIGINAL DESCRIPTION SECTION */}
             <div className="mt-8">
                 <h3 className="font-bold text-lg mb-2 text-gray-900">Description</h3>
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
@@ -300,8 +343,8 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           </div>
         </div>
 
-        {/* Related Products */}
-        {relatedProducts.length > 0 && (
+        {/* ★ COMPLETE YOUR MEAL (Random 8 Items from any category) */}
+        {randomItems.length > 0 && (
             <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
                     <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
@@ -309,8 +352,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                         See all <ChevronRight className="h-4 w-4" />
                     </Link>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
-                    {relatedProducts.map((p) => (
+                {/* Responsive Grid for 8 items */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
+                    {randomItems.map((p) => (
                         <ProductCard key={p.id} product={p} />
                     ))}
                 </div>
@@ -319,7 +363,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       </div>
 
       {/* MOBILE ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40">
+      <div 
+        className={cn(
+            "fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40 transition-transform duration-300",
+            showBottomBar ? "translate-y-0" : "translate-y-full"
+        )}
+      >
         {!isOutOfStock ? (
             <div className="flex gap-3 items-center">
                  <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg h-12 px-1">

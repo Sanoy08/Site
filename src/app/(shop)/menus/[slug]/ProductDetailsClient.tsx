@@ -19,6 +19,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,     // <-- Added for arrows
+  CarouselPrevious, // <-- Added for arrows
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Share } from '@capacitor/share';
@@ -255,7 +257,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
              )}
           </div>
           
-          {/* PRODUCT INFO (min-w-0 added here to prevent layout shifting) */}
+          {/* PRODUCT INFO */}
           <div className="flex flex-col h-full md:pt-2 min-w-0">
             <div className="space-y-3 md:space-y-4">
                 <div className="flex items-center justify-between">
@@ -317,18 +319,27 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             {/* ★ YOU MAY ALSO LIKE SECTION (Slider Carousel) */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
-                    <h3 className="font-bold text-lg mb-4 text-gray-900">You may also like</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-lg text-gray-900">You may also like</h3>
+                    </div>
                     <Carousel 
                         opts={{ align: "start", dragFree: true }} 
-                        className="w-full"
+                        className="w-full relative"
                     >
                         <CarouselContent className="-ml-3 sm:-ml-4">
+                            {/* Modified basis classes to ensure the last card always peeks out naturally */}
                             {relatedProducts.map((p) => (
-                                <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-1/2 sm:basis-1/2 lg:basis-1/2">
+                                <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%]">
                                     <ProductCard product={p} />
                                 </CarouselItem>
                             ))}
                         </CarouselContent>
+                        
+                        {/* Desktop Navigation Arrows (hidden on mobile, positioned safely) */}
+                        <div className="hidden md:block">
+                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
+                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
+                        </div>
                     </Carousel>
                 </div>
             )}

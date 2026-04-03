@@ -127,7 +127,14 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         savedFavs = savedFavs.filter((fav: any) => fav.id !== product.id);
         toast.info("Removed from favorites");
     } else {
-        savedFavs.push({ id: product.id, name: product.name, image: displayImages[0].url, price: product.price });
+        // ★ এখানে slug অ্যাড করা হলো
+        savedFavs.push({ 
+            id: product.id, 
+            slug: product.slug, // <-- New added
+            name: product.name, 
+            image: displayImages[0].url, 
+            price: product.price 
+        });
         toast.success("Added to favorites! ❤️", { duration: 2000 });
     }
     localStorage.setItem('bumbas_favorites', JSON.stringify(savedFavs));

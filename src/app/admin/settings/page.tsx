@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Store, Wallet, Save, Bell, Loader2, Smartphone, Download } from 'lucide-react';
+import { Settings, Store, Wallet, Save, Bell, Loader2, Smartphone, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePushNotification } from '@/hooks/use-push-notification';
+import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 
 export default function AdminSettingsPage() {
   const { subscribeToPush, isSubscribed, isLoading: isPushLoading } = usePushNotification();
@@ -20,6 +22,8 @@ export default function AdminSettingsPage() {
 
   // States
   const [isStoreOpen, setIsStoreOpen] = useState(true);
+  const [isNativeApp, setIsNativeApp] = useState(false);
+  const [isAdminAppDefault, setIsAdminAppDefault] = useState(false);
   
   // App Version Config
   const [appConfig, setAppConfig] = useState({
@@ -36,10 +40,18 @@ export default function AdminSettingsPage() {
       coinValue: '1'
   });
 
-  // ১. ডেটা ফেচ করা
+  // ১. ডেটা ফেচ করা এবং লোকাল স্টোরেজ চেক করা
   useEffect(() => {
     const fetchSettings = async () => {
         try {
+            // Check Native App Mode
+            if (Capacitor.isNativePlatform()) {
+                setIsNativeApp(true);
+                const { value } = await Preferences.get({ key: 'app_mode' });
+                setIsAdminAppDefault(value === 'admin');
+            }
+
+            // Fetch DB Settings
             const res = await fetch('/api/settings');
             const data = await res.json();
             if (data.success) {
@@ -81,6 +93,20 @@ export default function AdminSettingsPage() {
       }
   };
 
+  // ★ নতুন: অ্যাপ মোড টগল হ্যান্ডলার
+  const handleToggleAdminMode = async (checked: boolean) => {
+      setIsAdminAppDefault(checked);
+      await Preferences.set({ key: 'app_mode', value: checked ? 'admin' : 'user' });
+      
+      if (!checked) {
+          toast.info("Exiting Admin Mode...");
+          // যদি অফ করে দেয়, তবে সাথে সাথে মেইন সাইটে পাঠিয়ে দেব
+          setTimeout(() => {
+              window.location.href = 'https://bumbaskitchen.app';
+          }, 500);
+      }
+  };
+
   // ৩. গ্লোবাল সেভ হ্যান্ডলার (বাকি সব সেটিং সেভ করার জন্য)
   const handleSave = async () => {
     setIsSaving(true);
@@ -110,7 +136,7 @@ export default function AdminSettingsPage() {
     }
   }
 
-  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-20">
@@ -123,6 +149,31 @@ export default function AdminSettingsPage() {
 
       <div className="grid gap-8">
         
+        {/* ★★★ NEW: App Mode Toggle (Only visible in Native App) ★★★ */}
+        {isNativeApp && (
+            <Card className="border border-primary/20 shadow-md bg-primary/5">
+                <CardHeader className="py-4">
+                    <div className="flex items-center gap-2 text-primary">
+                        <Smartphone className="h-5 w-5" />
+                        <CardTitle>App Display Mode</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                            <Label className="text-base font-bold text-gray-900">Admin Mode Active</Label>
+                            <p className="text-sm text-muted-foreground">Turn off to return to the normal customer website.</p>
+                        </div>
+                        <Switch 
+                            checked={isAdminAppDefault} 
+                            onCheckedChange={handleToggleAdminMode} 
+                            className="data-[state=checked]:bg-primary"
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+
         {/* Store Open/Close */}
         <Card className="border-0 shadow-md">
             <CardHeader className="bg-muted/30 border-b py-4">
@@ -141,7 +192,7 @@ export default function AdminSettingsPage() {
             </CardContent>
         </Card>
 
-        {/* ★★★ NEW: App Version Control ★★★ */}
+        {/* App Version Control */}
         <Card className="border-0 shadow-md ring-1 ring-blue-100">
             <CardHeader className="bg-blue-50/50 border-b py-4">
                 <div className="flex items-center gap-2 text-blue-700">
@@ -232,7 +283,7 @@ export default function AdminSettingsPage() {
         </Card>
 
         {/* SAVE BUTTON */}
-        <div className="sticky bottom-4 flex justify-end">
+        <div className="sticky bottom-4 flex justify-end z-10">
             <Button onClick={handleSave} size="lg" className="gap-2 shadow-xl bg-primary hover:bg-primary/90 px-8 h-12 text-lg rounded-full" disabled={isSaving}>
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />} Save Changes
             </Button>

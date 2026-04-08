@@ -81,7 +81,7 @@ export default function AdminSettingsPage() {
     }
   }, []);
 
-  // ২. স্টোর টগল হ্যান্ডলার (ইনস্ট্যান্ট সেভ)
+  // ২. স্টোর টগল হ্যান্ডলার
   const handleStoreToggle = async (checked: boolean) => {
       setIsStoreOpen(checked);
       try {
@@ -97,23 +97,30 @@ export default function AdminSettingsPage() {
       }
   };
 
-  // ★ অ্যাডমিন মোড অফ করার হ্যান্ডলার
+  // ★ ৩. অ্যাডমিন মোড অফ করার হ্যান্ডলার
   const handleAdminModeToggle = async (checked: boolean) => {
       setIsAdminMode(checked);
       const mode = checked ? 'admin' : 'user';
       await Preferences.set({ key: 'app_mode', value: mode });
       
       if (!checked) {
-          toast.success("Admin mode disabled. Redirecting to main app...");
+          toast.success("Admin mode disabled! Redirecting to shop...");
           setTimeout(() => {
-              window.location.href = 'https://bumbaskitchen.app';
+              // replace এবং www ব্যবহার করা হয়েছে যাতে আটকে না যায়
+              window.location.replace('https://www.bumbaskitchen.app/');
           }, 1000);
       } else {
-          toast.success("Admin mode enabled.");
+          toast.success("Admin mode enabled. App will launch here next time.");
       }
   };
 
-  // ৩. গ্লোবাল সেভ হ্যান্ডলার (বাকি সব সেটিং সেভ করার জন্য)
+  // ★ ৪. সরাসরি শপে ফিরে যাওয়ার বাটন হ্যান্ডলার
+  const handleReturnToShop = async () => {
+      await Preferences.set({ key: 'app_mode', value: 'user' });
+      window.location.replace('https://www.bumbaskitchen.app/');
+  };
+
+  // ৫. গ্লোবাল সেভ হ্যান্ডলার
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -173,7 +180,7 @@ export default function AdminSettingsPage() {
             </CardContent>
         </Card>
 
-        {/* ★★★ NEW: App Mode Toggle (Visible Only in Native App) ★★★ */}
+        {/* ★★★ NEW: App Mode Toggle & Return Button ★★★ */}
         {isNativeApp && (
             <Card className="border-0 shadow-md ring-1 ring-purple-100">
                 <CardHeader className="bg-purple-50/50 border-b py-4">
@@ -183,20 +190,33 @@ export default function AdminSettingsPage() {
                     </div>
                     <CardDescription>Control how the app launches on this device.</CardDescription>
                 </CardHeader>
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between border p-4 rounded-xl bg-background">
-                        <div className="space-y-0.5">
+                <CardContent className="p-6 space-y-4">
+                    
+                    <div className="flex items-center justify-between border p-4 rounded-xl bg-background shadow-sm">
+                        <div className="space-y-0.5 pr-4">
                             <Label className="text-base font-semibold">
-                                Admin Mode Default
+                                Launch as Admin Default
                             </Label>
-                            <p className="text-xs text-muted-foreground">If turned off, you will be redirected to the main customer app.</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Turn this ON to always open the Admin Panel when launching the app.
+                            </p>
                         </div>
                         <Switch 
                             checked={isAdminMode} 
                             onCheckedChange={handleAdminModeToggle} 
-                            className="data-[state=checked]:bg-purple-600" 
+                            className="data-[state=checked]:bg-purple-600 scale-110" 
                         />
                     </div>
+
+                    {/* ★ সরাসরি শপে যাওয়ার বাটন ★ */}
+                    <Button 
+                        onClick={handleReturnToShop}
+                        variant="outline"
+                        className="w-full h-12 text-base font-bold gap-2 text-purple-700 border-purple-200 hover:bg-purple-50 shadow-sm"
+                    >
+                        <Store className="h-5 w-5" /> Exit Admin & Go to Shop
+                    </Button>
+
                 </CardContent>
             </Card>
         )}

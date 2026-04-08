@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Store, Wallet, Save, Bell, Loader2, Smartphone, LogOut } from 'lucide-react';
+import { Settings, Store, Wallet, Save, Bell, Loader2, Smartphone, Download, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePushNotification } from '@/hooks/use-push-notification';
+
+// ★ Capacitor Preferences Import
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 
@@ -23,7 +25,7 @@ export default function AdminSettingsPage() {
   // States
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [isNativeApp, setIsNativeApp] = useState(false);
-  const [isAdminAppDefault, setIsAdminAppDefault] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
   
   // App Version Config
   const [appConfig, setAppConfig] = useState({
@@ -40,18 +42,10 @@ export default function AdminSettingsPage() {
       coinValue: '1'
   });
 
-  // ১. ডেটা ফেচ করা এবং লোকাল স্টোরেজ চেক করা
+  // ১. ডেটা ফেচ করা
   useEffect(() => {
     const fetchSettings = async () => {
         try {
-            // Check Native App Mode
-            if (Capacitor.isNativePlatform()) {
-                setIsNativeApp(true);
-                const { value } = await Preferences.get({ key: 'app_mode' });
-                setIsAdminAppDefault(value === 'admin');
-            }
-
-            // Fetch DB Settings
             const res = await fetch('/api/settings');
             const data = await res.json();
             if (data.success) {
@@ -75,6 +69,16 @@ export default function AdminSettingsPage() {
         }
     };
     fetchSettings();
+
+    // ★ চেক করা হচ্ছে নেটিভ অ্যাপ কি না এবং অ্যাডমিন মোড স্ট্যাটাস
+    if (Capacitor.isNativePlatform()) {
+        setIsNativeApp(true);
+        const checkAppMode = async () => {
+            const { value } = await Preferences.get({ key: 'app_mode' });
+            setIsAdminMode(value === 'admin');
+        };
+        checkAppMode();
+    }
   }, []);
 
   // ২. স্টোর টগল হ্যান্ডলার (ইনস্ট্যান্ট সেভ)
@@ -93,17 +97,19 @@ export default function AdminSettingsPage() {
       }
   };
 
-  // ★ নতুন: অ্যাপ মোড টগল হ্যান্ডলার
-  const handleToggleAdminMode = async (checked: boolean) => {
-      setIsAdminAppDefault(checked);
-      await Preferences.set({ key: 'app_mode', value: checked ? 'admin' : 'user' });
+  // ★ অ্যাডমিন মোড অফ করার হ্যান্ডলার
+  const handleAdminModeToggle = async (checked: boolean) => {
+      setIsAdminMode(checked);
+      const mode = checked ? 'admin' : 'user';
+      await Preferences.set({ key: 'app_mode', value: mode });
       
       if (!checked) {
-          toast.info("Exiting Admin Mode...");
-          // যদি অফ করে দেয়, তবে সাথে সাথে মেইন সাইটে পাঠিয়ে দেব
+          toast.success("Admin mode disabled. Redirecting to main app...");
           setTimeout(() => {
               window.location.href = 'https://bumbaskitchen.app';
-          }, 500);
+          }, 1000);
+      } else {
+          toast.success("Admin mode enabled.");
       }
   };
 
@@ -136,7 +142,7 @@ export default function AdminSettingsPage() {
     }
   }
 
-  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary" /></div>;
+  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-20">
@@ -149,31 +155,6 @@ export default function AdminSettingsPage() {
 
       <div className="grid gap-8">
         
-        {/* ★★★ NEW: App Mode Toggle (Only visible in Native App) ★★★ */}
-        {isNativeApp && (
-            <Card className="border border-primary/20 shadow-md bg-primary/5">
-                <CardHeader className="py-4">
-                    <div className="flex items-center gap-2 text-primary">
-                        <Smartphone className="h-5 w-5" />
-                        <CardTitle>App Display Mode</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label className="text-base font-bold text-gray-900">Admin Mode Active</Label>
-                            <p className="text-sm text-muted-foreground">Turn off to return to the normal customer website.</p>
-                        </div>
-                        <Switch 
-                            checked={isAdminAppDefault} 
-                            onCheckedChange={handleToggleAdminMode} 
-                            className="data-[state=checked]:bg-primary"
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-        )}
-
         {/* Store Open/Close */}
         <Card className="border-0 shadow-md">
             <CardHeader className="bg-muted/30 border-b py-4">
@@ -191,6 +172,34 @@ export default function AdminSettingsPage() {
                 </div>
             </CardContent>
         </Card>
+
+        {/* ★★★ NEW: App Mode Toggle (Visible Only in Native App) ★★★ */}
+        {isNativeApp && (
+            <Card className="border-0 shadow-md ring-1 ring-purple-100">
+                <CardHeader className="bg-purple-50/50 border-b py-4">
+                    <div className="flex items-center gap-2 text-purple-700">
+                        <User className="h-5 w-5" />
+                        <CardTitle>App View Mode</CardTitle>
+                    </div>
+                    <CardDescription>Control how the app launches on this device.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between border p-4 rounded-xl bg-background">
+                        <div className="space-y-0.5">
+                            <Label className="text-base font-semibold">
+                                Admin Mode Default
+                            </Label>
+                            <p className="text-xs text-muted-foreground">If turned off, you will be redirected to the main customer app.</p>
+                        </div>
+                        <Switch 
+                            checked={isAdminMode} 
+                            onCheckedChange={handleAdminModeToggle} 
+                            className="data-[state=checked]:bg-purple-600" 
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+        )}
 
         {/* App Version Control */}
         <Card className="border-0 shadow-md ring-1 ring-blue-100">
@@ -283,7 +292,7 @@ export default function AdminSettingsPage() {
         </Card>
 
         {/* SAVE BUTTON */}
-        <div className="sticky bottom-4 flex justify-end z-10">
+        <div className="sticky bottom-4 flex justify-end">
             <Button onClick={handleSave} size="lg" className="gap-2 shadow-xl bg-primary hover:bg-primary/90 px-8 h-12 text-lg rounded-full" disabled={isSaving}>
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />} Save Changes
             </Button>

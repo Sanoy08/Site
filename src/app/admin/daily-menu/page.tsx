@@ -13,20 +13,16 @@ import { toast } from 'sonner';
 import { FloatingInput } from '@/components/ui/floating-input';
 
 // ★★★ HELPER: Cloudinary Image Optimizer for Push Notifications ★★★
-// এটি নিশ্চিত করে যে ছবির সাইজ 500x500px এবং 100KB এর নিচে থাকে
 const getOptimizedNotificationImage = (url: string) => {
   if (!url) return '';
-  
   if (url.includes('cloudinary.com')) {
-    // w_500, h_500: Exact dimensions
-    // c_fill: Crop to fill
-    // q_auto:low: Aggressive compression for small file size
-    // f_auto: Efficient format (webp/avif)
     return url.replace('/upload/', '/upload/w_500,h_500,c_fill,q_auto:low,f_auto/');
   }
-  
   return url;
 };
+
+// ★ কনস্ট্যান্ট ইমেজের লিংক (আসল থালির ছবি)
+const CONSTANT_THALI_IMAGE = "https://res.cloudinary.com/dk1acdtja/image/upload/v1777168123/IMG_20260426_071347_fltctm.jpg";
 
 export default function DailyMenuPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -48,9 +44,7 @@ export default function DailyMenuPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-        // ★★★ Fix: Remove Token Check
         try {
-            // ★★★ Fix: Remove Header
             const res = await fetch('/api/admin/daily-special');
             const data = await res.json();
             if (data.success && data.data) {
@@ -178,7 +172,6 @@ export default function DailyMenuPage() {
     }
 
     setIsSaving(true);
-    // ★★★ Fix: Remove Token Logic
 
     try {
         // 1. Generate Canvas Image
@@ -208,11 +201,10 @@ export default function DailyMenuPage() {
 
         const originalImageUrl = uploadData.secure_url;
 
-        // ★★★ 4. Optimize Image URL for Notification (500x500, <100kb) ★★★
+        // 4. Optimize Image URL for Notification (500x500, <100kb)
         const optimizedImageUrl = getOptimizedNotificationImage(originalImageUrl);
 
-        // 5. Update Database with Optimized Image URL
-        // ★★★ Fix: Remove Authorization Header
+        // ★★★ 5. Update Database with Best Data Structure ★★★
         const res = await fetch('/api/admin/daily-special', {
             method: 'POST',
             headers: { 
@@ -222,8 +214,13 @@ export default function DailyMenuPage() {
                 name,
                 price,
                 items, 
-                imageUrl: [
-                    optimizedImageUrl,
+                // মূল লিস্ট যেখানে প্রথম ছবিটা অরিজিনাল থালির এবং দ্বিতীয়টা আজকের পোস্টার
+                ImageURLs: [
+                    CONSTANT_THALI_IMAGE,
+                    optimizedImageUrl
+                ],
+                // ব্যাকএন্ডে সিঙ্গেল ইমেজ দরকার হলে বা নোটিফিকেশনের সুবিধার জন্য ফলব্যাক
+                imageUrl: optimizedImageUrl, 
                 inStock,
                 notifyUsers
             })
@@ -232,7 +229,6 @@ export default function DailyMenuPage() {
         const data = await res.json();
         if (res.ok) {
             toast.success("Menu Updated & Poster Published! 🚀");
-            // notifyUsers state is kept as TRUE
         } else {
             toast.error(data.error || "Failed to update");
         }

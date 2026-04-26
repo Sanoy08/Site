@@ -223,9 +223,7 @@ export default function DailyMenuPage() {
                 price,
                 items, 
                 imageUrl: [
-                    optimizedImageUrl, // ১. ডাইনামিক (নতুন জেনারেট হওয়া) ইমেজ
-                    "https://res.cloudinary.com/dk1acdtja/image/upload/v1777168123/IMG_20260426_071347_fltctm.jpg" // ২. কনস্ট্যান্ট (স্থায়ী) থালির ইমেজ
-                ],
+                    optimizedImageUrl,
                 inStock,
                 notifyUsers
             })

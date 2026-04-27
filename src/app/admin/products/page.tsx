@@ -18,6 +18,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+// ✅ Select কম্পোনেন্টগুলো ইম্পোর্ট করা হলো
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
@@ -27,6 +35,18 @@ import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationD
 
 // ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
+
+// ✅ ক্যাটাগরির লিস্ট
+const CATEGORIES = [
+  "Chicken",
+  "Mutton",
+  "Rice",
+  "Fish",
+  "Paneer",
+  "Fried",
+  "Chapati",
+  "Veg"
+];
 
 type Product = {
   id: string;
@@ -110,7 +130,12 @@ export default function AdminProductsPage() {
   };
 
   const handleSubmit = async () => {
-    // ★★★ Fix: Remove Token Logic
+    // Validation: Category select করা হয়েছে কিনা চেক করা
+    if (!formData.category) {
+      toast.error('Please select a category');
+      return;
+    }
+
     const method = editingProduct ? 'PUT' : 'POST';
     const url = editingProduct ? `/api/admin/products/${editingProduct.id}` : '/api/admin/products';
 
@@ -125,7 +150,6 @@ export default function AdminProductsPage() {
     };
 
     try {
-      // ★★★ Fix: Remove Authorization Header
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -147,9 +171,7 @@ export default function AdminProductsPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    // ★★★ Fix: Remove Token Logic
     try {
-        // ★★★ Fix: Remove Authorization Header
         const res = await fetch(`/api/admin/products/${deleteId}`, {
             method: 'DELETE',
         });
@@ -247,7 +269,6 @@ export default function AdminProductsPage() {
                     </DropdownMenu>
                  </div>
 
-                 {/* ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে */}
                  <Image 
                     src={optimizeImageUrl(product.images[0]?.url || PLACEHOLDER_IMAGE_URL)} 
                     alt={product.name} 
@@ -300,9 +321,25 @@ export default function AdminProductsPage() {
                         <Label>Dish Name</Label>
                         <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Chicken Biryani" />
                     </div>
+                    
+                    {/* ✅ আপডেট করা ক্যাটাগরি সিলেক্ট ফিল্ড */}
                     <div className="space-y-2">
                         <Label>Category</Label>
-                        <Input value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} placeholder="e.g. Main Course" />
+                        <Select 
+                            value={formData.category} 
+                            onValueChange={(value) => setFormData({...formData, category: value})}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CATEGORIES.map((cat) => (
+                                    <SelectItem key={cat} value={cat}>
+                                        {cat}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 

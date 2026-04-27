@@ -16,7 +16,7 @@ export function optimizeImageUrl(url: string | undefined | null): string {
   // ৪. অটোমেটিক অপটিমাইজেশন (যদি আগে থেকে সাইজ না দেওয়া থাকে)
   // এটি ইমেজের সাইজ কমাবে এবং স্পিড বাড়াবে
   if (!newUrl.includes('/w_') && !newUrl.includes('/q_')) {
-    newUrl = newUrl.replace('/upload/', '/upload/w_500,q_auto,f_auto/');
+    newUrl = newUrl.replace('/upload/', '/upload/w_1024,q_auto,f_auto/');
   }
 
   return newUrl;

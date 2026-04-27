@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
             name: specialItem.Name,
             price: specialItem.Price,
             description: specialItem.Description,
-            imageUrl: specialItem.ImageURLs?.[0] || '',
+            // GET করার সময় ImageURLs অ্যারে এবং ফলব্যাক imageUrl দুটোই পাঠিয়ে দেওয়া হলো
+            ImageURLs: specialItem.ImageURLs || [],
+            imageUrl: specialItem.ImageURLs?.[1] || specialItem.ImageURLs?.[0] || '',
             inStock: specialItem.InStock
         }
     });
@@ -50,7 +52,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, price, items, imageUrl, inStock, notifyUsers } = body;
+    // ★ ফ্রন্টএন্ড থেকে আসা ImageURLs (Array) রিসিভ করা হচ্ছে
+    const { name, price, items, ImageURLs, imageUrl, inStock, notifyUsers } = body;
 
     const description = items.map((item: string) => `• ${item}`).join('\n');
 
@@ -63,7 +66,8 @@ export async function POST(request: NextRequest) {
         Price: parseFloat(price),
         Description: description,
         Category: "Thali",
-        ImageURLs: [imageUrl],
+        // ★ ImageURLs অ্যারে থাকলে সেটা সেভ হবে, না থাকলে imageUrl দিয়ে অ্যারে তৈরি হবে
+        ImageURLs: ImageURLs || (imageUrl ? [imageUrl] : []),
         InStock: inStock,
         isDailySpecial: true,
         Bestseller: false,
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
             client,
             "Today's Special! 🍛",
             `New ${name} is now available. Order before it runs out!`,
-            imageUrl || "", 
+            imageUrl || (ImageURLs && ImageURLs[1]) || "", // নোটিফিকেশনে পোস্টার (২য় ছবি) বা ফলব্যাক ইমেজ যাবে
             '/menus/special-veg-thalii' // Link
         ).catch(console.error);
     }

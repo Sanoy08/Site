@@ -62,7 +62,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const inlineCartRef = useRef<HTMLDivElement>(null);
 
   // Description Parsing Logic for "Top Highlights"
-  const rawDescription = product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.";
+  const rawDescription = (product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.").replace(/\\n/g, '\n');
   let highlights: string[] = [];
   let cleanDescriptionText = rawDescription;
 

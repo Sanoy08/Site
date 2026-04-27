@@ -190,7 +190,6 @@ export default function DailyMenuPage() {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "dhhfisazd";
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "bumbas-kitchen-uploads";
         formData.append('upload_preset', uploadPreset);
-        formData.append('folder', 'veg_thali_posters');
 
         const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
             method: 'POST',

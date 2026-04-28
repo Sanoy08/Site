@@ -3,6 +3,10 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+// ★ FileOpener বাদ দিয়ে Share ইমপোর্ট করা হলো
+import { Share } from '@capacitor/share';
 
 // ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
@@ -293,30 +297,35 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      // ফাইলের নাম
-      const safeOrderNum = order.OrderNumber ? String(order.OrderNumber).replace(/[^a-zA-Z0-9]/g, '') : 'UNKNOWN';
-      const fileName = `Invoice_${safeOrderNum}_${Date.now()}.pdf`;
+      const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ Pure Web & WebView Approach (No Plugins Required) ★★★
-      try {
-          // ১. PDF-কে Blob ডেটায় কনভার্ট করা
-          const pdfBlob = doc.output('blob');
-          const pdfUrl = URL.createObjectURL(pdfBlob);
+      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
+      if (Capacitor.isNativePlatform()) {
+          try {
+              // 1. Convert PDF to Base64
+              const pdfBase64 = doc.output('datauristring').split(',')[1];
+              
+              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
+              const savedFile = await Filesystem.writeFile({
+                  path: fileName,
+                  data: pdfBase64,
+                  directory: Directory.Cache 
+              });
 
-          // ২. একটি অদৃশ্য লিংক তৈরি করে সেটাতে ক্লিক ট্র্রিগার করা
-          const link = document.createElement('a');
-          link.href = pdfUrl;
-          link.download = fileName; // এটি Android সিস্টেমকে বলবে ফাইলটি ডাউনলোড করে ওপেন করার অপশন দিতে
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-
-          // ৩. মেমরি লিক রোধ করতে কিছুক্ষণ পর URL ক্লিয়ার করা
-          setTimeout(() => URL.revokeObjectURL(pdfUrl), 2000);
-
-      } catch (err: any) {
-          console.error("PDF View/Download Error:", err);
-          // ফলব্যাক হিসেবে jsPDF এর ডিফল্ট সেভ মেথড
+              // 3. ★ SHARE DIALOG OPEN করা
+              await Share.share({
+                  title: 'Invoice',
+                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
+                  url: savedFile.uri, // Saved file uri
+                  dialogTitle: 'Share Invoice'
+              });
+              
+          } catch (err) {
+              console.error('File saving/sharing error:', err);
+              throw new Error("Could not share PDF on device.");
+          }
+      } else {
+          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
           doc.save(fileName);
       }
       

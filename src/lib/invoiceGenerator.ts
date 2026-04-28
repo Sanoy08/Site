@@ -5,7 +5,6 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-// ★ FileOpener বাদ দিয়ে Share ইমপোর্ট করা হলো
 import { Share } from '@capacitor/share';
 
 // ★ Image Compressor
@@ -297,9 +296,9 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      // Special character remove kore unique file name toiri kora hocche
-      const safeOrderNumber = order.OrderNumber ? order.OrderNumber.toString().replace(/[^a-zA-Z0-9-]/g, '_') : 'Unknown';
-      const fileName = `Invoice_${safeOrderNumber}_${Date.now()}.pdf`;
+      // ★★★ FIX: Added Date.now() for unique filename to prevent cache overwrite conflicts ★★★
+      const safeOrderNum = order.OrderNumber ? String(order.OrderNumber).replace(/[^a-zA-Z0-9]/g, '') : 'UNKNOWN';
+      const fileName = `Invoice_${safeOrderNum}_${Date.now()}.pdf`;
 
       // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
@@ -307,27 +306,34 @@ export const generateInvoice = async (order: any) => {
               // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
               
-              // 2. Save to Cache Directory 
+              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
               const savedFile = await Filesystem.writeFile({
                   path: fileName,
                   data: pdfBase64,
                   directory: Directory.Cache 
               });
 
-              // 3. ★ SHARE DIALOG OPEN (Fixed for Android/iOS File Sharing)
+              // 3. ★ SHARE DIALOG OPEN করা
               await Share.share({
                   title: 'Invoice',
                   text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
-                  files: [savedFile.uri], // url: er bodole files: array use kora hoyeche
+                  url: savedFile.uri, // Saved file uri
                   dialogTitle: 'Share Invoice'
               });
               
           } catch (err: any) {
               console.error('File saving/sharing error:', err);
-              // Exact error message throw kora hocche jate debugging e subidha hoy
-              throw new Error(err.message || "Could not share PDF on device.");
+              // ★★★ FIX: আসল এরর মেসেজ পাঠানো হচ্ছে যাতে পরবর্তীতে ডিবাগ করতে সুবিধা হয়
+              const errMsg = err?.message || "Unknown error occurred";
+              throw new Error(`Device Error: ${errMsg}`);
           }
       } else {
-          // Web Fallback (Desktop/Browser er jonno)
+          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
           doc.save(fileName);
       }
+      
+  } catch (error) {
+      console.error("PDF Generation Error:", error);
+      throw error;
+  }
+};

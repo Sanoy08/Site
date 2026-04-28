@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Plus, Trash2, FileText, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
-import { generateInvoice } from '@/lib/invoiceGenerator'; // Purono generator-ti use kora hochhe
+import { generateCustomInvoice } from '@/lib/customInvoiceGenerator'; 
 
 export default function CustomInvoicePage() {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -18,11 +18,16 @@ export default function CustomInvoicePage() {
         name: '',
         phone: '',
         address: '',
-        orderNumber: `BK-CUSTOM-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        // ৬-ডিজিটের র‍্যান্ডম বিল নাম্বার
+        orderNumber: Math.floor(100000 + Math.random() * 900000).toString(),
         date: new Date().toISOString().split('T')[0]
     });
 
     const [items, setItems] = useState([{ id: '1', name: '', price: 0, quantity: 1 }]);
+    
+    // নতুন স্টেট: ডিসকাউন্ট এবং রিসিভড অ্যামাউন্ট
+    const [discount, setDiscount] = useState<number>(0);
+    const [receivedAmount, setReceivedAmount] = useState<number>(0);
 
     const handleAddItem = () => {
         setItems([...items, { id: Date.now().toString(), name: '', price: 0, quantity: 1 }]);
@@ -38,7 +43,9 @@ export default function CustomInvoicePage() {
         setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
     };
 
+    // ক্যালকুলেশন
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const finalPrice = Math.max(0, subtotal - discount);
 
     const handleDownloadInvoice = async () => {
         if (!customerInfo.name || !customerInfo.phone) {
@@ -48,7 +55,6 @@ export default function CustomInvoicePage() {
 
         setIsGenerating(true);
         try {
-            // Normal order object-er format-e data sajano hochhe
             const mockOrder = {
                 OrderNumber: customerInfo.orderNumber,
                 Name: customerInfo.name,
@@ -61,12 +67,13 @@ export default function CustomInvoicePage() {
                     quantity: item.quantity
                 })),
                 Subtotal: subtotal,
-                FinalPrice: subtotal,
-                Discount: 0,
+                FinalPrice: finalPrice,
+                Discount: discount,
+                ReceivedAmount: receivedAmount,
                 OrderType: 'Custom'
             };
 
-            await generateInvoice(mockOrder);
+            await generateCustomInvoice(mockOrder);
             toast.success("Invoice generated successfully!");
         } catch (error) {
             console.error(error);
@@ -130,11 +137,11 @@ export default function CustomInvoicePage() {
                                     </div>
                                     <div className="w-full sm:w-24 space-y-1.5">
                                         <Label className="text-xs">Price</Label>
-                                        <Input type="number" value={item.price} onChange={e => handleItemChange(item.id, 'price', Number(e.target.value))} />
+                                        <Input type="number" value={item.price || ''} onChange={e => handleItemChange(item.id, 'price', Number(e.target.value))} />
                                     </div>
                                     <div className="w-full sm:w-20 space-y-1.5">
                                         <Label className="text-xs">Qty</Label>
-                                        <Input type="number" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', Number(e.target.value))} />
+                                        <Input type="number" value={item.quantity || ''} onChange={e => handleItemChange(item.id, 'quantity', Number(e.target.value))} />
                                     </div>
                                     <div className="flex items-end pb-1">
                                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} className="text-destructive hover:bg-destructive/10">
@@ -145,10 +152,38 @@ export default function CustomInvoicePage() {
                             ))}
                         </div>
 
-                        <div className="pt-4 border-t space-y-3">
-                            <div className="flex justify-between text-lg font-bold">
+                        {/* Payment & Summary Section */}
+                        <div className="pt-4 border-t space-y-4">
+                            <div className="space-y-3 bg-gray-50 p-4 rounded-xl border">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-muted-foreground">Subtotal</Label>
+                                    <span className="font-medium">{formatPrice(subtotal)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label>Discount (₹)</Label>
+                                    <Input 
+                                        type="number" 
+                                        value={discount || ''} 
+                                        onChange={e => setDiscount(Number(e.target.value))} 
+                                        className="w-32 text-right h-8" 
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label>Received Amount (₹)</Label>
+                                    <Input 
+                                        type="number" 
+                                        value={receivedAmount || ''} 
+                                        onChange={e => setReceivedAmount(Number(e.target.value))} 
+                                        className="w-32 text-right h-8" 
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between text-xl font-bold px-2">
                                 <span>Grand Total :</span>
-                                <span className="text-primary">{formatPrice(subtotal)}</span>
+                                <span className="text-primary">{formatPrice(finalPrice)}</span>
                             </div>
                             <Button onClick={handleDownloadInvoice} disabled={isGenerating} className="w-full h-12 text-lg shadow-lg shadow-primary/20">
                                 {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}

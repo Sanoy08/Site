@@ -5,9 +5,8 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-// ★ Share এর পাশাপাশি FileOpener ইমপোর্ট করা হলো
+// ★ FileOpener বাদ দিয়ে Share ইমপোর্ট করা হলো
 import { Share } from '@capacitor/share';
-import { FileOpener } from '@capacitor-community/file-opener';
 
 // ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
@@ -298,49 +297,37 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      if (Capacitor.isNativePlatform()) {
-    try {
-        const pdfBase64 = doc.output('datauristring').split(',')[1];
-        
-        // ১. প্রথমে Cache এ সেভ করার চেষ্টা করি (এটি সবচেয়ে বেশি কাজ করে)
-        const savedFile = await Filesystem.writeFile({
-            path: fileName,
-            data: pdfBase64,
-            directory: Directory.Cache, 
-        });
+      const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-        // ২. ফাইল ওপেন করার চেষ্টা
-        await FileOpener.open({
-            filePath: savedFile.uri,
-            contentType: 'application/pdf',
-        });
-        
-    } catch (err) {
-        console.error('Native PDF Error, falling back to Share:', err);
-        
-        // ৩. যদি FileOpener কাজ না করে, তবে সরাসরি Share অপশন দিন (এটি ১০০% কাজ করবে)
-        try {
-            const pdfBase64 = doc.output('datauristring').split(',')[1];
-            const fallbackFile = await Filesystem.writeFile({
-                path: `Download_${fileName}`,
-                data: pdfBase64,
-                directory: Directory.Cache
-            });
-            
-            await Share.share({
-                title: 'Order Invoice',
-                url: fallbackFile.uri,
-            });
-        } catch (shareErr) {
-            // ৪. একদম শেষ ভরসা: নতুন ট্যাবে ওপেন করা
-            const blobUrl = doc.output('bloburl');
-            window.open(blobUrl.toString(), '_blank');
-        }
-    }
-} else {
-    // Web এর জন্য ডিফল্ট ডাউনলোড
-    doc.save(fileName);
-}
+      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
+      if (Capacitor.isNativePlatform()) {
+          try {
+              // 1. Convert PDF to Base64
+              const pdfBase64 = doc.output('datauristring').split(',')[1];
+              
+              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
+              const savedFile = await Filesystem.writeFile({
+                  path: fileName,
+                  data: pdfBase64,
+                  directory: Directory.Cache 
+              });
+
+              // 3. ★ SHARE DIALOG OPEN করা
+              await Share.share({
+                  title: 'Invoice',
+                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
+                  url: savedFile.uri, // Saved file uri
+                  dialogTitle: 'Share Invoice'
+              });
+              
+          } catch (err) {
+              console.error('File saving/sharing error:', err);
+              throw new Error("Could not share PDF on device.");
+          }
+      } else {
+          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
+          doc.save(fileName);
+      }
       
   } catch (error) {
       console.error("PDF Generation Error:", error);

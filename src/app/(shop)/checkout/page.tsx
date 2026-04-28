@@ -404,6 +404,7 @@ export default function CheckoutPage() {
       try {
           const orderPayload = {
               ...values,
+              altPhone: user?.phone || '',
               items: state.items,
               subtotal: totalPrice,
               total: finalTotal,

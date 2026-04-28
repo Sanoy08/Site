@@ -2,21 +2,17 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 
-// capacitor.config.ts
 const config: CapacitorConfig = {
   appId: 'com.bumbaskitchen.app',
   appName: "Bumba's Kitchen",
   webDir: 'public',
   server: {
-    // এটি মেইন এন্ট্রি পয়েন্ট
-    url: 'https://www.bumbaskitchen.app', 
+    url: 'https://www.bumbaskitchen.app',
     cleartext: true,
-    // এখানে সাবডোমেনগুলো মাস্ট যোগ করতে হবে
     allowNavigation: [
       'www.bumbaskitchen.app',
       'bumbaskitchen.app',
-      'admin.bumbaskitchen.app', // এডমিন সাবডোমেন
-      '*.bumbaskitchen.app'      // অন্য সব সাবডোমেনের জন্য ওয়াইল্ডকার্ড
+      '*.bumbaskitchen.app'
     ],
   },
   android: {

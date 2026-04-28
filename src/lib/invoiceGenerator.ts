@@ -297,7 +297,9 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      const fileName = `Invoice_${order.OrderNumber}.pdf`;
+      // Special character remove kore unique file name toiri kora hocche
+      const safeOrderNumber = order.OrderNumber ? order.OrderNumber.toString().replace(/[^a-zA-Z0-9-]/g, '_') : 'Unknown';
+      const fileName = `Invoice_${safeOrderNumber}_${Date.now()}.pdf`;
 
       // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
@@ -305,32 +307,27 @@ export const generateInvoice = async (order: any) => {
               // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
               
-              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
+              // 2. Save to Cache Directory 
               const savedFile = await Filesystem.writeFile({
                   path: fileName,
                   data: pdfBase64,
                   directory: Directory.Cache 
               });
 
-              // 3. ★ SHARE DIALOG OPEN করা
+              // 3. ★ SHARE DIALOG OPEN (Fixed for Android/iOS File Sharing)
               await Share.share({
                   title: 'Invoice',
                   text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
-                  url: savedFile.uri, // Saved file uri
+                  files: [savedFile.uri], // url: er bodole files: array use kora hoyeche
                   dialogTitle: 'Share Invoice'
               });
               
-          } catch (err) {
+          } catch (err: any) {
               console.error('File saving/sharing error:', err);
-              throw new Error("Could not share PDF on device.");
+              // Exact error message throw kora hocche jate debugging e subidha hoy
+              throw new Error(err.message || "Could not share PDF on device.");
           }
       } else {
-          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
+          // Web Fallback (Desktop/Browser er jonno)
           doc.save(fileName);
       }
-      
-  } catch (error) {
-      console.error("PDF Generation Error:", error);
-      throw error;
-  }
-};

@@ -3,9 +3,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 
 // ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
@@ -296,39 +293,30 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      // ★★★ FIX: Added Date.now() for unique filename to prevent cache overwrite conflicts ★★★
+      // ফাইলের নাম
       const safeOrderNum = order.OrderNumber ? String(order.OrderNumber).replace(/[^a-zA-Z0-9]/g, '') : 'UNKNOWN';
       const fileName = `Invoice_${safeOrderNum}_${Date.now()}.pdf`;
 
-      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
-      if (Capacitor.isNativePlatform()) {
-          try {
-              // 1. Convert PDF to Base64
-              const pdfBase64 = doc.output('datauristring').split(',')[1];
-              
-              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
-              const savedFile = await Filesystem.writeFile({
-                  path: fileName,
-                  data: pdfBase64,
-                  directory: Directory.Cache 
-              });
+      // ★★★ Pure Web & WebView Approach (No Plugins Required) ★★★
+      try {
+          // ১. PDF-কে Blob ডেটায় কনভার্ট করা
+          const pdfBlob = doc.output('blob');
+          const pdfUrl = URL.createObjectURL(pdfBlob);
 
-              // 3. ★ SHARE DIALOG OPEN করা
-              await Share.share({
-                  title: 'Invoice',
-                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
-                  url: savedFile.uri, // Saved file uri
-                  dialogTitle: 'Share Invoice'
-              });
-              
-          } catch (err: any) {
-              console.error('File saving/sharing error:', err);
-              // ★★★ FIX: আসল এরর মেসেজ পাঠানো হচ্ছে যাতে পরবর্তীতে ডিবাগ করতে সুবিধা হয়
-              const errMsg = err?.message || "Unknown error occurred";
-              throw new Error(`Device Error: ${errMsg}`);
-          }
-      } else {
-          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
+          // ২. একটি অদৃশ্য লিংক তৈরি করে সেটাতে ক্লিক ট্র্রিগার করা
+          const link = document.createElement('a');
+          link.href = pdfUrl;
+          link.download = fileName; // এটি Android সিস্টেমকে বলবে ফাইলটি ডাউনলোড করে ওপেন করার অপশন দিতে
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // ৩. মেমরি লিক রোধ করতে কিছুক্ষণ পর URL ক্লিয়ার করা
+          setTimeout(() => URL.revokeObjectURL(pdfUrl), 2000);
+
+      } catch (err: any) {
+          console.error("PDF View/Download Error:", err);
+          // ফলব্যাক হিসেবে jsPDF এর ডিফল্ট সেভ মেথড
           doc.save(fileName);
       }
       

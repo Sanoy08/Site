@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, ShoppingBag, Utensils, TicketPercent, Users, 
-  Calendar, ImageIcon, Gift, BarChart3, Send, Settings, Menu, Moon, Sun, LogOut, CalendarDays, Loader2, Images 
+  Calendar, ImageIcon, Gift, BarChart3, Send, Settings, Menu, Moon, Sun, LogOut, CalendarDays, Loader2, Images, FileText
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/use-auth'; 

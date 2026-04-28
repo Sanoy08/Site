@@ -18,6 +18,7 @@ const adminNavLinks = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/products', label: 'Menu Management', icon: Utensils },
+  { href: '/custom-invoice', label: 'Custom Invoice', icon: FileText },
   { href: '/coupons', label: 'Coupons', icon: TicketPercent },
   { href: '/users', label: 'Customers', icon: Users },
   { href: '/daily-menu', label: 'Daily Menu', icon: CalendarDays }, 

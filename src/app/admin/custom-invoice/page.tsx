@@ -2,12 +2,12 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, FileText, Download, Loader2, Calendar as CalendarIcon, UtensilsCrossed } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, cn } from '@/lib/utils';
 import { generateCustomInvoice } from '@/lib/customInvoiceGenerator'; 
@@ -16,16 +16,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format } from "date-fns";
 
-// ★ Select কম্পোনেন্টগুলো ইম্পোর্ট করা হলো
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 export default function CustomInvoicePage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-    
-    // মেনুর আইটেম স্টোর করার স্টেট
-    const [storeProducts, setStoreProducts] = useState<any[]>([]);
-    const [selectReset, setSelectReset] = useState(0); // ড্রপডাউন রিসেট করার ট্রিক
     
     const [customerInfo, setCustomerInfo] = useState({
         name: '',
@@ -38,38 +31,8 @@ export default function CustomInvoicePage() {
     const [discount, setDiscount] = useState<number>(0);
     const [receivedAmount, setReceivedAmount] = useState<number>(0);
 
-    // ★ পেজ লোড হলেই ডাটাবেস থেকে মেনুর সমস্ত আইটেম নিয়ে আসা
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const res = await fetch('/api/products');
-                const data = await res.json();
-                if (data.success) {
-                    setStoreProducts(data.products);
-                }
-            } catch (error) {
-                console.error("Failed to fetch store products", error);
-            }
-        };
-        fetchProducts();
-    }, []);
-
-    // কাস্টম আইটেম অ্যাড করার ফাংশন
-    const handleAddCustomItem = () => {
+    const handleAddItem = () => {
         setItems([...items, { id: Date.now().toString(), name: '', price: 0, quantity: 1 }]);
-    };
-
-    // ★ মেনু থেকে আইটেম অ্যাড করার ফাংশন
-    const handleAddFromMenu = (productId: string) => {
-        const product = storeProducts.find(p => p.id === productId);
-        if (product) {
-            // যদি আগে থেকেই একটা খালি আইটেম থাকে, তবে সেটাকে রিপ্লেস করে দেবো
-            if (items.length === 1 && items[0].name === '' && items[0].price === 0) {
-                setItems([{ id: Date.now().toString(), name: product.name, price: product.price, quantity: 1 }]);
-            } else {
-                setItems([...items, { id: Date.now().toString(), name: product.name, price: product.price, quantity: 1 }]);
-            }
-        }
     };
 
     const handleRemoveItem = (id: string) => {
@@ -82,7 +45,7 @@ export default function CustomInvoicePage() {
         setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
     };
 
-    // ক্যালকুলেশন
+    // ★ এখানে receivedAmount মাইনাস করা হয়েছে
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const finalPrice = Math.max(0, subtotal - discount - receivedAmount);
 
@@ -149,6 +112,7 @@ export default function CustomInvoicePage() {
                             <Input value={customerInfo.address} onChange={e => setCustomerInfo({...customerInfo, address: e.target.value})} placeholder="Full Address" />
                         </div>
 
+                        {/* Custom Date Picker */}
                         <div className="space-y-2">
                             <Label>Bill Date</Label>
                             <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
@@ -179,41 +143,11 @@ export default function CustomInvoicePage() {
 
                 {/* Items and Summary */}
                 <Card className="md:col-span-2 shadow-sm">
-                    <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg">Order Items</CardTitle>
-                        
-                        {/* ★ নতুন অ্যাকশন বার */}
-                        <div className="flex flex-wrap gap-2">
-                            <Select 
-                                key={selectReset} 
-                                onValueChange={(val) => {
-                                    handleAddFromMenu(val);
-                                    setSelectReset(prev => prev + 1); // ড্রপডাউন আগের অবস্থায় ফেরানোর জন্য
-                                }}
-                            >
-                                <SelectTrigger className="w-[180px] h-9 bg-primary/5 border-primary/20 text-primary font-medium hover:bg-primary/10 transition-colors">
-                                    <div className="flex items-center gap-2">
-                                        <UtensilsCrossed className="w-3.5 h-3.5" />
-                                        <span className="truncate">Add from Menu</span>
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {storeProducts.length === 0 ? (
-                                        <div className="p-2 text-sm text-muted-foreground text-center">Loading...</div>
-                                    ) : (
-                                        storeProducts.map((p) => (
-                                            <SelectItem key={p.id} value={p.id}>
-                                                {p.name} - ₹{p.price}
-                                            </SelectItem>
-                                        ))
-                                    )}
-                                </SelectContent>
-                            </Select>
-
-                            <Button variant="outline" size="sm" onClick={handleAddCustomItem} className="gap-1 h-9">
-                                <Plus className="h-4 w-4" /> Custom Item
-                            </Button>
-                        </div>
+                        <Button variant="outline" size="sm" onClick={handleAddItem} className="gap-1">
+                            <Plus className="h-4 w-4" /> Add Item
+                        </Button>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
@@ -256,6 +190,7 @@ export default function CustomInvoicePage() {
                                 </div>
                             </div>
 
+                            {/* লেবেলটা Grand Total থেকে Due Amount করে দেওয়া হলো বোঝার সুবিধার্থে */}
                             <div className="flex justify-between text-xl font-bold px-2">
                                 <span>Grand Total (Due) :</span>
                                 <span className="text-primary">{formatPrice(finalPrice)}</span>

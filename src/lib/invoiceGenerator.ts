@@ -5,8 +5,9 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-// ★ FileOpener বাদ দিয়ে Share ইমপোর্ট করা হলো
+// ★ Share এর পাশাপাশি FileOpener ইমপোর্ট করা হলো
 import { Share } from '@capacitor/share';
+import { FileOpener } from '@capacitor-community/file-opener';
 
 // ★ Image Compressor
 const loadAndCompressImage = (src: string): Promise<string | null> => {
@@ -299,33 +300,49 @@ export const generateInvoice = async (order: any) => {
 
       const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
+      // ★★★ CAPACITOR NATIVE SAVE & VIEW LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
           try {
-              // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
               
-              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
+              // 1. Documents Directory তে সেভ করছি যাতে ফাইল ম্যানেজারে পাওয়া যায়
               const savedFile = await Filesystem.writeFile({
                   path: fileName,
                   data: pdfBase64,
-                  directory: Directory.Cache 
+                  directory: Directory.Documents, // Cache এর বদলে Documents 
+                  recursive: true // ফোল্ডার না থাকলে তৈরি করে নেবে
               });
 
-              // 3. ★ SHARE DIALOG OPEN করা
-              await Share.share({
-                  title: 'Invoice',
-                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
-                  url: savedFile.uri, // Saved file uri
-                  dialogTitle: 'Share Invoice'
+              // 2. FileOpener দিয়ে সরাসরি ফোন এর Default PDF অ্যাপে ওপেন করা
+              await FileOpener.open({
+                  filePath: savedFile.uri,
+                  contentType: 'application/pdf',
+                  openWithDefault: true
               });
               
           } catch (err) {
-              console.error('File saving/sharing error:', err);
-              throw new Error("Could not share PDF on device.");
+              console.error('File saving/opening error:', err);
+              
+              // Fallback: যদি Android পারমিশনের কারণে Documents-এ সেভ করতে বা FileOpener-এ সমস্যা হয়,
+              // তখন আগের মতই Share ডায়লগ দিয়ে দেব।
+              try {
+                  const fallbackFile = await Filesystem.writeFile({
+                    path: fileName,
+                    data: doc.output('datauristring').split(',')[1],
+                    directory: Directory.Cache
+                  });
+                  await Share.share({
+                      title: 'Invoice',
+                      text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
+                      url: fallbackFile.uri,
+                      dialogTitle: 'Share Invoice'
+                  });
+              } catch (shareErr) {
+                 console.error("Share failed", shareErr);
+              }
           }
       } else {
-          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
+          // Web Fallback
           doc.save(fileName);
       }
       

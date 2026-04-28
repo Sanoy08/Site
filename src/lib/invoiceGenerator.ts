@@ -298,53 +298,49 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      const fileName = `Invoice_${order.OrderNumber}.pdf`;
-
-      // ★★★ CAPACITOR NATIVE SAVE & VIEW LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
-          try {
-              const pdfBase64 = doc.output('datauristring').split(',')[1];
-              
-              // 1. Documents Directory তে সেভ করছি যাতে ফাইল ম্যানেজারে পাওয়া যায়
-              const savedFile = await Filesystem.writeFile({
-                  path: fileName,
-                  data: pdfBase64,
-                  directory: Directory.Documents, // Cache এর বদলে Documents 
-                  recursive: true // ফোল্ডার না থাকলে তৈরি করে নেবে
-              });
+    try {
+        const pdfBase64 = doc.output('datauristring').split(',')[1];
+        
+        // ১. প্রথমে Cache এ সেভ করার চেষ্টা করি (এটি সবচেয়ে বেশি কাজ করে)
+        const savedFile = await Filesystem.writeFile({
+            path: fileName,
+            data: pdfBase64,
+            directory: Directory.Cache, 
+        });
 
-              // 2. FileOpener দিয়ে সরাসরি ফোন এর Default PDF অ্যাপে ওপেন করা
-              await FileOpener.open({
-                  filePath: savedFile.uri,
-                  contentType: 'application/pdf',
-                  openWithDefault: true
-              });
-              
-          } catch (err) {
-              console.error('File saving/opening error:', err);
-              
-              // Fallback: যদি Android পারমিশনের কারণে Documents-এ সেভ করতে বা FileOpener-এ সমস্যা হয়,
-              // তখন আগের মতই Share ডায়লগ দিয়ে দেব।
-              try {
-                  const fallbackFile = await Filesystem.writeFile({
-                    path: fileName,
-                    data: doc.output('datauristring').split(',')[1],
-                    directory: Directory.Cache
-                  });
-                  await Share.share({
-                      title: 'Invoice',
-                      text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
-                      url: fallbackFile.uri,
-                      dialogTitle: 'Share Invoice'
-                  });
-              } catch (shareErr) {
-                 console.error("Share failed", shareErr);
-              }
-          }
-      } else {
-          // Web Fallback
-          doc.save(fileName);
-      }
+        // ২. ফাইল ওপেন করার চেষ্টা
+        await FileOpener.open({
+            filePath: savedFile.uri,
+            contentType: 'application/pdf',
+        });
+        
+    } catch (err) {
+        console.error('Native PDF Error, falling back to Share:', err);
+        
+        // ৩. যদি FileOpener কাজ না করে, তবে সরাসরি Share অপশন দিন (এটি ১০০% কাজ করবে)
+        try {
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
+            const fallbackFile = await Filesystem.writeFile({
+                path: `Download_${fileName}`,
+                data: pdfBase64,
+                directory: Directory.Cache
+            });
+            
+            await Share.share({
+                title: 'Order Invoice',
+                url: fallbackFile.uri,
+            });
+        } catch (shareErr) {
+            // ৪. একদম শেষ ভরসা: নতুন ট্যাবে ওপেন করা
+            const blobUrl = doc.output('bloburl');
+            window.open(blobUrl.toString(), '_blank');
+        }
+    }
+} else {
+    // Web এর জন্য ডিফল্ট ডাউনলোড
+    doc.save(fileName);
+}
       
   } catch (error) {
       console.error("PDF Generation Error:", error);

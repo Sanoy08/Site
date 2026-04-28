@@ -1,6 +1,4 @@
-// capacitor.config.ts
-import type { CapacitorConfig } from '@capacitor/cli';
-import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
+import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.bumbaskitchen.app',
@@ -9,9 +7,11 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://www.bumbaskitchen.app',
     cleartext: true,
+    androidScheme: 'https', // এটি যোগ করুন, এটি ব্রিজ কানেকশনে সাহায্য করে
     allowNavigation: [
-      'www.bumbaskitchen.app',
       'bumbaskitchen.app',
+      'www.bumbaskitchen.app',
+      'admin.bumbaskitchen.app',
       '*.bumbaskitchen.app'
     ],
   },
@@ -19,16 +19,15 @@ const config: CapacitorConfig = {
     // @ts-ignore
     adjustMarginsForEdgeToEdge: 'disable',
     zoomEnabled: false,
-    backgroundColor: "#7D9A4D" // লোডিং এর সময় ব্যাকগ্রাউন্ড কালার
+    backgroundColor: "#7D9A4D"
   },
   plugins: {
     Keyboard: {
-      resize: KeyboardResize.Body,
-      style: KeyboardStyle.Dark,
+      // সরাসরি এনাম (KeyboardResize.Body) ব্যবহার না করে স্ট্রিং ব্যবহার করুন
+      resize: 'body', 
+      style: 'dark',
       resizeOnFullScreen: true,
     },
-    // StatusBar কনফিগ এখান থেকে সরিয়ে দিয়েছি 
-    // কারণ আমরা এখন StatusBarLogic.tsx দিয়ে কন্ট্রোল করছি
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },

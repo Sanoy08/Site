@@ -3,29 +3,31 @@
 import { useEffect } from 'react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
-import { usePathname } from 'next/navigation';
 
 export default function StatusBarLogic() {
-  const pathname = usePathname();
-
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      const updateStatusBar = async () => {
+      const initStatusBar = async () => {
         try {
-          // স্ট্যাটাস বার সাদা করা
-          await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
-          // আইকন ডার্ক করা (Style.Light মানে লাইট ব্যাকগ্রাউন্ডের জন্য উপযুক্ত ডার্ক আইকন)
-          await StatusBar.setStyle({ style: Style.Light });
-          // ওভারলে বন্ধ রাখা যাতে হিরো ইমেজ ধাক্কা না দেয়
+          // ১. প্রথমে ওভারলে বন্ধ করা (সেফটি)
           await StatusBar.setOverlaysWebView({ overlay: false });
+
+          // ২. রঙ পরিবর্তন: সবুজ -> সাদা
+          await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+
+          // ৩. আইকন পরিবর্তন: সাদা -> কালো
+          // Style.Light মানে হলো "ব্যাকগ্রাউন্ড লাইট", তাই আইকন হবে ডার্ক (কালো)
+          await StatusBar.setStyle({ style: Style.Light });
+          
         } catch (e) {
-          console.error("Status bar error", e);
+          console.error("Status bar styling failed", e);
         }
       };
 
-      updateStatusBar();
+      // অ্যাপ লোড হওয়ার সাথে সাথে কল হবে
+      initStatusBar();
     }
-  }, [pathname]); // পাথ চেঞ্জ হলেও সাদা থাকবে
+  }, []);
 
   return null;
 }

@@ -5,6 +5,7 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+// ★ FileOpener বাদ দিয়ে Share ইমপোর্ট করা হলো
 import { Share } from '@capacitor/share';
 
 // ★ Image Compressor
@@ -298,68 +299,36 @@ export const generateInvoice = async (order: any) => {
 
       const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ Pure JS Fallback: Android Native Print / Save as PDF ★★★
-      const fallbackToWebShare = async () => {
-          // ১. প্রথমে Share API ট্রাই করবে (যদি কাজ করে যায়)
-          try {
-              const blob = doc.output("blob");
-              const file = new File([blob], fileName, { type: "application/pdf" });
-              if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                  await navigator.share({
-                      files: [file],
-                      title: 'Invoice',
-                      text: `Invoice for Order #${order.OrderNumber}`,
-                  });
-                  return;
-              }
-          } catch (err) {
-              console.warn("Share API Failed:", err);
-          }
-
-          // ২. Share কাজ না করলে সরাসরি Native 'Save as PDF' ডায়ালগ ওপেন করে দেবে
-          const pdfUrl = URL.createObjectURL(doc.output("blob"));
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none'; // স্ক্রিনে কিছু দেখা যাবে না
-          iframe.src = pdfUrl;
-          document.body.appendChild(iframe);
-          
-          iframe.onload = () => {
-              setTimeout(() => {
-                  // এই কমান্ডটা Android-কে বলবে PDF টাকে প্রিন্ট বা সেভ করতে
-                  if (iframe.contentWindow) {
-                      iframe.contentWindow.print(); 
-                  }
-              }, 200);
-          };
-      };
-
-      // ★★★ CAPACITOR NATIVE SAVE LOGIC ★★★
+      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
           try {
+              // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
+              
+              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
               const savedFile = await Filesystem.writeFile({
-                  path: `BumbasKitchen_${fileName}`,
+                  path: fileName,
                   data: pdfBase64,
-                  directory: Directory.Documents,
-                  recursive: true 
+                  directory: Directory.Cache 
               });
 
+              // 3. ★ SHARE DIALOG OPEN করা
               await Share.share({
-                  title: 'Invoice Saved!',
-                  text: `Your invoice has been saved to the Documents folder.`,
-                  url: savedFile.uri,
-                  dialogTitle: 'Invoice Downloaded'
+                  title: 'Invoice',
+                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
+                  url: savedFile.uri, // Saved file uri
+                  dialogTitle: 'Share Invoice'
               });
               
           } catch (err) {
-              // অ্যাডমিন প্যানেলে (সাবডোমেইন) Capacitor ফেইল করলে এই Fallback টা রান করবে
-              await fallbackToWebShare();
+              console.error('File saving/sharing error:', err);
+              throw new Error("Could not share PDF on device.");
           }
       } else {
-          // পিসি বা সাধারণ ব্রাউজারের জন্য
-          await fallbackToWebShare();
+          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
+          doc.save(fileName);
       }
-
+      
   } catch (error) {
       console.error("PDF Generation Error:", error);
       throw error;

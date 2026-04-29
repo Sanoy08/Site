@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 
 const adminNavLinks = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/orders', label: 'Orders', icon: ShoppingBag },
+  { href: 'https://bumbaskitchen.app/admin/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/products', label: 'Menu Management', icon: Utensils },
   { href: '/coupons', label: 'Coupons', icon: TicketPercent },
   { href: '/users', label: 'Customers', icon: Users },

@@ -60,18 +60,33 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(new URL(`/admin${path === '/' ? '' : path}`, request.url));
   }
 
-  // ==========================================
+    // ==========================================
   // CASE 2: মেইন ডোমেইন (www.bumbaskitchen.app)
   // ==========================================
   if (!isAdminDomain) {
-    // মেইন ডোমেইনে কেউ /admin এ এক্সেস করতে চাইলে 404 দেখাও (সিকিউরিটি)
+    
+    // Capacitor অ্যাপের জন্য নির্দিষ্ট কিছু অ্যাডমিন পেজ মেইন ডোমেইনে অ্যালাও করা হলো
+    const allowedAdminRoutes = ['/admin/orders', '/admin/custom-invoice'];
+    const isAllowedAdminRoute = allowedAdminRoutes.some(r => path.startsWith(r));
+
     if (path.startsWith('/admin')) {
-      return NextResponse.rewrite(new URL('/404', request.url));
+      if (isAllowedAdminRoute) {
+        // সিকিউরিটি চেক: শুধু অ্যাডমিনরাই এই পেজগুলো মেইন ডোমেইনে দেখতে পারবে
+        if (!token || userRole !== 'admin') {
+          return NextResponse.redirect(new URL('/login', request.url));
+        }
+        // যদি অ্যাডমিন হয়, তাহলে পেজটি রেন্ডার করতে দাও
+      } else {
+        // নির্দিষ্ট পেজ ছাড়া বাকি সব /admin রাউট মেইন ডোমেইনে 404 দেখাবে (সিকিউরিটি)
+        return NextResponse.rewrite(new URL('/404', request.url));
+      }
     }
 
-    // লগইন পেজে যদি অ্যাডমিন আসে, তাকে ড্যাশবোর্ডে পাঠাও
+    // লগইন পেজে যদি অ্যাডমিন আসে
     if (path === '/login' && token && userRole === 'admin') {
-       return NextResponse.redirect(new URL('/', 'https://admin.bumbaskitchen.app'));
+       // Capacitor অ্যাপ থেকে আসলে তাকে মেইন ডোমেইনের /admin/orders এ পাঠানো যেতে পারে
+       // অথবা আগের মত সাবডোমেইনেও পাঠাতে পারেন। 
+       return NextResponse.redirect(new URL('/admin/orders', request.url));
     }
   }
 

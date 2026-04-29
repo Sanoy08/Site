@@ -7,7 +7,7 @@ const SUBSCRIPTIONS_COLLECTION = 'subscriptions';
 const NOTIFICATIONS_COLLECTION = 'notifications';
 const USERS_COLLECTION = 'users';
 
-// ১. নির্দিষ্ট ইউজারকে পাঠানো (আপডেটেড - কাস্টম সাউন্ড)
+// ১. নির্দিষ্ট ইউজারকে পাঠানো (আপডেটেড)
 export async function sendNotificationToUser(
     client: MongoClient, 
     userId: string, 
@@ -29,8 +29,10 @@ export async function sendNotificationToUser(
         createdAt: new Date()
     });
 
+    // ★ এখানে শুধু User App-এর টোকেনগুলো আনবো, Admin App-কে বাদ দেবো
     const tokensDocs = await db.collection(SUBSCRIPTIONS_COLLECTION).find({ 
-        userId: new ObjectId(userId) 
+        userId: new ObjectId(userId),
+        appId: { $ne: 'com.bumbaskitchen.admin' } // ★ এই ফিল্টারটি অ্যাড করা হয়েছে
     }).toArray();
 
     const tokens = tokensDocs.map(doc => doc.token);
@@ -45,7 +47,6 @@ export async function sendNotificationToUser(
       },
       data: { 
           url,
-          // ★ চ্যানেল আইডি পাঠানো হচ্ছে যাতে ফোরগ্রাউন্ডে সঠিক সাউন্ড বাজে
           android_channel_id: 'user_notifications', 
           ...(imageUrl && { image: imageUrl }),
           ...(imageUrl && { picture: imageUrl }) 
@@ -56,10 +57,9 @@ export async function sendNotificationToUser(
         notification: {
           icon: 'ic_stat_icon',
           color: '#f97316',
-          // ★ ইউজারদের জন্য কাস্টম সাউন্ড কনফিগারেশন ★
           channelId: 'user_notifications', 
-          sound: 'user_alert', // এক্সটেনশন ছাড়া নাম (user_alert.mp3)
-          defaultSound: false, // ডিফল্ট বন্ধ
+          sound: 'user_alert', 
+          defaultSound: false, 
           defaultVibrateTimings: true,
           ...(imageUrl && { imageUrl: imageUrl })
         }

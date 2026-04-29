@@ -399,60 +399,31 @@ export function Header() {
                       </div>
                       
                       <DropdownMenuGroup className="space-y-1">
-                          <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <User className="mr-3 h-4 w-4 text-muted-foreground" />
-                              My Profile
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push('/account/orders')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <ShoppingBag className="mr-3 h-4 w-4 text-muted-foreground" />
-                              My Orders
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push('/account/favorites')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <Heart className="mr-3 h-4 w-4 text-muted-foreground" />
-                              Favorites
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push('/account/wallet')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <Wallet className="mr-3 h-4 w-4 text-muted-foreground" />
-                              Wallet
-                          </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                      
-                      {user.role === 'admin' && (
-                          <>
-                              <DropdownMenuSeparator className="my-2 bg-border/50" />
-                              <DropdownMenuItem 
-                                  onClick={handleAdminClick} 
-                                  className="cursor-pointer rounded-lg py-2.5 bg-amber-50 text-amber-900 focus:bg-amber-100 focus:text-amber-900 font-bold border border-amber-100/50"
-                              >
-                                  <Settings className="mr-3 h-4 w-4 text-amber-600" />
-                                  Admin Dashboard
-                              </DropdownMenuItem>
-                              
-                              {isNativeApp && (
-                                  <div 
-                                      className="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-lg bg-primary/10 border border-primary/20 cursor-default hover:bg-primary/15 transition-colors" 
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Menu bondho howa atkate
-                                      }} 
-                                  >
-                                      <div className="flex flex-col">
-                                          <span className="text-xs font-bold text-primary">Admin App Mode</span>
-                                          <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">Open admin panel by default</span>
-                                      </div>
-                                      <Switch 
-                                          checked={isAdminAppDefault} 
-                                          onCheckedChange={handleToggleAdminMode} // Ekhane popup trigger hobe
-                                      />
-                                  </div>
-                              )}
-                          </>
-                      )}
-                      
-                      <DropdownMenuSeparator className="my-2 bg-border/50" />
-                      <DropdownMenuItem onClick={handleLogout} className="cursor-pointer rounded-lg py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50 font-medium group transition-colors">
-                          <LogOut className="mr-3 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                          Log out
-                      </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <User className="mr-3 h-4 w-4 text-muted-foreground" />
+        My Profile
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push('/account/orders')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <ShoppingBag className="mr-3 h-4 w-4 text-muted-foreground" />
+        My Orders
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push('/account/favorites')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <Heart className="mr-3 h-4 w-4 text-muted-foreground" />
+        Favorites
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push('/account/wallet')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <Wallet className="mr-3 h-4 w-4 text-muted-foreground" />
+        Wallet
+    </DropdownMenuItem>
+</DropdownMenuGroup>
+
+{/* অ্যাডমিন ব্লকটি এখান থেকে রিমুভ করা হয়েছে */}
+
+<DropdownMenuSeparator className="my-2 bg-border/50" />
+<DropdownMenuItem onClick={handleLogout} className="cursor-pointer rounded-lg py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50 font-medium group transition-colors">
+    <LogOut className="mr-3 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+    Log out
+</DropdownMenuItem>
                   </DropdownMenuContent>
               </DropdownMenu>
           ) : (

@@ -5,7 +5,6 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-// ★ FileOpener বাদ দিয়ে Share ইমপোর্ট করা হলো
 import { Share } from '@capacitor/share';
 
 // ★ Image Compressor
@@ -299,21 +298,45 @@ export const generateInvoice = async (order: any) => {
 
       const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-            // ★★★ CAPACITOR NATIVE SAVE LOGIC ★★★
+      // ★★★ Web Share API Fallback (সাবডোমেইন বা ব্রাউজারের জন্য) ★★★
+      const fallbackToWebShare = async () => {
+          try {
+              // PDF টিকে Blob ফাইলে রূপান্তর
+              const blob = doc.output("blob");
+              const file = new File([blob], fileName, { type: "application/pdf" });
+              
+              // চেক করা হচ্ছে ডিভাইস সরাসরি ফাইল শেয়ার সাপোর্ট করে কি না
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                  await navigator.share({
+                      files: [file],
+                      title: 'Invoice Download',
+                      text: `Invoice for Order #${order.OrderNumber}`,
+                  });
+              } else {
+                  // পিসি বা পুরনো ব্রাউজারের জন্য সরাসরি ডাউনলোড
+                  doc.save(fileName);
+              }
+          } catch (err) {
+              console.error("Web Share API Failed:", err);
+              doc.save(fileName);
+          }
+      };
+
+      // ★★★ CAPACITOR NATIVE SAVE LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
           try {
               // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
               
-              // 2. Save directly to Documents Directory (ফোনের ফাইল ম্যানেজারে সেভ হবে)
+              // 2. Save directly to Documents Directory
               const savedFile = await Filesystem.writeFile({
                   path: `BumbasKitchen_${fileName}`,
                   data: pdfBase64,
-                  directory: Directory.Documents, // <--- Cache এর বদলে Documents
+                  directory: Directory.Documents,
                   recursive: true 
               });
 
-              // 3. ইউজারকে জানিয়ে দেওয়া যে ফাইল সেভ হয়েছে (Share মেনু চাইলে রাখতেও পারেন, বা মুছে দিতে পারেন)
+              // 3. Share Dialog open (যাতে ইউজার বুঝতে পারে ফাইল সেভ হয়েছে এবং শেয়ারও করতে পারে)
               await Share.share({
                   title: 'Invoice Saved!',
                   text: `Your invoice has been saved to the Documents folder.`,
@@ -322,12 +345,13 @@ export const generateInvoice = async (order: any) => {
               });
               
           } catch (err) {
-              console.error('File saving error:', err);
-              throw new Error("Could not save PDF on device.");
+              console.warn('Capacitor Share failed (likely due to Subdomain). Switching to Web Share...', err);
+              // সাবডোমেইনে Capacitor ব্রিজ এরর দিলে এই Fallback রান করবে
+              await fallbackToWebShare();
           }
       } else {
-          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য সরাসরি Downloads-এ যাবে)
-          doc.save(fileName);
+          // ওয়েবের জন্য Fallback
+          await fallbackToWebShare();
       }
 
       

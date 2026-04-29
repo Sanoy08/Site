@@ -297,38 +297,76 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      const fileName = `Invoice_${order.OrderNumber}.pdf`;
+            const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
-      if (Capacitor.isNativePlatform()) {
+      // ★★★ The Ultimate Hack: Server-Side Download Trigger ★★★
+      const fallbackToWebShare = async () => {
           try {
-              // 1. Convert PDF to Base64
+              // ১. PDF এর Base64 ডেটা বের করা হচ্ছে
               const pdfBase64 = doc.output('datauristring').split(',')[1];
               
-              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
+              // ২. একটি অদৃশ্য HTML Form তৈরি করে আমাদের নতুন API-তে পাঠানো হচ্ছে
+              const form = document.createElement('form');
+              form.method = 'POST';
+              form.action = '/api/admin/download-pdf';
+              
+              const inputBase64 = document.createElement('input');
+              inputBase64.type = 'hidden';
+              inputBase64.name = 'base64';
+              inputBase64.value = pdfBase64;
+              
+              const inputFilename = document.createElement('input');
+              inputFilename.type = 'hidden';
+              inputFilename.name = 'filename';
+              inputFilename.value = fileName;
+
+              form.appendChild(inputBase64);
+              form.appendChild(inputFilename);
+              document.body.appendChild(form);
+              
+              // ৩. ফর্ম সাবমিট করা মাত্রই সার্ভার থেকে অরিজিনাল ফাইল ডাউনলোড শুরু হবে!
+              form.submit();
+              
+              // কাজ শেষ হলে ফর্ম মুছে ফেলা
+              setTimeout(() => {
+                  document.body.removeChild(form);
+              }, 1000);
+
+          } catch (err) {
+              console.error("Server download failed:", err);
+              // একদম শেষ অপশন
+              doc.save(fileName);
+          }
+      };
+
+      // ★★★ CAPACITOR NATIVE SAVE LOGIC ★★★
+      if (Capacitor.isNativePlatform()) {
+          try {
+              const pdfBase64 = doc.output('datauristring').split(',')[1];
+              
               const savedFile = await Filesystem.writeFile({
-                  path: fileName,
+                  path: `BumbasKitchen_${fileName}`,
                   data: pdfBase64,
-                  directory: Directory.Cache 
+                  directory: Directory.Documents,
+                  recursive: true 
               });
 
-              // 3. ★ SHARE DIALOG OPEN করা
               await Share.share({
-                  title: 'Invoice',
-                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
-                  url: savedFile.uri, // Saved file uri
-                  dialogTitle: 'Share Invoice'
+                  title: 'Invoice Saved!',
+                  text: `Your invoice has been saved to the Documents folder.`,
+                  url: savedFile.uri,
+                  dialogTitle: 'Invoice Downloaded'
               });
               
           } catch (err) {
-              console.error('File saving/sharing error:', err);
-              throw new Error("Could not share PDF on device.");
+              // সাবডোমেইনে Capacitor ফেইল করলে এই API ডাউনলোড ট্রিক কাজ করবে
+              await fallbackToWebShare();
           }
       } else {
-          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
-          doc.save(fileName);
+          // পিসি বা সাধারণ ব্রাউজারের জন্য
+          await fallbackToWebShare();
       }
-      
+
   } catch (error) {
       console.error("PDF Generation Error:", error);
       throw error;

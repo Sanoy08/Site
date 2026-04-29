@@ -21,11 +21,22 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+// ★ AlertDialog import kora holo
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, Bell, User, Menu, LogOut, ShoppingBag, 
   Wallet, ChevronRight, Sparkles, Phone, 
-  Instagram, Facebook, Heart, UtensilsCrossed,
+  Instagram, Facebook, Heart, Settings, UtensilsCrossed,
   MessageCircle
 } from 'lucide-react';
 import { Logo } from '@/components/shared/Logo';
@@ -34,9 +45,9 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { SearchSheet } from '@/components/shop/SearchSheet';
 
-// ★ Capacitor Imports
 import { Capacitor } from '@capacitor/core';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { Preferences } from '@capacitor/preferences';
+import { Switch } from "@/components/ui/switch";
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Sparkles },
@@ -49,29 +60,28 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  
   const [hasNewNotification, setHasNewNotification] = useState(false);
+
+  const [isNativeApp, setIsNativeApp] = useState(false);
+  const [isAdminAppDefault, setIsAdminAppDefault] = useState(false);
+
+  // ★ Confirmation popup er jonno notun states
+  const [showAdminConfirm, setShowAdminConfirm] = useState(false);
+  const [pendingAdminState, setPendingAdminState] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  // ★ Transparent Status Bar ও Scroll Logic
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
-    const handleScroll = async () => {
+    const handleScroll = () => {
       if (window.scrollY > 0) {
         setIsScrolled(true);
-        // স্ক্রল করলে ব্যাকগ্রাউন্ড সাদা হবে, তাই স্ট্যাটাস বারের আইকন কালো (Light) হবে
-        if (Capacitor.isNativePlatform()) {
-           try { await StatusBar.setStyle({ style: Style.Light }); } catch(e){}
-        }
       } else {
         setIsScrolled(false);
-        // একদম উপরে থাকলে ট্রান্সপারেন্ট, তাই ইমেজের উপর আইকন সাদা (Dark) হবে
-        if (Capacitor.isNativePlatform()) {
-           try { await StatusBar.setStyle({ style: Style.Dark }); } catch(e){}
-        }
       }
 
       clearTimeout(timeoutId);
@@ -95,6 +105,17 @@ export function Header() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      setIsNativeApp(true);
+      const loadPref = async () => {
+        const { value } = await Preferences.get({ key: 'app_mode' });
+        setIsAdminAppDefault(value === 'admin');
+      };
+      loadPref();
+    }
+  }, []);
 
   const checkNotifications = useCallback(async () => {
     if (!user) return;
@@ -154,15 +175,37 @@ export function Header() {
     return 'Good Evening';
   };
 
+  const handleAdminClick = () => {
+      if (typeof window !== 'undefined') {
+         window.location.href = 'https://admin.bumbaskitchen.app';
+      }
+  };
+
+  // ★ Popup show korar logic
+  const handleToggleAdminMode = (checked: boolean) => {
+    setPendingAdminState(checked);
+    setShowAdminConfirm(true); // Popup open korbe
+  };
+
+  // ★ Confirm button e click korle eta kaj korbe
+  const confirmAdminModeToggle = async () => {
+    setIsAdminAppDefault(pendingAdminState);
+    await Preferences.set({ key: 'app_mode', value: pendingAdminState ? 'admin' : 'user' });
+    setShowAdminConfirm(false);
+    
+    if (pendingAdminState) {
+      window.location.href = 'https://admin.bumbaskitchen.app';
+    }
+  };
+
   return (
     <>
       <header 
           className={cn(
               "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
-              // ★ স্ট্যাটাস বারের নিচে যাতে ঢুকে না যায় তাই pt-8 দেওয়া হলো
               isScrolled 
-                ? "bg-white border-gray-200 py-1 pt-8 sm:pt-10" 
-                : "bg-transparent border-transparent py-3 pt-8 sm:pt-10"
+                ? "bg-white border-gray-200 py-1" 
+                : "bg-transparent border-transparent py-3"
           )}
       >
       <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
@@ -356,29 +399,31 @@ export function Header() {
                       </div>
                       
                       <DropdownMenuGroup className="space-y-1">
-                          <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <User className="mr-3 h-4 w-4 text-muted-foreground" />
-                              My Profile
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push('/account/orders')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <ShoppingBag className="mr-3 h-4 w-4 text-muted-foreground" />
-                              My Orders
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push('/account/favorites')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <Heart className="mr-3 h-4 w-4 text-muted-foreground" />
-                              Favorites
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push('/account/wallet')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
-                              <Wallet className="mr-3 h-4 w-4 text-muted-foreground" />
-                              Wallet
-                          </DropdownMenuItem>
-                      </DropdownMenuGroup>
+    <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <User className="mr-3 h-4 w-4 text-muted-foreground" />
+        My Profile
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push('/account/orders')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <ShoppingBag className="mr-3 h-4 w-4 text-muted-foreground" />
+        My Orders
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push('/account/favorites')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <Heart className="mr-3 h-4 w-4 text-muted-foreground" />
+        Favorites
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push('/account/wallet')} className="cursor-pointer rounded-lg py-2.5 focus:bg-primary/5 focus:text-primary font-medium">
+        <Wallet className="mr-3 h-4 w-4 text-muted-foreground" />
+        Wallet
+    </DropdownMenuItem>
+</DropdownMenuGroup>
 
-                      <DropdownMenuSeparator className="my-2 bg-border/50" />
-                      <DropdownMenuItem onClick={handleLogout} className="cursor-pointer rounded-lg py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50 font-medium group transition-colors">
-                          <LogOut className="mr-3 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                          Log out
-                      </DropdownMenuItem>
+{/* অ্যাডমিন ব্লকটি এখান থেকে রিমুভ করা হয়েছে */}
+
+<DropdownMenuSeparator className="my-2 bg-border/50" />
+<DropdownMenuItem onClick={handleLogout} className="cursor-pointer rounded-lg py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50 font-medium group transition-colors">
+    <LogOut className="mr-3 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+    Log out
+</DropdownMenuItem>
                   </DropdownMenuContent>
               </DropdownMenu>
           ) : (
@@ -389,6 +434,26 @@ export function Header() {
           </div>
       </div>
       </header>
+
+      {/* ★ Confirmation Dialog (Ekdom sese add kora holo) */}
+      <AlertDialog open={showAdminConfirm} onOpenChange={setShowAdminConfirm}>
+        <AlertDialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[400px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAdminState 
+                ? "This will set the Admin Panel as your default app screen. You will be redirected now." 
+                : "This will disable Admin Mode and open the regular customer app next time."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAdminModeToggle} className="rounded-xl bg-primary hover:bg-primary/90 text-white">
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

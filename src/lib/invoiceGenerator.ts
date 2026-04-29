@@ -299,35 +299,37 @@ export const generateInvoice = async (order: any) => {
 
       const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ CAPACITOR NATIVE SHARE LOGIC ★★★
+            // ★★★ CAPACITOR NATIVE SAVE LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
           try {
               // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
               
-              // 2. Save to Cache Directory (পারমিশন এরর এড়াতে Cache ব্যবহার করা হলো)
+              // 2. Save directly to Documents Directory (ফোনের ফাইল ম্যানেজারে সেভ হবে)
               const savedFile = await Filesystem.writeFile({
-                  path: fileName,
+                  path: `BumbasKitchen_${fileName}`,
                   data: pdfBase64,
-                  directory: Directory.Cache 
+                  directory: Directory.Documents, // <--- Cache এর বদলে Documents
+                  recursive: true 
               });
 
-              // 3. ★ SHARE DIALOG OPEN করা
+              // 3. ইউজারকে জানিয়ে দেওয়া যে ফাইল সেভ হয়েছে (Share মেনু চাইলে রাখতেও পারেন, বা মুছে দিতে পারেন)
               await Share.share({
-                  title: 'Invoice',
-                  text: `Here is the invoice for Order #${order.OrderNumber} from Bumba's Kitchen.`,
-                  url: savedFile.uri, // Saved file uri
-                  dialogTitle: 'Share Invoice'
+                  title: 'Invoice Saved!',
+                  text: `Your invoice has been saved to the Documents folder.`,
+                  url: savedFile.uri,
+                  dialogTitle: 'Invoice Downloaded'
               });
               
           } catch (err) {
-              console.error('File saving/sharing error:', err);
-              throw new Error("Could not share PDF on device.");
+              console.error('File saving error:', err);
+              throw new Error("Could not save PDF on device.");
           }
       } else {
-          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য)
+          // Web Fallback (ডেস্কটপ/ব্রাউজারের জন্য সরাসরি Downloads-এ যাবে)
           doc.save(fileName);
       }
+
       
   } catch (error) {
       console.error("PDF Generation Error:", error);

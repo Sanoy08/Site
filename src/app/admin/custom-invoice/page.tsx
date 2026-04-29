@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,9 @@ import { generateCustomInvoice } from '@/lib/customInvoiceGenerator';
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format } from "date-fns";
+
+// ★ মেনু সিলেক্ট করার জন্য Select কম্পোনেন্ট ইম্পোর্ট
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CustomInvoicePage() {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -31,6 +34,25 @@ export default function CustomInvoicePage() {
     const [discount, setDiscount] = useState<number>(0);
     const [receivedAmount, setReceivedAmount] = useState<number>(0);
 
+    // ★ ডেটাবেসের মেনু আইটেম রাখার স্টেট
+    const [dbProducts, setDbProducts] = useState<any[]>([]);
+
+    // ★ পেজ লোড হওয়ার সময় ডেটাবেস থেকে প্রোডাক্ট ফেচ করা
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const res = await fetch('/api/admin/products');
+                const data = await res.json();
+                if (data.success && data.products) {
+                    setDbProducts(data.products);
+                }
+            } catch (error) {
+                console.error("Failed to fetch products:", error);
+            }
+        };
+        fetchProducts();
+    }, []);
+
     const handleAddItem = () => {
         setItems([...items, { id: Date.now().toString(), name: '', price: 0, quantity: 1 }]);
     };
@@ -45,7 +67,6 @@ export default function CustomInvoicePage() {
         setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
     };
 
-    // ★ এখানে receivedAmount মাইনাস করা হয়েছে
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const finalPrice = Math.max(0, subtotal - discount - receivedAmount);
 
@@ -64,7 +85,7 @@ export default function CustomInvoicePage() {
                 Address: customerInfo.address,
                 Timestamp: customerInfo.date,
                 Items: items.map(item => ({
-                    name: item.name,
+                    name: item.name || 'Custom Item', // নাম খালি থাকলে Custom Item বসবে
                     price: item.price,
                     quantity: item.quantity
                 })),
@@ -151,22 +172,46 @@ export default function CustomInvoicePage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
-                            {items.map((item, index) => (
+                            {items.map((item) => (
                                 <div key={item.id} className="flex flex-col sm:flex-row gap-3 p-4 bg-muted/20 rounded-xl border relative">
+                                    
+                                    {/* ★ Menu Selection Dropdown */}
+                                    <div className="w-full sm:w-[30%] space-y-1.5">
+                                        <Label className="text-xs">Select Menu</Label>
+                                        <Select onValueChange={(val) => {
+                                            const product = dbProducts.find(p => p.id === val);
+                                            if (product) {
+                                                handleItemChange(item.id, 'name', product.name);
+                                                handleItemChange(item.id, 'price', product.price);
+                                            }
+                                        }}>
+                                            <SelectTrigger className="h-10 bg-white">
+                                                <SelectValue placeholder="Choose dish..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {dbProducts.map((p) => (
+                                                    <SelectItem key={p.id} value={p.id}>
+                                                        {p.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     <div className="flex-grow space-y-1.5">
                                         <Label className="text-xs">Item Name</Label>
-                                        <Input value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)} placeholder="Dish name" />
-                                    </div>
-                                    <div className="w-full sm:w-24 space-y-1.5">
-                                        <Label className="text-xs">Price</Label>
-                                        <Input type="number" value={item.price || ''} onChange={e => handleItemChange(item.id, 'price', Number(e.target.value))} />
+                                        <Input value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)} placeholder="Dish name" className="h-10 bg-white" />
                                     </div>
                                     <div className="w-full sm:w-20 space-y-1.5">
+                                        <Label className="text-xs">Price</Label>
+                                        <Input type="number" value={item.price || ''} onChange={e => handleItemChange(item.id, 'price', Number(e.target.value))} className="h-10 bg-white" />
+                                    </div>
+                                    <div className="w-full sm:w-16 space-y-1.5">
                                         <Label className="text-xs">Qty</Label>
-                                        <Input type="number" value={item.quantity || ''} onChange={e => handleItemChange(item.id, 'quantity', Number(e.target.value))} />
+                                        <Input type="number" value={item.quantity || ''} onChange={e => handleItemChange(item.id, 'quantity', Number(e.target.value))} className="h-10 bg-white" />
                                     </div>
                                     <div className="flex items-end pb-1">
-                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} className="text-destructive">
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} className="text-destructive hover:bg-destructive/10">
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -190,7 +235,6 @@ export default function CustomInvoicePage() {
                                 </div>
                             </div>
 
-                            {/* লেবেলটা Grand Total থেকে Due Amount করে দেওয়া হলো বোঝার সুবিধার্থে */}
                             <div className="flex justify-between text-xl font-bold px-2">
                                 <span>Grand Total (Due) :</span>
                                 <span className="text-primary">{formatPrice(finalPrice)}</span>

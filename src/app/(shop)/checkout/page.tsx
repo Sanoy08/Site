@@ -20,13 +20,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
@@ -39,19 +33,10 @@ import { format, setMonth, setYear, getMonth, getYear, addMonths, subMonths } fr
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import { useDebounce } from '@/hooks/use-debounce';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// --- Zod Schema (Removed altPhone) ---
 const checkoutSchema = z.object({
   name: z.string().min(2, 'Please enter a valid name.'),
   address: z.string().min(10, 'Please enter your primary address (at least 10 characters).'),
@@ -65,16 +50,9 @@ const checkoutSchema = z.object({
   shareLocation: z.boolean().optional(),
 });
 
-// --- Helper Components ---
 const FloatingLabelInput = ({ field, label, type = 'text' }: any) => (
   <div className="relative">
-    <Input 
-      type={type} 
-      placeholder=" " 
-      {...field} 
-      value={field.value ?? ''} 
-      className="block px-4 pb-2.5 pt-6 w-full text-sm text-foreground bg-background border-muted-foreground/30 rounded-xl border appearance-none focus:outline-none focus:ring-0 focus:border-primary peer h-12 transition-all shadow-sm hover:border-primary/50" 
-    />
+    <Input type={type} placeholder=" " {...field} value={field.value ?? ''} className="block px-4 pb-2.5 pt-6 w-full text-sm text-foreground bg-background border-muted-foreground/30 rounded-xl border appearance-none focus:outline-none focus:ring-0 focus:border-primary peer h-12 transition-all shadow-sm hover:border-primary/50" />
     <FormLabel className="absolute text-sm text-muted-foreground duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[0] start-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto pointer-events-none bg-background px-1">
       {label}
     </FormLabel>
@@ -83,19 +61,13 @@ const FloatingLabelInput = ({ field, label, type = 'text' }: any) => (
 
 const FloatingLabelTextarea = ({ field, label }: any) => (
   <div className="relative">
-    <Textarea 
-      placeholder=" " 
-      {...field} 
-      value={field.value ?? ''}
-      className="block px-4 pb-2.5 pt-6 w-full text-sm text-foreground bg-background border-muted-foreground/30 rounded-xl border appearance-none focus:outline-none focus:ring-0 focus:border-primary peer min-h-[100px] transition-all shadow-sm hover:border-primary/50 resize-y" 
-    />
+    <Textarea placeholder=" " {...field} value={field.value ?? ''} className="block px-4 pb-2.5 pt-6 w-full text-sm text-foreground bg-background border-muted-foreground/30 rounded-xl border appearance-none focus:outline-none focus:ring-0 focus:border-primary peer min-h-[100px] transition-all shadow-sm hover:border-primary/50 resize-y" />
     <FormLabel className="absolute text-sm text-muted-foreground duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[0] start-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto pointer-events-none bg-background px-1">
       {label}
     </FormLabel>
   </div>
 );
 
-// --- ANIMATION VARIANTS FOR CALENDAR ---
 const slideVariants = {
   enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
   center: { x: 0, opacity: 1 },
@@ -106,20 +78,7 @@ const months = ["January", "February", "March", "April", "May", "June", "July", 
 const currentYear = new Date().getFullYear();
 const years = [currentYear, currentYear + 1];
 
-// --- SWIPEABLE CALENDAR COMPONENT ---
-function SwipeableCalendar({ 
-  selected, 
-  onSelect, 
-  viewDate, 
-  setViewDate, 
-  onClose 
-}: { 
-  selected?: Date, 
-  onSelect: (date?: Date) => void, 
-  viewDate: Date, 
-  setViewDate: (date: Date) => void,
-  onClose: () => void
-}) {
+function SwipeableCalendar({ selected, onSelect, viewDate, setViewDate, onClose }: { selected?: Date, onSelect: (date?: Date) => void, viewDate: Date, setViewDate: (date: Date) => void, onClose: () => void }) {
   const [direction, setDirection] = useState(0);
 
   const handleMonthChange = (newMonthIndex: number) => {
@@ -136,11 +95,9 @@ function SwipeableCalendar({
   const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const swipeThreshold = 50;
     if (info.offset.x < -swipeThreshold) {
-      setDirection(1);
-      setViewDate(addMonths(viewDate, 1));
+      setDirection(1); setViewDate(addMonths(viewDate, 1));
     } else if (info.offset.x > swipeThreshold) {
-      setDirection(-1);
-      setViewDate(subMonths(viewDate, 1));
+      setDirection(-1); setViewDate(subMonths(viewDate, 1));
     }
   };
 
@@ -148,45 +105,19 @@ function SwipeableCalendar({
     <div className="flex flex-col items-center gap-4 p-4 bg-white overflow-hidden">
         <div className="flex gap-2 w-full max-w-xs z-20 relative">
             <Select value={months[getMonth(viewDate)]} onValueChange={(month) => handleMonthChange(months.indexOf(month))}>
-                <SelectTrigger className="w-[140px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg">
-                    <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                    {months.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}
-                </SelectContent>
+                <SelectTrigger className="w-[140px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg"><SelectValue placeholder="Month" /></SelectTrigger>
+                <SelectContent>{months.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}</SelectContent>
             </Select>
-
             <Select value={getYear(viewDate).toString()} onValueChange={handleYearChange}>
-                <SelectTrigger className="w-[120px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg">
-                    <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent>
-                    {years.map((year) => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}
-                </SelectContent>
+                <SelectTrigger className="w-[120px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg"><SelectValue placeholder="Year" /></SelectTrigger>
+                <SelectContent>{years.map((year) => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}</SelectContent>
             </Select>
         </div>
 
         <div className="relative w-full overflow-hidden min-h-[350px]">
           <AnimatePresence initial={false} custom={direction} mode="wait">
-            <motion.div
-              key={viewDate.toISOString()}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter" animate="center" exit="exit"
-              transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-              drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.2}
-              onDragEnd={onDragEnd}
-              className="w-full h-full cursor-grab active:cursor-grabbing touch-pan-y"
-            >
-              <Calendar
-                  mode="single"
-                  month={viewDate}
-                  onMonthChange={setViewDate}
-                  selected={selected}
-                  onSelect={(date) => { onSelect(date); onClose(); }}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                  initialFocus
-                  className="rounded-md border-0 w-full"
+            <motion.div key={viewDate.toISOString()} custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.2} onDragEnd={onDragEnd} className="w-full h-full cursor-grab active:cursor-grabbing touch-pan-y">
+              <Calendar mode="single" month={viewDate} onMonthChange={setViewDate} selected={selected} onSelect={(date) => { onSelect(date); onClose(); }} disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus className="rounded-md border-0 w-full"
                   classNames={{
                       months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
                       month: "space-y-4 w-full", caption: "hidden", nav: "hidden", 
@@ -210,7 +141,6 @@ function SwipeableCalendar({
   );
 }
 
-// --- Main Component ---
 export default function CheckoutPage() {
   const { state, totalPrice, itemCount, clearCart, isInitialized, checkoutState } = useCart();
   const { user, isLoading } = useAuth();
@@ -223,26 +153,26 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Address Saving States
-  const [hasSavedAddresses, setHasSavedAddresses] = useState(true); // Assume true initially
+  // Delivery Charge State
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [distanceText, setDistanceText] = useState<string>('');
+
+  const [hasSavedAddresses, setHasSavedAddresses] = useState(true); 
   const [showSaveAddressPrompt, setShowSaveAddressPrompt] = useState(false);
   const [pendingOrderValues, setPendingOrderValues] = useState<z.infer<typeof checkoutSchema> | null>(null);
   const [addressLabel, setAddressLabel] = useState('Home');
 
-  // Calendar States
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewDate, setViewDate] = useState<Date>(new Date());
 
-  // OLA MAPS STATE
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 500);
 
-  // Time Validation Popup State
   const [timeValidationError, setTimeValidationError] = useState({ show: false, title: '', message: '' });
 
-  // OLA MAPS EFFECT
+  // GOOGLE PLACES API EFFECT
   useEffect(() => {
     const fetchLocations = async () => {
         if (!debouncedSearch || debouncedSearch.length < 3) {
@@ -261,11 +191,43 @@ export default function CheckoutPage() {
     fetchLocations();
   }, [debouncedSearch]);
 
-  const handleSelectAddress = (address: string) => {
-    form.setValue('address', address, { shouldValidate: true });
+  // ADDRESS SELECTION & DISTANCE CALCULATION
+  const handleSelectAddress = async (item: any) => {
+    form.setValue('address', item.description, { shouldValidate: true });
     setSearchQuery("");
     setShowSuggestions(false);
-    toast.success("Address updated!");
+    
+    try {
+        toast.loading("Calculating delivery distance & charges...", { id: 'dist' });
+        
+        const res = await fetch(`/api/location/distance?destinationId=${item.place_id}`);
+        const data = await res.json();
+        
+        if(data.success) {
+            const distKm = data.distanceValue / 1000; // API returns meters
+            let fee = 0;
+            
+            // DELIVERY LOGIC: Under 2km Free. Beyond 2km: 50 Base + 10/km
+            if(distKm > 2) {
+                const extraKm = Math.ceil(distKm - 2);
+                fee = 50 + (extraKm * 10);
+            }
+            
+            setDeliveryFee(fee);
+            setDistanceText(data.distanceText);
+            
+            if (fee === 0) {
+               toast.success(`Distance: ${data.distanceText}. Yay! Delivery is Free! 🎉`, { id: 'dist' });
+            } else {
+               toast.success(`Distance: ${data.distanceText}. Delivery Fee: ${formatPrice(fee)}`, { id: 'dist' });
+            }
+        } else {
+            toast.error("Failed to calculate distance. Defaulting to standard rates.", { id: 'dist' });
+            setDeliveryFee(50); // Fallback
+        }
+    } catch(e) {
+        toast.error("Error calculating distance.", { id: 'dist' });
+    }
   };
 
   useEffect(() => {
@@ -280,18 +242,9 @@ export default function CheckoutPage() {
     }
   }, [itemCount, user, isLoading, isInitialized, router, isSuccess]);
 
-  useEffect(() => {
-    if (isCalendarOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
-    return () => { document.body.style.overflow = ''; };
-  }, [isCalendarOpen]);
-
   const form = useForm<z.infer<typeof checkoutSchema>>({
     resolver: zodResolver(checkoutSchema),
-    defaultValues: {
-      name: '', address: '', deliveryAddress: '',
-      preferredDate: '', mealTime: 'lunch', instructions: '', terms: false, shareLocation: false,
-    },
+    defaultValues: { name: '', address: '', deliveryAddress: '', preferredDate: '', mealTime: 'lunch', instructions: '', terms: false, shareLocation: false },
   });
   
   const { watch, setValue, reset } = form;
@@ -307,7 +260,7 @@ export default function CheckoutPage() {
             const data = await res.json();
             if (data.success && Array.isArray(data.addresses)) {
                 if (data.addresses.length === 0) {
-                    setHasSavedAddresses(false); // No addresses found
+                    setHasSavedAddresses(false);
                 } else {
                     const defaultAddr = data.addresses.find((a: any) => a.isDefault);
                     savedAddress = defaultAddr ? defaultAddr.address : (data.addresses[0]?.address || '');
@@ -315,16 +268,7 @@ export default function CheckoutPage() {
             }
         } catch (error) {}
         
-        reset({
-            name: user.name || '', 
-            address: savedAddress, 
-            deliveryAddress: '',
-            preferredDate: '', 
-            mealTime: 'lunch', 
-            instructions: '', 
-            terms: false, 
-            shareLocation: false,
-        });
+        reset({ name: user.name || '', address: savedAddress, deliveryAddress: '', preferredDate: '', mealTime: 'lunch', instructions: '', terms: false, shareLocation: false });
     };
     initializeCheckoutData();
   }, [user, reset]);
@@ -334,10 +278,11 @@ export default function CheckoutPage() {
     else if (watch('deliveryAddress') === primaryAddress) setValue('deliveryAddress', '');
   }, [isSameAsAddress, primaryAddress, setValue, watch]);
 
+  // TOTAL CALCULATION
   const coinDiscountAmount = useCoins ? (savedCoinDiscount || 0) : 0;
-  const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
+  const currentDeliveryFee = orderType === 'delivery' ? deliveryFee : 0;
+  const finalTotal = Math.max(0, totalPrice + currentDeliveryFee - couponDiscount - coinDiscountAmount);
 
-  // --- SUBMIT LOGIC ---
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
     const today = new Date();
     const todayStr = format(today, "yyyy-MM-dd");
@@ -346,37 +291,26 @@ export default function CheckoutPage() {
     if (values.preferredDate === todayStr) {
         if (values.mealTime === 'lunch' && currentHour >= 9) {
             await Haptics.notification({ type: NotificationType.Error });
-            setTimeValidationError({
-                show: true,
-                title: "Time Limit Exceeded!",
-                message: "Today's lunch orders are accepted until 9 AM only. Please select a future date or choose Dinner."
-            });
+            setTimeValidationError({ show: true, title: "Time Limit Exceeded!", message: "Today's lunch orders are accepted until 9 AM only. Please select a future date or choose Dinner." });
             return; 
         }
         if (values.mealTime === 'dinner' && currentHour >= 18) {
             await Haptics.notification({ type: NotificationType.Error });
-            setTimeValidationError({
-                show: true,
-                title: "Time Limit Exceeded!",
-                message: "Today's dinner orders are accepted until 6 PM only. Please select a future date."
-            });
+            setTimeValidationError({ show: true, title: "Time Limit Exceeded!", message: "Today's dinner orders are accepted until 6 PM only. Please select a future date." });
             return;
         }
     }
 
-    // Check if we need to prompt for saving address
     const targetAddress = orderType === 'delivery' ? (values.deliveryAddress || values.address) : values.address;
     if (!hasSavedAddresses && targetAddress.length > 10) {
         setPendingOrderValues(values);
         setShowSaveAddressPrompt(true);
-        return; // Pause here
+        return; 
     }
 
-    // Proceed directly if no prompt needed
     await executeOrderPlacement(values);
   }
 
-  // --- SAVE ADDRESS AND CONTINUE ---
   const handleSaveAddressAndContinue = async (shouldSave: boolean) => {
       setShowSaveAddressPrompt(false);
       if (!pendingOrderValues) return;
@@ -384,21 +318,13 @@ export default function CheckoutPage() {
       if (shouldSave) {
           const targetAddress = orderType === 'delivery' ? (pendingOrderValues.deliveryAddress || pendingOrderValues.address) : pendingOrderValues.address;
           try {
-              await fetch('/api/user/addresses', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ name: addressLabel, address: targetAddress, isDefault: true })
-              });
+              await fetch('/api/user/addresses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: addressLabel, address: targetAddress, isDefault: true }) });
               toast.success("Address saved successfully!");
-          } catch (e) {
-              console.error("Failed to save address", e);
-          }
+          } catch (e) {}
       }
-
       await executeOrderPlacement(pendingOrderValues);
   };
 
-  // --- ACTUAL ORDER EXECUTION ---
   const executeOrderPlacement = async (values: z.infer<typeof checkoutSchema>) => {
       setIsSubmitting(true);
       try {
@@ -407,6 +333,7 @@ export default function CheckoutPage() {
               altPhone: user?.phone || '',
               items: state.items,
               subtotal: totalPrice,
+              deliveryFee: currentDeliveryFee, // SENDING DELIVERY FEE TO BACKEND
               total: finalTotal,
               discount: couponDiscount + coinDiscountAmount,
               couponCode: couponCode,
@@ -415,30 +342,18 @@ export default function CheckoutPage() {
               deliveryAddress: orderType === 'delivery' ? (values.deliveryAddress || values.address) : undefined,
           };
 
-          const res = await fetch('/api/orders', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(orderPayload),
-          });
-
+          const res = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderPayload) });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Order placement failed');
 
           setIsSuccess(true);
-          // ★ TOAST REMOVED AS REQUESTED
           clearCart();
           
           const orderNum = data.orderId || '0000'; 
-          const params = new URLSearchParams({
-              orderNumber: orderNum,
-              name: values.name,
-              amount: finalTotal.toString()
-          });
+          const params = new URLSearchParams({ orderNumber: orderNum, name: values.name, amount: finalTotal.toString() });
           
           router.push(`/checkout/success?${params.toString()}`);
-
       } catch (error: any) {
-          console.error("Checkout Error:", error);
           toast.error(error.message || "Failed to place order. Please try again.");
       } finally {
           setIsSubmitting(false);
@@ -446,72 +361,45 @@ export default function CheckoutPage() {
   };
 
   if (!isInitialized || isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
-  
   if (!user) return null;
   if (itemCount === 0 && !isSuccess) return null;
 
   return (
     <div className="container py-8 md:py-12 max-w-6xl">
       
-      {/* Time Validation Popup */}
       <AlertDialog open={timeValidationError.show} onOpenChange={(open) => setTimeValidationError(prev => ({ ...prev, show: open }))}>
         <AlertDialogContent className="rounded-2xl max-w-[90%] md:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-               <AlertCircle className="h-6 w-6" />
-               {timeValidationError.title}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-base text-foreground/80 mt-2">
-              {timeValidationError.message}
-            </AlertDialogDescription>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive"><AlertCircle className="h-6 w-6" />{timeValidationError.title}</AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-foreground/80 mt-2">{timeValidationError.message}</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setTimeValidationError({ show: false, title: '', message: '' })} className="w-full sm:w-auto rounded-xl">
-              I Understand
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogAction onClick={() => setTimeValidationError({ show: false, title: '', message: '' })} className="w-full sm:w-auto rounded-xl">I Understand</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ★ NEW: Save Address Popup */}
-<Dialog open={showSaveAddressPrompt} onOpenChange={(open) => !open && setShowSaveAddressPrompt(false)}>
-    <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
-        <div className="p-6 bg-primary/5 border-b border-primary/10">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-                <Save className="h-5 w-5 text-primary" /> Save this address?
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-                We noticed you don't have any saved addresses. Would you like to save this one for faster checkout next time?
-            </p>
-        </div>
-        
-        <div className="p-6 space-y-4">
-            <div className="space-y-2">
-                {/* ✅ FIX: FormLabel এর বদলে নরমাল label ব্যবহার করা হয়েছে */}
-                <label className="text-sm font-medium leading-none">Label (e.g. Home, Office)</label>
-                <Input 
-                    value={addressLabel} 
-                    onChange={(e) => setAddressLabel(e.target.value)} 
-                    className="h-11 rounded-xl"
-                />
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl border text-sm text-muted-foreground line-clamp-2">
-                {orderType === 'delivery' ? (pendingOrderValues?.deliveryAddress || pendingOrderValues?.address) : pendingOrderValues?.address}
-            </div>
-        </div>
-        
-        <DialogFooter className="p-6 pt-0 sm:justify-between flex-row gap-2">
-            <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => handleSaveAddressAndContinue(false)}>
-                No, just order
-            </Button>
-            <Button className="flex-1 rounded-xl h-11 shadow-md shadow-primary/20" onClick={() => handleSaveAddressAndContinue(true)}>
-                Yes, save it
-            </Button>
-        </DialogFooter>
-    </DialogContent>
-</Dialog>
+      <Dialog open={showSaveAddressPrompt} onOpenChange={(open) => !open && setShowSaveAddressPrompt(false)}>
+          <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
+              <div className="p-6 bg-primary/5 border-b border-primary/10">
+                  <DialogTitle className="flex items-center gap-2 text-xl"><Save className="h-5 w-5 text-primary" /> Save this address?</DialogTitle>
+                  <p className="text-sm text-muted-foreground mt-2">We noticed you don't have any saved addresses. Would you like to save this one for faster checkout next time?</p>
+              </div>
+              <div className="p-6 space-y-4">
+                  <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">Label (e.g. Home, Office)</label>
+                      <Input value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} className="h-11 rounded-xl" />
+                  </div>
+                  <div className="p-3 bg-muted/30 rounded-xl border text-sm text-muted-foreground line-clamp-2">
+                      {orderType === 'delivery' ? (pendingOrderValues?.deliveryAddress || pendingOrderValues?.address) : pendingOrderValues?.address}
+                  </div>
+              </div>
+              <DialogFooter className="p-6 pt-0 sm:justify-between flex-row gap-2">
+                  <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => handleSaveAddressAndContinue(false)}>No, just order</Button>
+                  <Button className="flex-1 rounded-xl h-11 shadow-md shadow-primary/20" onClick={() => handleSaveAddressAndContinue(true)}>Yes, save it</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
-      {/* Mobile Summary Accordion */}
+      {/* Mobile Summary */}
       <div className="lg:hidden mb-6">
         <Card className="border shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between p-4 cursor-pointer bg-muted/10" onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}>
@@ -525,13 +413,18 @@ export default function CheckoutPage() {
               <CardContent className="p-4 border-t bg-white">
                   <div className="space-y-3 text-sm">
                       {state.items.map((item) => (
-                          <div key={item.id} className="flex justify-between">
-                              <span className="text-muted-foreground">{item.quantity}x {item.name}</span>
-                              <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
-                          </div>
+                          <div key={item.id} className="flex justify-between"><span className="text-muted-foreground">{item.quantity}x {item.name}</span><span className="font-medium">{formatPrice(item.price * item.quantity)}</span></div>
                       ))}
                       <Separator className="my-2"/>
                       <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{formatPrice(totalPrice)}</span></div>
+                      
+                      <div className="flex justify-between text-muted-foreground">
+                          <span>Delivery Fee {orderType === 'pickup' && '(Pickup)'}</span>
+                          <span className={currentDeliveryFee === 0 ? "text-green-600 font-medium" : "font-medium"}>
+                              {orderType === 'pickup' ? "Free" : currentDeliveryFee === 0 ? "Free (Under 2km)" : formatPrice(currentDeliveryFee)}
+                          </span>
+                      </div>
+
                       {couponDiscount > 0 && <div className="flex justify-between text-green-600"><span>Coupon</span><span>- {formatPrice(couponDiscount)}</span></div>}
                       {coinDiscountAmount > 0 && <div className="flex justify-between text-amber-600"><span>Coins</span><span>- {formatPrice(coinDiscountAmount)}</span></div>}
                   </div>
@@ -540,13 +433,9 @@ export default function CheckoutPage() {
         </Card>
       </div>
 
-      <h1 className="text-3xl md:text-4xl font-bold font-headline mb-8 text-center">
-        Final Checkout
-      </h1>
+      <h1 className="text-3xl md:text-4xl font-bold font-headline mb-8 text-center">Final Checkout</h1>
 
       <div className="grid lg:grid-cols-2 gap-12 items-start">
-        
-        {/* --- LEFT: FORM SECTION --- */}
         <div className="lg:col-span-1">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -555,35 +444,22 @@ export default function CheckoutPage() {
                   <h3 className="text-lg font-bold">Contact Info</h3>
                   <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Full Name" /></FormControl><FormMessage /></FormItem> )} />
                   
-                  {/* --- ADDRESS SECTION START --- */}
                   <div className="space-y-3 pt-2">
                     <div className="flex justify-between items-center">
                         <h4 className="text-sm font-semibold text-muted-foreground">Delivery Location</h4>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ola Maps</span>
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Google Maps</span>
                     </div>
 
                     <div className="relative z-20">
                         <div className="relative">
                             <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search area (e.g. Janai, Dankuni...)" 
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    if(e.target.value.length === 0) setShowSuggestions(false);
-                                }}
-                                className="pl-9 h-11 rounded-xl border-primary/20 bg-white focus-visible:ring-primary/20"
-                            />
+                            <Input placeholder="Search area (e.g. Janai, Dankuni...)" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value.length === 0) setShowSuggestions(false); }} className="pl-9 h-11 rounded-xl border-primary/20 bg-white focus-visible:ring-primary/20" />
                         </div>
 
                         {showSuggestions && suggestions.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
                                 {suggestions.map((item: any) => (
-                                    <div 
-                                        key={item.place_id}
-                                        onClick={() => handleSelectAddress(item.description)}
-                                        className="p-3 hover:bg-muted/50 cursor-pointer flex items-start gap-3 border-b last:border-0 transition-colors"
-                                    >
+                                    <div key={item.place_id} onClick={() => handleSelectAddress(item)} className="p-3 hover:bg-muted/50 cursor-pointer flex items-start gap-3 border-b last:border-0 transition-colors">
                                         <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
                                         <div>
                                             <p className="text-sm font-medium text-foreground">{item.main_text}</p>
@@ -591,25 +467,18 @@ export default function CheckoutPage() {
                                         </div>
                                     </div>
                                 ))}
-                                <div className="p-2 bg-muted/20 text-center border-t">
-                                    <p className="text-[10px] text-muted-foreground">Powered by Ola Maps</p>
-                                </div>
+                                <div className="p-2 bg-muted/20 text-center border-t"><p className="text-[10px] text-muted-foreground">Powered by Google Maps</p></div>
                             </div>
                         )}
                     </div>
 
-                    <FormField 
-                        control={form.control} 
-                        name="address" 
-                        render={({ field }) => ( 
-                            <FormItem>
-                                <FormControl>
-                                    <FloatingLabelTextarea field={field} label="Primary Address" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem> 
-                        )} 
-                    />
+                    {distanceText && orderType === 'delivery' && (
+                        <p className="text-xs text-green-600 font-medium ml-1 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" /> Distance from kitchen: {distanceText}
+                        </p>
+                    )}
+
+                    <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormControl><FloatingLabelTextarea field={field} label="Primary Address" /></FormControl><FormMessage /></FormItem> )} />
                   </div>
               </div>
 
@@ -644,11 +513,7 @@ export default function CheckoutPage() {
               <div className="space-y-4 pt-2">
                   <h3 className="text-lg font-bold">Preferences</h3>
                   <div className="grid grid-cols-2 gap-4">
-                      
-                      <FormField
-                        control={form.control}
-                        name="preferredDate"
-                        render={({ field }) => (
+                      <FormField control={form.control} name="preferredDate" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-muted-foreground ml-1">Date</FormLabel>
                             <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
@@ -666,19 +531,12 @@ export default function CheckoutPage() {
                                             <span className="text-lg">Select Delivery Date</span>
                                         </DialogTitle>
                                     </DialogHeader>
-                                    <SwipeableCalendar 
-                                        viewDate={viewDate} setViewDate={setViewDate}
-                                        selected={field.value ? new Date(field.value) : undefined}
-                                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                                        onClose={() => setIsCalendarOpen(false)}
-                                    />
+                                    <SwipeableCalendar viewDate={viewDate} setViewDate={setViewDate} selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} onClose={() => setIsCalendarOpen(false)} />
                                 </DialogContent>
                             </Dialog>
                             <FormMessage />
                           </FormItem>
-                        )}
-                      />
-
+                        )} />
                       <FormField control={form.control} name="mealTime" render={({ field }) => ( <FormItem><FormLabel className="text-xs text-muted-foreground ml-1">Time</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl bg-background"><SelectValue placeholder="Time" /></SelectTrigger></FormControl><SelectContent><SelectItem value="lunch">Lunch</SelectItem><SelectItem value="dinner">Dinner</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                   </div>
                   <FormField control={form.control} name="instructions" render={({ field }) => ( <FormItem><FormControl><FloatingLabelTextarea field={field} label="Cooking Instructions (Optional)" /></FormControl><FormMessage /></FormItem> )} />
@@ -688,9 +546,7 @@ export default function CheckoutPage() {
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-4 border rounded-xl bg-muted/10">
                       <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                       <div className="space-y-1 leading-none text-sm">
-                          <FormLabel className="font-normal text-muted-foreground">
-                              I agree to the <a href="/terms" target="_blank" className="underline text-primary hover:text-primary/80">Terms & Conditions</a> and Refund Policy.
-                          </FormLabel>
+                          <FormLabel className="font-normal text-muted-foreground">I agree to the <a href="/terms" target="_blank" className="underline text-primary hover:text-primary/80">Terms & Conditions</a> and Refund Policy.</FormLabel>
                           <FormMessage />
                       </div>
                   </FormItem> 
@@ -704,55 +560,43 @@ export default function CheckoutPage() {
           </Form>
         </div>
 
-        {/* --- RIGHT: ORDER SUMMARY (DESKTOP) --- */}
+        {/* Desktop Summary */}
         <div className="lg:col-span-1 hidden lg:block">
           <Card className="sticky top-24 bg-card shadow-lg border-0 overflow-hidden">
-            <CardHeader className="border-b bg-muted/10 pb-4">
-              <CardTitle>Payment Details</CardTitle>
-            </CardHeader>
+            <CardHeader className="border-b bg-muted/10 pb-4"><CardTitle>Payment Details</CardTitle></CardHeader>
             <CardContent className="pt-6 space-y-6">
-                
                 <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                     {state.items.map((item) => {
                         const rawUrl = (item.image && item.image.url) ? item.image.url : PLACEHOLDER_IMAGE_URL;
                         return (
                             <div key={item.id} className="flex gap-4 items-center">
-                                <div className="relative h-14 w-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
-                                    <Image 
-                                      src={optimizeImageUrl(rawUrl)} 
-                                      alt={item.name} fill sizes="56px" className="object-cover" 
-                                    />
-                                </div>
-                                <div className="flex-grow min-w-0">
-                                    <p className="font-medium text-sm truncate">{item.name}</p>
-                                    <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                                </div>
+                                <div className="relative h-14 w-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0"><Image src={optimizeImageUrl(rawUrl)} alt={item.name} fill sizes="56px" className="object-cover" /></div>
+                                <div className="flex-grow min-w-0"><p className="font-medium text-sm truncate">{item.name}</p><p className="text-xs text-muted-foreground">Qty: {item.quantity}</p></div>
                                 <p className="font-semibold text-sm whitespace-nowrap">{formatPrice(item.price * item.quantity)}</p>
                             </div>
                         );
                     })}
                 </div>
-                
                 <Separator />
-
                 <div className="space-y-3 text-sm">
                     <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{formatPrice(totalPrice)}</span></div>
-                    {couponDiscount > 0 && (
-                        <div className="flex justify-between text-green-600 font-medium"><span className="flex items-center gap-1"><Ticket className="h-3 w-3"/> Coupon Applied</span><span>- {formatPrice(couponDiscount)}</span></div>
-                    )}
-                    {coinDiscountAmount > 0 && (
-                        <div className="flex justify-between text-amber-600 font-medium"><span className="flex items-center gap-1"><Coins className="h-3 w-3"/> Coins Redeemed</span><span>- {formatPrice(coinDiscountAmount)}</span></div>
-                    )}
-                    <div className="flex justify-between text-muted-foreground"><span>Delivery Fee</span><span className="text-green-600 font-medium">Free</span></div>
+                    {couponDiscount > 0 && <div className="flex justify-between text-green-600 font-medium"><span className="flex items-center gap-1"><Ticket className="h-3 w-3"/> Coupon Applied</span><span>- {formatPrice(couponDiscount)}</span></div>}
+                    {coinDiscountAmount > 0 && <div className="flex justify-between text-amber-600 font-medium"><span className="flex items-center gap-1"><Coins className="h-3 w-3"/> Coins Redeemed</span><span>- {formatPrice(coinDiscountAmount)}</span></div>}
+                    
+                    <div className="flex justify-between text-muted-foreground">
+                        <span>Delivery Fee {orderType === 'pickup' && '(Pickup)'}</span>
+                        <span className={currentDeliveryFee === 0 ? "text-green-600 font-medium" : "font-medium"}>
+                            {orderType === 'pickup' ? "Free" : currentDeliveryFee === 0 ? "Free (Under 2km)" : formatPrice(currentDeliveryFee)}
+                        </span>
+                    </div>
+
                     <Separator className="my-2"/>
                     <div className="flex justify-between text-xl font-bold text-primary"><span>Total Payable</span><span>{formatPrice(finalTotal)}</span></div>
                     <p className="text-xs text-right text-muted-foreground">Inclusive of all taxes</p>
                 </div>
-
             </CardContent>
           </Card>
         </div>
-
       </div>
     </div>
   );

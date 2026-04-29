@@ -13,8 +13,12 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const path = url.pathname;
   
-  // স্ট্যাটিক ফাইল ইগনোর করুন
-  if (path.startsWith('/_next/') || path.includes('.') || path.startsWith('/api/')) {
+  // ১. এপিআই এবং স্ট্যাটিক ফাইলগুলোকে মিডলওয়্যারের লজিক থেকে সম্পূর্ণ বাইরে রাখুন
+  if (
+    path.startsWith('/api/') || 
+    path.startsWith('/_next/') || 
+    path.includes('.')
+  ) {
     return NextResponse.next();
   }
 

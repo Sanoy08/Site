@@ -296,53 +296,41 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-            const fileName = `Invoice_${order.OrderNumber}.pdf`;
+      const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ সম্পূর্ণ অন্য আইডিয়া: Pure JS Fallback (Capacitor প্লাগিন ছাড়া) ★★★
+      // ★★★ Pure JS Fallback: Android Native Print / Save as PDF ★★★
       const fallbackToWebShare = async () => {
+          // ১. প্রথমে Share API ট্রাই করবে (যদি কাজ করে যায়)
           try {
               const blob = doc.output("blob");
               const file = new File([blob], fileName, { type: "application/pdf" });
-              
-              // ১. প্রথমে Pure HTML5 Share API ট্রাই করবে
               if (navigator.canShare && navigator.canShare({ files: [file] })) {
                   await navigator.share({
                       files: [file],
-                      title: 'Invoice Download',
+                      title: 'Invoice',
                       text: `Invoice for Order #${order.OrderNumber}`,
                   });
                   return;
               }
           } catch (err) {
-              console.warn("Web Share API Failed/Blocked:", err);
+              console.warn("Share API Failed:", err);
           }
 
-          // ২. শেয়ার কাজ না করলে বা ব্লক হলে:
-          // পিসির জন্য নরমাল ব্রাউজার ডাউনলোড
+          // ২. Share কাজ না করলে সরাসরি Native 'Save as PDF' ডায়ালগ ওপেন করে দেবে
           const pdfUrl = URL.createObjectURL(doc.output("blob"));
-          const a = document.createElement("a");
-          a.href = pdfUrl;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-
-          // ৩. Android WebView-এর জন্য সেরা ট্রিক: সরাসরি স্ক্রিনে PDF ওপেন করা!
-          setTimeout(() => {
-              try {
-                  const pdfBase64 = doc.output('datauristring');
-                  const win = window.open();
-                  if (win) {
-                      // যদি নতুন ট্যাব ওপেন করা যায় (পপ-আপ অ্যালাও থাকে)
-                      win.document.write(`<iframe src="${pdfBase64}" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%; position:absolute;" allowfullscreen></iframe>`);
-                  } else {
-                      // যদি পপ-আপ ব্লক থাকে, কারেন্ট স্ক্রিনেই PDF খুলে দেবে!
-                      window.location.href = pdfBase64;
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none'; // স্ক্রিনে কিছু দেখা যাবে না
+          iframe.src = pdfUrl;
+          document.body.appendChild(iframe);
+          
+          iframe.onload = () => {
+              setTimeout(() => {
+                  // এই কমান্ডটা Android-কে বলবে PDF টাকে প্রিন্ট বা সেভ করতে
+                  if (iframe.contentWindow) {
+                      iframe.contentWindow.print(); 
                   }
-              } catch(e) {
-                  console.error("Failed to render PDF on screen:", e);
-              }
-          }, 600); // ডাউনলোড ট্রিগার হওয়ার জন্য সামান্য অপেক্ষা
+              }, 200);
+          };
       };
 
       // ★★★ CAPACITOR NATIVE SAVE LOGIC ★★★
@@ -364,7 +352,7 @@ export const generateInvoice = async (order: any) => {
               });
               
           } catch (err) {
-              // অ্যাডমিন প্যানেলে (সাবডোমেইন) Capacitor ফেইল করলে এই নতুন Fallback টা রান করবে
+              // অ্যাডমিন প্যানেলে (সাবডোমেইন) Capacitor ফেইল করলে এই Fallback টা রান করবে
               await fallbackToWebShare();
           }
       } else {

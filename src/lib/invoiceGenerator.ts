@@ -296,39 +296,59 @@ export const generateInvoice = async (order: any) => {
       doc.setFont("helvetica", "normal");
       doc.text("Bumba's Kitchen", pageWidth - margin, footerY + 25, { align: "right" });
 
-      const fileName = `Invoice_${order.OrderNumber}.pdf`;
+            const fileName = `Invoice_${order.OrderNumber}.pdf`;
 
-      // ★★★ Web Share API Fallback (সাবডোমেইন বা ব্রাউজারের জন্য) ★★★
+      // ★★★ সম্পূর্ণ অন্য আইডিয়া: Pure JS Fallback (Capacitor প্লাগিন ছাড়া) ★★★
       const fallbackToWebShare = async () => {
           try {
-              // PDF টিকে Blob ফাইলে রূপান্তর
               const blob = doc.output("blob");
               const file = new File([blob], fileName, { type: "application/pdf" });
               
-              // চেক করা হচ্ছে ডিভাইস সরাসরি ফাইল শেয়ার সাপোর্ট করে কি না
+              // ১. প্রথমে Pure HTML5 Share API ট্রাই করবে
               if (navigator.canShare && navigator.canShare({ files: [file] })) {
                   await navigator.share({
                       files: [file],
                       title: 'Invoice Download',
                       text: `Invoice for Order #${order.OrderNumber}`,
                   });
-              } else {
-                  // পিসি বা পুরনো ব্রাউজারের জন্য সরাসরি ডাউনলোড
-                  doc.save(fileName);
+                  return;
               }
           } catch (err) {
-              console.error("Web Share API Failed:", err);
-              doc.save(fileName);
+              console.warn("Web Share API Failed/Blocked:", err);
           }
+
+          // ২. শেয়ার কাজ না করলে বা ব্লক হলে:
+          // পিসির জন্য নরমাল ব্রাউজার ডাউনলোড
+          const pdfUrl = URL.createObjectURL(doc.output("blob"));
+          const a = document.createElement("a");
+          a.href = pdfUrl;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          // ৩. Android WebView-এর জন্য সেরা ট্রিক: সরাসরি স্ক্রিনে PDF ওপেন করা!
+          setTimeout(() => {
+              try {
+                  const pdfBase64 = doc.output('datauristring');
+                  const win = window.open();
+                  if (win) {
+                      // যদি নতুন ট্যাব ওপেন করা যায় (পপ-আপ অ্যালাও থাকে)
+                      win.document.write(`<iframe src="${pdfBase64}" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%; position:absolute;" allowfullscreen></iframe>`);
+                  } else {
+                      // যদি পপ-আপ ব্লক থাকে, কারেন্ট স্ক্রিনেই PDF খুলে দেবে!
+                      window.location.href = pdfBase64;
+                  }
+              } catch(e) {
+                  console.error("Failed to render PDF on screen:", e);
+              }
+          }, 600); // ডাউনলোড ট্রিগার হওয়ার জন্য সামান্য অপেক্ষা
       };
 
       // ★★★ CAPACITOR NATIVE SAVE LOGIC ★★★
       if (Capacitor.isNativePlatform()) {
           try {
-              // 1. Convert PDF to Base64
               const pdfBase64 = doc.output('datauristring').split(',')[1];
-              
-              // 2. Save directly to Documents Directory
               const savedFile = await Filesystem.writeFile({
                   path: `BumbasKitchen_${fileName}`,
                   data: pdfBase64,
@@ -336,7 +356,6 @@ export const generateInvoice = async (order: any) => {
                   recursive: true 
               });
 
-              // 3. Share Dialog open (যাতে ইউজার বুঝতে পারে ফাইল সেভ হয়েছে এবং শেয়ারও করতে পারে)
               await Share.share({
                   title: 'Invoice Saved!',
                   text: `Your invoice has been saved to the Documents folder.`,
@@ -345,16 +364,14 @@ export const generateInvoice = async (order: any) => {
               });
               
           } catch (err) {
-              console.warn('Capacitor Share failed (likely due to Subdomain). Switching to Web Share...', err);
-              // সাবডোমেইনে Capacitor ব্রিজ এরর দিলে এই Fallback রান করবে
+              // অ্যাডমিন প্যানেলে (সাবডোমেইন) Capacitor ফেইল করলে এই নতুন Fallback টা রান করবে
               await fallbackToWebShare();
           }
       } else {
-          // ওয়েবের জন্য Fallback
+          // পিসি বা সাধারণ ব্রাউজারের জন্য
           await fallbackToWebShare();
       }
 
-      
   } catch (error) {
       console.error("PDF Generation Error:", error);
       throw error;

@@ -73,22 +73,27 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
 
-    /* টেক্সট সিলেকশন এবং হাইলাইট বন্ধ (ইনপুট সহ সবখানে) */
-    -webkit-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-    user-select: none !important;
+    /* পুরো অ্যাপে টেক্সট সিলেকশন বন্ধ */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 
     /* লং প্রেস মেনু (iOS/Android) বন্ধ */
-    -webkit-touch-callout: none !important;
+    -webkit-touch-callout: none;
   }
   
-  /* ইনপুট ফিল্ডে ফোকাস এবং টাইপ করার স্টাইল */
-  input, textarea {
-    /* সিলেকশন বন্ধ থাকলেও কার্সার যেন দেখা যায় এবং টাইপ করা যায় */
-    pointer-events: auto !important;
+  /* ✅ ইনপুট এবং টেক্সটএরিয়াতে সিলেকশন ও কপি-পেস্ট চালু রাখা */
+  input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+
+    /* লং প্রেস করলে যাতে Copy/Paste মেনু আসে (iOS/Android-এর জন্য) */
+    -webkit-touch-callout: default !important;
     
-    /* আউটলাইন বা বর্ডার হাইলাইট বন্ধ */
+    pointer-events: auto !important;
     outline: none !important;
   }
 

@@ -15,17 +15,34 @@ const config: CapacitorConfig = {
       '*.bumbaskitchen.app'
     ],
   },
+  android: {
+    // @ts-ignore
+    adjustMarginsForEdgeToEdge: 'disable',
+    zoomEnabled: false,
+    backgroundColor: "#7D9A4D"
+  },
   plugins: {
     Keyboard: {
       resize: KeyboardResize.Body,
       style: KeyboardStyle.Dark,
-      resizeOnFullScreen: true,
+      resizeOnFullScreen: false, // ★ false করা হলো যাতে লাফিয়ে না ওঠে
     },
-    // StatusBar কনফিগ এখান থেকে সরিয়ে দিয়েছি 
-    // কারণ আমরা এখন StatusBarLogic.tsx দিয়ে কন্ট্রোল করছি
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ["google.com"],
+    },
+    SplashScreen: {
+      launchShowDuration: 2000, // ২ সেকেন্ড পর হাইড হবে
+      launchAutoHide: true,     // ★ true করা হলো
+      backgroundColor: "#ffffff",
+      androidSplashResourceName: "splash",
+      androidScaleType: "CENTER_CROP",
+      showSpinner: false
+      // ★ splashFullScreen এবং splashImmersive বাদ দেওয়া হয়েছে (অ্যাডমিনের মতো)
+    }
   }
 };
 

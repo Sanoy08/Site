@@ -9,22 +9,21 @@ const COLLECTION_NAME = 'subscriptions';
 
 export async function POST(request: NextRequest) {
   try {
-    const { token } = await request.json(); // FCM Token
+    // ★ রিকোয়েস্ট থেকে appId বের করে নিচ্ছি
+    const { token, appId } = await request.json(); 
     
     if (!token) return NextResponse.json({ success: false, error: "Token missing" });
 
-    // ১. কুকি থেকে ইউজার বের করা (Secure Way)
     const user = await getUser(request);
     
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // ২. ডাটাবেস আপডেট
-    // যদি ইউজার লগইন থাকে, তাহলে userId সেভ হবে। না থাকলে null.
     const updateData: any = { 
         token: token,
         updatedAt: new Date(),
-        platform: 'android' 
+        platform: 'android',
+        appId: appId || 'com.bumbaskitchen.app' // ★ ডাটাবেসে appId সেভ করছি
     };
 
     if (user) {

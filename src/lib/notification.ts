@@ -141,7 +141,7 @@ export async function sendNotificationToAdmins(
   title: string, 
   body: string, 
   url: string = '/admin/orders',
-  alertType: 'order' | 'info' = 'order' // ★ নতুন প্যারামিটার: ডিফল্ট 'order'
+  alertType: 'order' | 'info' = 'order' 
 ) {
   try {
     const db = client.db(DB_NAME);
@@ -160,14 +160,16 @@ export async function sendNotificationToAdmins(
     }));
     await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
 
+    // ★ এখানে শুধু Admin App ('com.bumbaskitchen.admin') এর টোকেনগুলো খুঁজছি
     const tokenDocs = await db.collection(SUBSCRIPTIONS_COLLECTION).find({ 
-        userId: { $in: adminIds } 
+        userId: { $in: adminIds },
+        appId: 'com.bumbaskitchen.admin' // ★ এই ফিল্টারটি অ্যাড করা হয়েছে
     }).toArray();
+    
     const tokens = tokenDocs.map(t => t.token);
 
     if (tokens.length > 0) {
         
-        // ★ alertType অনুযায়ী চ্যানেল এবং সাউন্ড ঠিক করা হচ্ছে
         const channelId = alertType === 'order' ? 'admin_order_alert' : 'user_notifications';
         const soundName = alertType === 'order' ? 'my_alert' : 'user_alert'; 
 

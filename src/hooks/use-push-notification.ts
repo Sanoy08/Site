@@ -121,17 +121,17 @@ export const usePushNotification = () => {
       console.log('FCM Token Registered:', fcmToken.value);
       setIsSubscribed(true);
       
-      // ★★★ Admin App vs User App Check Logic ★★★
+      let currentAppId = 'com.bumbaskitchen.app'; // ডিফল্ট
+
       try {
           const appInfo = await App.getInfo();
-          const isAdminApp = appInfo.id === 'com.bumbaskitchen.admin';
+          currentAppId = appInfo.id; // ★ App ID বের করে নিলাম
+          const isAdminApp = currentAppId === 'com.bumbaskitchen.admin';
 
           if (isAdminApp) {
-              // Admin App: Subscribe admin updates, unsubscribe normal user updates
               await FCM.subscribeTo({ topic: 'admin_updates' });
               try { await FCM.unsubscribeFrom({ topic: 'all_users' }); } catch(e) {}
           } else {
-              // Normal App: Subscribe normal user updates, unsubscribe admin updates
               await FCM.subscribeTo({ topic: 'all_users' });
               try { await FCM.unsubscribeFrom({ topic: 'admin_updates' }); } catch(e) {}
           }
@@ -144,7 +144,10 @@ export const usePushNotification = () => {
         await fetch('/api/notifications/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: fcmToken.value }), 
+            body: JSON.stringify({ 
+              token: fcmToken.value,
+              appId: currentAppId // ★ API তে appId পাঠাচ্ছি
+            }), 
         });
         console.log("FCM Token synced with server");
       } catch (e) { 

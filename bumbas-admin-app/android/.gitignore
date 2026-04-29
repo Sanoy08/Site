@@ -1,7 +1,10 @@
 # Using Android gitignore template: https://github.com/github/gitignore/blob/HEAD/Android.gitignore
 
 # Built application files
-bumbas-admin-app/node_modules/
+node_modules/
+.next/
+dist/
+.env
 *.apk
 *.aar
 *.ap_

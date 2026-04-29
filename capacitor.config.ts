@@ -15,12 +15,6 @@ const config: CapacitorConfig = {
       '*.bumbaskitchen.app'
     ],
   },
-  android: {
-    // @ts-ignore
-    adjustMarginsForEdgeToEdge: 'disable',
-    zoomEnabled: false,
-    backgroundColor: "#7D9A4D" // লোডিং এর সময় ব্যাকগ্রাউন্ড কালার
-  },
   plugins: {
     Keyboard: {
       resize: KeyboardResize.Body,
@@ -32,20 +26,6 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
-    FirebaseAuthentication: {
-      skipNativeAuth: false,
-      providers: ["google.com"],
-    },
-    SplashScreen: {
-      launchShowDuration: 0,
-      launchAutoHide: false,
-      backgroundColor: "#ffffff",
-      androidSplashResourceName: "splash",
-      androidScaleType: "CENTER_CROP",
-      showSpinner: false,
-      splashFullScreen: true,
-      splashImmersive: true,
-    }
   }
 };
 

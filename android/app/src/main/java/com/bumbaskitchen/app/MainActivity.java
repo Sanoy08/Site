@@ -1,12 +1,8 @@
 package com.bumbaskitchen.app;
 
 import android.os.Bundle;
-import android.view.View;
-import android.webkit.WebView; // ★ এটি ইমপোর্ট করা হলো
+import android.webkit.WebView;
 import androidx.activity.EdgeToEdge;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 // Plugins
@@ -17,33 +13,28 @@ import com.getcapacitor.community.fcm.FCMPlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // 1. Enable Edge-to-Edge (Required for Android 15+)
+        // ১. ডিফল্ট EdgeToEdge ইনেবল রাখুন
         EdgeToEdge.enable(this);
 
-        // 2. Register Plugins
+        // ২. প্লাগিন রেজিস্টার
         registerPlugin(AppPlugin.class);
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
 
         super.onCreate(savedInstanceState);
 
-        // ★ 3. Android Native WebView থেকে স্ক্রলবার চিরতরে বন্ধ করার কোড ★
+        // ৩. স্ক্রলবার বন্ধ করার লজিক (ঠিক আছে)
         WebView webView = this.bridge.getWebView();
         if (webView != null) {
             webView.setVerticalScrollBarEnabled(false);
             webView.setHorizontalScrollBarEnabled(false);
+            
+            // ★ ইনপুট ফোকাসের সময় গ্লিচ কমানোর জন্য ওভারস্ক্রোল মোড বন্ধ করা
+            webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
         }
 
-        // 4. Apply Global Top Padding (Safe Area)
-        View rootView = findViewById(android.R.id.content);
-        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            
-            // Apply padding: Left, Top (Status Bar), Right, Bottom (Nav Bar)
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            
-            // Return CONSUMED to prevent double-padding
-            return WindowInsetsCompat.CONSUMED;
-        });
+        // ★ ৪. রুট ভিউ প্যাডিং লজিকটি রিমুভ করা হয়েছে ★
+        // কারণ Capacitor-এর নিজস্ব ইনসেট হ্যান্ডলিং এবং 
+        // capacitor.config.ts এর Keyboard resize লজিকের সাথে এটি সংঘাত তৈরি করছে।
     }
 }

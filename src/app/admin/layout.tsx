@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/use-auth'; 
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import AdminPushSetup from "@/components/admin/AdminPushSetup"; // Path ta thik kore niyo
 
 const adminNavLinks = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -176,6 +177,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
             <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+            <AdminPushSetup />
                 {children}
             </div>
         </main>

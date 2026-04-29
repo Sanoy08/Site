@@ -6,7 +6,13 @@ const config: CapacitorConfig = {
   webDir: 'www',
   server: {
     url: 'https://admin.bumbaskitchen.app/',
-    cleartext: true
+    cleartext: true,
+    allowNavigation: [
+      "admin.bumbaskitchen.app",
+      "bumbaskitchen.app",
+      "*.bumbaskitchen.app",
+      "accounts.google.com" // Jodi admin panele Google Login thake
+    ]
   }
 };
 

@@ -160,7 +160,7 @@ export const usePushNotification = () => {
           {
             title: notification.title || "New Notification",
             body: notification.body || "",
-            id: new Date().getTime(),
+            id: Math.floor(Math.random() * 2147483647),
             schedule: { at: new Date(Date.now() + 100) },
             sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],

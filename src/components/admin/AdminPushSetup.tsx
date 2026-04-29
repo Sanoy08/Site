@@ -1,32 +1,47 @@
+// src/components/admin/AdminPushSetup.tsx
+
 "use client";
 
 import { useEffect } from 'react';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications'; // ★ নতুন ইমপোর্ট
 import { FCM } from '@capacitor-community/fcm';
 import { Capacitor } from '@capacitor/core';
-import { toast } from 'sonner'; // Tomar project e sonner install ache dekhlam
+import { toast } from 'sonner';
 
 export default function AdminPushSetup() {
   useEffect(() => {
     const setupPushNotifications = async () => {
-      // Sudhu Android/iOS app e chalabe, web e noy
+      // শুধু Android/iOS অ্যাপে চালাবে, web-এ নয়
       if (Capacitor.getPlatform() !== 'web') {
         
-        // Notification permission check koro
+        // Notification permission check 
         let permStatus = await PushNotifications.checkPermissions();
         if (permStatus.receive === 'prompt') {
           permStatus = await PushNotifications.requestPermissions();
         }
 
         if (permStatus.receive === 'granted') {
-          // Firebase er sathe device register koro
           await PushNotifications.register();
 
-          // Register successful hole token pabe
+          // ★ ১. অ্যান্ড্রয়েডের জন্য কাস্টম সাউন্ড চ্যানেল তৈরি করা
+          if (Capacitor.getPlatform() === 'android') {
+            await PushNotifications.createChannel({
+              id: 'admin_order_alert', 
+              name: 'Admin Order Alerts',
+              description: 'Alerts for new orders with custom sound',
+              importance: 5,
+              visibility: 1,
+              lights: true,
+              vibration: true,
+              sound: 'my_alert' // আপনার raw ফোল্ডারে থাকা টোনের নাম
+            });
+          }
+
+          // Register successful হলে token পাবে
           PushNotifications.addListener('registration', async (token) => {
             console.log('Admin Push Token:', token.value);
             
-            // Sobcheye important: Admin topic e subscribe kora
             try {
               await FCM.subscribeTo({ topic: 'admin_alerts' });
               console.log('Subscribed to admin_alerts topic!');
@@ -35,20 +50,39 @@ export default function AdminPushSetup() {
             }
           });
 
-          // App khola thaka obosthay kono notification asle
-          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          // অ্যাপ খোলা থাকা অবস্থায় কোনো নোটিফিকেশন আসলে (Foreground)
+          PushNotifications.addListener('pushNotificationReceived', async (notification) => {
             console.log('Push received:', notification);
-            // Kono notun order asle ba alert asle toast dekhao
+            
+            // Toast দেখানো
             toast.success(notification.title || "New Alert", {
               description: notification.body || "Please check the admin panel.",
               duration: 5000,
             });
+
+            // ★ ২. ফোরগ্রাউন্ডে নোটিফিকেশন ব্যানার ও কাস্টম সাউন্ড বাজানো
+            await LocalNotifications.schedule({
+              notifications: [
+                {
+                  title: notification.title || "New Alert",
+                  body: notification.body || "",
+                  id: new Date().getTime(), // ইউনিক আইডি
+                  schedule: { at: new Date(Date.now() + 100) }, // সাথে সাথে বাজবে
+                  sound: 'my_alert', // কাস্টম সাউন্ড
+                  smallIcon: "ic_stat_icon",
+                  channelId: 'admin_order_alert', // এইমাত্র তৈরি করা চ্যানেল
+                }
+              ]
+            });
+            
+            // বি.দ্র: আপনি চাইলে ব্রাউজারের অডিও ফাইলও সরাসরি বাজাতে পারেন
+            // const audio = new Audio('/Elements/success.mp3');
+            // audio.play().catch(e => console.log(e));
           });
 
-          // Notification e tap korle ki hobe
+          // নোটিফিকেশনে ট্যাপ করলে কী হবে
           PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
             console.log('Push action performed:', action);
-            // Chaile specific kono page e redirect korte paro
           });
 
         } else {
@@ -59,7 +93,7 @@ export default function AdminPushSetup() {
 
     setupPushNotifications();
 
-    // Cleanup listeners when component unmounts
+    // Cleanup listeners
     return () => {
       if (Capacitor.getPlatform() !== 'web') {
         PushNotifications.removeAllListeners();
@@ -67,5 +101,5 @@ export default function AdminPushSetup() {
     };
   }, []);
 
-  return null; // Ei component theke UI te kichu dekhabar nei
+  return null;
 }

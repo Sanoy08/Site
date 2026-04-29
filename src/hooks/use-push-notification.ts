@@ -5,13 +5,14 @@ import { PushNotifications, ActionPerformed } from '@capacitor/push-notification
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { FCM } from '@capacitor-community/fcm';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app'; // ★ Notun Import
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 
 export const usePushNotification = () => {
   const router = useRouter();
-  const { user } = useAuth(); // ★ token দরকার নেই
+  const { user } = useAuth(); 
   
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,18 +121,30 @@ export const usePushNotification = () => {
       console.log('FCM Token Registered:', fcmToken.value);
       setIsSubscribed(true);
       
-      // Topic Subscription
+      // ★★★ Admin App vs User App Check Logic ★★★
       try {
-          await FCM.subscribeTo({ topic: 'all_users' });
-          if(user?.role === 'admin') await FCM.subscribeTo({ topic: 'admin_updates' });
-      } catch(e) { console.error('Topic sub failed', e); }
+          const appInfo = await App.getInfo();
+          const isAdminApp = appInfo.id === 'com.bumbaskitchen.admin';
 
-      // ★★★ Server Sync Fix (Cookie Based) ★★★
+          if (isAdminApp) {
+              // Admin App: Subscribe admin updates, unsubscribe normal user updates
+              await FCM.subscribeTo({ topic: 'admin_updates' });
+              try { await FCM.unsubscribeFrom({ topic: 'all_users' }); } catch(e) {}
+          } else {
+              // Normal App: Subscribe normal user updates, unsubscribe admin updates
+              await FCM.subscribeTo({ topic: 'all_users' });
+              try { await FCM.unsubscribeFrom({ topic: 'admin_updates' }); } catch(e) {}
+          }
+      } catch(e) { 
+          console.error('Topic sub failed', e); 
+      }
+
+      // Server Sync Fix
       try {
         await fetch('/api/notifications/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: fcmToken.value }), // শুধু FCM Token যাবে, কুকি অটোমেটিক যাবে
+            body: JSON.stringify({ token: fcmToken.value }), 
         });
         console.log("FCM Token synced with server");
       } catch (e) { 
@@ -160,7 +173,7 @@ export const usePushNotification = () => {
           {
             title: notification.title || "New Notification",
             body: notification.body || "",
-            id: Math.floor(Math.random() * 2147483647),
+            id: Math.floor(Math.random() * 2147483647), // ★ Fixed ID issue
             schedule: { at: new Date(Date.now() + 100) },
             sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
@@ -193,7 +206,7 @@ export const usePushNotification = () => {
       actionListener.then(l => l.remove());
       localActionListener.then(l => l.remove());
     };
-  }, [user, router, checkPermission]); // ★ removed token dependency
+  }, [user, router, checkPermission]); 
 
   return { 
     isSubscribed, 

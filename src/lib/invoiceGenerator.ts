@@ -50,16 +50,6 @@ const formatRs = (amount: number) => {
 };
 
 export const generateInvoice = async (order: any) => {
-
-  // ★★★ নতুন লজিক: যদি এডমিন প্যানেল (admin.bumbaskitchen.app) হয়, তবে API দিয়ে সরাসরি ডাউনলোড হবে
-    // ★★★ আপডেট লজিক: admin. এর বদলে সরাসরি www. ব্যবহার করা হলো ★★★
-  if (typeof window !== "undefined" && window.location.hostname.includes("admin.")) {
-      // মেইন ডোমেইনের API কল করলে সাবডোমেইনের কোনো 404 ইস্যুই থাকবে না
-      window.location.href = `https://www.bumbaskitchen.app/api/admin/download-invoice/${order.OrderNumber}`;
-      return; 
-  }
-
-
   try {
       const doc = new jsPDF({
         unit: "pt",

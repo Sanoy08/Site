@@ -5,7 +5,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +15,7 @@ import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
 import { optimizeImageUrl } from '@/lib/imageUtils';
+import { FloatingInput } from '@/components/ui/floating-input';
 
 export default function AdminNotificationsPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -244,24 +244,26 @@ export default function AdminNotificationsPage() {
 // Custom Form Component
 function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
     return (
-        <div className="space-y-5">
-            <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-foreground">Notification Title</Label>
-                <Input 
+        <div className="space-y-6">
+            <div className="pt-2">
+                <FloatingInput 
+                    label="Notification Title (e.g., Hungry? 😋)"
                     value={formData.title} 
-                    onChange={(e) => setFormData({...formData, title: e.target.value})} 
-                    placeholder="e.g., Hungry? 😋"
-                    className="font-bold h-12 rounded-xl bg-white border border-primary/20 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                    onChange={(e: any) => setFormData({...formData, title: e.target.value})} 
                 />
             </div>
-            <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-foreground">Message Body</Label>
+
+            {/* Custom Floating Textarea */}
+            <div className="relative pt-2">
                 <Textarea 
                     value={formData.message} 
                     onChange={(e) => setFormData({...formData, message: e.target.value})} 
-                    placeholder="Write a catchy message..."
-                    className="min-h-[100px] rounded-xl bg-white border border-primary/20 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y"
+                    placeholder=" "
+                    className="block px-4 pb-2.5 pt-6 w-full text-sm text-foreground bg-white border-primary/20 rounded-xl border appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary peer min-h-[120px] transition-all shadow-sm resize-y"
                 />
+                <Label className="absolute text-sm text-muted-foreground duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[0] start-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 pointer-events-none bg-white px-1">
+                    Message Body
+                </Label>
             </div>
             
             {showTimeSlot && (
@@ -282,8 +284,8 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+                <div className="space-y-2">
                     <Label className="text-sm font-semibold text-foreground">Banner Image (Optional)</Label>
                     <div className="bg-white rounded-xl p-2 border border-dashed border-primary/30 shadow-sm">
                         <ImageUpload 
@@ -294,15 +296,13 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                         />
                     </div>
                 </div>
-                <div className="space-y-1.5 flex flex-col justify-end pb-2">
-                    <Label className="text-sm font-semibold text-foreground">Redirection Link</Label>
-                    <Input 
+                <div className="flex flex-col justify-start pt-1">
+                    <FloatingInput 
+                        label="Redirection Link (e.g. /menus)"
                         value={formData.link} 
-                        onChange={(e) => setFormData({...formData, link: e.target.value})} 
-                        placeholder="e.g. /menus"
-                        className="h-12 rounded-xl bg-white border border-primary/20 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        onChange={(e: any) => setFormData({...formData, link: e.target.value})} 
                     />
-                    <p className="text-[10px] text-muted-foreground px-1 pt-1">Where should users go when they tap?</p>
+                    <p className="text-[10px] text-muted-foreground px-1 pt-2">Where should users go when they tap?</p>
                 </div>
             </div>
         </div>
@@ -340,7 +340,7 @@ function NotificationPreview({ preset }: { preset: any }) {
                     <h4 className="font-bold text-[15px] text-slate-900 leading-tight mb-0.5">
                         {preset.title || "Notification Title"}
                     </h4>
-                    <p className="text-[13px] text-slate-600 leading-snug line-clamp-3">
+                    <p className="text-[13px] text-slate-600 leading-snug line-clamp-3 whitespace-pre-wrap">
                         {preset.message || "This is how your message body will appear on the user's screen."}
                     </p>
                 </div>

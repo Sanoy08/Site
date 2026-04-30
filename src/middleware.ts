@@ -1,28 +1,27 @@
 // src/middleware.ts
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose'; // Edge Runtime এ jose ব্যবহার করতে হয়
+import { jwtVerify } from 'jose';
 
-// Better version
 const secretStr = process.env.JWT_SECRET;
 if (!secretStr) throw new Error('JWT_SECRET is missing!');
 const JWT_SECRET = new TextEncoder().encode(secretStr);
+
+// 🌟 যেসব পেজে লগইন ছাড়াই ঢোকা যাবে (Public Routes)
+const publicPaths = ['/login', '/register', '/signup', '/web'];
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl;
   const hostname = request.headers.get('host') || '';
   const path = url.pathname;
   
-  // স্ট্যাটিক ফাইল ইগনোর করুন
+  // স্ট্যাটিক ফাইল (ছবি, ফন্ট, .apk) ও API রুট ইগনোর করো
   if (path.startsWith('/_next/') || path.includes('.') || path.startsWith('/api/')) {
     return NextResponse.next();
   }
 
-  // সাবডোমেইন ডিটেকশন
-  // লোকালহোস্টে টেস্ট করার জন্য 'admin' সাবডোমেইন সিমুলেট করা কঠিন, তাই প্রোডাকশন লজিক
   const isAdminDomain = hostname.startsWith('admin.');
-
-  // টোকেন যাচাই
   const token = request.cookies.get('auth_token')?.value;
   let userRole = '';
   
@@ -31,28 +30,41 @@ export async function middleware(request: NextRequest) {
       const { payload } = await jwtVerify(token, JWT_SECRET);
       userRole = (payload.role as string) || 'customer';
     } catch (e) {
-      // ইনভ্যালিড টোকেন
+      // টোকেন এক্সপায়ার হলে বা ভুল হলে
     }
+  }
+
+  const isPublicPath = publicPaths.some(p => path.startsWith(p));
+
+  // ==========================================
+  // ★ FORCE LOGIN LOGIC (সবার জন্য বাধ্যতামূলক)
+  // ==========================================
+  
+  // ১. যদি ইউজার লগইন না থাকে এবং সে পাবলিক পেজে না থাকে -> সোজা লগইন পেজে পাঠাও
+  if (!token && !isPublicPath) {
+      const loginUrl = new URL('/login', request.url);
+      return NextResponse.redirect(loginUrl);
+  }
+
+  // ২. যদি লগইন করা থাকে, আর সে আবার /login পেজে যেতে চায় -> তাকে হোমপেজে পাঠিয়ে দাও
+  if (token && (path === '/login' || path === '/register' || path === '/signup')) {
+      if (isAdminDomain && userRole === 'admin') {
+          return NextResponse.redirect(new URL('/', request.url));
+      } else {
+          return NextResponse.redirect(new URL('/', request.url));
+      }
   }
 
   // ==========================================
   // CASE 1: অ্যাডমিন ডোমেইন সুরক্ষা (admin.bumbaskitchen.app)
   // ==========================================
   if (isAdminDomain) {
-    // ১. যদি লগইন না থাকে -> মেইন সাইটের লগইন পেজে পাঠাও
-    if (!token) {
-        const loginUrl = new URL('/login', 'https://bumbaskitchen.app'); 
-        // (লোকালহোস্টে কাজ করার জন্য hardcoded URL এর বদলে request.url রিপ্লেস করা ভালো)
-        return NextResponse.redirect(loginUrl);
-    }
-
-    // ২. লগইন আছে কিন্তু অ্যাডমিন না -> বের করে দাও
+    // লগইন আছে কিন্তু অ্যাডমিন না -> মেইন ডোমেইনের হোমে পাঠিয়ে দাও
     if (userRole !== 'admin') {
-        // মেইন ডোমেইনের হোমপেজে ফেরত
         return NextResponse.redirect(new URL('/', 'https://bumbaskitchen.app'));
     }
 
-    // ৩. সবকিছু ঠিক থাকলে -> URL Rewrite (ফোল্ডার ম্যাপ করা)
+    // URL Rewrite (ফোল্ডার ম্যাপ করা)
     if (path.startsWith('/admin')) {
         const newPath = path.replace(/^\/admin/, '') || '/';
         return NextResponse.redirect(new URL(newPath, request.url));
@@ -68,16 +80,12 @@ export async function middleware(request: NextRequest) {
     if (path.startsWith('/admin')) {
       return NextResponse.rewrite(new URL('/404', request.url));
     }
-
-    // লগইন পেজে যদি অ্যাডমিন আসে, তাকে ড্যাশবোর্ডে পাঠাও
-    if (path === '/login' && token && userRole === 'admin') {
-       return NextResponse.redirect(new URL('/', 'https://admin.bumbaskitchen.app'));
-    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
+  // যেসব রুটে মিডলওয়্যার চলবে না
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     );
 
     // ★★★ 5. NTFY PUSH (Clean & Silent) ★★★
-    const message = `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.\n\n@bumbaskitchen.app #${otp}`;
+    const message = `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.`;
 
     try {
         await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {

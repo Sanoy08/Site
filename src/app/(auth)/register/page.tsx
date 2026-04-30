@@ -36,31 +36,6 @@ export default function RegisterPage() {
     }
   }, [timeLeft, step]);
 
-  // ★★★ Web OTP API (Auto-read SMS) ★★★
-  useEffect(() => {
-    if (step === 'otp' && typeof window !== 'undefined' && 'OTPCredential' in window) {
-      const abortController = new AbortController();
-
-      navigator.credentials.get({
-        otp: { transport: ['sms'] },
-        signal: abortController.signal
-      }).then((otpRef: any) => {
-        if (otpRef && otpRef.code) {
-          const code = otpRef.code;
-          const newOtp = code.split('').slice(0, 6);
-          while(newOtp.length < 6) newOtp.push('');
-          setOtp(newOtp);
-          
-          verifyRegisterLogic(code);
-        }
-      }).catch(e => {
-        console.log("Auto-OTP read cancelled or failed", e);
-      });
-
-      return () => abortController.abort();
-    }
-  }, [step]);
-
   const verifyRegisterLogic = async (otpValue: string) => {
     if (otpValue.length !== 6) return;
     
@@ -131,7 +106,8 @@ export default function RegisterPage() {
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    // INDIAN NUMBER VALIDATION
+    // ★★★ INDIAN NUMBER VALIDATION ★★★
+    // Regex: Starts with 6-9, contains exactly 10 digits
     const indianPhoneRegex = /^[6-9]\d{9}$/;
 
     if (!phone) {
@@ -143,6 +119,7 @@ export default function RegisterPage() {
         toast.error("Invalid Indian Mobile Number! Must contain 10 digits and start with 6-9.");
         return;
     }
+    // ★★★ VALIDATION END ★★★
 
     setIsLoading(true);
 
@@ -218,15 +195,16 @@ export default function RegisterPage() {
                   <Label htmlFor="phone" className="text-sm font-medium text-gray-900">Phone Number</Label>
                   <div className="relative group">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
+                    {/* Country Code Prefix Visual */}
                     <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 border-r pr-2 h-5 flex items-center">+91</span>
                     <Input 
                         id="phone" 
                         type="tel"
                         inputMode="numeric"
-                        autoComplete="tel" // 🌟 ADDED: For phone number auto-suggest
-                        maxLength={10}
+                        maxLength={10} // Restrict input length
                         placeholder="9876543210" 
                         value={phone} 
+                        // Only allow numbers
                         onChange={(e) => {
                             const val = e.target.value.replace(/\D/g, ''); 
                             if(val.length <= 10) setPhone(val);

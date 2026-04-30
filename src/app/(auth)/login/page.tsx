@@ -1,3 +1,5 @@
+// src/app/(auth)/login/page.tsx
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -33,14 +35,38 @@ export default function LoginPage() {
     }
   }, [timeLeft, step]);
 
-  // ★★★ AUTO FOCUS KEYBOARD ON OTP STEP ★★★
+  // AUTO FOCUS KEYBOARD ON OTP STEP
   useEffect(() => {
     if (step === 'otp') {
-        // একটু ডিলে দেওয়া হলো যাতে DOM রেন্ডার হওয়ার সময় পায়
         const timer = setTimeout(() => {
             inputRefs.current[0]?.focus();
         }, 100);
         return () => clearTimeout(timer);
+    }
+  }, [step]);
+
+  // ★★★ Web OTP API (Auto-read SMS) ★★★
+  useEffect(() => {
+    if (step === 'otp' && typeof window !== 'undefined' && 'OTPCredential' in window) {
+      const abortController = new AbortController();
+
+      navigator.credentials.get({
+        otp: { transport: ['sms'] },
+        signal: abortController.signal
+      }).then((otpRef: any) => {
+        if (otpRef && otpRef.code) {
+          const code = otpRef.code;
+          const newOtp = code.split('').slice(0, 6);
+          while(newOtp.length < 6) newOtp.push('');
+          setOtp(newOtp);
+          
+          verifyOtpLogic(code);
+        }
+      }).catch(e => {
+        console.log("Auto-OTP read cancelled or failed", e);
+      });
+
+      return () => abortController.abort();
     }
   }, [step]);
 
@@ -187,8 +213,9 @@ export default function LoginPage() {
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                         <Input
                         id="phone"
-                        type="tel" // Opens numeric keypad
-                        inputMode="numeric" // Ensures mobile keypad
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel" // 🌟 ADDED: For phone number auto-suggest
                         placeholder="9876543210"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
@@ -213,18 +240,16 @@ export default function LoginPage() {
                                 <input
                                     key={index}
                                     ref={(el) => { inputRefs.current[index] = el }}
-                                    // ★★★ UPDATED INPUT ATTRIBUTES ★★★
-                                    type="tel" // Opens number pad on mobile
-                                    inputMode="numeric" // Forces numeric keyboard
-                                    pattern="[0-9]*" // iOS fallback
-                                    autoComplete="one-time-code" // Auto-fill from SMS
+                                    type="tel"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    autoComplete="one-time-code"
                                     maxLength={1}
                                     value={digit}
                                     onChange={(e) => handleOtpChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     onPaste={handlePaste}
                                     disabled={isLoading}
-                                    // ★★★ UPDATED SIZING (Bigger) ★★★
                                     className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary"
                                 />
                             ))}

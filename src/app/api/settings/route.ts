@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
+import { pusherServer } from '@/lib/pusher'; // 🌟 Pusher import kora holo
 
 export async function GET() {
   try {
@@ -13,12 +14,9 @@ export async function GET() {
     return NextResponse.json({ 
         success: true, 
         isStoreOpen: settings?.isStoreOpen ?? true,
-        // ★ নতুন ফিল্ডগুলো পাঠানো হচ্ছে
         androidVersion: settings?.androidVersion || '1.0.0',
         apkUrl: settings?.apkUrl || '',
         forceUpdate: settings?.forceUpdate || false,
-        
-        // ওয়ালেট সেটিংস (যদি আগে থেকে থাকে)
         deliveryCharge: settings?.deliveryCharge || 40,
         freeDeliveryAbove: settings?.freeDeliveryAbove || 499,
         coinsPer100: settings?.coinsPer100 || 10,
@@ -31,16 +29,24 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json(); // বডি থেকে সব ফিল্ড নেওয়া হচ্ছে
+    const body = await req.json(); // Body theke shob field newa hocche
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
 
-    // ★ $set ব্যবহার করে পার্শিয়াল আপডেট করা হবে (যাতে শুধু নির্দিষ্ট ফিল্ড আপডেট হয়)
+    // Database e partial update kora hocche
     await db.collection('settings').updateOne(
       { type: 'general' },
       { $set: { ...body, type: 'general' } }, 
       { upsert: true }
     );
+
+    // 🌟 PUSHER TRIGGER: Jodi body te 'isStoreOpen' thake, tahole shob user ke janiye dao
+    if (typeof body.isStoreOpen === 'boolean') {
+        await pusherServer.trigger('store-updates', 'status-changed', {
+            isOpen: body.isStoreOpen
+        });
+        console.log("Realtime store status broadcasted:", body.isStoreOpen);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

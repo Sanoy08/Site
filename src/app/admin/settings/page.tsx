@@ -71,6 +71,7 @@ export default function AdminSettingsPage() {
       try {
           await fetch('/api/settings', {
               method: 'POST',
+              headers: { 'Content-Type': 'application/json' }, // 🌟 EITA ADD KORA HOLO
               body: JSON.stringify({ isStoreOpen: checked })
           });
           if (checked) toast.success("Store OPENED ✅");

@@ -3,19 +3,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Store, Clock, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/use-auth'; // ★ Auth হুক ইম্পোর্ট
+import { useAuth } from '@/hooks/use-auth';
+import Pusher from 'pusher-js';
 
 export function StoreStatusProvider({ children }: { children: React.ReactNode }) {
   const [isStoreOpen, setIsStoreOpen] = useState<boolean | null>(null);
   const pathname = usePathname();
-  
-  // ★ ইউজারের রোল চেক করার জন্য
+  const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
 
+  // ১. API Call: Shudhu mount hole ebong route change hole status check korbe
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -24,42 +25,52 @@ export function StoreStatusProvider({ children }: { children: React.ReactNode })
         setIsStoreOpen(data.isStoreOpen);
       } catch (error) {
         console.error("Failed to check store status", error);
-        setIsStoreOpen(true); // এরর হলে খোলা রাখব (সেফটি)
+        setIsStoreOpen(true);
       }
     };
-
     checkStatus();
-    const interval = setInterval(checkStatus, 60000);
-    return () => clearInterval(interval);
   }, [pathname]);
 
-  // ১. লগইন পেজ বা অ্যাডমিন রুটে সব সময় অ্যাক্সেস থাকবে
+  // 🌟 ২. REALTIME PUSHER: Eita alada kora holo jate bar bar disconnect na hoy
+  useEffect(() => {
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    });
+
+    const channel = pusher.subscribe('store-updates');
+
+    channel.bind('status-changed', (data: { isOpen: boolean }) => {
+      console.log("⚡ Realtime Store Status Update:", data.isOpen);
+      setIsStoreOpen(data.isOpen);
+      router.refresh(); 
+    });
+
+    return () => {
+      channel.unbind_all();
+      pusher.unsubscribe('store-updates');
+      pusher.disconnect();
+    };
+  }, [router]);
+
   if (pathname.startsWith('/admin') || pathname === '/login') {
     return <>{children}</>;
   }
 
-  // ২. স্টোর স্ট্যাটাস লোড না হওয়া পর্যন্ত লোডার
   if (isStoreOpen === null) {
      return <div className="h-screen w-full flex items-center justify-center bg-white"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  // ৩. যদি স্টোর খোলা থাকে, সবার জন্য অ্যাক্সেস
   if (isStoreOpen) {
     return <>{children}</>;
   }
 
-  // ★★★ STORE IS CLOSED (But checking for Admin) ★★★
-
-  // ৪. স্টোর বন্ধ, কিন্তু অথেন্টিকেশন লোড হচ্ছে -> অপেক্ষা করো
   if (isAuthLoading) {
       return <div className="h-screen w-full flex items-center justify-center bg-white"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  // ৫. স্টোর বন্ধ, কিন্তু ইউজার অ্যাডমিন -> বাইপাস করো (সব দেখতে পাবে)
   if (user && user.role === 'admin') {
       return (
         <>
-            {/* অ্যাডমিনদের মনে করিয়ে দেওয়ার জন্য একটি ছোট ব্যানার */}
             <div className="bg-red-500 text-white text-xs font-bold text-center py-1 px-4 fixed top-0 left-0 right-0 z-[100]">
                 STORE IS CURRENTLY CLOSED FOR CUSTOMERS (Admin Mode)
             </div>
@@ -68,7 +79,6 @@ export function StoreStatusProvider({ children }: { children: React.ReactNode })
       );
   }
 
-  // ৬. সাধারণ ইউজারদের জন্য ক্লোজড স্ক্রিন
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center animate-in fade-in duration-500">
       <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100">

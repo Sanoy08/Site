@@ -148,13 +148,13 @@ export function Header() {
 
   useEffect(() => {
     checkNotifications();
-    const onFocus = () => checkNotifications();
-    window.addEventListener('focus', onFocus);
+    
+    // Custom event jeta apni onnyo theke call korte paren dorkar hole
     const onUpdate = () => checkNotifications();
     window.addEventListener('notification-updated', onUpdate);
 
     return () => {
-      window.removeEventListener('focus', onFocus);
+      // onFocus soriye dewa hoyeche
       window.removeEventListener('notification-updated', onUpdate);
     };
   }, [checkNotifications]);

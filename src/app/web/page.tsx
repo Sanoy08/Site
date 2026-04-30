@@ -122,22 +122,29 @@ export default function WebLandingPage() {
                 
                 {/* ========================================== */}
                 {/* --- STEP 1 START --- */}
-                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
-                    <div className="step-anim opacity-0 -translate-x-10 flex-1 text-left">
-                        <div className="w-8 h-8 rounded-full bg-primary text-white font-black flex items-center justify-center text-sm shadow-md mb-3">1</div>
-                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step One</h3>
-                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
-                            Description for step one goes here. Edit this text.
-                        </p>
-                    </div>
-                    <div className="step-anim opacity-0 translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
-                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 bg-slate-50">
-                            <Smartphone className="h-6 w-6 mb-1 opacity-50" />
-                            <span className="text-[9px] font-bold text-center px-1">guide-1.jpg</span>
-                        </div>
-                    </div>
-                </div>
+<div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+    <div className="step-anim opacity-0 -translate-x-10 flex-1 text-left">
+        <div className="w-8 h-8 rounded-full bg-primary text-white font-black flex items-center justify-center text-sm shadow-md mb-3">1</div>
+        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step One</h3>
+        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+            Description for step one goes here. Edit this text.
+        </p>
+    </div>
+    
+    {/* Mobile Image Container */}
+    <div className="step-anim opacity-0 translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+{/* Image Container */}    
+        <Image 
+            src="https://images.bumbaskitchen.app/dk1acdtja/IMG_20260430_171208_yhxj25.jpg" 
+            alt="Step 1" 
+            fill 
+            className="object-cover" // 👈 Er fole image stretch hobe na, crop hobe
+            priority
+        />
+{/* Image Container */}
+    </div>
+</div>
                 {/* --- ARROW 1 --- */}
                 <div className="w-full flex justify-center py-2 relative h-16">
                     <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 right-16 sm:right-20 text-primary/40 overflow-visible drop-shadow-sm">
@@ -339,7 +346,7 @@ export default function WebLandingPage() {
                     
                     {/* ❗❗ REPLACE href="http://bumbaskitchen.app/bumbas-kitchen.apk" WITH YOUR ACTUAL APK LINK ❗❗ */}
                     <a 
-                        href="http://bumbaskitchen.app/bumbas-kitchen.apk" 
+                        href="/bumbas-kitchen.apk" 
                         className="relative flex items-center justify-between w-full bg-slate-900 text-white px-2 py-2.5 rounded-2xl font-bold text-lg shadow-2xl transition-transform active:scale-[0.97] overflow-hidden border border-white/10"
                     >
                         <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>

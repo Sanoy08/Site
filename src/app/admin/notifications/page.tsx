@@ -9,14 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Send, Bell, Plus, Trash2, History, Zap, Image as ImageIcon, Clock } from 'lucide-react';
+import { Loader2, Send, Bell, Plus, Trash2, History, Zap, Image as ImageIcon, Clock, Smartphone, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
-
-// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
 export default function AdminNotificationsPage() {
@@ -27,10 +25,8 @@ export default function AdminNotificationsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Form State (Default timeSlot is 'anytime')
   const [formData, setFormData] = useState({ title: '', message: '', image: '', link: '', timeSlot: 'anytime' });
 
-  // Load Data
   const fetchData = async () => {
       const res = await fetch('/api/admin/notifications/presets');
       const data = await res.json();
@@ -42,29 +38,24 @@ export default function AdminNotificationsPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // 1. Manual Send Handler
   const handleManualSend = async () => {
     if (!formData.title || !formData.message) return toast.error("Title & Message required");
     setIsLoading(true);
-    // ✅ ইমেজ অপটিমাইজেশন এখানে করার দরকার নেই, সার্ভার বা ক্লাউডিনারি সেটা হ্যান্ডেল করবে। আমরা শুধু URL পাঠাব।
     const optimizedData = { ...formData };
 
     try {
-      // ★★★ Fix: Remove Token Logic
-      // ★★★ Fix: Remove Authorization Header
       await fetch('/api/admin/notifications/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(optimizedData),
       });
-      toast.success('Broadcast sent!');
+      toast.success('Broadcast sent successfully!');
       setFormData({ title: '', message: '', image: '', link: '', timeSlot: 'anytime' });
-      fetchData(); // Refresh history
+      fetchData(); 
     } catch (e) { toast.error('Failed to send'); } 
     finally { setIsLoading(false); }
   };
 
-  // 2. Save Preset Handler
   const handleSavePreset = async () => {
     if (!formData.title || !formData.message) return toast.error("Title & Message required");
     setIsLoading(true);
@@ -83,7 +74,6 @@ export default function AdminNotificationsPage() {
     finally { setIsLoading(false); }
   };
 
-  // 3. Confirm Delete Preset
   const confirmDeletePreset = async () => {
       if(!deleteId) return;
       setIsDeleting(true);
@@ -95,93 +85,90 @@ export default function AdminNotificationsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20">
-       <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">
-                <Bell className="h-8 w-8 text-primary" /> Notification Center
-            </h1>
-            <p className="text-muted-foreground">Manage automated alerts & manual broadcasts.</p>
+    <div className="w-full pb-10 flex flex-col gap-6">
+        
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border shadow-sm">
+            <div className="flex items-center gap-4">
+                <div className="p-3.5 bg-primary/10 rounded-full text-primary shadow-inner">
+                    <Bell className="h-7 w-7" />
+                </div>
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold font-headline text-foreground">Push Notifications</h1>
+                    <p className="text-sm text-muted-foreground mt-1">Manage automated alerts & send live manual broadcasts.</p>
+                </div>
+            </div>
         </div>
 
         <Tabs defaultValue="manual" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-12 rounded-xl bg-gray-100 p-1">
-                <TabsTrigger value="manual" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Manual Send</TabsTrigger>
-                <TabsTrigger value="presets" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Auto Pilot (Presets)</TabsTrigger>
-                <TabsTrigger value="history" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">History</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl bg-muted/40 p-1.5 mb-6">
+                <TabsTrigger value="manual" className="rounded-xl h-full font-medium data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Manual Send</TabsTrigger>
+                <TabsTrigger value="presets" className="rounded-xl h-full font-medium data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm transition-all">Auto Pilot</TabsTrigger>
+                <TabsTrigger value="history" className="rounded-xl h-full font-medium data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">History</TabsTrigger>
             </TabsList>
 
             {/* TAB 1: MANUAL SEND */}
-            <TabsContent value="manual">
-                <Card className="border-0 shadow-lg mt-6">
-                    <CardHeader><CardTitle>Send Instant Broadcast</CardTitle><CardDescription>Send a message to everyone right now.</CardDescription></CardHeader>
-                    <CardContent className="space-y-6">
-                        <NotificationForm formData={formData} setFormData={setFormData} showTimeSlot={false} />
-                        <Button className="w-full h-12 text-lg" onClick={handleManualSend} disabled={isLoading}>
-                            {isLoading ? <Loader2 className="animate-spin" /> : <Send className="mr-2 h-5 w-5" />} Send Now
-                        </Button>
-                    </CardContent>
-                </Card>
+            <TabsContent value="manual" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="grid lg:grid-cols-2 gap-6">
+                    <Card className="border-0 shadow-lg bg-white rounded-2xl overflow-hidden">
+                        <CardHeader className="bg-primary/5 border-b border-primary/10 pb-5">
+                            <CardTitle className="flex items-center gap-2 text-primary"><Send className="h-5 w-5"/> Live Broadcast</CardTitle>
+                            <CardDescription>Instantly push a message to all user devices.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6 pt-6">
+                            <NotificationForm formData={formData} setFormData={setFormData} showTimeSlot={false} />
+                            <Button className="w-full h-14 text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] transition-transform active:scale-[0.99]" onClick={handleManualSend} disabled={isLoading}>
+                                {isLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Send className="mr-2 h-5 w-5" />} Push Notification Now
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* Live Preview Section */}
+                    <div className="hidden lg:flex flex-col items-center justify-start pt-10">
+                        <Label className="text-muted-foreground mb-4 font-medium flex items-center gap-2"><Smartphone className="h-4 w-4"/> Live Device Preview</Label>
+                        <NotificationPreview preset={formData} />
+                    </div>
+                </div>
             </TabsContent>
 
             {/* TAB 2: AUTO PILOT PRESETS */}
-            <TabsContent value="presets">
-                <div className="grid md:grid-cols-2 gap-6 mt-6">
+            <TabsContent value="presets" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="grid lg:grid-cols-2 gap-8">
                     {/* Add New Preset */}
-                    <Card className="border-0 shadow-lg h-fit">
-                        <CardHeader className="bg-amber-50 rounded-t-xl pb-4">
-                            <CardTitle className="text-amber-800 flex items-center gap-2"><Zap className="h-5 w-5"/> Add New Preset</CardTitle>
-                            <CardDescription>System will pick based on time of day.</CardDescription>
+                    <Card className="border-0 shadow-lg bg-white rounded-2xl overflow-hidden h-fit">
+                        <CardHeader className="bg-amber-50 border-b border-amber-100 pb-5">
+                            <CardTitle className="text-amber-800 flex items-center gap-2"><Zap className="h-5 w-5 fill-amber-500"/> Add New Auto-Preset</CardTitle>
+                            <CardDescription className="text-amber-700/70">The system will automatically send this based on the time slot.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6 pt-6">
                             <NotificationForm formData={formData} setFormData={setFormData} showTimeSlot={true} />
-                            <Button className="w-full h-12 text-lg bg-amber-600 hover:bg-amber-700" onClick={handleSavePreset} disabled={isLoading}>
-                                {isLoading ? <Loader2 className="animate-spin" /> : <Plus className="mr-2 h-5 w-5" />} Save to Auto-Pilot
+                            <Button className="w-full h-14 text-lg rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 hover:scale-[1.01] transition-transform active:scale-[0.99]" onClick={handleSavePreset} disabled={isLoading}>
+                                {isLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Plus className="mr-2 h-5 w-5" />} Save to Auto-Pilot
                             </Button>
                         </CardContent>
                     </Card>
 
                     {/* Saved Presets List */}
                     <div className="space-y-4">
-                        <h3 className="font-bold text-lg text-gray-700">Active Presets ({presets.length})</h3>
-                        {presets.length === 0 && <p className="text-muted-foreground text-sm italic">No presets added yet.</p>}
+                        <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2">
+                            Active Presets <span className="bg-amber-100 text-amber-700 text-sm py-0.5 px-2.5 rounded-full">{presets.length}</span>
+                        </h3>
+                        {presets.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+                                <Zap className="h-10 w-10 text-gray-300 mb-2" />
+                                <p className="text-muted-foreground text-sm font-medium">No auto-presets configured yet.</p>
+                            </div>
+                        )}
                         
-                        <div className="space-y-3 h-[600px] overflow-y-auto pr-2 scrollbar-hide">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar pb-4">
                             {presets.map((preset) => (
-                                <div key={preset._id} className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow relative group">
-                                    <div className="flex gap-4">
-                                        <div className="h-16 w-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden relative">
-                                            {preset.image ? (
-                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
-                                                <Image 
-                                                    src={optimizeImageUrl(preset.image)} 
-                                                    alt="img" 
-                                                    fill 
-                                                    sizes="64px"
-                                                    className="object-cover" 
-                                                />
-                                            ) : (
-                                                <div className="flex items-center justify-center h-full text-gray-300"><ImageIcon className="h-6 w-6"/></div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                {/* Time Badge */}
-                                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                                                    preset.timeSlot === 'lunch' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                                                    preset.timeSlot === 'dinner' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                                    preset.timeSlot === 'morning' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                                                    'bg-gray-100 text-gray-700 border-gray-200'
-                                                }`}>
-                                                    {preset.timeSlot || 'Anytime'}
-                                                </span>
-                                            </div>
-                                            <h4 className="font-bold text-gray-900 leading-tight">{preset.title}</h4>
-                                            <p className="text-sm text-gray-600 line-clamp-2 mt-1">{preset.message}</p>
-                                        </div>
-                                    </div>
+                                <div key={preset._id} className="relative group">
+                                    <NotificationPreview preset={preset} />
+                                    
+                                    {/* Delete Button Overlay */}
                                     <button 
                                         onClick={() => setDeleteId(preset._id)}
-                                        className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100"
+                                        className="absolute -top-2 -right-2 p-2 bg-white text-red-500 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 hover:scale-110 border border-red-100 z-10"
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
@@ -193,33 +180,49 @@ export default function AdminNotificationsPage() {
             </TabsContent>
 
             {/* TAB 3: HISTORY */}
-            <TabsContent value="history">
-                <Card className="border-0 shadow-lg mt-6">
-                    <CardHeader><CardTitle>Broadcast History</CardTitle></CardHeader>
-                    <CardContent>
-                        <div className="space-y-0">
+            <TabsContent value="history" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Card className="border-0 shadow-lg bg-white rounded-2xl">
+                    <CardHeader className="border-b pb-5">
+                        <CardTitle className="flex items-center gap-2"><History className="h-5 w-5"/> Broadcast History</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="relative border-l-2 border-muted/50 ml-3 md:ml-4 space-y-8 pb-4">
                             {history.map((log: any, idx) => (
-                                <div key={idx} className="flex items-start gap-4 py-4 border-b last:border-0">
-                                    <div className={`p-2 rounded-full ${log.type === 'AUTO_CRON' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                                        {log.type === 'AUTO_CRON' ? <Zap className="h-5 w-5" /> : <Send className="h-5 w-5" />}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="font-bold text-gray-900">{log.title}</h4>
-                                            <span className="text-[10px] text-gray-400 bg-gray-100 px-2 rounded-full">
-                                                {new Date(log.sentAt).toLocaleString()}
+                                <div key={idx} className="relative pl-6 sm:pl-8 group">
+                                    {/* Timeline dot */}
+                                    <div className={`absolute -left-[13px] top-1 h-6 w-6 rounded-full border-4 border-white flex items-center justify-center shadow-sm ${log.type === 'AUTO_CRON' ? 'bg-amber-400' : 'bg-blue-500'}`}></div>
+                                    
+                                    <div className="bg-muted/10 border rounded-2xl p-4 transition-colors group-hover:bg-muted/20">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                            <div className="flex items-center gap-2">
+                                                {log.type === 'AUTO_CRON' ? <Zap className="h-4 w-4 text-amber-500 fill-amber-500/20" /> : <Send className="h-4 w-4 text-blue-500" />}
+                                                <h4 className="font-bold text-foreground text-base">{log.title}</h4>
+                                            </div>
+                                            <span className="text-xs font-medium text-muted-foreground flex items-center gap-1 bg-white px-2.5 py-1 rounded-full border shadow-sm w-fit">
+                                                <Clock className="h-3 w-3" /> {new Date(log.sentAt).toLocaleString()}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-0.5">{log.message}</p>
-                                        {log.type === 'AUTO_CRON' && log.targetSlot && (
-                                            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded mt-1 inline-block">
-                                                Auto Pilot: {log.targetSlot}
+                                        <p className="text-sm text-foreground/80 mb-3">{log.message}</p>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            {log.type === 'AUTO_CRON' && log.targetSlot && (
+                                                <span className="text-[10px] font-bold uppercase text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    Auto: {log.targetSlot}
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] font-bold text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <CheckCircle2 className="h-3 w-3" /> Delivered
                                             </span>
-                                        )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
-                            {history.length === 0 && <p className="text-center text-muted-foreground py-10">No notifications sent yet.</p>}
+                            {history.length === 0 && (
+                                <div className="pl-8 py-10 text-muted-foreground flex flex-col items-center">
+                                    <History className="h-10 w-10 opacity-20 mb-2" />
+                                    <p>No notifications sent yet.</p>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -232,41 +235,40 @@ export default function AdminNotificationsPage() {
             onConfirm={confirmDeletePreset}
             isDeleting={isDeleting}
             title="Delete Preset?"
-            description="This preset will no longer be used for auto-notifications."
+            description="This preset will no longer be used for auto-notifications. You cannot undo this action."
         />
     </div>
   );
 }
 
+// Custom Form Component
 function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
     return (
-        <>
-            <div className="space-y-2">
-                <Label>Title</Label>
+        <div className="space-y-5">
+            <div className="space-y-1.5">
+                <Label className="text-sm font-semibold text-foreground">Notification Title</Label>
                 <Input 
                     value={formData.title} 
                     onChange={(e) => setFormData({...formData, title: e.target.value})} 
                     placeholder="e.g., Hungry? 😋"
-                    className="font-bold"
+                    className="font-bold h-12 rounded-xl bg-muted/20 border-transparent focus:border-primary focus:bg-white transition-colors"
                 />
             </div>
-            <div className="space-y-2">
-                <Label>Message</Label>
+            <div className="space-y-1.5">
+                <Label className="text-sm font-semibold text-foreground">Message Body</Label>
                 <Textarea 
                     value={formData.message} 
                     onChange={(e) => setFormData({...formData, message: e.target.value})} 
                     placeholder="Write a catchy message..."
+                    className="min-h-[100px] rounded-xl bg-muted/20 border-transparent focus:border-primary focus:bg-white transition-colors resize-none"
                 />
             </div>
             
             {showTimeSlot && (
-                <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-primary"><Clock className="h-4 w-4"/> Target Time Slot</Label>
-                    <Select 
-                        value={formData.timeSlot} 
-                        onValueChange={(val) => setFormData({...formData, timeSlot: val})}
-                    >
-                        <SelectTrigger className="w-full">
+                <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                    <Label className="flex items-center gap-1.5 text-amber-800 font-bold"><Clock className="h-4 w-4"/> Target Time Slot</Label>
+                    <Select value={formData.timeSlot} onValueChange={(val) => setFormData({...formData, timeSlot: val})}>
+                        <SelectTrigger className="w-full h-11 rounded-lg bg-white border-amber-200 focus:ring-amber-500">
                             <SelectValue placeholder="Select Time" />
                         </SelectTrigger>
                         <SelectContent>
@@ -276,23 +278,86 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                             <SelectItem value="dinner">Dinner Reminder (6 PM)</SelectItem>
                         </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">Select when this message should be blasted.</p>
+                    <p className="text-[11px] text-amber-700/70 font-medium pt-1">The cron job will pick this preset at the selected time.</p>
                 </div>
             )}
 
-            <div className="space-y-2">
-                <Label>Image</Label>
-                <ImageUpload 
-                    value={formData.image ? [formData.image] : []}
-                    onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
-                    maxFiles={1}
-                    folder="notifications" 
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                    <Label className="text-sm font-semibold text-foreground">Banner Image (Optional)</Label>
+                    <div className="bg-muted/20 rounded-xl p-2 border border-dashed border-muted-foreground/30">
+                        <ImageUpload 
+                            value={formData.image ? [formData.image] : []}
+                            onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
+                            maxFiles={1}
+                            folder="notifications" 
+                        />
+                    </div>
+                </div>
+                <div className="space-y-1.5 flex flex-col justify-end pb-2">
+                    <Label className="text-sm font-semibold text-foreground">Redirection Link</Label>
+                    <Input 
+                        value={formData.link} 
+                        onChange={(e) => setFormData({...formData, link: e.target.value})} 
+                        placeholder="e.g. /menus"
+                        className="h-11 rounded-xl bg-muted/20 border-transparent focus:border-primary focus:bg-white"
+                    />
+                    <p className="text-[10px] text-muted-foreground px-1 pt-1">Where should users go when they tap?</p>
+                </div>
             </div>
-            <div className="space-y-2">
-                <Label>Link (e.g. /menus)</Label>
-                <Input value={formData.link} onChange={(e) => setFormData({...formData, link: e.target.value})} />
-            </div>
-        </>
+        </div>
     )
+}
+
+// iOS/Android style Notification Preview Component
+function NotificationPreview({ preset }: { preset: any }) {
+    return (
+        <div className="bg-slate-100 p-4 sm:p-5 rounded-2xl border border-slate-200/60 shadow-inner w-full max-w-[360px] mx-auto transition-all hover:bg-slate-200/50">
+            {/* Top Bar for Time slot if present */}
+            {preset.timeSlot && preset.timeSlot !== 'anytime' && (
+                <div className="flex justify-center mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-200/80 px-3 py-1 rounded-full">
+                        Slot: {preset.timeSlot}
+                    </span>
+                </div>
+            )}
+            
+            {/* Actual Notification Box */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex flex-col gap-2">
+                {/* App Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                        <div className="h-5 w-5 bg-primary rounded-md flex items-center justify-center shadow-sm">
+                            <Bell className="h-3 w-3 text-white fill-white" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-700 tracking-tight">Bumba's Kitchen</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">now</span>
+                </div>
+                
+                {/* Content */}
+                <div className="px-1 pt-0.5">
+                    <h4 className="font-bold text-[15px] text-slate-900 leading-tight mb-0.5">
+                        {preset.title || "Notification Title"}
+                    </h4>
+                    <p className="text-[13px] text-slate-600 leading-snug line-clamp-3">
+                        {preset.message || "This is how your message body will appear on the user's screen."}
+                    </p>
+                </div>
+                
+                {/* Image Attachment */}
+                {preset.image && (
+                    <div className="relative w-full h-[140px] mt-1.5 rounded-xl overflow-hidden shadow-sm border border-slate-100">
+                        <Image 
+                            src={optimizeImageUrl(preset.image)} 
+                            alt="preview" 
+                            fill 
+                            sizes="(max-width: 768px) 100vw, 360px"
+                            className="object-cover" 
+                        />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }

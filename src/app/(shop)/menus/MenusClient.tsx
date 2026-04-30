@@ -76,7 +76,22 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
         setIsLoading(false);
       }
     };
+    
+    // Prothom bar load hobe
     fetchAll();
+
+    // 🌟 Pusher theke update asle automatic abar load hobe
+    const handleRealtimeUpdate = () => {
+      console.log("Syncing new menu data...");
+      fetchAll();
+    };
+
+    window.addEventListener('menu-updated', handleRealtimeUpdate);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('menu-updated', handleRealtimeUpdate);
+    };
   }, []);
 
   // Fuse.js Fuzzy Filtering Logic

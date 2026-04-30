@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Plus, Trash2, UtensilsCrossed } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, UtensilsCrossed, Move } from 'lucide-react';
 import { toast } from 'sonner';
 import { FloatingInput } from '@/components/ui/floating-input';
 
@@ -31,12 +31,20 @@ export default function DailyMenuPage() {
   const [name, setName] = useState("Special Veg Thali");
   const [price, setPrice] = useState("");
   const [inStock, setInStock] = useState(true);
-  
-  // ★ Default: Always ON
   const [notifyUsers, setNotifyUsers] = useState(true);
   
   const [items, setItems] = useState<string[]>(["Rice", "Dal"]);
   const [newItem, setNewItem] = useState("");
+
+  // ★★★ DRAG & DROP STATES ★★★
+  // Element gulor by default position
+  const [positions, setPositions] = useState({
+      date: { x: 330, y: 123 },
+      price: { x: 79, y: 231 },
+      items: { x: 250, y: 320 }
+  });
+  const [dragging, setDragging] = useState<string | null>(null);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   // Canvas Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -69,12 +77,12 @@ export default function DailyMenuPage() {
     fetchData();
   }, []);
 
-  // Live Preview Update
+  // Live Preview Update (Positions change holeo update hobe)
   useEffect(() => {
     if (previewCanvasRef.current && !isLoading) {
-        drawOnCanvas(previewCanvasRef.current);
+        drawOnCanvas(previewCanvasRef.current, positions);
     }
-  }, [name, price, items, isLoading]);
+  }, [name, price, items, isLoading, positions]);
 
   const handleAddItem = () => {
       if (newItem.trim()) {
@@ -87,8 +95,8 @@ export default function DailyMenuPage() {
       setItems(items.filter((_, i) => i !== index));
   };
 
-  // Drawing Function
-  const drawOnCanvas = async (canvas: HTMLCanvasElement) => {
+  // ★★★ Drawing Function - Now supports dynamic positions and UNLIMITED items ★★★
+  const drawOnCanvas = async (canvas: HTMLCanvasElement, currentPos: typeof positions) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
@@ -122,30 +130,27 @@ export default function DailyMenuPage() {
 
         // Date
         const today = new Date();
-        const day = String(today.getDate()).padStart(2, '0');
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const year = String(today.getFullYear()).slice(-2);
-        const dateText = `${day}/${month}/${year}`;
+        const dateText = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getFullYear()).slice(-2)}`;
 
         ctx.save();
-        ctx.translate(330, 123); 
+        ctx.translate(currentPos.date.x, currentPos.date.y); 
         ctx.rotate(-4.39 * Math.PI / 180); 
         ctx.fillStyle = "#00355b"; 
         ctx.font = "900 15px Montserrat, sans-serif"; 
         ctx.fillText(dateText, 0, 0);
         ctx.restore();
 
-        // Items
+        // Items (UNLIMITED ITEMS)
         ctx.save();
-        ctx.translate(250, 320); 
+        ctx.translate(currentPos.items.x, currentPos.items.y); 
         ctx.fillStyle = "#ffffffff"; 
         ctx.font = "500 24px 'Anek Bangla', sans-serif"; 
 
         const lineHeight = 30;
         let currentY = -(items.length * lineHeight / 2) + (lineHeight / 2);
         
-        const displayItems = items.slice(0, 6);
-        displayItems.forEach(item => {
+        // Ekhane theke slice() tule dewa hoyeche tai joto items thakbe shob ashbe
+        items.forEach(item => {
             ctx.fillText(item, 0, currentY); 
             currentY += lineHeight;
         });
@@ -153,7 +158,7 @@ export default function DailyMenuPage() {
 
         // Price
         ctx.save();
-        ctx.translate(79, 231);
+        ctx.translate(currentPos.price.x, currentPos.price.y);
         ctx.fillStyle = "#000000ff"; 
         ctx.font = "italic bold 32px sans-serif"; 
         ctx.fillText(`₹${price || '0'}`, 0, 0);
@@ -162,6 +167,58 @@ export default function DailyMenuPage() {
       } catch (e) {
           console.error("Drawing error", e);
       }
+  };
+
+  // ★★★ DRAG & DROP LOGIC ★★★
+  const getMousePos = (e: React.PointerEvent) => {
+      const rect = previewCanvasRef.current!.getBoundingClientRect();
+      const scaleX = 500 / rect.width;
+      const scaleY = 500 / rect.height;
+      return { 
+          x: (e.clientX - rect.left) * scaleX, 
+          y: (e.clientY - rect.top) * scaleY 
+      };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+      if (!previewCanvasRef.current) return;
+      const mouse = getMousePos(e);
+
+      const itemsHeight = items.length * 30;
+      
+      // Click detection boundaries (Generous area for easy mobile tapping)
+      const boxes = {
+          items: { x: positions.items.x - 150, y: positions.items.y - itemsHeight/2 - 20, w: 300, h: itemsHeight + 40 },
+          price: { x: positions.price.x - 50, y: positions.price.y - 30, w: 100, h: 60 },
+          date:  { x: positions.date.x - 60, y: positions.date.y - 30, w: 120, h: 60 }
+      };
+
+      if (mouse.x > boxes.items.x && mouse.x < boxes.items.x + boxes.items.w && mouse.y > boxes.items.y && mouse.y < boxes.items.y + boxes.items.h) {
+          setDragging('items');
+          dragOffset.current = { x: positions.items.x - mouse.x, y: positions.items.y - mouse.y };
+      } else if (mouse.x > boxes.price.x && mouse.x < boxes.price.x + boxes.price.w && mouse.y > boxes.price.y && mouse.y < boxes.price.y + boxes.price.h) {
+          setDragging('price');
+          dragOffset.current = { x: positions.price.x - mouse.x, y: positions.price.y - mouse.y };
+      } else if (mouse.x > boxes.date.x && mouse.x < boxes.date.x + boxes.date.w && mouse.y > boxes.date.y && mouse.y < boxes.date.y + boxes.date.h) {
+          setDragging('date');
+          dragOffset.current = { x: positions.date.x - mouse.x, y: positions.date.y - mouse.y };
+      }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+      if (!dragging) return;
+      const mouse = getMousePos(e);
+      setPositions(prev => ({
+          ...prev,
+          [dragging]: { 
+              x: mouse.x + dragOffset.current.x, 
+              y: mouse.y + dragOffset.current.y 
+          }
+      }));
+  };
+
+  const handlePointerUp = () => {
+      setDragging(null);
   };
 
   const handleSave = async () => {
@@ -174,8 +231,8 @@ export default function DailyMenuPage() {
     setIsSaving(true);
 
     try {
-        // 1. Generate Canvas Image
-        await drawOnCanvas(canvasRef.current);
+        // ★ 1. Update the actual canvas with current dragged positions
+        await drawOnCanvas(canvasRef.current, positions);
         
         // 2. Create Blob
         const blob = await new Promise<Blob | null>(resolve => 
@@ -200,29 +257,16 @@ export default function DailyMenuPage() {
         if (!uploadData.secure_url) throw new Error("Upload failed");
 
         const originalImageUrl = uploadData.secure_url;
-
-        // 4. Optimize Image URL for Notification (500x500, <100kb)
         const optimizedImageUrl = getOptimizedNotificationImage(originalImageUrl);
 
-        // ★★★ 5. Update Database with Best Data Structure ★★★
         const res = await fetch('/api/admin/daily-special', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                name,
-                price,
-                items, 
-                // মূল লিস্ট যেখানে প্রথম ছবিটা অরিজিনাল থালির এবং দ্বিতীয়টা আজকের পোস্টার
-                ImageURLs: [
-                    CONSTANT_THALI_IMAGE,
-                    optimizedImageUrl
-                ],
-                // ব্যাকএন্ডে সিঙ্গেল ইমেজ দরকার হলে বা নোটিফিকেশনের সুবিধার জন্য ফলব্যাক
+                name, price, items, 
+                ImageURLs: [CONSTANT_THALI_IMAGE, optimizedImageUrl],
                 imageUrl: optimizedImageUrl, 
-                inStock,
-                notifyUsers
+                inStock, notifyUsers
             })
         });
 
@@ -232,7 +276,6 @@ export default function DailyMenuPage() {
         } else {
             toast.error(data.error || "Failed to update");
         }
-
     } catch (e) {
         console.error(e);
         toast.error("Error saving menu");
@@ -312,17 +355,27 @@ export default function DailyMenuPage() {
                 </Card>
             </div>
 
-            {/* Right Side: Live Preview Canvas */}
+            {/* Right Side: Live Preview Canvas with Drag & Drop */}
             <div className="flex flex-col items-center justify-start space-y-4">
-                <Label className="text-lg font-semibold text-muted-foreground">Live Poster Preview</Label>
-                <div className="relative w-full max-w-[400px] aspect-square rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-muted">
+                <Label className="text-lg font-semibold text-muted-foreground">Live Interactive Poster</Label>
+                
+                <div className="relative w-full max-w-[400px] aspect-square rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-muted cursor-move group">
                     <canvas 
                         ref={previewCanvasRef} 
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-contain touch-none"
+                        style={{ touchAction: 'none' }} 
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerLeave={handlePointerUp}
                     />
+                    <div className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full shadow-lg opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <Move className="h-5 w-5" />
+                    </div>
                 </div>
-                <p className="text-xs text-muted-foreground text-center italic">
-                    * This image updates automatically as you type.
+                
+                <p className="text-sm font-medium text-primary text-center px-4 bg-primary/10 py-2 rounded-lg">
+                    ✨ Drag the <strong>Items</strong>, <strong>Price</strong> or <strong>Date</strong> directly on the poster to reposition them before publishing!
                 </p>
             </div>
         </div>

@@ -24,7 +24,8 @@ const HIDE_PATHS = [
     '/reset-password', 
     '/forgot-password',
     '/menus', // ★★★ FIX: প্রোডাক্ট ডিটেইলস পেজে ফুটার হাইড করা হলো
-    '/checkout'  // (Optional: চেকআউট পেজেও হাইড রাখা ভালো)
+    '/checkout',  // (Optional: চেকআউট পেজেও হাইড রাখা ভালো)
+    '/web'
 ];
 
 export function MobileNav() {

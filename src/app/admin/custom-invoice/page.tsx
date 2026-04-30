@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, FileText, Download, Loader2, Calendar as CalendarIcon, Search } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Loader2, Calendar as CalendarIcon, Search, Utensils } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, cn } from '@/lib/utils';
 import { generateCustomInvoice } from '@/lib/customInvoiceGenerator'; 
@@ -18,7 +18,7 @@ import { format, setMonth, setYear, getMonth, getYear, addMonths, subMonths } fr
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// ★★★ SWIPEABLE CALENDAR LOGIC (From Checkout Page) ★★★
+// ★★★ SWIPEABLE CALENDAR LOGIC ★★★
 const slideVariants = {
   enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
   center: { x: 0, opacity: 1 },
@@ -140,15 +140,10 @@ export default function CustomInvoicePage() {
         }
     };
 
-    const handleProductSelect = (id: string, productName: string) => {
-        const selectedProduct = availableProducts.find(p => p.name === productName);
-        if (selectedProduct) {
-            setItems(items.map(item => 
-                item.id === id ? { ...item, name: selectedProduct.name, price: selectedProduct.price } : item
-            ));
-        } else {
-            setItems(items.map(item => item.id === id ? { ...item, name: productName } : item));
-        }
+    const handleProductSelect = (id: string, product: any) => {
+        setItems(items.map(item => 
+            item.id === id ? { ...item, name: product.name, price: product.price } : item
+        ));
     };
 
     const handleItemChange = (id: string, field: string, value: any) => {
@@ -194,7 +189,6 @@ export default function CustomInvoicePage() {
         }
     };
 
-    // Filter available products based on search query
     const filteredProducts = availableProducts.filter(p => p.name.toLowerCase().includes(dishSearchQuery.toLowerCase()));
 
     return (
@@ -205,7 +199,7 @@ export default function CustomInvoicePage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-bold font-headline">Custom Invoice</h1>
-                    <p className="text-sm text-muted-foreground">Select from menu & create professional bills.</p>
+                    <p className="text-sm text-muted-foreground">Type custom items or select from menu.</p>
                 </div>
             </div>
 
@@ -226,7 +220,6 @@ export default function CustomInvoicePage() {
                         </div>
                         <div className="space-y-2">
                             <Label>Bill Date</Label>
-                            {/* ★ SWIPEABLE CALENDAR TRIGGGER ★ */}
                             <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-11 rounded-xl bg-muted/20 hover:bg-muted/40", !customerInfo.date && "text-muted-foreground")}>
@@ -259,53 +252,53 @@ export default function CustomInvoicePage() {
                         <div className="divide-y border-b">
                             {items.map((item) => (
                                 <div key={item.id} className="p-4 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 bg-white">
+                                    
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-muted-foreground">Select Dish</Label>
+                                        <Label className="text-xs font-bold text-muted-foreground">Item Name</Label>
                                         
-                                        {/* ★ CUSTOM DISH SELECTOR POPUP ★ */}
-                                        <Dialog open={dishSelectorOpen === item.id} onOpenChange={(open) => { setDishSelectorOpen(open ? item.id : null); setDishSearchQuery(''); }}>
-                                            <DialogTrigger asChild>
-                                                <Button variant="outline" className={cn("w-full justify-start h-12 text-left font-normal rounded-xl bg-muted/10 border-primary/20 hover:bg-primary/5", !item.name && "text-muted-foreground")}>
-                                                    {item.name ? (item.name === 'custom' ? <span className="text-primary font-medium">Custom Item (Manual Entry)</span> : <span className="font-medium">{item.name}</span>) : "Tap to choose a dish..."}
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="sm:max-w-[400px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl">
-                                                <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-primary/10">
-                                                    <div className="relative">
-                                                        <Search className="absolute left-3 top-3 h-4 w-4 text-primary/70" />
-                                                        <Input placeholder="Search menu..." className="pl-9 h-10 rounded-xl bg-white border-0 shadow-sm focus-visible:ring-primary/20" value={dishSearchQuery} onChange={e => setDishSearchQuery(e.target.value)} />
-                                                    </div>
-                                                </div>
-                                                <div className="max-h-[350px] overflow-y-auto p-2 space-y-1 custom-scrollbar bg-white">
-                                                    {filteredProducts.map(p => (
-                                                        <div key={p.id} className="p-3 hover:bg-primary/5 rounded-xl cursor-pointer flex justify-between items-center transition-all active:scale-[0.98]" onClick={() => { handleProductSelect(item.id, p.name); setDishSelectorOpen(null); }}>
-                                                            <div className="flex flex-col">
-                                                                <span className="font-semibold text-sm text-foreground">{p.name}</span>
-                                                            </div>
-                                                            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1.5 rounded-lg border border-primary/20">₹{p.price}</span>
-                                                        </div>
-                                                    ))}
-                                                    {filteredProducts.length === 0 && (
-                                                        <p className="text-center text-sm text-muted-foreground py-4">No dishes found.</p>
-                                                    )}
-                                                    <div className="p-3 bg-muted/30 hover:bg-muted/50 rounded-xl cursor-pointer flex justify-between items-center text-primary mt-2 border border-dashed border-primary/30 transition-all active:scale-[0.98]" onClick={() => { handleProductSelect(item.id, 'custom'); setDishSelectorOpen(null); }}>
-                                                        <span className="font-semibold text-sm flex items-center gap-2"><Plus className="h-4 w-4" /> Add Custom Item</span>
-                                                    </div>
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
-
-                                        {/* Custom Item Input (Shows only if Custom is selected) */}
-                                        {item.name === "custom" && (
+                                        <div className="flex gap-2">
+                                            {/* ★ MAIN TEXT BOX FOR CUSTOM ENTRY ★ */}
                                             <Input 
-                                                placeholder="Type your custom item name here..." 
-                                                className="mt-3 h-11 rounded-xl border-primary/30 focus:ring-primary bg-primary/5 font-medium animate-in slide-in-from-top-1"
+                                                placeholder="Type item name here..." 
+                                                value={item.name}
                                                 onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
+                                                className="flex-1 h-11 rounded-xl bg-white border-primary/20 focus:ring-primary font-medium"
                                             />
-                                        )}
+                                            
+                                            {/* ★ MENU BUTTON FOR QUICK SELECTION ★ */}
+                                            <Dialog open={dishSelectorOpen === item.id} onOpenChange={(open) => { setDishSelectorOpen(open ? item.id : null); setDishSearchQuery(''); }}>
+                                                <DialogTrigger asChild>
+                                                    <Button variant="outline" className="h-11 px-4 rounded-xl bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 shrink-0 shadow-sm transition-all active:scale-95">
+                                                        <Utensils className="h-4 w-4 sm:mr-2" />
+                                                        <span className="hidden sm:inline">Menu</span>
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="sm:max-w-[400px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl">
+                                                    <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-primary/10">
+                                                        <div className="relative">
+                                                            <Search className="absolute left-3 top-3 h-4 w-4 text-primary/70" />
+                                                            <Input placeholder="Search menu to auto-fill..." className="pl-9 h-10 rounded-xl bg-white border-0 shadow-sm focus-visible:ring-primary/20" value={dishSearchQuery} onChange={e => setDishSearchQuery(e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="max-h-[350px] overflow-y-auto p-2 space-y-1 custom-scrollbar bg-white">
+                                                        {filteredProducts.map(p => (
+                                                            <div key={p.id} className="p-3 hover:bg-primary/5 rounded-xl cursor-pointer flex justify-between items-center transition-all active:scale-[0.98]" onClick={() => { handleProductSelect(item.id, p); setDishSelectorOpen(null); }}>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-semibold text-sm text-foreground">{p.name}</span>
+                                                                </div>
+                                                                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1.5 rounded-lg border border-primary/20">₹{p.price}</span>
+                                                            </div>
+                                                        ))}
+                                                        {filteredProducts.length === 0 && (
+                                                            <p className="text-center text-sm text-muted-foreground py-6">No dishes found in menu.</p>
+                                                        )}
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        </div>
                                     </div>
 
-                                    <div className="grid grid-cols-12 gap-3 pt-2">
+                                    <div className="grid grid-cols-12 gap-3 pt-1">
                                         <div className="col-span-5 sm:col-span-4 space-y-1.5">
                                             <Label className="text-xs font-medium">Price (₹)</Label>
                                             <Input type="number" value={item.price || ''} onChange={e => handleItemChange(item.id, 'price', Number(e.target.value))} className="h-11 rounded-xl bg-muted/10" />

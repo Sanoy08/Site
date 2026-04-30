@@ -10,20 +10,21 @@ export default function DeviceEnforcer() {
     const pathname = usePathname();
 
     useEffect(() => {
-        // Jodi already /web page-e thake tahole check korar dorkar nei (nahole infinite loop hobe)
+        // 1. Jodi already /web page-e thake tahole kichu korar dorkar nei
         if (pathname?.startsWith('/web')) return;
 
-        // Mobile device kina check korche (User Agent diye)
+        // 2. EXCEPTIONS: Jodi link-e '.apk' thake tahole redirect bondho thakbe
+        // Jate download link ta thikmoto kaj kore
+        if (pathname?.endsWith('.apk')) return;
+
         const isMobileBrowser = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        // Native App (Capacitor) kina check korche
         const isNativeApp = Capacitor.isNativePlatform();
 
-        // LOGIC: Jodi Mobile hoy AND Native App NA hoy, tahole forced redirect
+        // 3. Logic: Mobile browser kintu Native App noy, tahole redirect
         if (isMobileBrowser && !isNativeApp) {
             router.replace('/web');
         }
     }, [pathname, router]);
 
-    return null; // Ei component kono UI dekhabe na, shudhu background e kaj korbe
+    return null;
 }

@@ -34,12 +34,13 @@ export default function WebLandingPage() {
         delay: 0.2
       });
 
-      // 3. Zig-Zag Steps Scroll Animations
+      // 3. Zig-Zag Steps Scroll Animations (Bar bar repeat hobe ebar)
       gsap.utils.toArray('.step-anim').forEach((step: any) => {
         gsap.to(step, {
           scrollTrigger: {
             trigger: step,
             start: "top 85%", 
+            toggleActions: "play none none reverse" // 🌟 ADDED: For repeating animation on scroll up/down
           },
           x: 0,
           y: 0,
@@ -49,25 +50,27 @@ export default function WebLandingPage() {
         });
       });
 
-      // 4. Curved Arrows Pop Animation
+      // 4. Curved Arrows Pop Animation (Bar bar repeat hobe ebar)
       gsap.utils.toArray('.arrow-anim').forEach((arrow: any) => {
         gsap.to(arrow, {
           scrollTrigger: {
             trigger: arrow,
             start: "top 85%",
+            toggleActions: "play none none reverse" // 🌟 ADDED
           },
           scale: 1,
           opacity: 1,
           duration: 1,
-          ease: 'elastic.out(1, 0.7)' // Ektu bouncier and smoother
+          ease: 'elastic.out(1, 0.7)'
         });
       });
 
-      // 5. Bento Grid Staggered Scroll Animation
+      // 5. Bento Grid Staggered Scroll Animation (Bar bar repeat hobe ebar)
       gsap.to('.bento-anim', {
         scrollTrigger: {
           trigger: '.bento-container',
           start: "top 85%",
+          toggleActions: "play none none reverse" // 🌟 ADDED
         },
         y: 0,
         opacity: 1,
@@ -82,7 +85,6 @@ export default function WebLandingPage() {
   }, []);
 
   return (
-    // 🌟 EXTRA SMOOTH LENIS: lerp 0.05 gives that buttery sliding feel
     <ReactLenis root options={{ lerp: 0.05, duration: 1.5, smoothWheel: true }}>
         <div ref={containerRef} className="min-h-screen bg-[#fafafa] flex flex-col font-sans selection:bg-primary/20 overflow-x-hidden relative">
         
@@ -92,7 +94,6 @@ export default function WebLandingPage() {
         {/* Header */}
         <header className="header-anim opacity-0 -translate-y-full w-full py-4 px-6 flex justify-between items-center bg-white/70 backdrop-blur-xl border-b border-white/40 sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
             <div className="flex items-center gap-3">
-                {/* 🌟 LOGO BG REMOVED: No more circle/border, just the clean logo */}
                 <div className="relative h-12 w-12 drop-shadow-sm">
                     <Image src="/logo.png" alt="Bumba's Kitchen Logo" fill className="object-contain" />
                 </div>
@@ -336,7 +337,7 @@ export default function WebLandingPage() {
                 <div className="bento-anim opacity-0 translate-y-10 w-full max-w-[320px] relative group">
                     <div className="absolute -inset-1.5 bg-gradient-to-r from-primary via-orange-400 to-primary rounded-[2rem] blur-md opacity-50 group-hover:opacity-80 transition duration-500 animate-pulse"></div>
                     
-                    {/* ❗❗ REPLACE href="#" WITH YOUR APK LINK e.g. "/BumbasKitchen.apk" ❗❗ */}
+                    {/* ❗❗ REPLACE href="http://bumbaskitchen.app/bumbas-kitchen.apk" WITH YOUR ACTUAL APK LINK ❗❗ */}
                     <a 
                         href="http://bumbaskitchen.app/bumbas-kitchen.apk" 
                         className="relative flex items-center justify-between w-full bg-slate-900 text-white px-2 py-2.5 rounded-2xl font-bold text-lg shadow-2xl transition-transform active:scale-[0.97] overflow-hidden border border-white/10"
@@ -411,7 +412,6 @@ export default function WebLandingPage() {
         {/* Footer */}
         <footer className="w-full bg-white border-t border-slate-100 py-8 px-6 text-center mt-auto">
             <div className="flex justify-center items-center gap-2 mb-3">
-                {/* 🌟 LOGO BG REMOVED HERE TOO */}
                 <div className="relative h-7 w-7 drop-shadow-sm">
                     <Image src="/logo.png" alt="Logo" fill className="object-contain" />
                 </div>

@@ -251,7 +251,7 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                     value={formData.title} 
                     onChange={(e) => setFormData({...formData, title: e.target.value})} 
                     placeholder="e.g., Hungry? 😋"
-                    className="font-bold h-12 rounded-xl bg-muted/20 border-transparent focus:border-primary focus:bg-white transition-colors"
+                    className="font-bold h-12 rounded-xl bg-white border border-primary/20 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                 />
             </div>
             <div className="space-y-1.5">
@@ -260,7 +260,7 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                     value={formData.message} 
                     onChange={(e) => setFormData({...formData, message: e.target.value})} 
                     placeholder="Write a catchy message..."
-                    className="min-h-[100px] rounded-xl bg-muted/20 border-transparent focus:border-primary focus:bg-white transition-colors resize-none"
+                    className="min-h-[100px] rounded-xl bg-white border border-primary/20 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y"
                 />
             </div>
             
@@ -268,7 +268,7 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                 <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-100">
                     <Label className="flex items-center gap-1.5 text-amber-800 font-bold"><Clock className="h-4 w-4"/> Target Time Slot</Label>
                     <Select value={formData.timeSlot} onValueChange={(val) => setFormData({...formData, timeSlot: val})}>
-                        <SelectTrigger className="w-full h-11 rounded-lg bg-white border-amber-200 focus:ring-amber-500">
+                        <SelectTrigger className="w-full h-12 rounded-xl bg-white border-amber-200 shadow-sm focus:ring-2 focus:ring-amber-500/20 font-medium text-foreground">
                             <SelectValue placeholder="Select Time" />
                         </SelectTrigger>
                         <SelectContent>
@@ -285,7 +285,7 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                     <Label className="text-sm font-semibold text-foreground">Banner Image (Optional)</Label>
-                    <div className="bg-muted/20 rounded-xl p-2 border border-dashed border-muted-foreground/30">
+                    <div className="bg-white rounded-xl p-2 border border-dashed border-primary/30 shadow-sm">
                         <ImageUpload 
                             value={formData.image ? [formData.image] : []}
                             onChange={(urls) => setFormData({...formData, image: urls[0] || ''})}
@@ -300,7 +300,7 @@ function NotificationForm({ formData, setFormData, showTimeSlot }: any) {
                         value={formData.link} 
                         onChange={(e) => setFormData({...formData, link: e.target.value})} 
                         placeholder="e.g. /menus"
-                        className="h-11 rounded-xl bg-muted/20 border-transparent focus:border-primary focus:bg-white"
+                        className="h-12 rounded-xl bg-white border border-primary/20 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                     <p className="text-[10px] text-muted-foreground px-1 pt-1">Where should users go when they tap?</p>
                 </div>

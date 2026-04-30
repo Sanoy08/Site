@@ -21,8 +21,8 @@ import {
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/imageUtils';
-import { motion, AnimatePresence } from 'framer-motion';
-import Fuse from 'fuse.js'; // 🌟 Fuse.js Import
+import { motion } from 'framer-motion';
+import Fuse from 'fuse.js';
 
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp" }, 
@@ -44,12 +44,10 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // Refs
   const categoryContainerRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<string, HTMLButtonElement> | null>(null);
   if (!itemsRef.current) itemsRef.current = new Map();
   
-  // States
   const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,17 +56,15 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Filter Sheet States
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [tempSortBy, setTempSortBy] = useState('recommended');
   const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
 
-  // 🌟 LOAD ALL PRODUCTS ON MOUNT
+  // Load All Products for Client-side Search
   useEffect(() => {
     const fetchAll = async () => {
       setIsLoading(true);
       try {
-        // limit 1000 jate sob eksathe chole ashe
         const res = await fetch(`/api/products?limit=1000`);
         const data = await res.json();
         if (data.success) {
@@ -83,33 +79,31 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     fetchAll();
   }, []);
 
-  // 🌟 FUSE.JS LOGIC: Instant Fuzzy Filtering
+  // Fuse.js Fuzzy Filtering Logic
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...allProducts];
 
-    // 1. Category Filter
     if (activeCategory !== 'All') {
       result = result.filter(p => p.category.name.toLowerCase() === activeCategory.toLowerCase());
     }
 
-    // 2. Veg Only Filter
     if (showVegOnly) {
-      // Assuming products have a property to identify veg. If not, use description/name check.
-      // Ekhon kothay thakbe seta apnar data structure e depend kore.
-      result = result.filter(p => p.name.toLowerCase().includes('veg') || p.category.name.toLowerCase() === 'veg' || p.category.name.toLowerCase() === 'paneer' || p.category.name.toLowerCase() === 'chapati');
+      result = result.filter(p => 
+        p.name.toLowerCase().includes('veg') || 
+        p.category.name.toLowerCase() === 'veg' || 
+        p.category.name.toLowerCase() === 'paneer'
+      );
     }
 
-    // 3. Fuzzy Search with Fuse.js
     if (searchQuery.trim().length > 0) {
       const fuse = new Fuse(result, {
         keys: ['name', 'category.name', 'description'],
-        threshold: 0.3, // 0.0 perfect match, 1.0 match anything. 0.3 is best for fuzzy.
+        threshold: 0.3,
         distance: 100
       });
       result = fuse.search(searchQuery).map(r => r.item);
     }
 
-    // 4. Sorting
     switch (sortBy) {
       case 'price-low': result.sort((a, b) => a.price - b.price); break;
       case 'price-high': result.sort((a, b) => b.price - a.price); break;
@@ -120,14 +114,12 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     return result;
   }, [allProducts, activeCategory, searchQuery, showVegOnly, sortBy]);
 
-  // Scroll Detection
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // URL Sync
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
     if (categoryFromUrl) {
@@ -138,7 +130,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     }
   }, [searchParams]);
 
-  // Auto Scroll Category
   useEffect(() => {
     const container = categoryContainerRef.current;
     const selectedItem = itemsRef.current?.get(activeCategory);
@@ -183,7 +174,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                       </div>
                   </div>
                   
-                  {/* Mobile Filter Sheet */}
+                  {/* Mobile Filter */}
                   <div className="md:hidden">
                       <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                         <SheetTrigger asChild>
@@ -273,7 +264,11 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                               )}>
                                   <Image 
                                     src={optimizeImageUrl(cat.image)} 
-                                    alt={cat.name} fill className="object-cover" unoptimized={true}
+                                    alt={cat.name} 
+                                    fill 
+                                    className="object-cover" 
+                                    unoptimized={true}
+                                    loading="lazy" 
                                   />
                               </div>
                               <span className={cn("text-xs font-bold transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
@@ -294,22 +289,20 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
              </div>
         ) : filteredAndSortedProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-                <AnimatePresence>
-                    {filteredAndSortedProducts.map((product) => (
-                        <motion.div
-                            key={product.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <ProductCard product={product} />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+                {filteredAndSortedProducts.map((product) => (
+                    <motion.div
+                        key={product.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: false, margin: "-50px" }} // 🌟 CHANGED: once: false kora hoyeche jate bar bar scroll e animation hoy
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                    >
+                        <ProductCard product={product} />
+                    </motion.div>
+                ))}
             </div>
         ) : (
+            // No items state
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-in zoom-in duration-300">
                 <div className="h-40 w-40 bg-muted/30 rounded-full flex items-center justify-center relative">
                     <UtensilsCrossed className="h-16 w-16 text-muted-foreground/30" />

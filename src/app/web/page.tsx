@@ -1,167 +1,431 @@
 // src/app/web/page.tsx
+
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { ChefHat, Smartphone, Star, Clock, ShieldCheck, ArrowRight, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Download, Utensils, ChefHat, ShieldCheck, Smartphone, AlertTriangle, CheckCircle2, ArrowRight, Star, Settings, FileBox, Play, Info } from 'lucide-react';
 
-// Apnar cloudinary image tai ekhane demo hisebe bebohar korlam
-const HERO_IMAGE = "https://res.cloudinary.com/dk1acdtja/image/upload/v1777168123/IMG_20260426_071347_fltctm.jpg";
+// GSAP & Lenis Imports
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ReactLenis } from '@studio-freight/react-lenis';
 
 export default function WebLandingPage() {
-  return (
-    <div className="min-h-screen bg-[#fafaf9] text-gray-900 font-sans overflow-x-hidden">
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    // Register GSAP ScrollTrigger
+    gsap.registerPlugin(ScrollTrigger);
+
+    const ctx = gsap.context(() => {
       
-      {/* Navbar */}
-      <nav className="w-full bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-amber-500 p-2 rounded-xl text-white shadow-md">
-              <ChefHat className="h-5 w-5" />
-            </div>
-            <span className="font-black text-xl tracking-tight text-gray-800">Bumba's<span className="text-amber-500">Kitchen</span></span>
-          </div>
-          <div className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-500">
-            <MapPin className="h-4 w-4 text-amber-500" /> Janai, Hooghly
-          </div>
-        </div>
-      </nav>
+      // 1. Header Animation (Cinematic Expo Ease)
+      gsap.to('.header-anim', { y: 0, opacity: 1, duration: 1.5, ease: 'expo.out' });
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24">
+      // 2. Hero Section Staggered Animation
+      gsap.to('.hero-anim', {
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        duration: 1.5,
+        stagger: 0.15,
+        ease: 'expo.out',
+        delay: 0.2
+      });
+
+      // 3. Zig-Zag Steps Scroll Animations
+      gsap.utils.toArray('.step-anim').forEach((step: any) => {
+        gsap.to(step, {
+          scrollTrigger: {
+            trigger: step,
+            start: "top 85%", 
+          },
+          x: 0,
+          y: 0,
+          opacity: 1,
+          duration: 1.2,
+          ease: 'expo.out'
+        });
+      });
+
+      // 4. Curved Arrows Pop Animation
+      gsap.utils.toArray('.arrow-anim').forEach((arrow: any) => {
+        gsap.to(arrow, {
+          scrollTrigger: {
+            trigger: arrow,
+            start: "top 85%",
+          },
+          scale: 1,
+          opacity: 1,
+          duration: 1,
+          ease: 'elastic.out(1, 0.7)' // Ektu bouncier and smoother
+        });
+      });
+
+      // 5. Bento Grid Staggered Scroll Animation
+      gsap.to('.bento-anim', {
+        scrollTrigger: {
+          trigger: '.bento-container',
+          start: "top 85%",
+        },
+        y: 0,
+        opacity: 1,
+        duration: 1.2,
+        stagger: 0.15,
+        ease: 'expo.out'
+      });
+
+    }, containerRef);
+
+    return () => ctx.revert(); 
+  }, []);
+
+  return (
+    // 🌟 EXTRA SMOOTH LENIS: lerp 0.05 gives that buttery sliding feel
+    <ReactLenis root options={{ lerp: 0.05, duration: 1.5, smoothWheel: true }}>
+        <div ref={containerRef} className="min-h-screen bg-[#fafafa] flex flex-col font-sans selection:bg-primary/20 overflow-x-hidden relative">
         
-        {/* Hero Section */}
-        <div className="flex flex-col-reverse lg:flex-row items-center justify-between gap-12 lg:gap-8 pt-8 lg:pt-16">
-          
-          {/* Left Text Content */}
-          <motion.div 
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="flex-1 space-y-8 text-center lg:text-left"
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wider mb-2">
-              <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Top Rated Cloud Kitchen
+        {/* Subtle Grid Background */}
+        <div className="absolute inset-0 z-0 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
+        
+        {/* Header */}
+        <header className="header-anim opacity-0 -translate-y-full w-full py-4 px-6 flex justify-between items-center bg-white/70 backdrop-blur-xl border-b border-white/40 sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+            <div className="flex items-center gap-3">
+                {/* 🌟 LOGO BG REMOVED: No more circle/border, just the clean logo */}
+                <div className="relative h-12 w-12 drop-shadow-sm">
+                    <Image src="/logo.png" alt="Bumba's Kitchen Logo" fill className="object-contain" />
+                </div>
+                <h1 className="text-xl font-bold font-headline text-slate-800 tracking-tight">
+                    Bumba's <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-orange-500">Kitchen</span>
+                </h1>
             </div>
+        </header>
+
+        <main className="flex-1 flex flex-col items-center w-full z-10">
             
-            <h1 className="text-5xl lg:text-7xl font-black leading-[1.1] tracking-tight text-gray-900">
-              Craving <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">Delicious</span><br /> Home Style Food?
-            </h1>
+            {/* Intro Section */}
+            <section className="w-full px-5 pt-12 pb-6 flex flex-col items-center text-center relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/20 rounded-full blur-[80px] -z-10"></div>
             
-            <p className="text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Experience the best Bengali cuisines and daily special thalis cooked with love, hygiene, and the freshest ingredients. Delivered blazing fast to your doorstep.
+            <h2 className="hero-anim opacity-0 translate-y-8 text-4xl sm:text-5xl font-black text-slate-900 leading-[1.1] tracking-tight mb-4">
+                Get Our <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-orange-500">Official App</span>
+            </h2>
+            <p className="hero-anim opacity-0 translate-y-8 text-[15px] text-slate-500 max-w-sm leading-relaxed font-medium">
+                Follow these simple steps to install the app and start ordering your favorite meals!
             </p>
+            </section>
 
-            <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 max-w-lg mx-auto lg:mx-0 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -z-10"></div>
-                <h3 className="text-xl font-bold mb-2 flex items-center justify-center lg:justify-start gap-2">
-                    <Smartphone className="h-6 w-6 text-amber-500" /> Get the App Now!
-                </h3>
-                <p className="text-sm text-gray-500 mb-6">To place an order, track your delivery live, and get exclusive daily discounts, please download our mobile app.</p>
+            {/* 🌟 Zig-Zag Steps Section with Arrows */}
+            <section className="w-full max-w-md px-5 py-6 overflow-hidden">
                 
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                    {/* Fake Play Store Button */}
-                    <button className="flex items-center gap-3 bg-black text-white px-5 py-3 rounded-2xl hover:scale-105 transition-transform w-full sm:w-auto justify-center shadow-lg">
-                        <svg viewBox="0 0 24 24" className="w-7 h-7" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186c-.135-.111-.22-.27-.22-.444V2.258c0-.174.085-.333.22-.444zm11.002 9.37l3.655-2.11-4.838-4.838 1.183 6.948zm.001 1.631l-1.183 6.949 4.838-4.838-3.655-2.111zm4.498-2.6L22.7 11.13c.4.23.4.606 0 .837l-3.59 2.073-1.428-1.428 1.428-1.428z"/></svg>
-                        <div className="text-left">
-                            <div className="text-[10px] uppercase leading-none opacity-80">GET IT ON</div>
-                            <div className="text-base font-semibold leading-none mt-1">Google Play</div>
+                {/* ========================================== */}
+                {/* --- STEP 1 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 flex-1 text-left">
+                        <div className="w-8 h-8 rounded-full bg-primary text-white font-black flex items-center justify-center text-sm shadow-md mb-3">1</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step One</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step one goes here. Edit this text.
+                        </p>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 bg-slate-50">
+                            <Smartphone className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-1.jpg</span>
                         </div>
-                    </button>
+                    </div>
+                </div>
+                {/* --- ARROW 1 --- */}
+                <div className="w-full flex justify-center py-2 relative h-16">
+                    <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 right-16 sm:right-20 text-primary/40 overflow-visible drop-shadow-sm">
+                        <path d="M 80,0 Q 80,50 10,50" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 6" strokeLinecap="round" />
+                        <path d="M 20,40 L 10,50 L 20,60" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                {/* ========================================== */}
+
+                {/* ========================================== */}
+                {/* --- STEP 2 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-orange-300 bg-orange-50/50">
+                            <AlertTriangle className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-2.jpg</span>
+                        </div>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 flex-1 text-right flex flex-col items-end">
+                        <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-black flex items-center justify-center text-sm shadow-md mb-3">2</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step Two</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step two goes here. Edit this text.
+                        </p>
+                    </div>
+                </div>
+                {/* --- ARROW 2 --- */}
+                <div className="w-full flex justify-center py-2 relative h-16">
+                    <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 left-16 sm:left-20 text-primary/40 overflow-visible drop-shadow-sm">
+                        <path d="M 20,0 Q 20,50 90,50" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 6" strokeLinecap="round" />
+                        <path d="M 80,40 L 90,50 L 80,60" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                {/* ========================================== */}
+
+                {/* ========================================== */}
+                {/* --- STEP 3 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 flex-1 text-left">
+                        <div className="w-8 h-8 rounded-full bg-green-500 text-white font-black flex items-center justify-center text-sm shadow-md mb-3">3</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step Three</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step three goes here. Edit this text.
+                        </p>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-green-400 bg-green-50/50">
+                            <CheckCircle2 className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-3.jpg</span>
+                        </div>
+                    </div>
+                </div>
+                {/* --- ARROW 3 --- */}
+                <div className="w-full flex justify-center py-2 relative h-16">
+                    <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 right-16 sm:right-20 text-primary/40 overflow-visible drop-shadow-sm">
+                        <path d="M 80,0 Q 80,50 10,50" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 6" strokeLinecap="round" />
+                        <path d="M 20,40 L 10,50 L 20,60" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                {/* ========================================== */}
+
+                {/* ========================================== */}
+                {/* --- STEP 4 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-blue-300 bg-blue-50/50">
+                            <Settings className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-4.jpg</span>
+                        </div>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 flex-1 text-right flex flex-col items-end">
+                        <div className="w-8 h-8 rounded-full bg-blue-500 text-white font-black flex items-center justify-center text-sm shadow-md mb-3">4</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step Four</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step four goes here. Edit this text.
+                        </p>
+                    </div>
+                </div>
+                {/* --- ARROW 4 --- */}
+                <div className="w-full flex justify-center py-2 relative h-16">
+                    <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 left-16 sm:left-20 text-primary/40 overflow-visible drop-shadow-sm">
+                        <path d="M 20,0 Q 20,50 90,50" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 6" strokeLinecap="round" />
+                        <path d="M 80,40 L 90,50 L 80,60" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                {/* ========================================== */}
+
+                {/* ========================================== */}
+                {/* --- STEP 5 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 flex-1 text-left">
+                        <div className="w-8 h-8 rounded-full bg-primary text-white font-black flex items-center justify-center text-sm shadow-md mb-3">5</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step Five</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step five goes here. Edit this text.
+                        </p>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 bg-slate-50">
+                            <FileBox className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-5.jpg</span>
+                        </div>
+                    </div>
+                </div>
+                {/* --- ARROW 5 --- */}
+                <div className="w-full flex justify-center py-2 relative h-16">
+                    <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 right-16 sm:right-20 text-primary/40 overflow-visible drop-shadow-sm">
+                        <path d="M 80,0 Q 80,50 10,50" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 6" strokeLinecap="round" />
+                        <path d="M 20,40 L 10,50 L 20,60" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                {/* ========================================== */}
+
+                {/* ========================================== */}
+                {/* --- STEP 6 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-orange-300 bg-orange-50/50">
+                            <Play className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-6.jpg</span>
+                        </div>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 flex-1 text-right flex flex-col items-end">
+                        <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-black flex items-center justify-center text-sm shadow-md mb-3">6</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step Six</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step six goes here. Edit this text.
+                        </p>
+                    </div>
+                </div>
+                {/* --- ARROW 6 --- */}
+                <div className="w-full flex justify-center py-2 relative h-16">
+                    <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 left-16 sm:left-20 text-primary/40 overflow-visible drop-shadow-sm">
+                        <path d="M 20,0 Q 20,50 90,50" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 6" strokeLinecap="round" />
+                        <path d="M 80,40 L 90,50 L 80,60" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                {/* ========================================== */}
+
+                {/* ========================================== */}
+                {/* --- STEP 7 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 flex-1 text-left">
+                        <div className="w-8 h-8 rounded-full bg-green-500 text-white font-black flex items-center justify-center text-sm shadow-md mb-3">7</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step Seven</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step seven goes here. Edit this text.
+                        </p>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-green-400 bg-green-50/50">
+                            <Info className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-7.jpg</span>
+                        </div>
+                    </div>
+                </div>
+                {/* --- ARROW 7 --- */}
+                <div className="w-full flex justify-center py-2 relative h-16">
+                    <svg width="100" height="60" viewBox="0 0 100 60" className="arrow-anim opacity-0 scale-75 absolute top-0 right-16 sm:right-20 text-primary/40 overflow-visible drop-shadow-sm">
+                        <path d="M 80,0 Q 80,50 10,50" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 6" strokeLinecap="round" />
+                        <path d="M 20,40 L 10,50 L 20,60" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                {/* ========================================== */}
+
+                {/* ========================================== */}
+                {/* --- STEP 8 START --- */}
+                <div className="flex items-center justify-between gap-4 w-full overflow-hidden">
+                    <div className="step-anim opacity-0 -translate-x-10 w-[140px] sm:w-[150px] shrink-0 aspect-[9/16] rounded-[1.2rem] border-[4px] border-slate-800 bg-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 inset-x-0 h-3 w-1/2 mx-auto bg-slate-800 rounded-b-md z-10"></div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-blue-300 bg-blue-50/50">
+                            <CheckCircle2 className="h-6 w-6 mb-1 opacity-50" />
+                            <span className="text-[9px] font-bold text-center px-1">guide-8.jpg</span>
+                        </div>
+                    </div>
+                    <div className="step-anim opacity-0 translate-x-10 flex-1 text-right flex flex-col items-end">
+                        <div className="w-8 h-8 rounded-full bg-blue-500 text-white font-black flex items-center justify-center text-sm shadow-md mb-3">8</div>
+                        <h3 className="font-bold text-lg text-slate-900 mb-1 leading-tight">Step Eight</h3>
+                        <p className="text-[12px] text-slate-500 leading-relaxed font-medium">
+                            Description for step eight goes here. Edit this text.
+                        </p>
+                    </div>
+                </div>
+                {/* --- STEP 8 END --- */}
+                {/* ========================================== */}
+
+            </section>
+
+            {/* 🌟 Big Magical Download Button (Animated via Bento Stagger) */}
+            <section className="bento-container w-full px-5 pt-8 pb-14 flex flex-col items-center">
+                <div className="bento-anim opacity-0 translate-y-10 w-full max-w-[320px] relative group">
+                    <div className="absolute -inset-1.5 bg-gradient-to-r from-primary via-orange-400 to-primary rounded-[2rem] blur-md opacity-50 group-hover:opacity-80 transition duration-500 animate-pulse"></div>
                     
-                    <button className="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 group w-full sm:w-auto justify-center mt-2 sm:mt-0">
-                        Download APK <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                </div>
-            </div>
-          </motion.div>
+                    {/* ❗❗ REPLACE href="#" WITH YOUR APK LINK e.g. "/BumbasKitchen.apk" ❗❗ */}
+                    <a 
+                        href="http://bumbaskitchen.app/bumbas-kitchen.apk" 
+                        className="relative flex items-center justify-between w-full bg-slate-900 text-white px-2 py-2.5 rounded-2xl font-bold text-lg shadow-2xl transition-transform active:scale-[0.97] overflow-hidden border border-white/10"
+                    >
+                        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
 
-          {/* Right Image Content */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            className="flex-1 w-full max-w-lg relative"
-          >
-            <div className="relative w-full aspect-square rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white bg-amber-50">
-              <Image 
-                src={HERO_IMAGE} 
-                alt="Bumba's Kitchen Special Thali" 
-                fill 
-                className="object-cover hover:scale-105 transition-transform duration-700"
-                sizes="(max-width: 768px) 100vw, 50vw"
-                priority
-              />
-            </div>
-            {/* Floating Badge */}
-            <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-3 animate-bounce">
-                <div className="bg-green-100 p-2 rounded-full text-green-600"><Star className="h-5 w-5 fill-green-600" /></div>
-                <div>
-                    <p className="text-xs text-gray-500 font-medium">Daily Special</p>
-                    <p className="font-bold text-gray-900">Always Fresh</p>
+                        <div className="flex items-center gap-3 pl-4 py-2">
+                            <div className="bg-white/10 p-2.5 rounded-xl">
+                                <Download className="h-7 w-7 text-primary animate-bounce" />
+                            </div>
+                            <div className="flex flex-col items-start text-left">
+                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none mb-1.5">Ready to order?</span>
+                                <span className="leading-none text-[18px] tracking-wide">Download App</span>
+                            </div>
+                        </div>
+                        <div className="bg-primary text-white h-full px-5 rounded-xl flex items-center justify-center shadow-inner">
+                            <ArrowRight className="h-5 w-5" />
+                        </div>
+                    </a>
+                    
+                    <div className="flex items-center justify-center gap-4 mt-5">
+                        <p className="text-[12px] text-slate-500 font-bold flex items-center gap-1.5 bg-white/60 px-4 py-2 rounded-full border border-slate-200 backdrop-blur-sm shadow-sm">
+                            <ShieldCheck className="h-4 w-4 text-green-500" /> 100% Secure
+                        </p>
+                    </div>
                 </div>
+            </section>
+
+            {/* 🌟 Why Choose Us (Bento Grid Style with GSAP) */}
+            <section className="w-full bg-[#f8f9fa] py-14 px-5 border-t border-slate-100">
+                <div className="max-w-md mx-auto bento-container">
+                    <div className="text-center mb-8">
+                        <h3 className="bento-anim opacity-0 translate-y-8 text-2xl font-black text-slate-900">Why Our App?</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bento-anim opacity-0 translate-y-10 bg-white p-5 rounded-[1.5rem] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col items-start gap-3">
+                            <div className="h-10 w-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center border border-orange-100">
+                                <ChefHat className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-900 text-sm">Best Chefs</h4>
+                                <p className="text-[11px] text-slate-500 mt-1 leading-snug">Cooked with love & hygiene.</p>
+                            </div>
+                        </div>
+
+                        <div className="bento-anim opacity-0 translate-y-10 bg-white p-5 rounded-[1.5rem] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col items-start gap-3">
+                            <div className="h-10 w-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center border border-green-100">
+                                <Utensils className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-900 text-sm">Daily Menus</h4>
+                                <p className="text-[11px] text-slate-500 mt-1 leading-snug">New thalis every single day.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="bento-anim opacity-0 translate-y-10 col-span-2 bg-gradient-to-br from-primary/10 to-orange-100 p-5 rounded-[1.5rem] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-primary/10 flex items-center justify-between">
+                            <div>
+                                <h4 className="font-bold text-slate-900 text-sm">Exclusive App Offers</h4>
+                                <p className="text-[12px] text-slate-600 mt-0.5 leading-snug">Get BK Coins & free delivery!</p>
+                            </div>
+                            <div className="h-10 w-10 bg-white text-primary rounded-full flex items-center justify-center shadow-sm">
+                                <Star className="h-5 w-5 fill-primary" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        {/* Footer */}
+        <footer className="w-full bg-white border-t border-slate-100 py-8 px-6 text-center mt-auto">
+            <div className="flex justify-center items-center gap-2 mb-3">
+                {/* 🌟 LOGO BG REMOVED HERE TOO */}
+                <div className="relative h-7 w-7 drop-shadow-sm">
+                    <Image src="/logo.png" alt="Logo" fill className="object-contain" />
+                </div>
+                <span className="font-bold text-slate-800 tracking-tight text-sm">Bumba's Kitchen</span>
             </div>
-          </motion.div>
+            <p className="text-[10px] text-slate-400 max-w-[250px] mx-auto leading-relaxed">
+                Please download our dedicated Android App to access the full ordering experience.
+            </p>
+            <div className="text-[9px] text-slate-300 mt-6 font-medium uppercase tracking-widest">
+                &copy; {new Date().getFullYear()} All rights reserved.
+            </div>
+        </footer>
 
         </div>
-
-        {/* Features Section */}
-        <div className="mt-32">
-            <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-gray-900">Why choose us?</h2>
-                <p className="text-gray-500 mt-2">We deliver happiness packed in a box.</p>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-8">
-                <FeatureCard 
-                    icon={<ChefHat className="h-6 w-6 text-orange-500" />}
-                    title="Authentic Taste"
-                    desc="Prepared by expert chefs using traditional recipes and premium spices."
-                    bg="bg-orange-50"
-                />
-                <FeatureCard 
-                    icon={<Clock className="h-6 w-6 text-blue-500" />}
-                    title="Superfast Delivery"
-                    desc="Hot and fresh food delivered right to your door in record time."
-                    bg="bg-blue-50"
-                />
-                <FeatureCard 
-                    icon={<ShieldCheck className="h-6 w-6 text-green-500" />}
-                    title="100% Hygienic"
-                    desc="Strict safety and hygiene protocols maintained in our cloud kitchen."
-                    bg="bg-green-50"
-                />
-            </div>
-        </div>
-
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 text-center mt-20">
-          <div className="flex items-center justify-center gap-2 mb-4 opacity-50">
-            <ChefHat className="h-6 w-6" />
-            <span className="font-black text-xl tracking-tight">Bumba'sKitchen</span>
-          </div>
-          <p className="text-sm text-gray-500 font-medium">
-             © {new Date().getFullYear()} Bumba's Kitchen. All rights reserved.
-          </p>
-          <p className="text-xs text-gray-400 mt-2">Janai, Garbagan, Hooghly, West Bengal</p>
-      </footer>
-    </div>
+    </ReactLenis>
   );
-}
-
-function FeatureCard({ icon, title, desc, bg }: { icon: React.ReactNode, title: string, desc: string, bg: string }) {
-    return (
-        <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center transition-all hover:shadow-xl"
-        >
-            <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-4 ${bg}`}>
-                {icon}
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
-        </motion.div>
-    );
 }

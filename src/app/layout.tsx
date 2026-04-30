@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
 import './globals.css';
+import DeviceEnforcer from '@/components/DeviceEnforcer';
 import { MobileNav } from "@/components/layout/MobileNav";
 import { CartProvider } from '@/context/CartProvider';
 import { Toaster } from '@/components/ui/sonner';
@@ -97,7 +98,7 @@ export default function RootLayout({
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />
-            
+            <DeviceEnforcer />
             <Suspense fallback={null}>
               <GlobalLoader />
             </Suspense>

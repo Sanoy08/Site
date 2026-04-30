@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Plus, Trash2, UtensilsCrossed, Move } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, UtensilsCrossed, Move, Type } from 'lucide-react';
 import { toast } from 'sonner';
 import { FloatingInput } from '@/components/ui/floating-input';
 
@@ -21,7 +21,6 @@ const getOptimizedNotificationImage = (url: string) => {
   return url;
 };
 
-// ★ কনস্ট্যান্ট ইমেজের লিংক (আসল থালির ছবি)
 const CONSTANT_THALI_IMAGE = "https://res.cloudinary.com/dk1acdtja/image/upload/v1777168123/IMG_20260426_071347_fltctm.jpg";
 
 export default function DailyMenuPage() {
@@ -36,14 +35,10 @@ export default function DailyMenuPage() {
   const [items, setItems] = useState<string[]>(["Rice", "Dal"]);
   const [newItem, setNewItem] = useState("");
 
-  // ★★★ DRAG & DROP STATES ★★★
-  // Element gulor by default position
-  const [positions, setPositions] = useState({
-      date: { x: 330, y: 123 },
-      price: { x: 79, y: 231 },
-      items: { x: 250, y: 320 }
-  });
-  const [dragging, setDragging] = useState<string | null>(null);
+  // ★★★ DRAG & SCALE STATES (Only for Items) ★★★
+  const [itemsPos, setItemsPos] = useState({ x: 250, y: 320 });
+  const [itemScale, setItemScale] = useState(1); // Default scale 1 (100%)
+  const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
   // Canvas Refs
@@ -77,12 +72,12 @@ export default function DailyMenuPage() {
     fetchData();
   }, []);
 
-  // Live Preview Update (Positions change holeo update hobe)
+  // Live Preview Update
   useEffect(() => {
     if (previewCanvasRef.current && !isLoading) {
-        drawOnCanvas(previewCanvasRef.current, positions);
+        drawOnCanvas(previewCanvasRef.current, itemsPos, itemScale);
     }
-  }, [name, price, items, isLoading, positions]);
+  }, [name, price, items, isLoading, itemsPos, itemScale]);
 
   const handleAddItem = () => {
       if (newItem.trim()) {
@@ -95,8 +90,8 @@ export default function DailyMenuPage() {
       setItems(items.filter((_, i) => i !== index));
   };
 
-  // ★★★ Drawing Function - Now supports dynamic positions and UNLIMITED items ★★★
-  const drawOnCanvas = async (canvas: HTMLCanvasElement, currentPos: typeof positions) => {
+  // ★★★ Drawing Function - Fixed Date & Price, Draggable & Scalable Items ★★★
+  const drawOnCanvas = async (canvas: HTMLCanvasElement, currentItemsPos: typeof itemsPos, currentScale: number) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
@@ -128,40 +123,40 @@ export default function DailyMenuPage() {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Date
+        // Date (FIXED POSITION)
         const today = new Date();
         const dateText = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getFullYear()).slice(-2)}`;
 
         ctx.save();
-        ctx.translate(currentPos.date.x, currentPos.date.y); 
+        ctx.translate(330, 123); 
         ctx.rotate(-4.39 * Math.PI / 180); 
         ctx.fillStyle = "#00355b"; 
         ctx.font = "900 15px Montserrat, sans-serif"; 
         ctx.fillText(dateText, 0, 0);
         ctx.restore();
 
-        // Items (UNLIMITED ITEMS)
+        // Price (FIXED POSITION)
         ctx.save();
-        ctx.translate(currentPos.items.x, currentPos.items.y); 
+        ctx.translate(79, 231);
+        ctx.fillStyle = "#000000ff"; 
+        ctx.font = "italic bold 32px sans-serif"; 
+        ctx.fillText(`₹${price || '0'}`, 0, 0);
+        ctx.restore();
+
+        // Items (DRAGGABLE & SCALABLE)
+        ctx.save();
+        ctx.translate(currentItemsPos.x, currentItemsPos.y); 
+        ctx.scale(currentScale, currentScale); // SCALING APPLIED HERE
         ctx.fillStyle = "#ffffffff"; 
         ctx.font = "500 24px 'Anek Bangla', sans-serif"; 
 
         const lineHeight = 30;
         let currentY = -(items.length * lineHeight / 2) + (lineHeight / 2);
         
-        // Ekhane theke slice() tule dewa hoyeche tai joto items thakbe shob ashbe
         items.forEach(item => {
             ctx.fillText(item, 0, currentY); 
             currentY += lineHeight;
         });
-        ctx.restore();
-
-        // Price
-        ctx.save();
-        ctx.translate(currentPos.price.x, currentPos.price.y);
-        ctx.fillStyle = "#000000ff"; 
-        ctx.font = "italic bold 32px sans-serif"; 
-        ctx.fillText(`₹${price || '0'}`, 0, 0);
         ctx.restore();
 
       } catch (e) {
@@ -169,7 +164,7 @@ export default function DailyMenuPage() {
       }
   };
 
-  // ★★★ DRAG & DROP LOGIC ★★★
+  // ★★★ DRAG LOGIC (ONLY FOR ITEMS) ★★★
   const getMousePos = (e: React.PointerEvent) => {
       const rect = previewCanvasRef.current!.getBoundingClientRect();
       const scaleX = 500 / rect.width;
@@ -184,41 +179,32 @@ export default function DailyMenuPage() {
       if (!previewCanvasRef.current) return;
       const mouse = getMousePos(e);
 
+      // Box dynamic height & width based on scale
       const itemsHeight = items.length * 30;
+      const boxW = 300 * itemScale;
+      const boxH = (itemsHeight + 40) * itemScale;
       
-      // Click detection boundaries (Generous area for easy mobile tapping)
-      const boxes = {
-          items: { x: positions.items.x - 150, y: positions.items.y - itemsHeight/2 - 20, w: 300, h: itemsHeight + 40 },
-          price: { x: positions.price.x - 50, y: positions.price.y - 30, w: 100, h: 60 },
-          date:  { x: positions.date.x - 60, y: positions.date.y - 30, w: 120, h: 60 }
-      };
+      const boxX = itemsPos.x - boxW / 2;
+      const boxY = itemsPos.y - boxH / 2;
 
-      if (mouse.x > boxes.items.x && mouse.x < boxes.items.x + boxes.items.w && mouse.y > boxes.items.y && mouse.y < boxes.items.y + boxes.items.h) {
-          setDragging('items');
-          dragOffset.current = { x: positions.items.x - mouse.x, y: positions.items.y - mouse.y };
-      } else if (mouse.x > boxes.price.x && mouse.x < boxes.price.x + boxes.price.w && mouse.y > boxes.price.y && mouse.y < boxes.price.y + boxes.price.h) {
-          setDragging('price');
-          dragOffset.current = { x: positions.price.x - mouse.x, y: positions.price.y - mouse.y };
-      } else if (mouse.x > boxes.date.x && mouse.x < boxes.date.x + boxes.date.w && mouse.y > boxes.date.y && mouse.y < boxes.date.y + boxes.date.h) {
-          setDragging('date');
-          dragOffset.current = { x: positions.date.x - mouse.x, y: positions.date.y - mouse.y };
-      }
+      // Check if clicked inside the scalable Items box
+      if (mouse.x > boxX && mouse.x < boxX + boxW && mouse.y > boxY && mouse.y < boxY + boxH) {
+          setIsDragging(true);
+          dragOffset.current = { x: itemsPos.x - mouse.x, y: itemsPos.y - mouse.y };
+      } 
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-      if (!dragging) return;
+      if (!isDragging) return;
       const mouse = getMousePos(e);
-      setPositions(prev => ({
-          ...prev,
-          [dragging]: { 
-              x: mouse.x + dragOffset.current.x, 
-              y: mouse.y + dragOffset.current.y 
-          }
-      }));
+      setItemsPos({ 
+          x: mouse.x + dragOffset.current.x, 
+          y: mouse.y + dragOffset.current.y 
+      });
   };
 
   const handlePointerUp = () => {
-      setDragging(null);
+      setIsDragging(false);
   };
 
   const handleSave = async () => {
@@ -231,16 +217,13 @@ export default function DailyMenuPage() {
     setIsSaving(true);
 
     try {
-        // ★ 1. Update the actual canvas with current dragged positions
-        await drawOnCanvas(canvasRef.current, positions);
+        await drawOnCanvas(canvasRef.current, itemsPos, itemScale);
         
-        // 2. Create Blob
         const blob = await new Promise<Blob | null>(resolve => 
             canvasRef.current?.toBlob(resolve, 'image/webp', 0.9)
         );
         if (!blob) throw new Error("Image generation failed");
 
-        // 3. Upload to Cloudinary
         const formData = new FormData();
         formData.append('file', blob);
         
@@ -287,7 +270,7 @@ export default function DailyMenuPage() {
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 pb-20">
         <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-primary/10 rounded-full text-primary">
                 <UtensilsCrossed className="h-6 w-6" />
@@ -355,7 +338,7 @@ export default function DailyMenuPage() {
                 </Card>
             </div>
 
-            {/* Right Side: Live Preview Canvas with Drag & Drop */}
+            {/* Right Side: Live Preview Canvas with Scale & Drag */}
             <div className="flex flex-col items-center justify-start space-y-4">
                 <Label className="text-lg font-semibold text-muted-foreground">Live Interactive Poster</Label>
                 
@@ -374,8 +357,29 @@ export default function DailyMenuPage() {
                     </div>
                 </div>
                 
+                {/* Scale Slider Control */}
+                <div className="w-full max-w-[400px] bg-white p-4 rounded-xl border shadow-sm space-y-3">
+                    <div className="flex justify-between items-center">
+                        <Label className="flex items-center gap-2 text-sm text-foreground">
+                           <Type className="h-4 w-4 text-primary" /> Menu Text Size
+                        </Label>
+                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                            {Math.round(itemScale * 100)}%
+                        </span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0.5" 
+                        max="2" 
+                        step="0.05" 
+                        value={itemScale} 
+                        onChange={(e) => setItemScale(parseFloat(e.target.value))} 
+                        className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                </div>
+
                 <p className="text-sm font-medium text-primary text-center px-4 bg-primary/10 py-2 rounded-lg">
-                    ✨ Drag the <strong>Items</strong>, <strong>Price</strong> or <strong>Date</strong> directly on the poster to reposition them before publishing!
+                    ✨ Use the slider to resize the text and drag the menu list to position it!
                 </p>
             </div>
         </div>

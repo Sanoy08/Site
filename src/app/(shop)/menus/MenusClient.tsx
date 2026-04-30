@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -21,7 +21,8 @@ import {
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/imageUtils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import Fuse from 'fuse.js'; // 🌟 Fuse.js Import
 
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp" }, 
@@ -46,32 +47,78 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   // Refs
   const categoryContainerRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<string, HTMLButtonElement> | null>(null);
-  const observerTarget = useRef<HTMLDivElement>(null);
-
   if (!itemsRef.current) itemsRef.current = new Map();
   
   // States
+  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('recommended');
   const [showVegOnly, setShowVegOnly] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  
-  // Pagination States
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  // AI Search States
-  const [aiSearchResults, setAiSearchResults] = useState<Product[] | null>(null);
-  const [isAiSearching, setIsAiSearching] = useState(false);
 
   // Filter Sheet States
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [tempSortBy, setTempSortBy] = useState('recommended');
   const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
+
+  // 🌟 LOAD ALL PRODUCTS ON MOUNT
+  useEffect(() => {
+    const fetchAll = async () => {
+      setIsLoading(true);
+      try {
+        // limit 1000 jate sob eksathe chole ashe
+        const res = await fetch(`/api/products?limit=1000`);
+        const data = await res.json();
+        if (data.success) {
+          setAllProducts(data.products);
+        }
+      } catch (e) {
+        console.error("Error loading products", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAll();
+  }, []);
+
+  // 🌟 FUSE.JS LOGIC: Instant Fuzzy Filtering
+  const filteredAndSortedProducts = useMemo(() => {
+    let result = [...allProducts];
+
+    // 1. Category Filter
+    if (activeCategory !== 'All') {
+      result = result.filter(p => p.category.name.toLowerCase() === activeCategory.toLowerCase());
+    }
+
+    // 2. Veg Only Filter
+    if (showVegOnly) {
+      // Assuming products have a property to identify veg. If not, use description/name check.
+      // Ekhon kothay thakbe seta apnar data structure e depend kore.
+      result = result.filter(p => p.name.toLowerCase().includes('veg') || p.category.name.toLowerCase() === 'veg' || p.category.name.toLowerCase() === 'paneer' || p.category.name.toLowerCase() === 'chapati');
+    }
+
+    // 3. Fuzzy Search with Fuse.js
+    if (searchQuery.trim().length > 0) {
+      const fuse = new Fuse(result, {
+        keys: ['name', 'category.name', 'description'],
+        threshold: 0.3, // 0.0 perfect match, 1.0 match anything. 0.3 is best for fuzzy.
+        distance: 100
+      });
+      result = fuse.search(searchQuery).map(r => r.item);
+    }
+
+    // 4. Sorting
+    switch (sortBy) {
+      case 'price-low': result.sort((a, b) => a.price - b.price); break;
+      case 'price-high': result.sort((a, b) => b.price - a.price); break;
+      case 'rating': result.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
+      default: break; 
+    }
+
+    return result;
+  }, [allProducts, activeCategory, searchQuery, showVegOnly, sortBy]);
 
   // Scroll Detection
   useEffect(() => {
@@ -80,24 +127,9 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Footer Hiding Logic
-  useEffect(() => {
-    const footer = document.querySelector('footer');
-    const shouldHideFooter = hasMore || (searchQuery.length >= 3 && isAiSearching);
-    
-    if (footer) {
-        footer.style.display = shouldHideFooter ? 'none' : '';
-    }
-    return () => {
-        if (footer) footer.style.display = '';
-    };
-  }, [hasMore, searchQuery, isAiSearching]);
-
   // URL Sync
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
     if (categoryFromUrl) {
         const matched = CATEGORIES.find(c => c.name.toLowerCase() === categoryFromUrl.toLowerCase());
         if (matched) setActiveCategory(matched.name);
@@ -106,7 +138,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     }
   }, [searchParams]);
 
-  // Auto Scroll Category Button
+  // Auto Scroll Category
   useEffect(() => {
     const container = categoryContainerRef.current;
     const selectedItem = itemsRef.current?.get(activeCategory);
@@ -115,106 +147,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
         container.scrollTo({ left: scrollPosition, behavior: 'smooth' });
     }
   }, [activeCategory]);
-
-  // ★★★ AI Search Logic (Fixed) ★★★
-  useEffect(() => {
-      // যদি ৩ অক্ষরের কম হয়
-      if (searchQuery.length < 3) {
-          setAiSearchResults(null);
-          setIsAiSearching(false); // ★ FIX: লোডার বন্ধ করার জন্য এই লাইনটি যোগ করা হয়েছে
-          return;
-      }
-
-      setIsAiSearching(true);
-      const timeoutId = setTimeout(async () => {
-          try {
-              const res = await fetch(`/api/search?q=${searchQuery}`);
-              const data = await res.json();
-              if (data.success) {
-                  setAiSearchResults(data.products);
-              }
-          } catch (error) {
-              console.error("Search error:", error);
-          } finally {
-              setIsAiSearching(false);
-          }
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
-
-  // Data Fetching Function
-  const fetchProducts = useCallback(async (reset = false) => {
-    if (searchQuery.length >= 3) return;
-
-    setIsLoading(true);
-    const nextPage = reset ? 1 : page + 1;
-    
-    try {
-        const queryParams = new URLSearchParams({
-            page: nextPage.toString(),
-            limit: '12',
-            category: activeCategory,
-            sort: sortBy,
-            vegOnly: showVegOnly.toString(),
-            search: searchQuery
-        });
-
-        const res = await fetch(`/api/products?${queryParams}`);
-        const data = await res.json();
-
-        if (data.success) {
-            if (reset) {
-                setProducts(data.products);
-            } else {
-                setProducts(prev => {
-                    const existingIds = new Set(prev.map(p => p.id));
-                    const uniqueNewProducts = data.products.filter((p: Product) => !existingIds.has(p.id));
-                    return [...prev, ...uniqueNewProducts];
-                });
-            }
-            setHasMore(data.hasMore);
-            setPage(nextPage);
-        }
-    } catch (error) {
-        console.error("Failed to load products", error);
-    } finally {
-        setIsLoading(false);
-    }
-  }, [activeCategory, sortBy, showVegOnly, searchQuery, page]);
-
-  // Filter Change Effect
-  useEffect(() => {
-      if (isInitialLoad) {
-          setIsInitialLoad(false);
-          return;
-      }
-      if (searchQuery.length < 3) {
-          fetchProducts(true);
-      }
-  }, [activeCategory, sortBy, showVegOnly, searchQuery]);
-
-  // Infinite Scroll Logic
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && searchQuery.length < 3) {
-          fetchProducts(false);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-
-    return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
-    };
-  }, [hasMore, isLoading, fetchProducts, searchQuery]);
 
   const handleApplyFilters = () => {
       setSortBy(tempSortBy);
@@ -226,10 +158,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       if (category === 'All') router.push('/menus');
       else router.push(`/menus?category=${category.toLowerCase()}`);
   };
-
-  // Display Logic
-  const displayProducts = (searchQuery.length >= 3 && aiSearchResults) ? aiSearchResults : products;
-  const isDisplayLoading = isLoading || (searchQuery.length >= 3 && isAiSearching);
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -247,13 +175,11 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                           onChange={(e) => setSearchQuery(e.target.value)}
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {isAiSearching ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          ) : searchQuery ? (
-                              <button onClick={() => { setSearchQuery(''); setAiSearchResults(null); setIsAiSearching(false); }} className="text-muted-foreground hover:text-foreground p-1">
+                          {searchQuery && (
+                              <button onClick={() => setSearchQuery('')} className="text-muted-foreground hover:text-foreground p-1">
                                   <X className="h-4 w-4" />
                               </button>
-                          ) : null}
+                          )}
                       </div>
                   </div>
                   
@@ -362,64 +288,46 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
 
       {/* --- PRODUCTS GRID --- */}
       <div className="container pt-2 pb-8 min-h-[60vh]">
-        {displayProducts.length > 0 ? (
-            <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards">
-                    {displayProducts.map((product) => (
+        {isLoading && allProducts.length === 0 ? (
+             <div className="flex justify-center py-20">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+        ) : filteredAndSortedProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                <AnimatePresence>
+                    {filteredAndSortedProducts.map((product) => (
                         <motion.div
                             key={product.id}
-                            initial={{ opacity: 0, y: 30 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: false, margin: "-10%" }}
-                            transition={{ duration: 0.4, ease: "easeOut" }}
+                            layout
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.2 }}
                         >
                             <ProductCard product={product} />
                         </motion.div>
                     ))}
-                </div>
-                
-                {/* Infinite Scroll Trigger - শুধু নরমাল মোডে দেখাবে, AI সার্চে নয় */}
-                {hasMore && searchQuery.length < 3 && (
-                    <div 
-                        ref={observerTarget} 
-                        className="flex justify-center items-center py-8"
-                    >
-                        <div className="flex flex-col items-center gap-2 text-muted-foreground animate-pulse">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            <span className="text-xs font-medium">Loading deliciousness...</span>
-                        </div>
-                    </div>
-                )}
-            </>
+                </AnimatePresence>
+            </div>
         ) : (
-            // No Products State
-            !isDisplayLoading && (
-                <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-in zoom-in duration-300">
-                    <div className="h-40 w-40 bg-muted/30 rounded-full flex items-center justify-center relative">
-                        <UtensilsCrossed className="h-16 w-16 text-muted-foreground/30" />
-                        <Search className="h-8 w-8 text-primary absolute bottom-8 right-8 bg-white rounded-full p-1 shadow-md" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-800">No items found!</h2>
-                        <p className="text-muted-foreground mt-2 max-w-xs mx-auto leading-relaxed">
-                            We couldn't find any dishes matching "{searchQuery}". Try changing the category or search term.
-                        </p>
-                    </div>
-                    <Button 
-                        onClick={() => { setActiveCategory('All'); setSearchQuery(''); setShowVegOnly(false); setAiSearchResults(null); setIsAiSearching(false); router.push('/menus'); }} 
-                        className="rounded-full px-8 shadow-lg shadow-primary/20"
-                    >
-                        Clear All Filters
-                    </Button>
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-in zoom-in duration-300">
+                <div className="h-40 w-40 bg-muted/30 rounded-full flex items-center justify-center relative">
+                    <UtensilsCrossed className="h-16 w-16 text-muted-foreground/30" />
+                    <Search className="h-8 w-8 text-primary absolute bottom-8 right-8 bg-white rounded-full p-1 shadow-md" />
                 </div>
-            )
-        )}
-        
-        {/* Loading State when list is empty */}
-        {isDisplayLoading && displayProducts.length === 0 && (
-             <div className="flex justify-center py-20">
-                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-             </div>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800">No items found!</h2>
+                    <p className="text-muted-foreground mt-2 max-w-xs mx-auto leading-relaxed">
+                        We couldn't find any dishes matching "{searchQuery}". Try changing the category or search term.
+                    </p>
+                </div>
+                <Button 
+                    onClick={() => { setActiveCategory('All'); setSearchQuery(''); setShowVegOnly(false); router.push('/menus'); }} 
+                    className="rounded-full px-8 shadow-lg shadow-primary/20"
+                >
+                    Clear All Filters
+                </Button>
+            </div>
         )}
       </div>
     </div>

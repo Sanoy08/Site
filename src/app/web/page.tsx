@@ -143,7 +143,7 @@ export default function WebLandingPage() {
             priority
         />
 {/* Image Container */}
-    </div>
+    </div>  
 </div>
                 {/* --- ARROW 1 --- */}
                 <div className="w-full flex justify-center py-2 relative h-16">

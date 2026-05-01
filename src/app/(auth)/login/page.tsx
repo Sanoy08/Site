@@ -1,5 +1,3 @@
-// src/app/(auth)/login/page.tsx
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -13,8 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import { Capacitor } from '@capacitor/core';
-import { PhoneHint } from '@ak3696/capacitor-phone-hint';
-import { SmsRetriever } from '@shaher/capacitor-sms-retriever';
+// ★★★ FIXED IMPORTS ★★★
+import { CapacitorPhoneHint } from '@ak3696/capacitor-phone-hint';
+import { CapacitorSmsRetriever } from '@shaher/capacitor-sms-retriever';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,7 +28,6 @@ export default function LoginPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
-  // Timer Logic
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -43,13 +41,10 @@ export default function LoginPage() {
   const requestPhoneHint = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        const { phoneNumber } = await PhoneHint.requestHint();
+        const { phoneNumber } = await CapacitorPhoneHint.requestHint();
         if (phoneNumber) {
-          // রিমুভ +91 যদি থাকে, শুধু ১০ ডিজিট রাখবে
           let cleanPhone = phoneNumber.replace('+91', '').replace(/\D/g, '');
-          if (cleanPhone.length > 10) {
-              cleanPhone = cleanPhone.slice(-10); // লাস্ট ১০ ডিজিট
-          }
+          if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10);
           setPhone(cleanPhone);
         }
       } catch (error) {
@@ -62,18 +57,13 @@ export default function LoginPage() {
   const startSmsListener = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        // লিসেনার চালু করা হলো
-        const { message } = await SmsRetriever.startSmsReceiver();
-        
+        const { message } = await CapacitorSmsRetriever.startSmsReceiver();
         if (message) {
-            // মেসেজ থেকে ৬ ডিজিটের কোড বের করা
             const match = message.match(/\b\d{6}\b/);
             if (match && match[0]) {
                 const code = match[0];
-                const newOtp = code.split('');
-                setOtp(newOtp);
+                setOtp(code.split(''));
                 toast.success("OTP Auto-filled!");
-                // অটোমেটিক ভেরিফাই কল
                 verifyOtpLogic(code);
             }
         }
@@ -100,24 +90,9 @@ export default function LoginPage() {
         body: JSON.stringify({ phone, otp: otpValue }),
       });
       const data = await res.json();
- <Button 
-  type="button" 
-  onClick={async () => {
-    try {
-      const { SmsRetriever } = await import('@shaher/capacitor-sms-retriever');
-      const res = await SmsRetriever.getAppSignature();
-      alert("Hash Code: " + res.signature);
-    } catch (e) {
-      alert("Error: Only works on Android Phone!");
-    }
-  }}
-  className="bg-red-500 mb-4"
->
-  GET APP HASH
-</Button>
+
       if (data.success) {
-        // Remove listener
-        if (Capacitor.isNativePlatform()) SmsRetriever.removeSmsReceiver();
+        if (Capacitor.isNativePlatform()) CapacitorSmsRetriever.removeSmsReceiver();
         
         login(data.user, data.token);
         toast.success('Welcome back!');
@@ -141,7 +116,6 @@ export default function LoginPage() {
     }
   };
 
-  // ... (handlePaste, handleOtpChange, handleKeyDown same as before)
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
@@ -197,8 +171,6 @@ export default function LoginPage() {
         setTimeLeft(30);
         setOtp(['', '', '', '', '', '']);
         toast.success('OTP Sent!');
-        
-        // ★ SMS Listener চালু করা হচ্ছে
         startSmsListener();
       } else {
         toast.error(data.error || 'Failed to send OTP');
@@ -220,10 +192,25 @@ export default function LoginPage() {
     verifyOtpLogic(otpValue);
   };
 
+  // APP HASH FINDER (Temporary, remove after getting hash)
+  const getAppHash = async () => {
+    try {
+      const res = await CapacitorSmsRetriever.getAppSignature();
+      alert("Hash Code: " + res.signature);
+    } catch (e) {
+      alert("Error: Only works on Android Phone!");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] grid h-screen w-full grid-cols-1 overflow-hidden bg-white lg:grid-cols-2">
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28">
         <div className="mx-auto w-full max-w-sm space-y-8">
+
+          {/* TEMPORARY BUTTON TO GET HASH - REMOVE LATER */}
+          <Button type="button" onClick={getAppHash} className="bg-red-500 w-full mb-4 hidden">
+            GET APP HASH
+          </Button>
 
           <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
              <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center relative">
@@ -254,7 +241,7 @@ export default function LoginPage() {
                         inputMode="numeric"
                         placeholder="9876543210"
                         value={phone}
-                        onClick={requestPhoneHint} // ★ Click করলেই পপআপ আসবে
+                        onClick={requestPhoneHint}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                         required
                         disabled={isLoading}
@@ -306,7 +293,7 @@ export default function LoginPage() {
                     <div className="flex gap-3">
                         <Button type="button" variant="outline" onClick={() => {
                             setStep('phone');
-                            if (Capacitor.isNativePlatform()) SmsRetriever.removeSmsReceiver();
+                            if (Capacitor.isNativePlatform()) CapacitorSmsRetriever.removeSmsReceiver();
                         }} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back
                         </Button>
@@ -325,7 +312,6 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="relative hidden h-full flex-col bg-gray-900 p-10 text-white lg:flex">
-         {/* Background Banner details */}
          <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=2069&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
         <div className="relative z-10 flex items-center gap-2 text-xl font-bold tracking-tight">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-lg"><ChefHat className="h-5 w-5" /></div>

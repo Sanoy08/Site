@@ -1,5 +1,3 @@
-// src/app/(auth)/register/page.tsx
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -13,8 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import { Capacitor } from '@capacitor/core';
-import { PhoneHint } from '@ak3696/capacitor-phone-hint';
-import { SmsRetriever } from '@shaher/capacitor-sms-retriever';
+// ★★★ FIXED IMPORTS ★★★
+import { CapacitorPhoneHint } from '@ak3696/capacitor-phone-hint';
+import { CapacitorSmsRetriever } from '@shaher/capacitor-sms-retriever';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -44,7 +43,7 @@ export default function RegisterPage() {
   const requestPhoneHint = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        const { phoneNumber } = await PhoneHint.requestHint();
+        const { phoneNumber } = await CapacitorPhoneHint.requestHint();
         if (phoneNumber) {
           let cleanPhone = phoneNumber.replace('+91', '').replace(/\D/g, '');
           if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10);
@@ -60,7 +59,7 @@ export default function RegisterPage() {
   const startSmsListener = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        const { message } = await SmsRetriever.startSmsReceiver();
+        const { message } = await CapacitorSmsRetriever.startSmsReceiver();
         if (message) {
             const match = message.match(/\b\d{6}\b/);
             if (match && match[0]) {
@@ -89,7 +88,7 @@ export default function RegisterPage() {
       const data = await res.json();
       
       if (data.success) {
-        if (Capacitor.isNativePlatform()) SmsRetriever.removeSmsReceiver();
+        if (Capacitor.isNativePlatform()) CapacitorSmsRetriever.removeSmsReceiver();
         login(data.user, data.token);
         toast.success('Account created successfully!');
         router.push('/');
@@ -103,7 +102,6 @@ export default function RegisterPage() {
     }
   };
 
-  // ... (handlePaste, handleOtpChange, handleKeyDown same as login)
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
@@ -164,8 +162,6 @@ export default function RegisterPage() {
         setTimeLeft(30);
         setOtp(['', '', '', '', '', '']);
         toast.success(`OTP sent to +91 ${phone}`);
-        
-        // ★ SMS Listener চালু করা হচ্ছে
         startSmsListener();
       } else {
         toast.error(data.error || 'Failed to send OTP');
@@ -229,7 +225,7 @@ export default function RegisterPage() {
                         maxLength={10}
                         placeholder="9876543210" 
                         value={phone} 
-                        onClick={requestPhoneHint} // ★ Click করলেই পপআপ আসবে
+                        onClick={requestPhoneHint}
                         onChange={(e) => {
                             const val = e.target.value.replace(/\D/g, ''); 
                             if(val.length <= 10) setPhone(val);
@@ -284,7 +280,7 @@ export default function RegisterPage() {
                 <div className="flex gap-3 pt-2">
                   <Button type="button" variant="outline" onClick={() => {
                       setStep('details');
-                      if (Capacitor.isNativePlatform()) SmsRetriever.removeSmsReceiver();
+                      if (Capacitor.isNativePlatform()) CapacitorSmsRetriever.removeSmsReceiver();
                   }} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
                   </Button>

@@ -74,21 +74,22 @@ export async function POST(request: NextRequest) {
     );
 
     // ★★★ 5. NTFY PUSH (Clean & Silent) ★★★
-    const message = `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.`;
+    const APP_HASH = ""; // এখানে আপনার ফোনের স্ক্রিনে পাওয়া কোডটা দেবেন
+
+const message = `<#> Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.\n${APP_HASH}`;
 
     try {
         await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
             method: 'POST',
             body: message,
             headers: {
-                'Title': phone, // MacroDroid-এর জন্য টাইটেল
+                'Title': phone,
                 'Priority': 'high',
                 'Tags': 'sms'
             }
         });
     } catch (e) {
-        // সাইলেন্টলি ফেইল করবে যাতে ইউজারের এক্সপেরিয়েন্স নষ্ট না হয়
-        // ক্রিটিক্যাল ডিবাগিং ছাড়া এখানে লগ রাখার দরকার নেই
+
     }
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully.' });

@@ -2,6 +2,9 @@
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/.pnpm/@capacitor+android@8.3.1_@capacitor+core@8.3.1/node_modules/@capacitor/android/capacitor')
 
+include ':ak3696-capacitor-phone-hint'
+project(':ak3696-capacitor-phone-hint').projectDir = new File('../node_modules/.pnpm/@ak3696+capacitor-phone-hint@7.0.3_@capacitor+core@8.3.1/node_modules/@ak3696/capacitor-phone-hint/android')
+
 include ':capacitor-community-fcm'
 project(':capacitor-community-fcm').projectDir = new File('../node_modules/.pnpm/@capacitor-community+fcm@8.1.0_@capacitor+core@8.3.1/node_modules/@capacitor-community/fcm/android')
 
@@ -43,3 +46,6 @@ project(':capacitor-splash-screen').projectDir = new File('../node_modules/.pnpm
 
 include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.1/node_modules/@capacitor/status-bar/android')
+
+include ':shaher-capacitor-sms-retriever'
+project(':shaher-capacitor-sms-retriever').projectDir = new File('../node_modules/.pnpm/@shaher+capacitor-sms-retriever@0.1.1_@capacitor+core@8.3.1/node_modules/@shaher/capacitor-sms-retriever/android')

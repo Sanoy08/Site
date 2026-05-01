@@ -12,6 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+import { Capacitor } from '@capacitor/core';
+import { PhoneHint } from '@ak3696/capacitor-phone-hint';
+import { SmsRetriever } from '@shaher/capacitor-sms-retriever';
+
 export default function RegisterPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -36,6 +40,42 @@ export default function RegisterPage() {
     }
   }, [timeLeft, step]);
 
+  // ★★★ 1. GOOGLE PHONE HINT (Auto Phone Number) ★★★
+  const requestPhoneHint = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { phoneNumber } = await PhoneHint.requestHint();
+        if (phoneNumber) {
+          let cleanPhone = phoneNumber.replace('+91', '').replace(/\D/g, '');
+          if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10);
+          setPhone(cleanPhone);
+        }
+      } catch (error) {
+        console.log("Phone hint cancelled or failed", error);
+      }
+    }
+  };
+
+  // ★★★ 2. SMS RETRIEVER (Auto OTP Read) ★★★
+  const startSmsListener = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { message } = await SmsRetriever.startSmsReceiver();
+        if (message) {
+            const match = message.match(/\b\d{6}\b/);
+            if (match && match[0]) {
+                const code = match[0];
+                setOtp(code.split(''));
+                toast.success("OTP Auto-filled!");
+                verifyRegisterLogic(code);
+            }
+        }
+      } catch (error) {
+        console.log("SMS Retriever failed", error);
+      }
+    }
+  };
+
   const verifyRegisterLogic = async (otpValue: string) => {
     if (otpValue.length !== 6) return;
     
@@ -49,6 +89,7 @@ export default function RegisterPage() {
       const data = await res.json();
       
       if (data.success) {
+        if (Capacitor.isNativePlatform()) SmsRetriever.removeSmsReceiver();
         login(data.user, data.token);
         toast.success('Account created successfully!');
         router.push('/');
@@ -62,6 +103,7 @@ export default function RegisterPage() {
     }
   };
 
+  // ... (handlePaste, handleOtpChange, handleKeyDown same as login)
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
@@ -76,9 +118,7 @@ export default function RegisterPage() {
     const nextIndex = Math.min(pastedData.length, 5);
     inputRefs.current[nextIndex]?.focus();
 
-    if (pastedData.length === 6) {
-        verifyRegisterLogic(pastedData);
-    }
+    if (pastedData.length === 6) verifyRegisterLogic(pastedData);
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -87,9 +127,8 @@ export default function RegisterPage() {
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+    
     const combinedOtp = newOtp.join('');
     if (combinedOtp.length === 6 && index === 5 && value) {
         verifyRegisterLogic(combinedOtp);
@@ -102,24 +141,12 @@ export default function RegisterPage() {
     }
   };
 
-  // 1. Send OTP Logic (With Validation)
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    // ★★★ INDIAN NUMBER VALIDATION ★★★
-    // Regex: Starts with 6-9, contains exactly 10 digits
     const indianPhoneRegex = /^[6-9]\d{9}$/;
-
-    if (!phone) {
-        toast.error("Please enter your phone number");
-        return;
-    }
-
-    if (!indianPhoneRegex.test(phone)) {
-        toast.error("Invalid Indian Mobile Number! Must contain 10 digits and start with 6-9.");
-        return;
-    }
-    // ★★★ VALIDATION END ★★★
+    if (!phone) return toast.error("Please enter your phone number");
+    if (!indianPhoneRegex.test(phone)) return toast.error("Invalid Indian Mobile Number!");
 
     setIsLoading(true);
 
@@ -137,6 +164,9 @@ export default function RegisterPage() {
         setTimeLeft(30);
         setOtp(['', '', '', '', '', '']);
         toast.success(`OTP sent to +91 ${phone}`);
+        
+        // ★ SMS Listener চালু করা হচ্ছে
+        startSmsListener();
       } else {
         toast.error(data.error || 'Failed to send OTP');
       }
@@ -150,10 +180,7 @@ export default function RegisterPage() {
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const otpValue = otp.join('');
-    if (otpValue.length !== 6) {
-        toast.error("Please enter 6-digit OTP");
-        return;
-    }
+    if (otpValue.length !== 6) return toast.error("Please enter 6-digit OTP");
     verifyRegisterLogic(otpValue);
   };
 
@@ -162,7 +189,6 @@ export default function RegisterPage() {
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm space-y-8 py-8">
 
-          {/* SAFE ILLUSTRATION */}
           <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
              <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
@@ -195,16 +221,15 @@ export default function RegisterPage() {
                   <Label htmlFor="phone" className="text-sm font-medium text-gray-900">Phone Number</Label>
                   <div className="relative group">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
-                    {/* Country Code Prefix Visual */}
                     <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 border-r pr-2 h-5 flex items-center">+91</span>
                     <Input 
                         id="phone" 
                         type="tel"
                         inputMode="numeric"
-                        maxLength={10} // Restrict input length
+                        maxLength={10}
                         placeholder="9876543210" 
                         value={phone} 
-                        // Only allow numbers
+                        onClick={requestPhoneHint} // ★ Click করলেই পপআপ আসবে
                         onChange={(e) => {
                             const val = e.target.value.replace(/\D/g, ''); 
                             if(val.length <= 10) setPhone(val);
@@ -233,7 +258,6 @@ export default function RegisterPage() {
                                 type="tel"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
-                                autoComplete="one-time-code"
                                 maxLength={1}
                                 value={digit}
                                 onChange={(e) => handleOtpChange(index, e.target.value)}
@@ -248,11 +272,7 @@ export default function RegisterPage() {
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Didn't receive code?</span>
                         {canResend ? (
-                            <button 
-                                type="button" 
-                                onClick={() => handleSendOtp()} 
-                                className="font-medium text-primary hover:underline flex items-center gap-1"
-                            >
+                            <button type="button" onClick={() => handleSendOtp()} className="font-medium text-primary hover:underline flex items-center gap-1">
                                 <RefreshCw className="h-3 w-3" /> Resend
                             </button>
                         ) : (
@@ -262,7 +282,10 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setStep('details')} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
+                  <Button type="button" variant="outline" onClick={() => {
+                      setStep('details');
+                      if (Capacitor.isNativePlatform()) SmsRetriever.removeSmsReceiver();
+                  }} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
                   </Button>
                   <Button type="submit" className="h-12 w-2/3 bg-primary text-white hover:bg-primary/90 font-medium rounded-xl shadow-lg shadow-primary/20" disabled={isLoading}>
@@ -271,26 +294,18 @@ export default function RegisterPage() {
                 </div>
               </form>
             )}
-            
           </div>
-
           <p className="text-center text-sm text-gray-500">
             Already have an account?{' '}
             <Link href="/login" className="font-semibold text-primary hover:underline hover:text-primary/80">Sign in</Link>
           </p>
         </div>
       </div>
-
       <div className="relative hidden h-full flex-col bg-gray-900 p-10 text-white lg:flex">
-        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1556910103-1c02745a30bf?q=80&w=2070&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
+         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1556910103-1c02745a30bf?q=80&w=2070&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
         <div className="relative z-10 flex items-center gap-2 text-xl font-bold tracking-tight">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-lg"><ChefHat className="h-5 w-5" /></div>
           Bumbas Kitchen
-        </div>
-        <div className="relative z-10 mt-auto max-w-md">
-          <blockquote className="space-y-2 border-l-2 border-primary pl-6">
-            <p className="text-lg font-medium leading-relaxed text-white">&ldquo;Join our community of food lovers. Quality ingredients, authentic recipes, and unforgettable tastes await you.&rdquo;</p>
-          </blockquote>
         </div>
       </div>
     </div>

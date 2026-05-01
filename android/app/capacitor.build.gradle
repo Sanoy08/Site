@@ -9,6 +9,7 @@ android {
 
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
+    implementation project(':ak3696-capacitor-phone-hint')
     implementation project(':capacitor-community-fcm')
     implementation project(':capacitor-community-file-opener')
     implementation project(':capacitor-firebase-authentication')
@@ -23,6 +24,7 @@ dependencies {
     implementation project(':capacitor-share')
     implementation project(':capacitor-splash-screen')
     implementation project(':capacitor-status-bar')
+    implementation project(':shaher-capacitor-sms-retriever')
 
 }
 

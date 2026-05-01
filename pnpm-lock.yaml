@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@ak3696/capacitor-phone-hint':
+        specifier: ^7.0.3
+        version: 7.0.3(@capacitor/core@8.3.1)
       '@capacitor-community/fcm':
         specifier: ^8.1.0
         version: 8.1.0(@capacitor/core@8.3.1)
@@ -137,6 +140,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.1.8
         version: 1.2.8(@types/react-dom@18.3.7(@types/react@18.3.27))(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@shaher/capacitor-sms-retriever':
+        specifier: ^0.1.1
+        version: 0.1.1(@capacitor/core@8.3.1)
       '@studio-freight/react-lenis':
         specifier: ^0.0.47
         version: 0.0.47(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -299,6 +305,11 @@ importers:
         version: 5.9.3
 
 packages:
+
+  '@ak3696/capacitor-phone-hint@7.0.3':
+    resolution: {integrity: sha512-IkjJcNumh35qUY+H6Qy2YJi+a0RaSdJwgUcYcnLiA2i+MJ1GtNYWQYgUcMs3aRB0ItKDs+zumghAiAgZp9j+cQ==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -2618,6 +2629,11 @@ packages:
 
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
+
+  '@shaher/capacitor-sms-retriever@0.1.1':
+    resolution: {integrity: sha512-jh136LaqaB21hoAal+/hY/cKh7BXEUvay0virBLZHsmgMEojBhm47VCRL0yYE9KGdcjNR1QJPycioUwVmHRl6g==}
+    peerDependencies:
+      '@capacitor/core': ^7.0.0
 
   '@smithy/abort-controller@4.2.5':
     resolution: {integrity: sha512-j7HwVkBw68YW8UmFRcjZOmssE77Rvk0GWAIN1oFBhsaovQmZWYCIcGa9/pwRB0ExI8Sk9MWNALTjftjHZea7VA==}
@@ -6469,6 +6485,10 @@ packages:
 
 snapshots:
 
+  '@ak3696/capacitor-phone-hint@7.0.3(@capacitor/core@8.3.1)':
+    dependencies:
+      '@capacitor/core': 8.3.1
+
   '@alloc/quick-lru@5.2.0': {}
 
   '@asteasolutions/zod-to-openapi@7.3.4(zod@3.25.76)':
@@ -9599,6 +9619,10 @@ snapshots:
       '@types/react-dom': 18.3.7(@types/react@18.3.27)
 
   '@radix-ui/rect@1.1.1': {}
+
+  '@shaher/capacitor-sms-retriever@0.1.1(@capacitor/core@8.3.1)':
+    dependencies:
+      '@capacitor/core': 8.3.1
 
   '@smithy/abort-controller@4.2.5':
     dependencies:

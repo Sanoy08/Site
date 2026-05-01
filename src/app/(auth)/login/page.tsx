@@ -10,10 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+// Capacitor import (safe for Next.js)
 import { Capacitor } from '@capacitor/core';
-// ★★★ FIXED IMPORTS ★★★
-import { CapacitorPhoneHint } from '@ak3696/capacitor-phone-hint';
-import { CapacitorSmsRetriever } from '@shaher/capacitor-sms-retriever';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,6 +26,7 @@ export default function LoginPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
+  // Timer Logic
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -37,10 +36,11 @@ export default function LoginPage() {
     }
   }, [timeLeft, step]);
 
-  // ★★★ 1. GOOGLE PHONE HINT (Auto Phone Number) ★★★
+  // ★★★ 1. GOOGLE PHONE HINT (Auto Phone Number) - Dynamic Import ★★★
   const requestPhoneHint = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
+        const { CapacitorPhoneHint } = await import('@ak3696/capacitor-phone-hint');
         const { phoneNumber } = await CapacitorPhoneHint.requestHint();
         if (phoneNumber) {
           let cleanPhone = phoneNumber.replace('+91', '').replace(/\D/g, '');
@@ -53,16 +53,19 @@ export default function LoginPage() {
     }
   };
 
-  // ★★★ 2. SMS RETRIEVER (Auto OTP Read) ★★★
+  // ★★★ 2. SMS RETRIEVER (Auto OTP Read) - Dynamic Import ★★★
   const startSmsListener = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
+        const { CapacitorSmsRetriever } = await import('@shaher/capacitor-sms-retriever');
         const { message } = await CapacitorSmsRetriever.startSmsReceiver();
+        
         if (message) {
             const match = message.match(/\b\d{6}\b/);
             if (match && match[0]) {
                 const code = match[0];
-                setOtp(code.split(''));
+                const newOtp = code.split('');
+                setOtp(newOtp);
                 toast.success("OTP Auto-filled!");
                 verifyOtpLogic(code);
             }
@@ -73,9 +76,28 @@ export default function LoginPage() {
     }
   };
 
+  // ★★★ APP HASH FINDER (Temporary function) ★★★
+  const getAppHash = async () => {
+    if (Capacitor.isNativePlatform()) {
+        try {
+          const { CapacitorSmsRetriever } = await import('@shaher/capacitor-sms-retriever');
+          const res = await CapacitorSmsRetriever.getAppSignature();
+          alert("Hash Code: " + res.signature);
+        } catch (e) {
+          alert("Error: Couldn't get hash.");
+        }
+    } else {
+        alert("Only works on Android Phone!");
+    }
+  };
+
+  // AUTO FOCUS KEYBOARD ON OTP STEP
   useEffect(() => {
     if (step === 'otp') {
-        setTimeout(() => inputRefs.current[0]?.focus(), 100);
+        const timer = setTimeout(() => {
+            inputRefs.current[0]?.focus();
+        }, 100);
+        return () => clearTimeout(timer);
     }
   }, [step]);
 
@@ -92,7 +114,12 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        if (Capacitor.isNativePlatform()) CapacitorSmsRetriever.removeSmsReceiver();
+        // Remove listener
+        if (Capacitor.isNativePlatform()) {
+            import('@shaher/capacitor-sms-retriever').then(({ CapacitorSmsRetriever }) => {
+                CapacitorSmsRetriever.removeSmsReceiver();
+            }).catch(e => console.log(e));
+        }
         
         login(data.user, data.token);
         toast.success('Welcome back!');
@@ -130,7 +157,9 @@ export default function LoginPage() {
     const nextIndex = Math.min(pastedData.length, 5);
     inputRefs.current[nextIndex]?.focus();
 
-    if (pastedData.length === 6) verifyOtpLogic(pastedData);
+    if (pastedData.length === 6) {
+        verifyOtpLogic(pastedData);
+    }
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -139,8 +168,9 @@ export default function LoginPage() {
     newOtp[index] = value.substring(value.length - 1); 
     setOtp(newOtp);
 
-    if (value && index < 5) inputRefs.current[index + 1]?.focus();
-    
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
     const combinedOtp = newOtp.join('');
     if (combinedOtp.length === 6 && index === 5 && value) {
         verifyOtpLogic(combinedOtp);
@@ -171,6 +201,8 @@ export default function LoginPage() {
         setTimeLeft(30);
         setOtp(['', '', '', '', '', '']);
         toast.success('OTP Sent!');
+        
+        // Start listener after sending OTP
         startSmsListener();
       } else {
         toast.error(data.error || 'Failed to send OTP');
@@ -192,23 +224,13 @@ export default function LoginPage() {
     verifyOtpLogic(otpValue);
   };
 
-  // APP HASH FINDER (Temporary, remove after getting hash)
-  const getAppHash = async () => {
-    try {
-      const res = await CapacitorSmsRetriever.getAppSignature();
-      alert("Hash Code: " + res.signature);
-    } catch (e) {
-      alert("Error: Only works on Android Phone!");
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-[100] grid h-screen w-full grid-cols-1 overflow-hidden bg-white lg:grid-cols-2">
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28">
         <div className="mx-auto w-full max-w-sm space-y-8">
 
           {/* TEMPORARY BUTTON TO GET HASH - REMOVE LATER */}
-          <Button type="button" onClick={getAppHash} className="bg-red-500 w-full mb-4 hidden">
+          <Button type="button" onClick={getAppHash} className="bg-red-500 w-full mb-4">
             GET APP HASH
           </Button>
 
@@ -237,11 +259,12 @@ export default function LoginPage() {
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                         <Input
                         id="phone"
-                        type="tel"
-                        inputMode="numeric"
+                        type="tel" // Opens numeric keypad
+                        inputMode="numeric" // Ensures mobile keypad
+                        autoComplete="tel"
                         placeholder="9876543210"
                         value={phone}
-                        onClick={requestPhoneHint}
+                        onClick={requestPhoneHint} // Trigger Google Phone popup
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                         required
                         disabled={isLoading}
@@ -264,15 +287,18 @@ export default function LoginPage() {
                                 <input
                                     key={index}
                                     ref={(el) => { inputRefs.current[index] = el }}
-                                    type="tel"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
+                                    // ★★★ UPDATED INPUT ATTRIBUTES ★★★
+                                    type="tel" // Opens number pad on mobile
+                                    inputMode="numeric" // Forces numeric keyboard
+                                    pattern="[0-9]*" // iOS fallback
+                                    autoComplete="one-time-code" // Auto-fill from SMS
                                     maxLength={1}
                                     value={digit}
                                     onChange={(e) => handleOtpChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     onPaste={handlePaste}
                                     disabled={isLoading}
+                                    // ★★★ UPDATED SIZING (Bigger) ★★★
                                     className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary"
                                 />
                             ))}
@@ -281,7 +307,11 @@ export default function LoginPage() {
                         <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Didn't receive code?</span>
                             {canResend ? (
-                                <button type="button" onClick={() => handleSendOtp()} className="font-medium text-primary hover:underline flex items-center gap-1">
+                                <button 
+                                    type="button" 
+                                    onClick={() => handleSendOtp()} 
+                                    className="font-medium text-primary hover:underline flex items-center gap-1"
+                                >
                                     <RefreshCw className="h-3 w-3" /> Resend
                                 </button>
                             ) : (
@@ -293,7 +323,11 @@ export default function LoginPage() {
                     <div className="flex gap-3">
                         <Button type="button" variant="outline" onClick={() => {
                             setStep('phone');
-                            if (Capacitor.isNativePlatform()) CapacitorSmsRetriever.removeSmsReceiver();
+                            if (Capacitor.isNativePlatform()) {
+                                import('@shaher/capacitor-sms-retriever').then(({ CapacitorSmsRetriever }) => {
+                                    CapacitorSmsRetriever.removeSmsReceiver();
+                                }).catch(e => console.log(e));
+                            }
                         }} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back
                         </Button>
@@ -305,17 +339,24 @@ export default function LoginPage() {
             )}
 
           </div>
+
           <p className="text-center text-sm text-gray-500">
             Don&apos;t have an account?{' '}
             <Link href="/register" className="font-semibold text-primary hover:underline hover:text-primary/80">Sign up free</Link>
           </p>
         </div>
       </div>
+
       <div className="relative hidden h-full flex-col bg-gray-900 p-10 text-white lg:flex">
-         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=2069&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
+        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=2069&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
         <div className="relative z-10 flex items-center gap-2 text-xl font-bold tracking-tight">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-lg"><ChefHat className="h-5 w-5" /></div>
           Bumbas Kitchen
+        </div>
+        <div className="relative z-10 mt-auto max-w-md">
+          <blockquote className="space-y-2 border-l-2 border-primary pl-6">
+            <p className="text-lg font-medium leading-relaxed text-white">&ldquo;Experience the finest culinary delights delivered right to your doorstep.&rdquo;</p>
+          </blockquote>
         </div>
       </div>
     </div>

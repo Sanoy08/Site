@@ -3,12 +3,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
-import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 const DB_NAME = 'BumbasKitchenDB';
-
-// ১. সিকিউরলি এনভায়রনমেন্ট ভেরিয়েবল থেকে টপিক নেওয়া
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 
 const sendOtpSchema = z.object({
@@ -18,17 +15,13 @@ const sendOtpSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // সার্ভার কনফিগারেশন চেক (ক্রিটিক্যাল)
     if (!NTFY_TOPIC) {
         return NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 });
     }
 
-    // 1. Rate Limit
+    // ইউজারের IP অ্যাড্রেস বের করা
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-    if (!rateLimit(ip, 3, 60 * 1000)) {
-       return NextResponse.json({ success: false, error: 'Too many requests. Please wait.' }, { status: 429 });
-    }
-
+    
     const body = await request.json();
     const validation = sendOtpSchema.safeParse(body);
     if (!validation.success) {
@@ -39,10 +32,41 @@ export async function POST(request: NextRequest) {
     
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+    
+    // ★★★ BOT & SPAM PROTECTION (24 HOURS LIMIT) ★★★
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const otpLogsCollection = db.collection('otp_logs');
+
+    // ১. IP Limit Check (Max 5 per day)
+    const ipAttempts = await otpLogsCollection.countDocuments({ 
+        ip, 
+        createdAt: { $gte: twentyFourHoursAgo } 
+    });
+    
+    if (ipAttempts >= 5) {
+        return NextResponse.json({ 
+            success: false, 
+            error: 'Too many requests from this device. Please try again after 24 hours.' 
+        }, { status: 429 });
+    }
+
+    // ২. Phone Limit Check (Max 3 per day)
+    const phoneAttempts = await otpLogsCollection.countDocuments({ 
+        phone, 
+        createdAt: { $gte: twentyFourHoursAgo } 
+    });
+
+    if (phoneAttempts >= 3) {
+        return NextResponse.json({ 
+            success: false, 
+            error: `Maximum 3 OTPs allowed per number in 24 hours. Limit reached for +91 ${phone}.` 
+        }, { status: 429 });
+    }
+    // ★★★ END PROTECTION ★★★
+
     const usersCollection = db.collection('users');
     const existingUser = await usersCollection.findOne({ phone });
 
-    // Login/Register Logic
     if (!name && !existingUser) {
         return NextResponse.json({ success: false, error: 'Account not found. Please Register first.' }, { status: 404 });
     }
@@ -73,11 +97,15 @@ export async function POST(request: NextRequest) {
         { upsert: true }
     );
 
-    // ★★★ 5. NTFY PUSH (Clean & Silent) ★★★
-    const APP_HASH = ""; // এখানে আপনার ফোনের স্ক্রিনে পাওয়া কোডটা দেবেন
+    // ★ 5. Log the successful OTP attempt
+    await otpLogsCollection.insertOne({
+        ip,
+        phone,
+        createdAt: new Date()
+    });
 
-const message = `<#> Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.\n${APP_HASH}`;
-
+    // 6. NTFY PUSH
+    const message = `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.`;
     try {
         await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
             method: 'POST',
@@ -89,7 +117,7 @@ const message = `<#> Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins.\n${
             }
         });
     } catch (e) {
-
+        // silent fail
     }
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully.' });

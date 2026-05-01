@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Loader2, ArrowRight, ChefHat, User, Phone, ArrowLeft, RefreshCw, UserPlus } from 'lucide-react';
+import { Loader2, ArrowRight, ChefHat, User, Phone, ArrowLeft, RefreshCw, UserPlus, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,9 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
+  
+  // ★ Limit Error State
+  const [limitError, setLimitError] = useState('');
 
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
@@ -102,24 +105,13 @@ export default function RegisterPage() {
     }
   };
 
-  // 1. Send OTP Logic (With Validation)
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setLimitError(''); // Clear error
 
-    // ★★★ INDIAN NUMBER VALIDATION ★★★
-    // Regex: Starts with 6-9, contains exactly 10 digits
     const indianPhoneRegex = /^[6-9]\d{9}$/;
-
-    if (!phone) {
-        toast.error("Please enter your phone number");
-        return;
-    }
-
-    if (!indianPhoneRegex.test(phone)) {
-        toast.error("Invalid Indian Mobile Number! Must contain 10 digits and start with 6-9.");
-        return;
-    }
-    // ★★★ VALIDATION END ★★★
+    if (!phone) return toast.error("Please enter your phone number");
+    if (!indianPhoneRegex.test(phone)) return toast.error("Invalid Indian Mobile Number!");
 
     setIsLoading(true);
 
@@ -139,6 +131,10 @@ export default function RegisterPage() {
         toast.success(`OTP sent to +91 ${phone}`);
       } else {
         toast.error(data.error || 'Failed to send OTP');
+        // ★ Show inline warning
+        if (res.status === 429) {
+            setLimitError(data.error);
+        }
       }
     } catch (error) {
       toast.error('Something went wrong.');
@@ -150,10 +146,7 @@ export default function RegisterPage() {
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const otpValue = otp.join('');
-    if (otpValue.length !== 6) {
-        toast.error("Please enter 6-digit OTP");
-        return;
-    }
+    if (otpValue.length !== 6) return toast.error("Please enter 6-digit OTP");
     verifyRegisterLogic(otpValue);
   };
 
@@ -162,7 +155,6 @@ export default function RegisterPage() {
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm space-y-8 py-8">
 
-          {/* SAFE ILLUSTRATION */}
           <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
              <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
@@ -183,6 +175,15 @@ export default function RegisterPage() {
             
             {step === 'details' && (
               <form onSubmit={handleSendOtp} className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                
+                {/* ★ Rate Limit Warning Box ★ */}
+                {limitError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-in zoom-in-95">
+                        <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                        <p className="text-sm font-medium text-red-800 leading-tight">{limitError}</p>
+                    </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-sm font-medium text-gray-900">Full Name</Label>
                   <div className="relative group">
@@ -195,16 +196,14 @@ export default function RegisterPage() {
                   <Label htmlFor="phone" className="text-sm font-medium text-gray-900">Phone Number</Label>
                   <div className="relative group">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
-                    {/* Country Code Prefix Visual */}
                     <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 border-r pr-2 h-5 flex items-center">+91</span>
                     <Input 
                         id="phone" 
                         type="tel"
                         inputMode="numeric"
-                        maxLength={10} // Restrict input length
+                        maxLength={10}
                         placeholder="9876543210" 
                         value={phone} 
-                        // Only allow numbers
                         onChange={(e) => {
                             const val = e.target.value.replace(/\D/g, ''); 
                             if(val.length <= 10) setPhone(val);
@@ -244,6 +243,12 @@ export default function RegisterPage() {
                             />
                         ))}
                     </div>
+
+                    {limitError && (
+                        <div className="text-center">
+                            <p className="text-xs font-medium text-red-500">{limitError}</p>
+                        </div>
+                    )}
                     
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Didn't receive code?</span>
@@ -262,7 +267,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setStep('details')} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
+                  <Button type="button" variant="outline" onClick={() => { setStep('details'); setLimitError(''); }} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
                   </Button>
                   <Button type="submit" className="h-12 w-2/3 bg-primary text-white hover:bg-primary/90 font-medium rounded-xl shadow-lg shadow-primary/20" disabled={isLoading}>

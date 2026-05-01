@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// Capacitor import (safe for Next.js)
 import { Capacitor } from '@capacitor/core';
 
 export default function RegisterPage() {
@@ -27,6 +26,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
+  const [hintRequested, setHintRequested] = useState(false);
 
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
@@ -37,14 +37,18 @@ export default function RegisterPage() {
     }
   }, [timeLeft, step]);
 
-  // ★★★ 1. GOOGLE PHONE HINT (Auto Phone Number) - Dynamic Import ★★★
+  // ★★★ 1. GOOGLE PHONE HINT (Safe Import) ★★★
   const requestPhoneHint = async () => {
-    if (Capacitor.isNativePlatform()) {
+    if (!hintRequested && Capacitor.isNativePlatform()) {
+      setHintRequested(true);
       try {
-        const { CapacitorPhoneHint } = await import('@ak3696/capacitor-phone-hint');
-        const { phoneNumber } = await CapacitorPhoneHint.requestHint();
+        const mod = await import('@ak3696/capacitor-phone-hint');
+        const PhoneHint = mod.PhoneHint || mod.CapacitorPhoneHint || (mod as any).default;
+        if (!PhoneHint) return;
+
+        const { phoneNumber } = await PhoneHint.requestHint();
         if (phoneNumber) {
-          let cleanPhone = phoneNumber.replace('+91', '').replace(/\D/g, '');
+          let cleanPhone = phoneNumber.replace(/\D/g, '');
           if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10);
           setPhone(cleanPhone);
         }
@@ -54,13 +58,15 @@ export default function RegisterPage() {
     }
   };
 
-  // ★★★ 2. SMS RETRIEVER (Auto OTP Read) - Dynamic Import ★★★
+  // ★★★ 2. SMS RETRIEVER (Safe Import) ★★★
   const startSmsListener = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        const { CapacitorSmsRetriever } = await import('@shaher/capacitor-sms-retriever');
-        const { message } = await CapacitorSmsRetriever.startSmsReceiver();
-        
+        const mod = await import('@shaher/capacitor-sms-retriever');
+        const SmsRetriever = mod.SmsRetriever || mod.CapacitorSmsRetriever || (mod as any).default;
+        if (!SmsRetriever) return;
+
+        const { message } = await SmsRetriever.startSmsReceiver();
         if (message) {
             const match = message.match(/\b\d{6}\b/);
             if (match && match[0]) {
@@ -76,13 +82,19 @@ export default function RegisterPage() {
     }
   };
 
-  // AUTO FOCUS KEYBOARD ON OTP STEP
+  const stopSmsListener = async () => {
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const mod = await import('@shaher/capacitor-sms-retriever');
+            const SmsRetriever = mod.SmsRetriever || mod.CapacitorSmsRetriever || (mod as any).default;
+            if (SmsRetriever) await SmsRetriever.removeSmsReceiver();
+        } catch (e) {}
+    }
+  };
+
   useEffect(() => {
     if (step === 'otp') {
-        const timer = setTimeout(() => {
-            inputRefs.current[0]?.focus();
-        }, 100);
-        return () => clearTimeout(timer);
+        setTimeout(() => inputRefs.current[0]?.focus(), 100);
     }
   }, [step]);
 
@@ -99,12 +111,7 @@ export default function RegisterPage() {
       const data = await res.json();
       
       if (data.success) {
-        if (Capacitor.isNativePlatform()) {
-            import('@shaher/capacitor-sms-retriever').then(({ CapacitorSmsRetriever }) => {
-                CapacitorSmsRetriever.removeSmsReceiver();
-            }).catch(e => console.log(e));
-        }
-        
+        stopSmsListener();
         login(data.user, data.token);
         toast.success('Account created successfully!');
         router.push('/');
@@ -132,9 +139,7 @@ export default function RegisterPage() {
     const nextIndex = Math.min(pastedData.length, 5);
     inputRefs.current[nextIndex]?.focus();
 
-    if (pastedData.length === 6) {
-        verifyRegisterLogic(pastedData);
-    }
+    if (pastedData.length === 6) verifyRegisterLogic(pastedData);
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -143,9 +148,8 @@ export default function RegisterPage() {
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+    
     const combinedOtp = newOtp.join('');
     if (combinedOtp.length === 6 && index === 5 && value) {
         verifyRegisterLogic(combinedOtp);
@@ -190,7 +194,6 @@ export default function RegisterPage() {
         setOtp(['', '', '', '', '', '']);
         toast.success(`OTP sent to +91 ${phone}`);
         
-        // Start listener after sending OTP
         startSmsListener();
       } else {
         toast.error(data.error || 'Failed to send OTP');
@@ -205,10 +208,7 @@ export default function RegisterPage() {
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const otpValue = otp.join('');
-    if (otpValue.length !== 6) {
-        toast.error("Please enter 6-digit OTP");
-        return;
-    }
+    if (otpValue.length !== 6) return toast.error("Please enter 6-digit OTP");
     verifyRegisterLogic(otpValue);
   };
 
@@ -255,13 +255,14 @@ export default function RegisterPage() {
                         type="tel"
                         inputMode="numeric"
                         autoComplete="tel"
-                        maxLength={10} 
                         placeholder="9876543210" 
                         value={phone} 
                         onClick={requestPhoneHint}
                         onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, ''); 
-                            if(val.length <= 10) setPhone(val);
+                            // ★ Smart Number Extraction
+                            let val = e.target.value.replace(/\D/g, ''); 
+                            if(val.length > 10) val = val.slice(-10); // Force last 10 digits
+                            setPhone(val);
                         }} 
                         disabled={isLoading} 
                         required 
@@ -302,11 +303,7 @@ export default function RegisterPage() {
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Didn't receive code?</span>
                         {canResend ? (
-                            <button 
-                                type="button" 
-                                onClick={() => handleSendOtp()} 
-                                className="font-medium text-primary hover:underline flex items-center gap-1"
-                            >
+                            <button type="button" onClick={() => handleSendOtp()} className="font-medium text-primary hover:underline flex items-center gap-1">
                                 <RefreshCw className="h-3 w-3" /> Resend
                             </button>
                         ) : (
@@ -318,11 +315,7 @@ export default function RegisterPage() {
                 <div className="flex gap-3 pt-2">
                   <Button type="button" variant="outline" onClick={() => {
                       setStep('details');
-                      if (Capacitor.isNativePlatform()) {
-                        import('@shaher/capacitor-sms-retriever').then(({ CapacitorSmsRetriever }) => {
-                            CapacitorSmsRetriever.removeSmsReceiver();
-                        }).catch(e => console.log(e));
-                      }
+                      stopSmsListener();
                   }} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
                   </Button>
@@ -332,26 +325,18 @@ export default function RegisterPage() {
                 </div>
               </form>
             )}
-            
           </div>
-
           <p className="text-center text-sm text-gray-500">
             Already have an account?{' '}
             <Link href="/login" className="font-semibold text-primary hover:underline hover:text-primary/80">Sign in</Link>
           </p>
         </div>
       </div>
-
       <div className="relative hidden h-full flex-col bg-gray-900 p-10 text-white lg:flex">
-        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1556910103-1c02745a30bf?q=80&w=2070&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
+         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1556910103-1c02745a30bf?q=80&w=2070&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
         <div className="relative z-10 flex items-center gap-2 text-xl font-bold tracking-tight">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-lg"><ChefHat className="h-5 w-5" /></div>
           Bumbas Kitchen
-        </div>
-        <div className="relative z-10 mt-auto max-w-md">
-          <blockquote className="space-y-2 border-l-2 border-primary pl-6">
-            <p className="text-lg font-medium leading-relaxed text-white">&ldquo;Join our community of food lovers. Quality ingredients, authentic recipes, and unforgettable tastes await you.&rdquo;</p>
-          </blockquote>
         </div>
       </div>
     </div>

@@ -153,7 +153,8 @@ export default function RegisterPage() {
 
   return (
     <>
-    <div className="fixed inset-0 z-[100] grid h-screen w-full grid-cols-1 overflow-hidden bg-white lg:grid-cols-2">
+    {/* ★ FIX: z-[100] থেকে z-[10] করা হয়েছে যাতে পপআপ সামনে আসে ★ */}
+    <div className="fixed inset-0 z-[10] grid h-screen w-full grid-cols-1 overflow-hidden bg-white lg:grid-cols-2">
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm space-y-8 py-8">
 
@@ -170,6 +171,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-6">
+            
             {step === 'details' && (
               <form onSubmit={handleSendOtp} className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
                 <div className="space-y-2">

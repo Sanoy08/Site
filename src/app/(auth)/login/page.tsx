@@ -1,3 +1,5 @@
+// src/app/(auth)/login/page.tsx
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -9,8 +11,6 @@ import { Loader2, ArrowRight, ChefHat, Phone, ArrowLeft, RefreshCw, LockKeyhole 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-import { Capacitor } from '@capacitor/core';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,8 +24,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
-  const [hintRequested, setHintRequested] = useState(false); // To prevent multiple popups
 
+  // Timer Logic
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -35,83 +35,14 @@ export default function LoginPage() {
     }
   }, [timeLeft, step]);
 
-  // ★★★ 1. GOOGLE PHONE HINT (Safe Import) ★★★
-  const requestPhoneHint = async () => {
-    if (!hintRequested && Capacitor.isNativePlatform()) {
-      setHintRequested(true);
-      try {
-        const mod = await import('@ak3696/capacitor-phone-hint');
-        const PhoneHint = mod.PhoneHint || mod.CapacitorPhoneHint || (mod as any).default;
-        if (!PhoneHint) return;
-
-        const { phoneNumber } = await PhoneHint.requestHint();
-        if (phoneNumber) {
-          let cleanPhone = phoneNumber.replace(/\D/g, '');
-          if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10); // Take last 10 digits
-          setPhone(cleanPhone);
-        }
-      } catch (error) {
-        console.log("Phone hint cancelled or failed", error);
-      }
-    }
-  };
-
-  // ★★★ 2. SMS RETRIEVER (Safe Import) ★★★
-  const startSmsListener = async () => {
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const mod = await import('@shaher/capacitor-sms-retriever');
-        const SmsRetriever = mod.SmsRetriever || mod.CapacitorSmsRetriever || (mod as any).default;
-        if (!SmsRetriever) return;
-
-        const { message } = await SmsRetriever.startSmsReceiver();
-        if (message) {
-            const match = message.match(/\b\d{6}\b/);
-            if (match && match[0]) {
-                const code = match[0];
-                setOtp(code.split(''));
-                toast.success("OTP Auto-filled!");
-                verifyOtpLogic(code);
-            }
-        }
-      } catch (error) {
-        console.log("SMS Retriever failed", error);
-      }
-    }
-  };
-
-  const stopSmsListener = async () => {
-    if (Capacitor.isNativePlatform()) {
-        try {
-            const mod = await import('@shaher/capacitor-sms-retriever');
-            const SmsRetriever = mod.SmsRetriever || mod.CapacitorSmsRetriever || (mod as any).default;
-            if (SmsRetriever) await SmsRetriever.removeSmsReceiver();
-        } catch (e) {}
-    }
-  };
-
-  // APP HASH FINDER (Temporary function)
-  const getAppHash = async () => {
-    if (Capacitor.isNativePlatform()) {
-        try {
-          const mod = await import('@shaher/capacitor-sms-retriever');
-          const SmsRetriever = mod.SmsRetriever || mod.CapacitorSmsRetriever || (mod as any).default;
-          if (!SmsRetriever) throw new Error("Plugin not loaded");
-          
-          const res = await SmsRetriever.getAppSignature();
-          alert("Hash Code: " + res.signature);
-          console.log("Hash Code:", res.signature);
-        } catch (e: any) {
-          alert("Error: " + e.message);
-        }
-    } else {
-        alert("Only works on Android Phone!");
-    }
-  };
-
+  // ★★★ AUTO FOCUS KEYBOARD ON OTP STEP ★★★
   useEffect(() => {
     if (step === 'otp') {
-        setTimeout(() => inputRefs.current[0]?.focus(), 100);
+        // একটু ডিলে দেওয়া হলো যাতে DOM রেন্ডার হওয়ার সময় পায়
+        const timer = setTimeout(() => {
+            inputRefs.current[0]?.focus();
+        }, 100);
+        return () => clearTimeout(timer);
     }
   }, [step]);
 
@@ -128,7 +59,6 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        stopSmsListener();
         login(data.user, data.token);
         toast.success('Welcome back!');
         
@@ -165,7 +95,9 @@ export default function LoginPage() {
     const nextIndex = Math.min(pastedData.length, 5);
     inputRefs.current[nextIndex]?.focus();
 
-    if (pastedData.length === 6) verifyOtpLogic(pastedData);
+    if (pastedData.length === 6) {
+        verifyOtpLogic(pastedData);
+    }
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -174,8 +106,9 @@ export default function LoginPage() {
     newOtp[index] = value.substring(value.length - 1); 
     setOtp(newOtp);
 
-    if (value && index < 5) inputRefs.current[index + 1]?.focus();
-    
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
     const combinedOtp = newOtp.join('');
     if (combinedOtp.length === 6 && index === 5 && value) {
         verifyOtpLogic(combinedOtp);
@@ -190,13 +123,6 @@ export default function LoginPage() {
 
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
-    // Check if phone is exactly 10 digits
-    if (phone.length !== 10) {
-        toast.error("Please enter a valid 10-digit number");
-        return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -213,8 +139,6 @@ export default function LoginPage() {
         setTimeLeft(30);
         setOtp(['', '', '', '', '', '']);
         toast.success('OTP Sent!');
-        
-        startSmsListener();
       } else {
         toast.error(data.error || 'Failed to send OTP');
       }
@@ -240,11 +164,6 @@ export default function LoginPage() {
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28">
         <div className="mx-auto w-full max-w-sm space-y-8">
 
-          {/* TEMPORARY BUTTON TO GET HASH - REMOVE LATER */}
-          <Button type="button" onClick={getAppHash} className="bg-red-500 w-full mb-4">
-            GET APP HASH
-          </Button>
-
           <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
              <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
@@ -269,22 +188,15 @@ export default function LoginPage() {
                     <div className="relative group">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                         <Input
-                            id="phone"
-                            type="tel"
-                            inputMode="numeric"
-                            autoComplete="tel"
-                            placeholder="9876543210"
-                            value={phone}
-                            onClick={requestPhoneHint} // Trigger popup on click
-                            onChange={(e) => {
-                                // ★ Smart Number Extraction: Allows pasting +91 numbers
-                                let val = e.target.value.replace(/\D/g, '');
-                                if (val.length > 10) val = val.slice(-10); // Force last 10 digits
-                                setPhone(val);
-                            }}
-                            required
-                            disabled={isLoading}
-                            className="h-12 border-gray-200 bg-white pl-10 text-base focus:border-primary focus:ring-1 focus:ring-primary rounded-xl"
+                        id="phone"
+                        type="tel" // Opens numeric keypad
+                        inputMode="numeric" // Ensures mobile keypad
+                        placeholder="9876543210"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        required
+                        disabled={isLoading}
+                        className="h-12 border-gray-200 bg-white pl-10 text-base focus:border-primary focus:ring-1 focus:ring-primary rounded-xl"
                         />
                     </div>
                 </div>
@@ -303,16 +215,18 @@ export default function LoginPage() {
                                 <input
                                     key={index}
                                     ref={(el) => { inputRefs.current[index] = el }}
-                                    type="tel"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    autoComplete="one-time-code"
+                                    // ★★★ UPDATED INPUT ATTRIBUTES ★★★
+                                    type="tel" // Opens number pad on mobile
+                                    inputMode="numeric" // Forces numeric keyboard
+                                    pattern="[0-9]*" // iOS fallback
+                                    autoComplete="one-time-code" // Auto-fill from SMS
                                     maxLength={1}
                                     value={digit}
                                     onChange={(e) => handleOtpChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     onPaste={handlePaste}
                                     disabled={isLoading}
+                                    // ★★★ UPDATED SIZING (Bigger) ★★★
                                     className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary"
                                 />
                             ))}
@@ -321,7 +235,11 @@ export default function LoginPage() {
                         <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Didn't receive code?</span>
                             {canResend ? (
-                                <button type="button" onClick={() => handleSendOtp()} className="font-medium text-primary hover:underline flex items-center gap-1">
+                                <button 
+                                    type="button" 
+                                    onClick={() => handleSendOtp()} 
+                                    className="font-medium text-primary hover:underline flex items-center gap-1"
+                                >
                                     <RefreshCw className="h-3 w-3" /> Resend
                                 </button>
                             ) : (
@@ -331,10 +249,7 @@ export default function LoginPage() {
                     </div>
 
                     <div className="flex gap-3">
-                        <Button type="button" variant="outline" onClick={() => {
-                            setStep('phone');
-                            stopSmsListener();
-                        }} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
+                        <Button type="button" variant="outline" onClick={() => setStep('phone')} disabled={isLoading} className="h-12 w-1/3 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-600">
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back
                         </Button>
                         <Button type="submit" className="h-12 w-2/3 bg-primary text-white hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/20" disabled={isLoading}>
@@ -345,17 +260,24 @@ export default function LoginPage() {
             )}
 
           </div>
+
           <p className="text-center text-sm text-gray-500">
             Don&apos;t have an account?{' '}
             <Link href="/register" className="font-semibold text-primary hover:underline hover:text-primary/80">Sign up free</Link>
           </p>
         </div>
       </div>
+
       <div className="relative hidden h-full flex-col bg-gray-900 p-10 text-white lg:flex">
-         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=2069&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
+        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=2069&auto=format&fit=crop')` }}><div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" /></div>
         <div className="relative z-10 flex items-center gap-2 text-xl font-bold tracking-tight">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-lg"><ChefHat className="h-5 w-5" /></div>
           Bumbas Kitchen
+        </div>
+        <div className="relative z-10 mt-auto max-w-md">
+          <blockquote className="space-y-2 border-l-2 border-primary pl-6">
+            <p className="text-lg font-medium leading-relaxed text-white">&ldquo;Experience the finest culinary delights delivered right to your doorstep.&rdquo;</p>
+          </blockquote>
         </div>
       </div>
     </div>

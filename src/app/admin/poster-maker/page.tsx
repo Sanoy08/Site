@@ -1,26 +1,23 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { Download, LayoutTemplate, MousePointer2, Type, PaintBucket, Maximize, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Download, LayoutTemplate, PaintBucket, RotateCcw, MousePointer2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
-// আপনার ব্যাকগ্রাউন্ড প্রিসেটগুলো (Image URLs)
 const PRESETS = [
-  'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop', // Dark Burger (Demo)
-  'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop', // Pizza (Demo)
-  'https://images.unsplash.com/photo-1563379926898-05f45c51040c?q=80&w=1000&auto=format&fit=crop' // Minimal (Demo)
+  'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop', 
+  'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop', 
+  'https://images.unsplash.com/photo-1563379926898-05f45c51040c?q=80&w=1000&auto=format&fit=crop'
 ];
 
 type TextElement = {
   id: string;
-  label: string;
   text: string;
   x: number;
   y: number;
@@ -29,12 +26,12 @@ type TextElement = {
   shadow: boolean;
 };
 
-// ★ বাংলা ডিফল্টস 
+// ★ বাংলা ডিফল্টস (X=180 মানে 360px ক্যানভাসের একদম মাঝখান)
 const DEFAULT_ELEMENTS: TextElement[] = [
-  { id: 'heading', label: 'Heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 0, y: -200, fontSize: 36, color: '#FFD700', shadow: true },
-  { id: 'menu', label: 'Menu Name', text: 'চিকেন বিরিয়ানি কম্বো', x: 0, y: -100, fontSize: 42, color: '#FFFFFF', shadow: true },
-  { id: 'price', label: 'Price', text: 'মাত্র ১৯৯ টাকায়', x: 0, y: 50, fontSize: 50, color: '#4CAF50', shadow: true },
-  { id: 'deadline', label: 'Order Deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 0, y: 220, fontSize: 18, color: '#FF5252', shadow: false },
+  { id: 'heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 80, fontSize: 32, color: '#FFD700', shadow: true },
+  { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 160, fontSize: 38, color: '#FFFFFF', shadow: true },
+  { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 250, fontSize: 46, color: '#4CAF50', shadow: true },
+  { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 180, y: 450, fontSize: 16, color: '#FF5252', shadow: false },
 ];
 
 export default function PosterMaker() {
@@ -42,247 +39,244 @@ export default function PosterMaker() {
   const [selectedBg, setSelectedBg] = useState(PRESETS[0]);
   const [elements, setElements] = useState<TextElement[]>(DEFAULT_ELEMENTS);
   
-  // কোন টেক্সটটা এডিট করা হচ্ছে
-  const [activeId, setActiveId] = useState<string>('heading');
-  
-  // ★ ডেভেলপার X, Y (রিয়েলটাইম)
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [devCoords, setDevCoords] = useState<{id: string, x: number, y: number} | null>(null);
 
-  // Landscape Warning Logic
-  const [isPortrait, setIsPortrait] = useState(false);
-  useEffect(() => {
-    const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    return () => window.removeEventListener('resize', checkOrientation);
-  }, []);
-
-  const handleTextChange = (id: string, newText: string) => {
-    setElements(elements.map(el => el.id === id ? { ...el, text: newText } : el));
-  };
-
-  const updateActiveElement = (updates: Partial<TextElement>) => {
-    setElements(elements.map(el => el.id === activeId ? { ...el, ...updates } : el));
+  const updateElement = (id: string, updates: Partial<TextElement>) => {
+    setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
   };
 
   const handleDownload = async () => {
     if (!posterRef.current) return;
-    toast.loading("Generating high-quality poster...");
-    try {
-        const canvas = await html2canvas(posterRef.current, {
-            scale: 3, // 3x scale for ultra HD export
-            useCORS: true,
-            backgroundColor: '#000'
-        });
-        
-        const image = canvas.toDataURL('image/jpeg', 0.95);
-        const link = document.createElement('a');
-        link.href = image;
-        link.download = `BK-Offer-${new Date().getTime()}.jpg`;
-        link.click();
-        toast.success("Poster downloaded successfully!");
-    } catch (e) {
-        toast.error("Failed to generate poster");
-    }
-  };
-
-  const resetToDefault = () => {
-    setElements(DEFAULT_ELEMENTS);
-    setDevCoords(null);
+    setActiveId(null); // সিলেকশন বর্ডার সরানোর জন্য
+    setEditingId(null);
+    toast.loading("Generating HD poster...");
+    
+    setTimeout(async () => {
+        try {
+            const canvas = await html2canvas(posterRef.current!, {
+                scale: 3, 
+                useCORS: true,
+                backgroundColor: '#000',
+                logging: false
+            });
+            const image = canvas.toDataURL('image/jpeg', 0.95);
+            const link = document.createElement('a');
+            link.href = image;
+            link.download = `BK-Offer-${Date.now()}.jpg`;
+            link.click();
+            toast.success("Poster downloaded!");
+        } catch (e) {
+            toast.error("Failed to generate poster");
+        }
+    }, 300);
   };
 
   const activeElement = elements.find(e => e.id === activeId);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2 font-headline">
-            <LayoutTemplate className="h-6 w-6 text-primary" /> Poster Studio
-            </h1>
-            <p className="text-muted-foreground text-sm">Design social media posters in seconds.</p>
-        </div>
-        <div className="flex gap-3 w-full sm:w-auto">
-            <Button variant="outline" onClick={resetToDefault} className="gap-2">
-                <RotateCcw className="h-4 w-4" /> Reset
-            </Button>
-            <Button onClick={handleDownload} className="gap-2 bg-green-600 hover:bg-green-700 flex-1 sm:flex-auto">
-                <Download className="h-4 w-4" /> Export HD
-            </Button>
-        </div>
+    <div className="space-y-4 max-w-lg mx-auto pb-32">
+      
+      {/* Header */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+            <LayoutTemplate className="h-5 w-5 text-primary" /> Poster
+        </h1>
+        <Button onClick={handleDownload} size="sm" className="gap-2 bg-green-600 hover:bg-green-700">
+            <Download className="h-4 w-4" /> Download
+        </Button>
       </div>
 
-      {/* Mobile Landscape Warning */}
-      {isPortrait && (
-          <div className="md:hidden bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-medium">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              For the best editing experience, please rotate your phone to landscape mode.
+      {/* Background Selector */}
+      <Card className="p-3 shadow-sm border-0 bg-white">
+        <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Backgrounds</p>
+        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+          {PRESETS.map((bg, idx) => (
+            <div 
+              key={idx} onClick={() => setSelectedBg(bg)}
+              className={`h-16 w-12 rounded-md cursor-pointer border-2 shrink-0 bg-muted transition-transform ${selectedBg === bg ? 'border-primary scale-105 shadow-md' : 'border-transparent'}`}
+              style={{ backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            />
+          ))}
+        </div>
+      </Card>
+
+      <p className="text-center text-xs text-muted-foreground bg-blue-50 text-blue-600 py-1.5 rounded-full border border-blue-100">
+        💡 Double-tap any text to edit directly on screen
+      </p>
+
+      {/* ★ CANVAS CONTAINER ★ */}
+      <div className="flex justify-center items-center">
+          <div 
+            ref={posterRef}
+            className="relative bg-black shadow-2xl rounded-md ring-1 ring-border/50 touch-none"
+            style={{
+              width: '360px',  
+              height: '640px', 
+              backgroundImage: `url(${selectedBg})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => {
+               // ক্যানভাসের ফাঁকা জায়গায় ক্লিক করলে সিলেকশন हटে যাবে
+               if (e.target === posterRef.current) {
+                   setActiveId(null);
+                   setEditingId(null);
+               }
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/60 pointer-events-none" />
+
+            {/* Render Draggable Elements */}
+            {elements.map((el) => (
+               <DraggableText 
+                  key={el.id} 
+                  el={el} 
+                  isActive={activeId === el.id}
+                  isEditing={editingId === el.id}
+                  onSelect={() => setActiveId(el.id)}
+                  onEdit={() => setEditingId(el.id)}
+                  onStopEdit={() => setEditingId(null)}
+                  updateElement={updateElement}
+                  setDevCoords={setDevCoords}
+               />
+            ))}
+          </div>
+      </div>
+
+      {/* ★ FLOATING MOBILE TOOLBAR (Show only when text is selected) ★ */}
+      {activeElement && !editingId && (
+          <div className="fixed bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border ring-1 ring-black/5 z-50 animate-in slide-in-from-bottom-4">
+              <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-sm flex items-center gap-2">
+                     <PaintBucket className="h-4 w-4 text-primary"/> Edit Style
+                  </h3>
+                  <button onClick={() => setActiveId(null)} className="text-muted-foreground hover:text-gray-900"><CheckCircle2 className="h-5 w-5"/></button>
+              </div>
+
+              <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                      <Label className="text-xs font-semibold w-12">Size</Label>
+                      <Slider 
+                          value={[activeElement.fontSize]} min={12} max={80} step={1}
+                          onValueChange={(val) => updateElement(activeElement.id, { fontSize: val[0] })}
+                          className="flex-1"
+                      />
+                      <span className="text-xs font-mono w-6">{activeElement.fontSize}</span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                      <Label className="text-xs font-semibold w-12">Color</Label>
+                      <input 
+                          type="color" value={activeElement.color}
+                          onChange={(e) => updateElement(activeElement.id, { color: e.target.value })}
+                          className="h-8 w-full flex-1 rounded cursor-pointer border-0 p-0 bg-transparent"
+                      />
+                      <Input 
+                          value={activeElement.color.toUpperCase()} 
+                          onChange={(e) => updateElement(activeElement.id, { color: e.target.value })}
+                          className="w-20 h-8 font-mono text-[10px] uppercase"
+                      />
+                  </div>
+              </div>
           </div>
       )}
 
-      <div className="grid lg:grid-cols-12 gap-8">
-        
-        {/* ★ LEFT SIDEBAR: Text Inputs & Presets ★ */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="p-5 space-y-4 shadow-sm">
-            <h3 className="font-semibold border-b pb-2 flex items-center gap-2"><LayoutTemplate className="h-4 w-4"/> Backgrounds</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {PRESETS.map((bg, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={() => setSelectedBg(bg)}
-                  className={`h-20 w-14 rounded-lg cursor-pointer border-2 shrink-0 overflow-hidden bg-muted transition-transform hover:scale-105 ${selectedBg === bg ? 'border-primary shadow-md ring-2 ring-primary/20' : 'border-transparent'}`}
-                  style={{ backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-                />
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-5 space-y-4 shadow-sm">
-            <h3 className="font-semibold border-b pb-2 flex items-center gap-2"><Type className="h-4 w-4"/> Poster Content</h3>
-            <div className="space-y-4">
-                {elements.map((el) => (
-                <div 
-                    key={el.id} 
-                    className={`space-y-1.5 p-3 rounded-xl border transition-colors cursor-pointer ${activeId === el.id ? 'bg-primary/5 border-primary/30' : 'bg-transparent border-border hover:bg-muted/50'}`}
-                    onClick={() => setActiveId(el.id)}
-                >
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{el.label}</Label>
-                    <Input 
-                        value={el.text}
-                        onChange={(e) => handleTextChange(el.id, e.target.value)}
-                        className="font-bengali" // Add your bengali font class here if any
-                    />
-                </div>
-                ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* ★ CENTER: The Canvas ★ */}
-        <div className="lg:col-span-5 flex justify-center items-start pt-4 lg:pt-0">
-            <div 
-              ref={posterRef}
-              className="relative bg-black overflow-hidden shadow-2xl rounded-sm ring-1 ring-border/50"
-              style={{
-                width: '360px',  // Mobile Story/Status standard width
-                height: '640px', // 9:16 aspect ratio
-                backgroundImage: `url(${selectedBg})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
-            >
-              {/* Optional: Dark overlay to make text pop */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/60 pointer-events-none" />
-
-              {/* Center Anchor Point for Absolute Positioning */}
-              <div className="absolute top-1/2 left-1/2 w-0 h-0">
-                  {elements.map((el) => (
-                    <motion.div
-                      key={el.id}
-                      drag
-                      dragConstraints={posterRef}
-                      dragElastic={0}
-                      dragMomentum={false}
-                      onPointerDown={() => setActiveId(el.id)}
-                      onDrag={(event, info) => {
-                        setDevCoords({ id: el.id, x: el.x + info.offset.x, y: el.y + info.offset.y });
-                      }}
-                      onDragEnd={(event, info) => {
-                        setElements(elements.map(item => 
-                            item.id === el.id ? { ...item, x: item.x + info.offset.x, y: item.y + info.offset.y } : item
-                        ));
-                      }}
-                      style={{
-                        position: 'absolute',
-                        x: el.x, // Framer motion optimized X
-                        y: el.y, // Framer motion optimized Y
-                        fontSize: `${el.fontSize}px`,
-                        color: el.color,
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        textShadow: el.shadow ? '2px 3px 6px rgba(0,0,0,0.8), 0px 0px 10px rgba(0,0,0,0.5)' : 'none',
-                        cursor: 'grab',
-                        whiteSpace: 'nowrap',
-                        // Center align logic based on anchor
-                        translateX: '-50%',
-                        translateY: '-50%'
-                      }}
-                      whileHover={{ outline: '1px dashed rgba(255,255,255,0.5)', outlineOffset: '4px' }}
-                      whileDrag={{ cursor: 'grabbing', scale: 1.05 }}
-                      className={`font-bengali ${activeId === el.id ? 'ring-2 ring-dashed ring-primary ring-offset-4 ring-offset-transparent' : ''}`}
-                    >
-                      {el.text}
-                    </motion.div>
-                  ))}
-              </div>
-            </div>
-        </div>
-
-        {/* ★ RIGHT SIDEBAR: Style Controls & Dev Info ★ */}
-        <div className="lg:col-span-3 space-y-6">
-          <Card className="p-5 space-y-6 shadow-sm sticky top-24">
-            <div>
-                <h3 className="font-semibold border-b pb-2 flex items-center gap-2 mb-4 text-primary">
-                   <PaintBucket className="h-4 w-4"/> Styling: {activeElement?.label}
-                </h3>
-            </div>
-
-            {activeElement ? (
-                <div className="space-y-6">
-                    <div className="space-y-3">
-                        <div className="flex justify-between">
-                            <Label className="text-sm font-medium">Text Size</Label>
-                            <span className="text-xs text-muted-foreground">{activeElement.fontSize}px</span>
-                        </div>
-                        <Slider 
-                            value={[activeElement.fontSize]} 
-                            min={10} max={100} step={1}
-                            onValueChange={(val) => updateActiveElement({ fontSize: val[0] })}
-                        />
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label className="text-sm font-medium">Color</Label>
-                        <div className="flex items-center gap-3">
-                            <input 
-                                type="color" 
-                                value={activeElement.color}
-                                onChange={(e) => updateActiveElement({ color: e.target.value })}
-                                className="h-10 w-full rounded cursor-pointer border-0 p-0"
-                            />
-                            <Input 
-                                value={activeElement.color.toUpperCase()} 
-                                onChange={(e) => updateActiveElement({ color: e.target.value })}
-                                className="w-24 font-mono text-xs uppercase"
-                            />
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">Click a text to edit styling.</p>
-            )}
-          </Card>
-
-          {/* ★ Developer Tool: X/Y Axis Display ★ */}
-          <Card className="p-4 bg-slate-900 text-green-400 border-slate-800 shadow-inner font-mono text-xs">
-            <h3 className="font-semibold text-slate-100 flex items-center gap-2 mb-3">
-              <MousePointer2 className="h-4 w-4" /> Final Coordinates
-            </h3>
-            {devCoords ? (
-              <div className="space-y-1.5 opacity-90">
-                <p className="text-slate-300">ID: <span className="text-white font-bold">{devCoords.id}</span></p>
-                <p>x: <span className="text-yellow-300">{Math.round(devCoords.x)}</span>,</p>
-                <p>y: <span className="text-blue-300">{Math.round(devCoords.y)}</span></p>
-                <p className="text-[10px] text-slate-500 mt-2">// Copy these values to DEFAULT_ELEMENTS</p>
-              </div>
-            ) : (
-              <p className="text-slate-500 italic">Drag text to reveal X,Y...</p>
-            )}
-          </Card>
-        </div>
-
-      </div>
+      {/* Developer Logs */}
+      {devCoords && (
+          <div className="mt-8 p-3 bg-slate-900 rounded-xl text-green-400 font-mono text-[10px] shadow-inner">
+             <div className="flex items-center gap-2 text-white mb-1"><MousePointer2 className="h-3 w-3"/> Coordinates</div>
+             ID: {devCoords.id} | X: {Math.round(devCoords.x)} | Y: {Math.round(devCoords.y)}
+          </div>
+      )}
     </div>
   );
+}
+
+
+// ★★★ Separate Component for Smooth Dragging & Inline Editing ★★★
+function DraggableText({ el, isActive, isEditing, onSelect, onEdit, onStopEdit, updateElement, setDevCoords }: any) {
+    // Separate Framer Motion values to prevent re-render locking
+    const x = useMotionValue(el.x);
+    const y = useMotionValue(el.y);
+    const textRef = useRef<HTMLDivElement>(null);
+    let tapTimer = useRef<number>(0);
+
+    useEffect(() => {
+        x.set(el.x);
+        y.set(el.y);
+    }, [el.x, el.y, x, y]);
+
+    // Handle Double Tap Logic natively
+    const handlePointerDown = () => {
+        const now = Date.now();
+        if (now - tapTimer.current < 300) {
+            onEdit(); // Double tap triggered
+        } else {
+            onSelect(); // Single tap triggered
+        }
+        tapTimer.current = now;
+    };
+
+    // Auto focus when entering edit mode and put cursor at end
+    useEffect(() => {
+        if (isEditing && textRef.current) {
+            textRef.current.focus();
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(textRef.current);
+            range.collapse(false); // cursor to the end
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+    }, [isEditing]);
+
+    return (
+        <motion.div
+            style={{ x, y, position: 'absolute', top: 0, left: 0 }}
+            drag={!isEditing} // Edit করার সময় Drag বন্ধ
+            dragMomentum={false}
+            onPointerDown={handlePointerDown}
+            onDragEnd={() => {
+                const finalX = x.get();
+                const finalY = y.get();
+                updateElement(el.id, { x: finalX, y: finalY });
+                setDevCoords({ id: el.id, x: finalX, y: finalY });
+            }}
+            className="z-10"
+        >
+            {/* CSS Transform used to center the text exactly at the X,Y coordinate */}
+            <div 
+               className="relative"
+               style={{ transform: 'translateX(-50%)' }} 
+            >
+                <div 
+                    ref={textRef}
+                    contentEditable={isEditing}
+                    suppressContentEditableWarning
+                    onBlur={(e) => {
+                        updateElement(el.id, { text: e.currentTarget.innerText });
+                        onStopEdit();
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault(); // Prevent new lines
+                            textRef.current?.blur();
+                        }
+                    }}
+                    className={`font-bold text-center whitespace-nowrap outline-none transition-all ${isActive && !isEditing ? 'ring-2 ring-primary ring-dashed ring-offset-4 ring-offset-transparent rounded-sm' : ''} ${isEditing ? 'bg-black/40 px-2 rounded-sm ring-2 ring-white' : ''}`}
+                    style={{ 
+                        fontSize: el.fontSize, 
+                        color: el.color, 
+                        textShadow: el.shadow ? '2px 3px 6px rgba(0,0,0,0.8), 0px 0px 10px rgba(0,0,0,0.6)' : 'none',
+                        cursor: isEditing ? 'text' : 'grab'
+                    }}
+                >
+                    {el.text}
+                </div>
+            </div>
+        </motion.div>
+    );
 }

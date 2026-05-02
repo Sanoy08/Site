@@ -2,7 +2,6 @@
 
 import type { Metadata, Viewport } from 'next';
 import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider';
-// ★ Atma এবং Galada ইমপোর্ট করা হলো
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico, Atma, Galada } from 'next/font/google';
 import './globals.css';
 import DeviceEnforcer from '@/components/DeviceEnforcer';
@@ -26,24 +25,10 @@ const amarante = Amarante({ subsets: ['latin'], display: 'swap', variable: '--fo
 const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat', weight: ['900'] });
 const pacifico = Pacifico({ subsets: ['latin'], variable: '--font-pacifico', weight: '400' });
 
-// ★ Bengali Fonts Config
-const anekBangla = Anek_Bangla({ 
-  subsets: ['bengali'], 
-  variable: '--font-anek-bangla',
-  weight: ['400', '500', '600', '700'] 
-});
-
-const atma = Atma({
-  subsets: ['bengali'],
-  variable: '--font-atma',
-  weight: ['400', '600', '700']
-});
-
-const galada = Galada({
-  subsets: ['bengali'],
-  variable: '--font-galada',
-  weight: '400'
-});
+// Bengali Fonts Config
+const anekBangla = Anek_Bangla({ subsets: ['bengali'], variable: '--font-anek-bangla', weight: ['400', '500', '600', '700'] });
+const atma = Atma({ subsets: ['bengali'], variable: '--font-atma', weight: ['400', '600', '700'] });
+const galada = Galada({ subsets: ['bengali'], variable: '--font-galada', weight: '400' });
 
 export const metadata: Metadata = {
   title: "Bumba's Kitchen",
@@ -65,7 +50,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* ★ Add new font variables to body */}
+      
+      {/* ★ POSTER MAKER-এর জন্য Google Fonts (html2canvas এটা ছাড়া কাজ করবে না) ★ */}
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@100..800&family=Atma:wght@300;400;500;600;700&family=Galada&display=swap" rel="stylesheet" />
+      </head>
+
       <body className={cn(
           'font-sans antialiased', 
           poppins.variable, 
@@ -76,7 +68,7 @@ export default function RootLayout({
           atma.variable,
           galada.variable
       )}>
-          {/* ... আপনার আগের সব কোড যেমন ছিল তেমনই থাকবে ... */}
+          
           <div className="hidden" aria-hidden="true">
             <video src="/images/loader.mp4" preload="auto" muted width={0} height={0} />
           </div>

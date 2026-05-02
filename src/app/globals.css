@@ -168,24 +168,24 @@ html, body {
 
 
 @font-face {
-  font-family: 'Karu Ahasan';
-  src: url('/fonts/Karu-Ahasan-Unicode.woff2') format('woff2');
+  font-family: 'Karu Ahasan Unicode';
+  src: url('/fonts/Karu Ahasan Unicode.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Li Shohid Barkat';
-  src: url('/fonts/Li-Shohid-Barkat-Unicode.woff2') format('woff2');
+  font-family: 'Li Shohid Barkat Unicode';
+  src: url('/fonts/Li Shohid Barkat Unicode.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Shorif Ador';
-  src: url('/fonts/Shorif-Ador-Unicode.woff2') format('woff2');
+  font-family: 'Shorif Ador Unicode';
+  src: url('/fonts/Shorif Ador Unicode.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -193,7 +193,7 @@ html, body {
 
 @font-face {
   font-family: 'Shorif Jonota';
-  src: url('/fonts/Shorif-Jonota.woff2') format('woff2');
+  src: url('/fonts/Shorif Jonota.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

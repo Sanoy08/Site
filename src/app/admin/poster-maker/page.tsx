@@ -10,18 +10,19 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 
+// Background Presets
 const PRESETS = [
   'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop', 
   'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop', 
   'https://images.unsplash.com/photo-1563379926898-05f45c51040c?q=80&w=1000&auto=format&fit=crop'
 ];
 
-// ★ Custom Bengali Fonts Dropdown
+// ★ Updated Bengali Fonts Dropdown
 const FONTS = [
   { name: 'System Default', value: 'sans-serif' },
-  { name: 'Karu Ahasan', value: '"Karu Ahasan", sans-serif' },
-  { name: 'Li Shohid Barkat', value: '"Li Shohid Barkat", sans-serif' },
-  { name: 'Shorif Ador', value: '"Shorif Ador", sans-serif' },
+  { name: 'Karu Ahasan', value: '"Karu Ahasan Unicode", sans-serif' },
+  { name: 'Li Shohid Barkat', value: '"Li Shohid Barkat Unicode", sans-serif' },
+  { name: 'Shorif Ador', value: '"Shorif Ador Unicode", sans-serif' },
   { name: 'Shorif Jonota', value: '"Shorif Jonota", sans-serif' }
 ];
 
@@ -32,16 +33,16 @@ type TextElement = {
   y: number;
   fontSize: number;
   color: string;
-  shadow: boolean;
   align: 'left' | 'center' | 'right';
   fontFamily: string;
 };
 
+// No shadows, flat text defaults
 const DEFAULT_ELEMENTS: TextElement[] = [
-  { id: 'heading', text: 'বারের স্পেশাল লাঞ্চ/ডিনার', x: 180, y: 50, fontSize: 24, color: '#FFD700', shadow: true, align: 'center', fontFamily: 'sans-serif' },
-  { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 36, color: '#FFFFFF', shadow: true, align: 'center', fontFamily: 'sans-serif' },
-  { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 170, fontSize: 42, color: '#4CAF50', shadow: true, align: 'center', fontFamily: 'sans-serif' },
-  { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 14, color: '#FF5252', shadow: false, align: 'center', fontFamily: 'sans-serif' },
+  { id: 'heading', text: 'বারের স্পেশাল লাঞ্চ/ডিনার', x: 180, y: 50, fontSize: 24, color: '#FFD700', align: 'center', fontFamily: '"Shorif Jonota", sans-serif' },
+  { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 36, color: '#FFFFFF', align: 'center', fontFamily: '"Shorif Jonota", sans-serif' },
+  { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 170, fontSize: 42, color: '#4CAF50', align: 'center', fontFamily: '"Shorif Jonota", sans-serif' },
+  { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 14, color: '#FF5252', align: 'center', fontFamily: '"Shorif Jonota", sans-serif' },
 ];
 
 export default function PosterMaker() {
@@ -113,7 +114,7 @@ export default function PosterMaker() {
             link.download = `BK-Offer-${new Date().getTime()}.jpg`;
             link.click();
         } catch (e) {
-            // Silent fail
+            console.error("Failed to generate poster", e);
         }
     }, 100);
   };
@@ -152,7 +153,7 @@ export default function PosterMaker() {
                  }
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/60 pointer-events-none" />
+              {/* Overlay removed as requested */}
 
               {elements.map((el) => {
                 const isActive = activeId === el.id;
@@ -186,8 +187,8 @@ export default function PosterMaker() {
                       fontFamily: el.fontFamily,
                       color: el.color,
                       textAlign: el.align,
-                      fontWeight: 'bold',
-                      textShadow: el.shadow ? '2px 3px 6px rgba(0,0,0,0.8), 0px 0px 10px rgba(0,0,0,0.6)' : 'none',
+                      fontWeight: 'normal', // Removed bold to let custom fonts shine
+                      textShadow: 'none', // No shadow/glow
                       cursor: isEditing ? 'text' : 'grab',
                       whiteSpace: 'nowrap',
                       touchAction: 'none',
@@ -209,7 +210,7 @@ export default function PosterMaker() {
                                 fontSize: `${el.fontSize}px`,
                                 fontFamily: el.fontFamily,
                                 textAlign: el.align,
-                                textShadow: 'inherit',
+                                textShadow: 'none',
                                 width: `${el.text.length + 2}ch` 
                             }}
                         />

@@ -160,10 +160,16 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       setIsFilterOpen(false); 
   };
 
+    // ★ আগের কোডটা ডিলিট করে এটা বসান ★
   const handleCategoryChange = (category: string) => {
-      if (category === 'All') router.push('/menus');
-      else router.push(`/menus?category=${category.toLowerCase()}`);
+      // ১. ক্লিক করা মাত্রই ইনস্ট্যান্ট UI আপডেট (কোনো ডিলে নেই)
+      setActiveCategory(category);
+      
+      // ২. সাইলেন্টলি URL আপডেট (Next.js রাউটারকে বাইপাস করে)
+      const newUrl = category === 'All' ? '/menus' : `/menus?category=${category.toLowerCase()}`;
+      window.history.pushState(null, '', newUrl);
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50/50">

@@ -2,7 +2,8 @@
 
 import type { Metadata, Viewport } from 'next';
 import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider';
-import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico } from 'next/font/google';
+// ★ Atma এবং Galada ইমপোর্ট করা হলো
+import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico, Atma, Galada } from 'next/font/google';
 import './globals.css';
 import DeviceEnforcer from '@/components/DeviceEnforcer';
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -15,41 +16,33 @@ import GlobalLoader from '@/components/GlobalLoader';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
-import AppUrlListener from '@/components/AppUrlListener'; // ★ ১. ইম্পোর্ট করা হলো
+import AppUrlListener from '@/components/AppUrlListener'; 
 import { Chatbot } from "@/components/Chatbot";
-import { AppUpdater } from '@/components/AppUpdater'; // ইমপোর্ট
-import StatusBarLogic from '@/components/StatusBarLogic'; // ★ Import This
+import { AppUpdater } from '@/components/AppUpdater'; 
+import StatusBarLogic from '@/components/StatusBarLogic'; 
 
-const poppins = Poppins({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-sans',
-  weight: ['400', '500', '600', '700'],
-});
+const poppins = Poppins({ subsets: ['latin'], display: 'swap', variable: '--font-sans', weight: ['400', '500', '600', '700'] });
+const amarante = Amarante({ subsets: ['latin'], display: 'swap', variable: '--font-headline', weight: '400' });
+const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat', weight: ['900'] });
+const pacifico = Pacifico({ subsets: ['latin'], variable: '--font-pacifico', weight: '400' });
 
-const amarante = Amarante({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-headline',
-  weight: '400',
-});
-
-const montserrat = Montserrat({ 
-  subsets: ['latin'], 
-  variable: '--font-montserrat',
-  weight: ['900'] 
-});
-
+// ★ Bengali Fonts Config
 const anekBangla = Anek_Bangla({ 
   subsets: ['bengali'], 
   variable: '--font-anek-bangla',
-  weight: ['500'] 
+  weight: ['400', '500', '600', '700'] 
 });
 
-const pacifico = Pacifico({
-  subsets: ['latin'],
-  variable: '--font-pacifico',
-  weight: '400',
+const atma = Atma({
+  subsets: ['bengali'],
+  variable: '--font-atma',
+  weight: ['400', '600', '700']
+});
+
+const galada = Galada({
+  subsets: ['bengali'],
+  variable: '--font-galada',
+  weight: '400'
 });
 
 export const metadata: Metadata = {
@@ -72,29 +65,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      {/* ★ Add new font variables to body */}
       <body className={cn(
           'font-sans antialiased', 
           poppins.variable, 
           amarante.variable,
           montserrat.variable,
           anekBangla.variable,
-          pacifico.variable
+          pacifico.variable,
+          atma.variable,
+          galada.variable
       )}>
-          
-          {/* ★★★ VIDEO PRELOAD TRICK ★★★ */}
+          {/* ... আপনার আগের সব কোড যেমন ছিল তেমনই থাকবে ... */}
           <div className="hidden" aria-hidden="true">
-            <video 
-              src="/images/loader.mp4" 
-              preload="auto" 
-              muted 
-              width={0} 
-              height={0} 
-            />
+            <video src="/images/loader.mp4" preload="auto" muted width={0} height={0} />
           </div>
 
-          {/* ★★★ ২. Deep Link Listener এখানে বসানো হলো ★★★ */}
           <AppUrlListener />
-          <StatusBarLogic /> {/* ★ Add StatusBarLogic Component Here ★ */}
+          <StatusBarLogic /> 
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />

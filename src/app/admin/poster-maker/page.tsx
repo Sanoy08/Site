@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 
-// Background Presets
 const PRESETS = [
   'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop', 
   'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop', 
@@ -38,7 +37,6 @@ type TextElement = {
   fontFamily: string;
 };
 
-// Center align (x: 180 is the middle of 360px canvas)
 const DEFAULT_ELEMENTS: TextElement[] = [
   { id: 'heading', text: 'বারের স্পেশাল লাঞ্চ/ডিনার', x: 180, y: 50, fontSize: 24, color: '#FFD700', shadow: true, align: 'center', fontFamily: 'sans-serif' },
   { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 36, color: '#FFFFFF', shadow: true, align: 'center', fontFamily: 'sans-serif' },
@@ -51,7 +49,7 @@ export default function PosterMaker() {
   const [selectedBg, setSelectedBg] = useState(PRESETS[0]);
   
   const [elements, setElements] = useState<TextElement[]>(DEFAULT_ELEMENTS);
-  const [history, setHistory] = useState<TextElement[][]>([]); // ★ Undo History State
+  const [history, setHistory] = useState<TextElement[][]>([]); 
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,7 +63,6 @@ export default function PosterMaker() {
     return () => { document.body.style.overscrollBehaviorY = 'auto'; };
   }, [activeId, editingId]);
 
-  // ★ Save history before making changes
   const saveHistory = () => {
     setHistory(prev => [...prev, elements]);
   };
@@ -87,7 +84,6 @@ export default function PosterMaker() {
     setElements(elements.map(el => el.id === id ? { ...el, text: newText } : el));
   };
 
-  // ★ Quick Align Functions
   const alignText = (alignment: 'left' | 'center' | 'right') => {
     if (!activeId) return;
     saveHistory();
@@ -100,11 +96,9 @@ export default function PosterMaker() {
   const handleDownload = async () => {
     if (!posterRef.current) return;
     
-    // সিলেকশন বর্ডার সরানোর জন্য
     setActiveId(null);
     setEditingId(null);
     
-    // বর্ডার রিমুভ হওয়ার জন্য একটু সময় দেওয়া হলো
     setTimeout(async () => {
         try {
             const canvas = await html2canvas(posterRef.current!, {
@@ -119,7 +113,7 @@ export default function PosterMaker() {
             link.download = `BK-Offer-${new Date().getTime()}.jpg`;
             link.click();
         } catch (e) {
-            console.error("Failed to generate poster", e);
+            // Silent fail
         }
     }, 100);
   };
@@ -134,7 +128,6 @@ export default function PosterMaker() {
           <LayoutTemplate className="h-6 w-6 text-primary" /> Poster Maker
         </h1>
         <div className="flex gap-2">
-            {/* ★ Undo Button ★ */}
             <Button variant="outline" onClick={handleUndo} disabled={history.length === 0} className="h-9 px-3">
                 <Undo2 className="h-4 w-4" />
             </Button>
@@ -176,7 +169,7 @@ export default function PosterMaker() {
                     onPointerDown={() => {
                         if (!isEditing && activeId !== el.id) setActiveId(el.id);
                     }}
-                    onDragStart={() => saveHistory()} // Save history before drag
+                    onDragStart={() => saveHistory()}
                     onDoubleClick={() => {
                         setActiveId(el.id);
                         setEditingId(el.id);
@@ -198,7 +191,6 @@ export default function PosterMaker() {
                       cursor: isEditing ? 'text' : 'grab',
                       whiteSpace: 'nowrap',
                       touchAction: 'none',
-                      // ★ Centering Hack for Perfect Alignment ★
                       translateX: '-50%', 
                       translateY: '-50%'
                     }}
@@ -270,21 +262,24 @@ export default function PosterMaker() {
                             </Button>
                         </div>
 
-                        {/* ★ Custom Font Dropdown ★ */}
+                        {/* Custom Font Dropdown */}
                         <div className="space-y-2">
                             <Label className="text-xs font-medium flex items-center gap-1"><Type className="h-3 w-3"/> Font Style</Label>
                             <select 
                                 value={activeElement.fontFamily}
                                 onChange={(e) => { saveHistory(); updateActiveElement({ fontFamily: e.target.value }); }}
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                style={{ fontFamily: activeElement.fontFamily }}
                             >
                                 {FONTS.map(font => (
-                                    <option key={font.name} value={font.value}>{font.name}</option>
+                                    <option key={font.name} value={font.value} style={{ fontFamily: font.value }}>
+                                        {font.name}
+                                    </option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* ★ Quick Align Options ★ */}
+                        {/* Quick Align Options */}
                         <div className="space-y-2">
                             <Label className="text-xs font-medium">Quick Align</Label>
                             <div className="flex gap-2">

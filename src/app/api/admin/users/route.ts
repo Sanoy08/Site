@@ -35,25 +35,22 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Optimized Aggregation Pipeline
-    // Strategy: Filter -> Sort -> Skip/Limit -> THEN Lookup Orders (Heavy operation last)
     const usersData = await db.collection(USERS_COLLECTION).aggregate([
       { $match: matchQuery },
       
-      // Get Total Count (for pagination UI) and Data in one query using $facet
       {
         $facet: {
           metadata: [{ $count: "total" }],
           data: [
-            { $sort: { createdAt: -1 } }, // Newest users first
+            { $sort: { createdAt: -1 } }, 
             { $skip: skip },
             { $limit: limit },
             
-            // NOW perform the heavy lookup only for these few users
             {
               $lookup: {
                 from: ORDERS_COLLECTION,
                 localField: '_id',
-                foreignField: 'userId', // Make sure your Order objects actually use 'userId' (ObjectId)
+                foreignField: 'userId', 
                 as: 'orders'
               }
             },
@@ -64,7 +61,7 @@ export async function GET(request: NextRequest) {
                 role: 1,
                 phone: 1,
                 createdAt: 1,
-                // Calculate stats only for this page
+                isVerified: 1, // ★ নতুন যোগ করা হলো
                 totalSpent: { $sum: "$orders.FinalPrice" },
                 lastOrder: { $max: "$orders.Timestamp" },
                 orderCount: { $size: "$orders" }
@@ -86,6 +83,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       role: user.role || 'customer',
       phone: user.phone || 'N/A',
+      isVerified: user.isVerified === true, // ★ ডেটা ফরম্যাট করা হলো
       totalSpent: user.totalSpent || 0,
       lastOrder: user.lastOrder ? new Date(user.lastOrder).toISOString() : null,
       orderCount: user.orderCount || 0,

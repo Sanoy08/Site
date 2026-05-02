@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { RefreshCcw, Loader2, Mail, Phone, Users, Search, ShoppingBag, IndianRupee, ChevronLeft, ChevronRight } from "lucide-react";
+import { RefreshCcw, Loader2, Mail, Phone, Users, Search, ShoppingBag, IndianRupee, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -20,6 +20,7 @@ type User = {
   email: string;
   role: string;
   phone: string;
+  isVerified: boolean; // ★ টাইপ ডিফাইন করা হলো
   lastOrder: string | null;
   totalSpent: number;
   orderCount: number;
@@ -77,7 +78,6 @@ export default function AdminUsersPage() {
 
   const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'U';
 
-  // ★ Helper: ডামি ইমেল লুকানোর জন্য ফাংশন
   const isRealEmail = (email: string) => {
     return email && !email.includes('no-email.com');
   };
@@ -102,7 +102,6 @@ export default function AdminUsersPage() {
         <div className="flex w-full sm:w-auto gap-3">
             <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                {/* ★ আপডেট: প্লেইসহোল্ডার থেকে ইমেল সরানো হলো */}
                 <Input 
                     placeholder="Search name, phone..." 
                     className="pl-9 bg-background" 
@@ -125,13 +124,21 @@ export default function AdminUsersPage() {
                 {users.map(user => (
                     <Card key={user.id} className="border shadow-sm">
                         <div className="p-4 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-12 w-12 border shadow-sm">
+                            <div className="flex items-start gap-3">
+                                <Avatar className="h-12 w-12 border shadow-sm mt-1">
                                     <AvatarImage src="" />
                                     <AvatarFallback className="bg-primary/10 text-primary font-bold">{getInitials(user.name)}</AvatarFallback>
                                 </Avatar>
-                                <div>
-                                    <p className="font-bold text-foreground">{user.name}</p>
+                                <div className="flex-1">
+                                    {/* ★ নামের পাশে Unverified বক্স */}
+                                    <div className="flex items-center flex-wrap gap-2">
+                                        <p className="font-bold text-foreground">{user.name}</p>
+                                        {!user.isVerified && (
+                                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider">
+                                                <AlertCircle className="w-3 h-3" /> Unverified
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex gap-2 items-center">
                                         <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="text-[10px] px-1.5 h-5 mt-1">
                                             {user.role}
@@ -142,11 +149,9 @@ export default function AdminUsersPage() {
                             </div>
                             
                             <div className="space-y-1.5 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                                {/* ★ আপডেট: ফোন নম্বরকে প্রাধান্য দেওয়া হলো */}
                                 <div className="flex items-center gap-2 font-medium text-foreground">
                                     <Phone className="h-3.5 w-3.5 text-primary" /> {user.phone}
                                 </div>
-                                {/* ★ আপডেট: শুধুমাত্র রিয়েল ইমেল হলে দেখাবে */}
                                 {isRealEmail(user.email) && (
                                     <div className="flex items-center gap-2 text-xs">
                                         <Mail className="h-3.5 w-3.5 text-muted-foreground" /> {user.email}
@@ -197,20 +202,26 @@ export default function AdminUsersPage() {
                                 <TableRow key={user.id} className="hover:bg-muted/20">
                                     <TableCell className="pl-6 py-3">
                                         <div className="flex items-center gap-3">
-                                        <Avatar className="h-10 w-10 border shadow-sm">
-                                            <AvatarImage src="" />
-                                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">{getInitials(user.name)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="font-medium text-sm">{user.name}</div>
+                                            <Avatar className="h-10 w-10 border shadow-sm">
+                                                <AvatarImage src="" />
+                                                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">{getInitials(user.name)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col items-start gap-1">
+                                                <span className="font-medium text-sm">{user.name}</span>
+                                                {/* ★ নামের নিচে Unverified বক্স */}
+                                                {!user.isVerified && (
+                                                    <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-200 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider">
+                                                        <AlertCircle className="w-2.5 h-2.5" /> Unverified
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
-                                            {/* ★ আপডেট: ফোন নম্বর মেইন করা হলো */}
                                             <div className="flex items-center gap-2 text-sm font-medium">
                                                 <Phone className="h-3.5 w-3.5 text-primary" /> {user.phone}
                                             </div>
-                                            {/* ★ আপডেট: রিয়েল ইমেল না হলে লুকানো হবে */}
                                             {isRealEmail(user.email) && (
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                     <Mail className="h-3 w-3 text-muted-foreground" /> {user.email}

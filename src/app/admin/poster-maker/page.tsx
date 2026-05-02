@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { Download, LayoutTemplate, PaintBucket, RotateCcw, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Type, Code } from 'lucide-react';
+import { Download, LayoutTemplate, RotateCcw, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
 
 // ★ Google Fonts Dropdown
 const FONTS = [
@@ -29,7 +30,7 @@ type TextElement = {
   fontFamily: string;
 };
 
-// ★ PRESETS ARCHITECTURE (Image + Respective Elements)
+// ★ PRESETS ARCHITECTURE
 type PosterPreset = {
   id: string;
   bgUrl: string;
@@ -85,9 +86,7 @@ export default function PosterMaker() {
     return () => { document.body.style.overscrollBehaviorY = 'auto'; };
   }, [activeId, editingId]);
 
-  const saveHistory = () => {
-    setHistory(prev => [...prev, elements]);
-  };
+  const saveHistory = () => setHistory(prev => [...prev, elements]);
 
   const handleUndo = () => {
     if (history.length > 0) {
@@ -140,23 +139,45 @@ export default function PosterMaker() {
   const activeElement = elements.find(e => e.id === activeId);
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto pb-20 md:max-w-4xl md:pb-10">
+    <div className="max-w-lg mx-auto md:max-w-4xl space-y-3 pb-10">
       
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2"><LayoutTemplate className="h-6 w-6 text-primary" /> Poster Maker</h1>
+      {/* ★ HEADER (Compact) */}
+      <div className="flex items-center justify-between bg-white dark:bg-card p-3 rounded-xl border shadow-sm">
+        <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
+          <LayoutTemplate className="h-5 w-5 text-primary" /> Poster Maker
+        </h1>
         <div className="flex gap-2">
-            <Button variant="outline" onClick={handleUndo} disabled={history.length === 0} className="h-9 px-3"><Undo2 className="h-4 w-4" /></Button>
-            <Button onClick={handleDownload} className="gap-2 bg-green-600 hover:bg-green-700 h-9 px-3 text-sm"><Download className="h-4 w-4" /> Export</Button>
+            <Button variant="outline" onClick={handleUndo} disabled={history.length === 0} className="h-8 px-2">
+                <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleDownload} className="gap-1.5 bg-green-600 hover:bg-green-700 h-8 px-3 text-xs md:text-sm">
+                <Download className="h-3.5 w-3.5" /> Export
+            </Button>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
+      {/* ★ TOP PRESETS (Horizontal Scroll) */}
+      <Card className="p-3 shadow-sm flex items-center gap-3 overflow-x-auto scrollbar-hide border-primary/10">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0 pl-1">Themes:</span>
+        <div className="flex gap-2">
+          {POSTER_PRESETS.map((preset) => (
+            <div 
+              key={preset.id} 
+              onClick={() => handlePresetChange(preset)} 
+              className={`h-10 w-10 md:h-12 md:w-12 rounded-lg cursor-pointer border-2 shrink-0 bg-muted transition-all ${activePreset.id === preset.id ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`} 
+              style={{ backgroundImage: `url(${preset.bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} 
+            />
+          ))}
+        </div>
+      </Card>
+
+      <div className="flex flex-col md:flex-row gap-3 items-center md:items-start">
         
-        {/* CANVAS */}
-        <div className="w-full flex justify-center">
+        {/* ★ CANVAS SECTION (360x360) */}
+        <div className="w-full flex justify-center shrink-0 md:w-[360px]">
             <div 
               ref={posterRef}
-              className="relative bg-black overflow-hidden shadow-2xl ring-2 ring-border/50 touch-none shrink-0"
+              className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none"
               style={{ width: '360px', height: '360px', backgroundImage: `url(${activePreset.bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
               onClick={(e) => { if (e.target === posterRef.current) { setActiveId(null); setEditingId(null); } }}
             >
@@ -182,7 +203,7 @@ export default function PosterMaker() {
                       fontWeight: 'normal', cursor: isEditing ? 'text' : 'grab', whiteSpace: 'nowrap', touchAction: 'none',
                       translateX: el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%', translateY: '-50%'
                     }}
-                    className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
+                    className={`p-1 ${isActive && !isEditing ? 'ring-1 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
                   >
                     {isEditing ? (
                         <input
@@ -200,98 +221,97 @@ export default function PosterMaker() {
             </div>
         </div>
 
-        {/* CONTROLS */}
-        <div className="w-full space-y-4 max-w-[360px] md:max-w-xs shrink-0">
-          <div className="text-center text-xs text-muted-foreground bg-muted p-2 rounded-lg font-medium">
-             💡 <span className="text-primary font-bold">Double Tap</span> on any text to edit
-          </div>
-
-          <Card className="p-4 shadow-sm space-y-3">
-            <h3 className="font-semibold text-sm flex items-center gap-2"><LayoutTemplate className="h-4 w-4"/> Theme Presets</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {POSTER_PRESETS.map((preset) => (
-                <div key={preset.id} onClick={() => handlePresetChange(preset)} className={`h-14 w-14 rounded-lg cursor-pointer border-2 shrink-0 bg-muted ${activePreset.id === preset.id ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`} style={{ backgroundImage: `url(${preset.bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-              ))}
-            </div>
-          </Card>
-
+        {/* ★ STYLING CONTROLS (Compact Grid View) */}
+        <div className="w-full flex-1 max-w-[360px] md:max-w-full">
+          
           <AnimatePresence mode="popLayout">
-              {activeElement && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
-                      <Card className="p-4 shadow-sm border-primary/20 space-y-5 relative overflow-hidden">
+              {activeElement ? (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                      <Card className="p-3 shadow-sm border-primary/20 relative overflow-hidden bg-card">
                         <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-sm flex items-center gap-2"><PaintBucket className="h-4 w-4 text-primary"/> Styling</h3>
-                            <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => setEditingId(activeId)}><Edit3 className="h-3 w-3 mr-1" /> Edit Text</Button>
-                        </div>
-
-                        {/* FONT DROPDOWN */}
-                        <div className="space-y-2">
-                            <Label className="text-xs font-medium flex items-center gap-1"><Type className="h-3 w-3"/> Font Style</Label>
-                            <select 
-                                value={activeElement.fontFamily}
-                                onChange={(e) => { saveHistory(); updateActiveElement({ fontFamily: e.target.value }); }}
-                                className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary`}
-                                style={{ fontFamily: activeElement.fontFamily }}
-                            >
-                                {FONTS.map(font => (
-                                    <option key={font.name} value={font.value} style={{ fontFamily: font.value }}>{font.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* ALIGN */}
-                        <div className="space-y-2">
-                            <Label className="text-xs font-medium">Quick Align</Label>
-                            <div className="flex gap-2">
-                                <Button size="sm" variant={activeElement.align === 'left' ? 'default' : 'outline'} className="flex-1 h-8" onClick={() => alignText('left')}><AlignLeft className="h-4 w-4" /></Button>
-                                <Button size="sm" variant={activeElement.align === 'center' ? 'default' : 'outline'} className="flex-1 h-8" onClick={() => alignText('center')}><AlignCenter className="h-4 w-4" /></Button>
-                                <Button size="sm" variant={activeElement.align === 'right' ? 'default' : 'outline'} className="flex-1 h-8" onClick={() => alignText('right')}><AlignRight className="h-4 w-4" /></Button>
+                        
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b">
+                            <h3 className="font-semibold text-xs flex items-center gap-1.5 text-primary uppercase tracking-wider">
+                                <Edit3 className="h-3.5 w-3.5"/> Element Styling
+                            </h3>
+                            <div className="text-[10px] text-muted-foreground flex items-center gap-1 bg-muted px-2 py-0.5 rounded">
+                                Double Tap to Edit Text
                             </div>
                         </div>
 
-                        <div className="space-y-3 pt-2 border-t border-border/50">
-                            <div className="flex justify-between"><Label className="text-xs font-medium">Text Size</Label><span className="text-xs text-muted-foreground">{activeElement.fontSize}px</span></div>
-                            <Slider value={[activeElement.fontSize]} min={12} max={120} step={1} onPointerDown={() => saveHistory()} onValueChange={(val) => updateActiveElement({ fontSize: val[0] })} className="my-2" />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs font-medium">Color</Label>
-                            <div className="flex items-center gap-3">
-                                <input type="color" value={activeElement.color} onPointerDown={() => saveHistory()} onChange={(e) => updateActiveElement({ color: e.target.value })} className="h-8 w-full rounded cursor-pointer border-0 p-0" />
-                                <Input value={activeElement.color.toUpperCase()} onChange={(e) => { saveHistory(); updateActiveElement({ color: e.target.value }); }} className="w-24 font-mono text-xs uppercase h-8" />
+                        {/* COMPACT 2x2 GRID FOR CONTROLS */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                            
+                            {/* Font Selection */}
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Type className="h-3 w-3"/> Font</Label>
+                                <select 
+                                    value={activeElement.fontFamily}
+                                    onChange={(e) => { saveHistory(); updateActiveElement({ fontFamily: e.target.value }); }}
+                                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                    style={{ fontFamily: activeElement.fontFamily }}
+                                >
+                                    {FONTS.map(font => <option key={font.name} value={font.value} style={{ fontFamily: font.value }}>{font.name}</option>)}
+                                </select>
                             </div>
+
+                            {/* Alignment */}
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><AlignLeft className="h-3 w-3"/> Align</Label>
+                                <div className="flex gap-1">
+                                    <Button size="sm" variant={activeElement.align === 'left' ? 'default' : 'outline'} className="flex-1 h-8 px-0" onClick={() => alignText('left')}><AlignLeft className="h-3.5 w-3.5" /></Button>
+                                    <Button size="sm" variant={activeElement.align === 'center' ? 'default' : 'outline'} className="flex-1 h-8 px-0" onClick={() => alignText('center')}><AlignCenter className="h-3.5 w-3.5" /></Button>
+                                    <Button size="sm" variant={activeElement.align === 'right' ? 'default' : 'outline'} className="flex-1 h-8 px-0" onClick={() => alignText('right')}><AlignRight className="h-3.5 w-3.5" /></Button>
+                                </div>
+                            </div>
+
+                            {/* Size Slider */}
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Scaling className="h-3 w-3"/> Size</Label>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 rounded">{activeElement.fontSize}px</span>
+                                </div>
+                                <div className="pt-1">
+                                  <Slider value={[activeElement.fontSize]} min={12} max={100} step={1} onPointerDown={() => saveHistory()} onValueChange={(val) => updateActiveElement({ fontSize: val[0] })} />
+                                </div>
+                            </div>
+
+                            {/* Color Picker */}
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Palette className="h-3 w-3"/> Color</Label>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="color" value={activeElement.color} onPointerDown={() => saveHistory()} onChange={(e) => updateActiveElement({ color: e.target.value })}
+                                        className="h-8 w-10 rounded cursor-pointer border-0 p-0 shrink-0"
+                                    />
+                                    <Input value={activeElement.color.toUpperCase()} onChange={(e) => { saveHistory(); updateActiveElement({ color: e.target.value }); }} className="w-full text-xs h-8 font-mono px-2" />
+                                </div>
+                            </div>
+
                         </div>
                       </Card>
                   </motion.div>
+              ) : (
+                  <div className="h-[140px] flex flex-col items-center justify-center text-center p-4 border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground">
+                      <LayoutTemplate className="h-6 w-6 mb-2 opacity-50" />
+                      <p className="text-sm font-medium">No Element Selected</p>
+                      <p className="text-xs opacity-70">Tap on any text inside the canvas to edit styles.</p>
+                  </div>
               )}
           </AnimatePresence>
-
-          <div className="pt-2">
-             <Button variant="outline" onClick={() => { saveHistory(); setElements(activePreset.elements); setActiveId(null);}} className="w-full text-xs"><RotateCcw className="h-3 w-3 mr-2" /> Reset All Changes</Button>
-          </div>
         </div>
       </div>
 
-      {/* ★ DEVELOPER OUTPUT BOX (পরবর্তীতে হাইড করে দেবেন) ★ */}
-      <div className="mt-8 pt-8 border-t border-dashed">
-        <div className="bg-slate-900 rounded-xl p-4 md:p-6 shadow-inner relative group">
-           <div className="flex items-center justify-between mb-4">
-              <h3 className="text-green-400 font-mono text-sm font-semibold flex items-center gap-2"><Code className="h-4 w-4" /> Live Coordinates (For Developer)</h3>
-              <Button 
-                 size="sm" variant="secondary" className="h-7 text-xs" 
-                 onClick={() => {
-                     navigator.clipboard.writeText(JSON.stringify(elements, null, 2));
-                     toast.success("Copied to clipboard!");
-                 }}
-              >
-                  Copy JSON
-              </Button>
+      {/* ★ DEVELOPER OUTPUT BOX (লুকিয়ে রাখতে চাইলে এটা কমেন্ট করে দেবেন) ★ */}
+      <div className="mt-8 pt-4 border-t border-dashed">
+        <div className="bg-slate-900 rounded-xl p-4 shadow-inner relative group">
+           <div className="flex items-center justify-between mb-3">
+              <h3 className="text-green-400 font-mono text-xs font-semibold flex items-center gap-1.5"><Code className="h-3.5 w-3.5" /> Live Coordinates</h3>
+              <Button size="sm" variant="secondary" className="h-6 text-[10px]" onClick={() => { navigator.clipboard.writeText(JSON.stringify(elements, null, 2)); toast.success("Copied!"); }}>Copy JSON</Button>
            </div>
-           <pre className="text-slate-300 font-mono text-[10px] md:text-xs overflow-x-auto whitespace-pre-wrap">
+           <pre className="text-slate-300 font-mono text-[10px] overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto custom-scrollbar">
               {JSON.stringify(elements, null, 2)}
            </pre>
-           <p className="text-slate-500 text-[10px] mt-4 italic">// Copy this JSON and paste it inside the POSTER_PRESETS array in your code to save your design permanently.</p>
         </div>
       </div>
 

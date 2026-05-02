@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, ShoppingBag, Utensils, TicketPercent, Users, 
-  Calendar, ImageIcon, Gift, BarChart3, Send, Settings, Menu, Moon, Sun, LogOut, CalendarDays, FileText, Loader2, Images, X 
+  Calendar, ImageIcon, Gift, BarChart3, Send, Settings, Menu, Moon, Sun, LogOut, CalendarDays, FileText, Loader2,ImagePlus , Images, X 
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/use-auth'; 
@@ -19,6 +19,7 @@ const adminNavLinks = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
   { href: "/custom-invoice", label: "Custom Invoice", icon: FileText },
+  { href: "/poster-maker", label: "Poster Maker", icon: ImagePlus  },
   { href: '/products', label: 'Menu Management', icon: Utensils },
   { href: '/coupons', label: 'Coupons', icon: TicketPercent },
   { href: '/users', label: 'Customers', icon: Users },

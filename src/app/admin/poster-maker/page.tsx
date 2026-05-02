@@ -3,13 +3,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { Download, LayoutTemplate, RotateCcw, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling } from 'lucide-react';
+import { Download, LayoutTemplate, RotateCcw, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
+
+// ★ Color Wheel Import
+import { ChromePicker } from 'react-color';
 
 // ★ Google Fonts Dropdown
 const FONTS = [
@@ -28,6 +31,7 @@ type TextElement = {
   color: string;
   align: 'left' | 'center' | 'right';
   fontFamily: string;
+  rotation: number; // ★ Added rotation property
 };
 
 // ★ PRESETS ARCHITECTURE
@@ -42,30 +46,30 @@ const POSTER_PRESETS: PosterPreset[] = [
     id: 'preset-1',
     bgUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop',
     elements: [
-      { id: 'heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif' },
-      { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif' },
-      { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 170, fontSize: 48, color: '#4CAF50', align: 'center', fontFamily: '"Anek Bangla", sans-serif' },
-      { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 16, color: '#FF5252', align: 'center', fontFamily: '"Anek Bangla", sans-serif' },
+      { id: 'heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 170, fontSize: 48, color: '#4CAF50', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 16, color: '#FF5252', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
     ]
   },
   {
     id: 'preset-2',
     bgUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop',
     elements: [
-      { id: 'heading', text: 'উইকেন্ড পিৎজা অফার', x: 180, y: 80, fontSize: 32, color: '#FF3366', align: 'center', fontFamily: '"Atma", system-ui' },
-      { id: 'menu', text: 'চিকেন চিজ পিৎজা', x: 180, y: 130, fontSize: 36, color: '#FFFFFF', align: 'center', fontFamily: '"Atma", system-ui' },
-      { id: 'price', text: 'সাথে কোল্ড ড্রিংক ফ্রি', x: 180, y: 190, fontSize: 24, color: '#00E5FF', align: 'center', fontFamily: '"Atma", system-ui' },
-      { id: 'deadline', text: 'অর্ডার: রাত ৮টার মধ্যে', x: 180, y: 320, fontSize: 16, color: '#FFFFFF', align: 'center', fontFamily: 'sans-serif' },
+      { id: 'heading', text: 'উইকেন্ড পিৎজা অফার', x: 180, y: 80, fontSize: 32, color: '#FF3366', align: 'center', fontFamily: '"Atma", system-ui', rotation: -5 },
+      { id: 'menu', text: 'চিকেন চিজ পিৎজা', x: 180, y: 130, fontSize: 36, color: '#FFFFFF', align: 'center', fontFamily: '"Atma", system-ui', rotation: 0 },
+      { id: 'price', text: 'সাথে কোল্ড ড্রিংক ফ্রি', x: 180, y: 190, fontSize: 24, color: '#00E5FF', align: 'center', fontFamily: '"Atma", system-ui', rotation: 5 },
+      { id: 'deadline', text: 'অর্ডার: রাত ৮টার মধ্যে', x: 180, y: 320, fontSize: 16, color: '#FFFFFF', align: 'center', fontFamily: 'sans-serif', rotation: 0 },
     ]
   },
   {
     id: 'preset-3',
     bgUrl: 'https://images.unsplash.com/photo-1563379926898-05f45c51040c?q=80&w=1000&auto=format&fit=crop',
     elements: [
-      { id: 'heading', text: 'মিনিমাল ডিনার থালি', x: 40, y: 60, fontSize: 24, color: '#333333', align: 'left', fontFamily: '"Galada", cursive' },
-      { id: 'menu', text: 'মাটন কারি উইথ রাইস', x: 40, y: 110, fontSize: 32, color: '#000000', align: 'left', fontFamily: '"Anek Bangla", sans-serif' },
-      { id: 'price', text: '₹249 Only', x: 40, y: 160, fontSize: 40, color: '#D32F2F', align: 'left', fontFamily: 'sans-serif' },
-      { id: 'deadline', text: 'সীমিত স্টক! দ্রুত অর্ডার করুন', x: 40, y: 320, fontSize: 14, color: '#555555', align: 'left', fontFamily: '"Anek Bangla", sans-serif' },
+      { id: 'heading', text: 'মিনিমাল ডিনার থালি', x: 20, y: 60, fontSize: 24, color: '#333333', align: 'left', fontFamily: '"Galada", cursive', rotation: 0 },
+      { id: 'menu', text: 'মাটন কারি উইথ রাইস', x: 20, y: 110, fontSize: 32, color: '#000000', align: 'left', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'price', text: '₹249 Only', x: 20, y: 160, fontSize: 40, color: '#D32F2F', align: 'left', fontFamily: 'sans-serif', rotation: 0 },
+      { id: 'deadline', text: 'সীমিত স্টক! দ্রুত অর্ডার করুন', x: 20, y: 320, fontSize: 14, color: '#555555', align: 'left', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
     ]
   }
 ];
@@ -80,11 +84,16 @@ export default function PosterMaker() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Snapping Guides State
+  const [snapLines, setSnapLines] = useState({ x: false, y: false });
+  // Color Picker State
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
   useEffect(() => {
-    if (activeId || editingId) document.body.style.overscrollBehaviorY = 'contain';
+    if (activeId || editingId || showColorPicker) document.body.style.overscrollBehaviorY = 'contain';
     else document.body.style.overscrollBehaviorY = 'auto';
     return () => { document.body.style.overscrollBehaviorY = 'auto'; };
-  }, [activeId, editingId]);
+  }, [activeId, editingId, showColorPicker]);
 
   const saveHistory = () => setHistory(prev => [...prev, elements]);
 
@@ -102,6 +111,7 @@ export default function PosterMaker() {
     setElements(preset.elements);
     setActiveId(null);
     setEditingId(null);
+    setShowColorPicker(false);
   };
 
   const updateActiveElement = (updates: Partial<TextElement>) => {
@@ -115,15 +125,16 @@ export default function PosterMaker() {
   const alignText = (alignment: 'left' | 'center' | 'right') => {
     if (!activeId) return;
     saveHistory();
-    let newX = 180;
-    if (alignment === 'left') newX = 20;
-    if (alignment === 'right') newX = 340;
+    let newX = 180; // Default center
+    if (alignment === 'left') newX = 20; 
+    if (alignment === 'center') newX = 180; 
+    if (alignment === 'right') newX = 340; 
     updateActiveElement({ align: alignment, x: newX });
   };
 
   const handleDownload = async () => {
     if (!posterRef.current) return;
-    setActiveId(null); setEditingId(null);
+    setActiveId(null); setEditingId(null); setSnapLines({ x: false, y: false }); setShowColorPicker(false);
     
     setTimeout(async () => {
         try {
@@ -141,7 +152,7 @@ export default function PosterMaker() {
   return (
     <div className="max-w-lg mx-auto md:max-w-4xl space-y-3 pb-10">
       
-      {/* ★ HEADER (Compact) */}
+      {/* HEADER */}
       <div className="flex items-center justify-between bg-white dark:bg-card p-3 rounded-xl border shadow-sm">
         <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
           <LayoutTemplate className="h-5 w-5 text-primary" /> Poster Maker
@@ -156,7 +167,7 @@ export default function PosterMaker() {
         </div>
       </div>
 
-      {/* ★ TOP PRESETS (Horizontal Scroll) */}
+      {/* TOP PRESETS */}
       <Card className="p-3 shadow-sm flex items-center gap-3 overflow-x-auto scrollbar-hide border-primary/10">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0 pl-1">Themes:</span>
         <div className="flex gap-2">
@@ -171,16 +182,26 @@ export default function PosterMaker() {
         </div>
       </Card>
 
-      <div className="flex flex-col md:flex-row gap-3 items-center md:items-start">
+      <div className="flex flex-col md:flex-row gap-3 items-center md:items-start relative">
         
-        {/* ★ CANVAS SECTION (360x360) */}
+        {/* CANVAS SECTION (360x360) */}
         <div className="w-full flex justify-center shrink-0 md:w-[360px]">
             <div 
               ref={posterRef}
               className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none"
               style={{ width: '360px', height: '360px', backgroundImage: `url(${activePreset.bgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-              onClick={(e) => { if (e.target === posterRef.current) { setActiveId(null); setEditingId(null); } }}
+              onClick={(e) => { 
+                if (e.target === posterRef.current) { 
+                  setActiveId(null); 
+                  setEditingId(null); 
+                  setShowColorPicker(false);
+                } 
+              }}
             >
+              {/* Snapping Guide Lines */}
+              {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-[1px] bg-[#00E5FF] border-l border-dashed border-[#00E5FF] z-10 pointer-events-none" />}
+              {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-[1px] bg-[#00E5FF] border-t border-dashed border-[#00E5FF] z-10 pointer-events-none" />}
+
               {elements.map((el) => {
                 const isActive = activeId === el.id;
                 const isEditing = editingId === el.id;
@@ -193,15 +214,39 @@ export default function PosterMaker() {
                     initial={{ x: el.x, y: el.y }}
                     animate={{ x: el.x, y: el.y }}
                     transition={{ type: 'tween', duration: 0 }}
-                    onPointerDown={() => { if (!isEditing && activeId !== el.id) setActiveId(el.id); }}
+                    onPointerDown={() => { 
+                        if (!isEditing && activeId !== el.id) {
+                            setActiveId(el.id);
+                            setShowColorPicker(false); 
+                        }
+                    }}
                     onDragStart={() => saveHistory()}
                     onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
-                    onDragEnd={(e, info) => setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(item.x + info.offset.x), y: Math.round(item.y + info.offset.y) } : item))}
+                    onDrag={(e, info) => {
+                        const currentX = el.x + info.offset.x;
+                        const currentY = el.y + info.offset.y;
+                        setSnapLines({
+                            x: Math.abs(currentX - 180) < 15, 
+                            y: Math.abs(currentY - 180) < 15
+                        });
+                    }}
+                    onDragEnd={(e, info) => {
+                        setSnapLines({ x: false, y: false });
+                        let finalX = el.x + info.offset.x;
+                        let finalY = el.y + info.offset.y;
+                        
+                        if (Math.abs(finalX - 180) < 15) finalX = 180;
+                        if (Math.abs(finalY - 180) < 15) finalY = 180;
+
+                        setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
+                    }}
                     style={{
                       position: 'absolute', top: 0, left: 0,
                       fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily, color: el.color, textAlign: el.align,
                       fontWeight: 'normal', cursor: isEditing ? 'text' : 'grab', whiteSpace: 'nowrap', touchAction: 'none',
-                      translateX: el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%', translateY: '-50%'
+                      // ★ Rotation Added Here ★
+                      translateX: el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%', translateY: '-50%', rotate: el.rotation || 0,
+                      zIndex: isActive ? 20 : 1
                     }}
                     className={`p-1 ${isActive && !isEditing ? 'ring-1 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
                   >
@@ -221,7 +266,7 @@ export default function PosterMaker() {
             </div>
         </div>
 
-        {/* ★ STYLING CONTROLS (Compact Grid View) */}
+        {/* STYLING CONTROLS */}
         <div className="w-full flex-1 max-w-[360px] md:max-w-full">
           
           <AnimatePresence mode="popLayout">
@@ -239,8 +284,7 @@ export default function PosterMaker() {
                             </div>
                         </div>
 
-                        {/* COMPACT 2x2 GRID FOR CONTROLS */}
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-4 relative">
                             
                             {/* Font Selection */}
                             <div className="space-y-1.5">
@@ -276,15 +320,50 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* Color Picker */}
+                            {/* ★ Rotate Slider ★ */}
                             <div className="space-y-1.5">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><RotateCw className="h-3 w-3"/> Rotate</Label>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 rounded">{activeElement.rotation || 0}°</span>
+                                </div>
+                                <div className="pt-1">
+                                  <Slider value={[activeElement.rotation || 0]} min={-180} max={180} step={1} onPointerDown={() => saveHistory()} onValueChange={(val) => updateActiveElement({ rotation: val[0] })} />
+                                </div>
+                            </div>
+
+                            {/* Color Wheel Picker */}
+                            <div className="space-y-1.5 col-span-2 sm:col-span-1">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Palette className="h-3 w-3"/> Color</Label>
-                                <div className="flex items-center gap-2">
-                                    <input 
-                                        type="color" value={activeElement.color} onPointerDown={() => saveHistory()} onChange={(e) => updateActiveElement({ color: e.target.value })}
-                                        className="h-8 w-10 rounded cursor-pointer border-0 p-0 shrink-0"
+                                <div className="flex items-center gap-2 relative">
+                                    <div 
+                                        className="h-8 w-10 rounded cursor-pointer border border-border shadow-sm shrink-0" 
+                                        style={{ backgroundColor: activeElement.color }}
+                                        onClick={() => setShowColorPicker(!showColorPicker)}
                                     />
-                                    <Input value={activeElement.color.toUpperCase()} onChange={(e) => { saveHistory(); updateActiveElement({ color: e.target.value }); }} className="w-full text-xs h-8 font-mono px-2" />
+                                    <Input 
+                                        value={activeElement.color.toUpperCase()} 
+                                        onChange={(e) => { saveHistory(); updateActiveElement({ color: e.target.value }); }} 
+                                        className="w-full text-xs h-8 font-mono px-2" 
+                                    />
+                                    
+                                    {/* Color Wheel Popover */}
+                                    {showColorPicker && (
+                                        <div className="absolute top-10 right-0 sm:left-0 z-50">
+                                            <div className="fixed inset-0" onClick={() => setShowColorPicker(false)} />
+                                            <div className="relative bg-white p-2 rounded-xl shadow-2xl border border-border">
+                                                <div className="flex justify-between items-center pb-2 mb-2 border-b">
+                                                    <span className="text-xs font-semibold">Pick Color</span>
+                                                    <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setShowColorPicker(false)}><X className="h-3 w-3"/></Button>
+                                                </div>
+                                                <ChromePicker 
+                                                    color={activeElement.color} 
+                                                    onChange={(color) => updateActiveElement({ color: color.hex })}
+                                                    onChangeComplete={() => saveHistory()}
+                                                    disableAlpha={true}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -302,7 +381,7 @@ export default function PosterMaker() {
         </div>
       </div>
 
-      {/* ★ DEVELOPER OUTPUT BOX (লুকিয়ে রাখতে চাইলে এটা কমেন্ট করে দেবেন) ★ */}
+      {/* DEVELOPER OUTPUT BOX */}
       <div className="mt-8 pt-4 border-t border-dashed">
         <div className="bg-slate-900 rounded-xl p-4 shadow-inner relative group">
            <div className="flex items-center justify-between mb-3">

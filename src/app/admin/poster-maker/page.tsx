@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { Download, LayoutTemplate, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw } from 'lucide-react';
+import { Download, LayoutTemplate, RotateCcw, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 
-// ★ Color Wheel
+// ★ Color Wheel Import
 import { ChromePicker } from 'react-color';
 
 const FONTS = [
@@ -33,22 +33,22 @@ type TextElement = {
   rotation: number;
 };
 
+// ★ PRESETS ARCHITECTURE
 type PosterPreset = {
   id: string;
   bgUrl: string;
   elements: TextElement[];
 };
 
-// ★ PRESETS
 const POSTER_PRESETS: PosterPreset[] = [
   {
     id: 'preset-1',
     bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/IMG_20260503_075105_urswie.png',
     elements: [
-      { id: 'Dinner', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-      { id: 'Lunch', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
       { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 170, fontSize: 48, color: '#4CAF50', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-      { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 16, color: '#FF5252', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময়\nকাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 16, color: '#FF5252', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
     ]
   },
   {
@@ -82,9 +82,11 @@ export default function PosterMaker() {
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // ★ Snapping Guides State
+  const [snapLines, setSnapLines] = useState({ x: false, y: false });
   const [showColorPicker, setShowColorPicker] = useState(false);
 
-  // Prevent scroll when dragging/editing
   useEffect(() => {
     if (activeId || editingId || showColorPicker) document.body.style.overscrollBehaviorY = 'contain';
     else document.body.style.overscrollBehaviorY = 'auto';
@@ -118,27 +120,26 @@ export default function PosterMaker() {
     setElements(elements.map(el => el.id === id ? { ...el, text: newText } : el));
   };
 
-  // ★ Flawless Alignment Logic
+  // ★ Anchor Point Alignment Logic
   const alignText = (alignment: 'left' | 'center' | 'right') => {
     if (!activeId) return;
     saveHistory();
-    let newX = 180; // Default Center
-    if (alignment === 'left') newX = 20; // Snap to left margin
-    if (alignment === 'right') newX = 340; // Snap to right margin
+    let newX = 180; 
+    if (alignment === 'left') newX = 20; 
+    if (alignment === 'center') newX = 180; 
+    if (alignment === 'right') newX = 340; 
     updateActiveElement({ align: alignment, x: newX });
   };
 
   const handleDownload = async () => {
     if (!posterRef.current) return;
-    setActiveId(null); setEditingId(null); setShowColorPicker(false);
+    setActiveId(null); setEditingId(null); setSnapLines({ x: false, y: false }); setShowColorPicker(false);
     
     toast.loading("Generating 2000x2000 HD Poster...");
 
     setTimeout(async () => {
         try {
-            // ★ MAGIC: 2000px output from 360px container
             const exportScale = 2000 / 360; 
-
             const canvas = await html2canvas(posterRef.current!, { 
                 scale: exportScale, 
                 useCORS: true, 
@@ -184,7 +185,6 @@ export default function PosterMaker() {
               key={preset.id} 
               onClick={() => handlePresetChange(preset)} 
               className={`h-10 w-10 md:h-12 md:w-12 rounded-lg cursor-pointer border-2 shrink-0 bg-muted transition-all ${activePreset.id === preset.id ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`} 
-              // ★ FIX: backgroundSize: '100% 100%' prevents any cropping of image
               style={{ backgroundImage: `url(${preset.bgUrl})`, backgroundSize: '100% 100%', backgroundPosition: 'center' }} 
             />
           ))}
@@ -193,12 +193,11 @@ export default function PosterMaker() {
 
       <div className="flex flex-col md:flex-row gap-3 items-center md:items-start relative">
         
-        {/* ★ CANVAS SECTION */}
+        {/* CANVAS SECTION */}
         <div className="w-full flex justify-center shrink-0 md:w-[360px]">
             <div 
               ref={posterRef}
               className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none"
-              // ★ FIX: backgroundSize: '100% 100%'
               style={{ width: '360px', height: '360px', backgroundImage: `url(${activePreset.bgUrl})`, backgroundSize: '100% 100%', backgroundPosition: 'center' }}
               onClick={(e) => { 
                 if (e.target === posterRef.current) { 
@@ -208,16 +207,23 @@ export default function PosterMaker() {
                 } 
               }}
             >
+              {/* ★ VISIBLE NEON SNAPPING GUIDES ★ */}
+              {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
+              {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
+
               {elements.map((el) => {
                 const isActive = activeId === el.id;
                 const isEditing = editingId === el.id;
+
+                // Multiline textarea support (width & height calculate kora)
+                const lines = el.text.split('\n');
+                const maxLineLength = Math.max(...lines.map(l => l.length), 1);
 
                 return (
                   <motion.div
                     key={el.id}
                     drag={!isEditing}
                     dragMomentum={false}
-                    // ★ Framer motion controls X and Y strictly
                     initial={{ x: el.x, y: el.y }}
                     animate={{ x: el.x, y: el.y }}
                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -229,27 +235,35 @@ export default function PosterMaker() {
                     }}
                     onDragStart={() => saveHistory()}
                     onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
+                    onDrag={(e, info) => {
+                        const currentX = el.x + info.offset.x;
+                        const currentY = el.y + info.offset.y;
+                        setSnapLines({
+                            x: Math.abs(currentX - 180) < 15,
+                            y: Math.abs(currentY - 180) < 15
+                        });
+                    }}
                     onDragEnd={(e, info) => {
+                        setSnapLines({ x: false, y: false });
                         let finalX = el.x + info.offset.x;
                         let finalY = el.y + info.offset.y;
                         
-                        // ★ MAGNETIC SNAPPING (Only snaps on drop to prevent lag)
-                        if (Math.abs(finalX - 180) < 20) finalX = 180; // Center X
-                        if (Math.abs(finalY - 180) < 20) finalY = 180; // Center Y
-                        if (Math.abs(finalX - 20) < 15) finalX = 20;   // Left
-                        if (Math.abs(finalX - 340) < 15) finalX = 340; // Right
+                        // ★ MAGNETIC SNAPPING
+                        if (Math.abs(finalX - 180) < 15) finalX = 180;
+                        if (Math.abs(finalY - 180) < 15) finalY = 180;
 
                         setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
                     }}
                     style={{
-                      position: 'absolute', top: 0, left: 0, // Core wrapper stays at 0,0
+                      position: 'absolute', top: 0, left: 0,
                       touchAction: 'none',
                       zIndex: isActive ? 20 : 1
                     }}
                   >
-                    {/* ★ INNER WRAPPER (Handles Alignment without breaking Drag) ★ */}
+                    {/* ★ INNER WRAPPER (Perfect Anchor Point Alignment) ★ */}
                     <div 
                         style={{
+                            // Transform perfectly handles alignment anchors
                             transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
                             fontSize: `${el.fontSize}px`, 
                             fontFamily: el.fontFamily, 
@@ -257,21 +271,34 @@ export default function PosterMaker() {
                             textAlign: el.align,
                             fontWeight: 'normal', 
                             cursor: isEditing ? 'text' : 'grab', 
-                            whiteSpace: 'nowrap',
-                            textShadow: el.shadow ? '2px 3px 6px rgba(0,0,0,0.8), 0px 0px 10px rgba(0,0,0,0.6)' : 'none',
+                            whiteSpace: 'pre-wrap', // ★ Multiline support
+                            lineHeight: '1.2',
+                            textShadow: 'none',
                         }}
                         className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
                     >
                         {isEditing ? (
-                            <input
-                                autoFocus value={el.text}
+                            // ★ TEXTAREA FOR LINE BREAK (ENTER KEY) SUPPORT ★
+                            <textarea
+                                autoFocus 
+                                value={el.text}
                                 onChange={(e) => handleTextChange(el.id, e.target.value)}
                                 onBlur={() => setEditingId(null)}
-                                onKeyDown={(e) => e.key === 'Enter' && setEditingId(null)}
-                                className="bg-transparent border-none outline-none p-0 m-0 w-full"
-                                style={{ color: el.color, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily, textAlign: el.align, width: `${Math.max(el.text.length, 1) + 2}ch` }}
+                                wrap="off"
+                                className="bg-transparent border-none outline-none p-0 m-0 resize-none overflow-hidden"
+                                style={{ 
+                                    color: el.color, 
+                                    fontSize: `${el.fontSize}px`, 
+                                    fontFamily: el.fontFamily, 
+                                    textAlign: el.align, 
+                                    lineHeight: '1.2',
+                                    width: `${maxLineLength + 2}ch`,
+                                    height: `${lines.length * 1.2}em`
+                                }}
                             />
-                        ) : (<span className="select-none">{el.text}</span>)}
+                        ) : (
+                            <span className="select-none">{el.text}</span>
+                        )}
                     </div>
                   </motion.div>
                 );

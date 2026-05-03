@@ -43,10 +43,10 @@ type PosterPreset = {
 const POSTER_PRESETS: PosterPreset[] = [
   {
     id: 'preset-1',
-    bgUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop',
+    bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/IMG_20260503_075105_urswie.png',
     elements: [
-      { id: 'heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-      { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'Dinner', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
+      { id: 'Lunch', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
       { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 170, fontSize: 48, color: '#4CAF50', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
       { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময় কাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 16, color: '#FF5252', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
     ]

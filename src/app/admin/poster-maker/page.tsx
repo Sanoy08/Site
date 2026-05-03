@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 // ★ Color Wheel Import
 import { ChromePicker } from 'react-color';
 
-// ★ Google Fonts Dropdown
 const FONTS = [
   { name: 'System Default', value: 'sans-serif' },
   { name: 'Anek Bangla', value: '"Anek Bangla", sans-serif' },
@@ -31,7 +30,7 @@ type TextElement = {
   color: string;
   align: 'left' | 'center' | 'right';
   fontFamily: string;
-  rotation: number; // ★ Added rotation property
+  rotation: number;
 };
 
 // ★ PRESETS ARCHITECTURE
@@ -84,9 +83,7 @@ export default function PosterMaker() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Snapping Guides State
   const [snapLines, setSnapLines] = useState({ x: false, y: false });
-  // Color Picker State
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
@@ -122,12 +119,12 @@ export default function PosterMaker() {
     setElements(elements.map(el => el.id === id ? { ...el, text: newText } : el));
   };
 
+  // ★ Alignment Logic Updated (Now perfectly sets anchor point)
   const alignText = (alignment: 'left' | 'center' | 'right') => {
     if (!activeId) return;
     saveHistory();
-    let newX = 180; // Default center
+    let newX = 180; // 360/2 = 180 (Exact Center)
     if (alignment === 'left') newX = 20; 
-    if (alignment === 'center') newX = 180; 
     if (alignment === 'right') newX = 340; 
     updateActiveElement({ align: alignment, x: newX });
   };
@@ -136,14 +133,26 @@ export default function PosterMaker() {
     if (!posterRef.current) return;
     setActiveId(null); setEditingId(null); setSnapLines({ x: false, y: false }); setShowColorPicker(false);
     
+    toast.loading("Generating 2000x2000 HD Poster...");
+
     setTimeout(async () => {
         try {
-            const canvas = await html2canvas(posterRef.current!, { scale: 3, useCORS: true, backgroundColor: '#000' });
+            // ★ MAGIC: scale: 2000 / 360 gives EXACTLY 2000x2000 output image!
+            const exportScale = 2000 / 360; 
+
+            const canvas = await html2canvas(posterRef.current!, { 
+                scale: exportScale, 
+                useCORS: true, 
+                backgroundColor: '#000' 
+            });
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/jpeg', 0.95);
             link.download = `BK-Offer-${new Date().getTime()}.jpg`;
             link.click();
-        } catch (e) {}
+            toast.success("Poster generated!");
+        } catch (e) {
+            toast.error("Error generating poster");
+        }
     }, 100);
   };
 
@@ -162,7 +171,7 @@ export default function PosterMaker() {
                 <Undo2 className="h-4 w-4" />
             </Button>
             <Button onClick={handleDownload} className="gap-1.5 bg-green-600 hover:bg-green-700 h-8 px-3 text-xs md:text-sm">
-                <Download className="h-3.5 w-3.5" /> Export
+                <Download className="h-3.5 w-3.5" /> Export HD
             </Button>
         </div>
       </div>
@@ -184,7 +193,7 @@ export default function PosterMaker() {
 
       <div className="flex flex-col md:flex-row gap-3 items-center md:items-start relative">
         
-        {/* CANVAS SECTION (360x360) */}
+        {/* CANVAS SECTION */}
         <div className="w-full flex justify-center shrink-0 md:w-[360px]">
             <div 
               ref={posterRef}
@@ -211,13 +220,14 @@ export default function PosterMaker() {
                     key={el.id}
                     drag={!isEditing}
                     dragMomentum={false}
+                    // ★ Framer Motion Control (Anchor Point ONLY)
                     initial={{ x: el.x, y: el.y }}
                     animate={{ x: el.x, y: el.y }}
                     transition={{ type: 'tween', duration: 0 }}
                     onPointerDown={() => { 
                         if (!isEditing && activeId !== el.id) {
                             setActiveId(el.id);
-                            setShowColorPicker(false); 
+                            setShowColorPicker(false);
                         }
                     }}
                     onDragStart={() => saveHistory()}
@@ -226,7 +236,7 @@ export default function PosterMaker() {
                         const currentX = el.x + info.offset.x;
                         const currentY = el.y + info.offset.y;
                         setSnapLines({
-                            x: Math.abs(currentX - 180) < 15, 
+                            x: Math.abs(currentX - 180) < 15,
                             y: Math.abs(currentY - 180) < 15
                         });
                     }}
@@ -235,31 +245,45 @@ export default function PosterMaker() {
                         let finalX = el.x + info.offset.x;
                         let finalY = el.y + info.offset.y;
                         
+                        // ★ Apply Snapping
                         if (Math.abs(finalX - 180) < 15) finalX = 180;
                         if (Math.abs(finalY - 180) < 15) finalY = 180;
 
                         setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
                     }}
                     style={{
-                      position: 'absolute', top: 0, left: 0,
-                      fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily, color: el.color, textAlign: el.align,
-                      fontWeight: 'normal', cursor: isEditing ? 'text' : 'grab', whiteSpace: 'nowrap', touchAction: 'none',
-                      // ★ Rotation Added Here ★
-                      translateX: el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%', translateY: '-50%', rotate: el.rotation || 0,
+                      position: 'absolute', top: 0, left: 0, // MUST BE 0, moved by x/y
+                      touchAction: 'none',
                       zIndex: isActive ? 20 : 1
                     }}
-                    className={`p-1 ${isActive && !isEditing ? 'ring-1 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
                   >
-                    {isEditing ? (
-                        <input
-                            autoFocus value={el.text}
-                            onChange={(e) => handleTextChange(el.id, e.target.value)}
-                            onBlur={() => setEditingId(null)}
-                            onKeyDown={(e) => e.key === 'Enter' && setEditingId(null)}
-                            className="bg-transparent border-none outline-none p-0 m-0 w-full"
-                            style={{ color: el.color, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily, textAlign: el.align, width: `${el.text.length + 2}ch` }}
-                        />
-                    ) : (<span className="select-none">{el.text}</span>)}
+                    {/* ★ INNER DIV FOR ALIGNMENT AND ROTATION FIX ★ */}
+                    <div 
+                        style={{
+                            // Transform isolates the visual alignment from the actual anchor point
+                            transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
+                            fontSize: `${el.fontSize}px`, 
+                            fontFamily: el.fontFamily, 
+                            color: el.color, 
+                            textAlign: el.align,
+                            fontWeight: 'normal', 
+                            cursor: isEditing ? 'text' : 'grab', 
+                            whiteSpace: 'nowrap',
+                            textShadow: el.shadow ? '2px 3px 6px rgba(0,0,0,0.8), 0px 0px 10px rgba(0,0,0,0.6)' : 'none',
+                        }}
+                        className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
+                    >
+                        {isEditing ? (
+                            <input
+                                autoFocus value={el.text}
+                                onChange={(e) => handleTextChange(el.id, e.target.value)}
+                                onBlur={() => setEditingId(null)}
+                                onKeyDown={(e) => e.key === 'Enter' && setEditingId(null)}
+                                className="bg-transparent border-none outline-none p-0 m-0 w-full"
+                                style={{ color: el.color, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily, textAlign: el.align, width: `${el.text.length + 2}ch` }}
+                            />
+                        ) : (<span className="select-none">{el.text}</span>)}
+                    </div>
                   </motion.div>
                 );
               })}
@@ -280,7 +304,7 @@ export default function PosterMaker() {
                                 <Edit3 className="h-3.5 w-3.5"/> Element Styling
                             </h3>
                             <div className="text-[10px] text-muted-foreground flex items-center gap-1 bg-muted px-2 py-0.5 rounded">
-                                Double Tap to Edit Text
+                                Double Tap to Edit
                             </div>
                         </div>
 
@@ -320,7 +344,7 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* ★ Rotate Slider ★ */}
+                            {/* Rotate Slider */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><RotateCw className="h-3 w-3"/> Rotate</Label>
@@ -346,7 +370,6 @@ export default function PosterMaker() {
                                         className="w-full text-xs h-8 font-mono px-2" 
                                     />
                                     
-                                    {/* Color Wheel Popover */}
                                     {showColorPicker && (
                                         <div className="absolute top-10 right-0 sm:left-0 z-50">
                                             <div className="fixed inset-0" onClick={() => setShowColorPicker(false)} />

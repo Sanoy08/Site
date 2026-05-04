@@ -10,7 +10,7 @@ export default function StatusBarLogic() {
       const initStatusBar = async () => {
         try {
           // ১. প্রথমে ওভারলে বন্ধ করা (সেফটি)
-          await StatusBar.setOverlaysWebView({ overlay: true });
+          await StatusBar.setOverlaysWebView({ overlay: false });
 
           // ২. রঙ পরিবর্তন: সবুজ -> সাদা
           await StatusBar.setBackgroundColor({ color: '#FFFFFF' });

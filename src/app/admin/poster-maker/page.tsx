@@ -33,7 +33,6 @@ type TextElement = {
   rotation: number;
 };
 
-// ★ PRESETS ARCHITECTURE
 type PosterPreset = {
   id: string;
   bgUrl: string;
@@ -72,7 +71,7 @@ export default function PosterMaker() {
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null); // ★ FIX: Anti-Jitter State
+  const [draggingId, setDraggingId] = useState<string | null>(null); 
   
   const [snapLines, setSnapLines] = useState({ x: false, y: false });
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -110,13 +109,12 @@ export default function PosterMaker() {
     setElements(elements.map(el => el.id === id ? { ...el, text: newText } : el));
   };
 
-  // ★ Perfect Anchor Point Alignment Logic
   const alignText = (alignment: 'left' | 'center' | 'right') => {
     if (!activeId) return;
     saveHistory();
-    let newX = 180; // Default Center Anchor
-    if (alignment === 'left') newX = 20; // 20px padding from left edge
-    if (alignment === 'right') newX = 340; // 20px padding from right edge (360 - 20)
+    let newX = 180;
+    if (alignment === 'left') newX = 20;
+    if (alignment === 'right') newX = 340;
     updateActiveElement({ align: alignment, x: newX });
   };
 
@@ -124,7 +122,7 @@ export default function PosterMaker() {
     if (!posterRef.current) return;
     setActiveId(null); setEditingId(null); setSnapLines({ x: false, y: false }); setShowColorPicker(false);
     
-    toast.loading("Generating 2000x2000 HD Poster...");
+    const loadingToast = toast.loading("Generating HD Poster...");
 
     setTimeout(async () => {
         try {
@@ -138,8 +136,10 @@ export default function PosterMaker() {
             link.href = canvas.toDataURL('image/jpeg', 0.95);
             link.download = `BK-Offer-${new Date().getTime()}.jpg`;
             link.click();
-            toast.success("Poster generated successfully!");
+            toast.dismiss(loadingToast);
+            toast.success("Poster downloaded!");
         } catch (e) {
+            toast.dismiss(loadingToast);
             toast.error("Error generating poster");
         }
     }, 200);
@@ -148,10 +148,11 @@ export default function PosterMaker() {
   const activeElement = elements.find(e => e.id === activeId);
 
   return (
-    <div className="max-w-lg mx-auto md:max-w-4xl space-y-3 pb-10 px-2 sm:px-0">
+    // ★ FIX 1: Container padding reduced for mobile (px-1)
+    <div className="max-w-lg mx-auto md:max-w-4xl space-y-3 pb-10 px-1 sm:px-4">
       
       {/* HEADER */}
-      <div className="flex items-center justify-between bg-white dark:bg-card p-3 rounded-xl border shadow-sm">
+      <div className="flex items-center justify-between bg-white dark:bg-card p-3 rounded-xl border shadow-sm mx-1">
         <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
           <LayoutTemplate className="h-5 w-5 text-primary" /> Poster Maker
         </h1>
@@ -166,7 +167,7 @@ export default function PosterMaker() {
       </div>
 
       {/* TOP PRESETS */}
-      <Card className="p-3 shadow-sm flex items-center gap-3 overflow-x-auto scrollbar-hide border-primary/10">
+      <Card className="p-3 shadow-sm flex items-center gap-3 overflow-x-auto scrollbar-hide border-primary/10 mx-1">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0 pl-1">Themes:</span>
         <div className="flex gap-2">
           {POSTER_PRESETS.map((preset) => (
@@ -182,12 +183,19 @@ export default function PosterMaker() {
 
       <div className="flex flex-col md:flex-row gap-4 items-center md:items-start relative">
         
-        {/* ★ CANVAS SECTION - Fully Responsive Mobile Setup ★ */}
-        <div className="w-full flex justify-center shrink-0 overflow-x-auto scrollbar-hide py-1">
+        {/* ★ FIX 2: Canvas Wrapper Section - ensures no clipping on phone ★ */}
+        <div className="w-full flex justify-center items-center overflow-x-auto scrollbar-hide py-2 px-1">
             <div 
               ref={posterRef}
-              className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none shrink-0"
-              style={{ width: '360px', height: '360px', backgroundImage: `url(${activePreset.bgUrl})`, backgroundSize: '100% 100%', backgroundPosition: 'center' }}
+              className="relative bg-black overflow-hidden shadow-2xl ring-1 ring-border touch-none shrink-0"
+              style={{ 
+                width: '360px', 
+                height: '360px', 
+                backgroundImage: `url(${activePreset.bgUrl})`, 
+                backgroundSize: '100% 100%', 
+                backgroundPosition: 'center',
+                borderRadius: '4px' // Subtle rounding for preview
+              }}
               onClick={(e) => { 
                 if (e.target === posterRef.current) { 
                   setActiveId(null); 
@@ -196,7 +204,7 @@ export default function PosterMaker() {
                 } 
               }}
             >
-              {/* VISIBLE NEON SNAPPING GUIDES */}
+              {/* SNAPPING GUIDES */}
               {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
               {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
 
@@ -214,7 +222,6 @@ export default function PosterMaker() {
                     drag={!isEditing}
                     dragMomentum={false}
                     initial={{ x: el.x, y: el.y }}
-                    // ★ MAGIC JITTER FIX: Disable animate prop entirely while dragging
                     animate={isDragging ? undefined : { x: el.x, y: el.y }}
                     transition={{ type: 'tween', duration: 0 }}
                     onPointerDown={() => { 
@@ -225,7 +232,7 @@ export default function PosterMaker() {
                     }}
                     onDragStart={() => {
                         saveHistory();
-                        setDraggingId(el.id); // Triggers animate drop
+                        setDraggingId(el.id);
                     }}
                     onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
                     onDrag={(e, info) => {
@@ -239,14 +246,10 @@ export default function PosterMaker() {
                     onDragEnd={(e, info) => {
                         setSnapLines({ x: false, y: false });
                         setDraggingId(null);
-                        
                         let finalX = el.x + info.offset.x;
                         let finalY = el.y + info.offset.y;
-                        
-                        // MAGNETIC SNAPPING (Snaps to exactly 180)
                         if (Math.abs(finalX - 180) < 12) finalX = 180;
                         if (Math.abs(finalY - 180) < 12) finalY = 180;
-
                         setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
                     }}
                     style={{
@@ -255,7 +258,6 @@ export default function PosterMaker() {
                       zIndex: isActive ? 20 : 1
                     }}
                   >
-                    {/* INNER WRAPPER FOR ALIGNMENT AND ROTATION */}
                     <div 
                         style={{
                             transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
@@ -267,7 +269,7 @@ export default function PosterMaker() {
                             cursor: isEditing ? 'text' : 'grab', 
                             whiteSpace: 'pre-wrap', 
                             lineHeight: '1.2',
-                            textShadow: 'none',
+                            textShadow: '0px 0px 2px rgba(0,0,0,0.3)',
                         }}
                         className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
                     >
@@ -300,12 +302,10 @@ export default function PosterMaker() {
         </div>
 
         {/* STYLING CONTROLS */}
-        <div className="w-full flex-1 max-w-[360px] md:max-w-full mx-auto">
-          
+        <div className="w-full flex-1 max-w-[360px] md:max-w-full mx-auto px-1">
           <AnimatePresence mode="popLayout">
               {activeElement ? (
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-                      {/* ★ FIX: Removed overflow-hidden so Color Picker can pop up properly */}
                       <Card className="p-3 shadow-sm border-primary/20 relative bg-card rounded-xl">
                         <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-xl" />
                         
@@ -319,8 +319,6 @@ export default function PosterMaker() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-2">
-                            
-                            {/* Font Selection */}
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Type className="h-3 w-3"/> Font</Label>
                                 <select 
@@ -333,7 +331,6 @@ export default function PosterMaker() {
                                 </select>
                             </div>
 
-                            {/* Alignment */}
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><AlignLeft className="h-3 w-3"/> Align</Label>
                                 <div className="flex gap-1">
@@ -343,7 +340,6 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* Size Slider */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Scaling className="h-3 w-3"/> Size</Label>
@@ -354,7 +350,6 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* Rotate Slider */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><RotateCw className="h-3 w-3"/> Rotate</Label>
@@ -365,7 +360,6 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* Color Wheel Picker */}
                             <div className="space-y-1.5 col-span-2 sm:col-span-1 relative">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Palette className="h-3 w-3"/> Color</Label>
                                 <div className="flex items-center gap-2">
@@ -381,7 +375,6 @@ export default function PosterMaker() {
                                     />
                                 </div>
                                 
-                                {/* ★ Color Wheel Popover (Now perfectly positions Above the input) ★ */}
                                 <AnimatePresence>
                                 {showColorPicker && (
                                     <motion.div 
@@ -405,15 +398,14 @@ export default function PosterMaker() {
                                 )}
                                 </AnimatePresence>
                             </div>
-
                         </div>
                       </Card>
                   </motion.div>
               ) : (
-                  <div className="h-[140px] flex flex-col items-center justify-center text-center p-4 border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground">
+                  <div className="h-[140px] flex flex-col items-center justify-center text-center p-4 border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground mx-1">
                       <LayoutTemplate className="h-6 w-6 mb-2 opacity-50" />
                       <p className="text-sm font-medium">No Element Selected</p>
-                      <p className="text-xs opacity-70">Tap on any text inside the canvas to edit styles.</p>
+                      <p className="text-xs opacity-70">Tap text inside the canvas to edit styles.</p>
                   </div>
               )}
           </AnimatePresence>
@@ -421,7 +413,7 @@ export default function PosterMaker() {
       </div>
 
       {/* DEVELOPER OUTPUT BOX */}
-      <div className="mt-8 pt-4 border-t border-dashed">
+      <div className="mt-8 pt-4 border-t border-dashed mx-1">
         <div className="bg-slate-900 rounded-xl p-4 shadow-inner relative group">
            <div className="flex items-center justify-between mb-3">
               <h3 className="text-green-400 font-mono text-xs font-semibold flex items-center gap-1.5"><Code className="h-3.5 w-3.5" /> Live Coordinates</h3>

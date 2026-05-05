@@ -53,9 +53,49 @@ export default function RootLayout({
       
       {/* ★ POSTER MAKER-এর জন্য Google Fonts (html2canvas এটা ছাড়া কাজ করবে না) ★ */}
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@100..800&family=Atma:wght@300;400;500;600;700&family=Galada&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://banglawebfonts.pages.dev" />
+        
+        {/* All Bangla Web Fonts from the list */}
+        <link href="https://banglawebfonts.pages.dev/css/solaiman-lipi.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/kalpurush.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/siyam-rupali.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/hind-siliguri.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/baloo-da-2.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/lohit-bengali.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/tiro-bangla.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/noto-serif-bengali.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/mina.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/bornomala.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/bornomala-vintage.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/ekushey-lal-sabuj.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/adorsho-lipi.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/charukola.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/ab-shapla.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/ekushey-mukto.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/bensen.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/bensen-handwriting.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/ekushey-saraswatii.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/atma.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/charu-chandan.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/ekushey-azad.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/noto-sans-bengali.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/google-sans.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/anek-bangla.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/hoogli.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/bornoporichay.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/aikya.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/kalaa.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/mukti.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/un-bangla.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/tuli.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/alkatra.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/galada.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/sapa.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/somoyer-srot.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/abu-sayed.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/nilima.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/ekush.css" rel="stylesheet" />
+        <link href="https://banglawebfonts.pages.dev/css/ekushey-aloucik.css" rel="stylesheet" />
       </head>
 
       <body className={cn(

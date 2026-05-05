@@ -148,10 +148,10 @@ export default function PosterMaker() {
   const activeElement = elements.find(e => e.id === activeId);
 
   return (
-    <div className="max-w-lg mx-auto md:max-w-4xl space-y-3 pb-10 px-2 sm:px-0">
+    <div className="w-full mx-auto md:max-w-4xl space-y-3 pb-10">
       
       {/* HEADER */}
-      <div className="flex items-center justify-between bg-white dark:bg-card p-3 rounded-xl border shadow-sm">
+      <div className="mx-2 sm:mx-0 flex items-center justify-between bg-white dark:bg-card p-3 rounded-xl border shadow-sm">
         <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
           <LayoutTemplate className="h-5 w-5 text-primary" /> Poster Maker
         </h1>
@@ -166,7 +166,7 @@ export default function PosterMaker() {
       </div>
 
       {/* TOP PRESETS */}
-      <Card className="p-3 shadow-sm flex items-center gap-3 overflow-x-auto scrollbar-hide border-primary/10">
+      <Card className="mx-2 sm:mx-0 p-3 shadow-sm flex items-center gap-3 overflow-x-auto scrollbar-hide border-primary/10">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0 pl-1">Themes:</span>
         <div className="flex gap-2">
           {POSTER_PRESETS.map((preset) => (
@@ -180,10 +180,10 @@ export default function PosterMaker() {
         </div>
       </Card>
 
-      <div className="flex flex-col md:flex-row gap-4 items-center md:items-start relative">
+      <div className="flex flex-col md:flex-row gap-4 items-center md:items-start relative mt-4">
         
-        {/* ★ CANVAS SECTION - Fully Responsive Mobile Setup ★ */}
-        <div className="w-full flex justify-center shrink-0 overflow-x-auto scrollbar-hide py-1">
+        {/* ★ CANVAS SECTION - Fixed padding issue for smaller screens ★ */}
+        <div className="w-full flex justify-center shrink-0 py-1">
             <div 
               ref={posterRef}
               className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none shrink-0"
@@ -300,7 +300,7 @@ export default function PosterMaker() {
         </div>
 
         {/* STYLING CONTROLS */}
-        <div className="w-full flex-1 max-w-[360px] md:max-w-full mx-auto">
+        <div className="w-full flex-1 max-w-[360px] md:max-w-full mx-auto px-2 sm:px-0">
           
           <AnimatePresence mode="popLayout">
               {activeElement ? (
@@ -381,7 +381,7 @@ export default function PosterMaker() {
                                     />
                                 </div>
                                 
-                                {/* ★ Color Wheel Popover (Now perfectly positions Above the input) ★ */}
+                                {/* ★ Color Wheel Popover */}
                                 <AnimatePresence>
                                 {showColorPicker && (
                                     <motion.div 
@@ -410,7 +410,7 @@ export default function PosterMaker() {
                       </Card>
                   </motion.div>
               ) : (
-                  <div className="h-[140px] flex flex-col items-center justify-center text-center p-4 border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground">
+                  <div className="h-[140px] flex flex-col items-center justify-center text-center p-4 border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground mx-2 sm:mx-0">
                       <LayoutTemplate className="h-6 w-6 mb-2 opacity-50" />
                       <p className="text-sm font-medium">No Element Selected</p>
                       <p className="text-xs opacity-70">Tap on any text inside the canvas to edit styles.</p>
@@ -421,7 +421,7 @@ export default function PosterMaker() {
       </div>
 
       {/* DEVELOPER OUTPUT BOX */}
-      <div className="mt-8 pt-4 border-t border-dashed">
+      <div className="mt-8 pt-4 border-t border-dashed px-2 sm:px-0">
         <div className="bg-slate-900 rounded-xl p-4 shadow-inner relative group">
            <div className="flex items-center justify-between mb-3">
               <h3 className="text-green-400 font-mono text-xs font-semibold flex items-center gap-1.5"><Code className="h-3.5 w-3.5" /> Live Coordinates</h3>

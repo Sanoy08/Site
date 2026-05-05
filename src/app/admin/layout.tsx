@@ -106,6 +106,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const currentTitle = adminNavLinks.find(link => link.href === pathname)?.label || 'Admin Panel';
 
+  // ★ Check if current page is Poster Maker to remove padding
+  const isPosterMakerPage = pathname === '/poster-maker';
+
   return (
     <div className="min-h-screen flex bg-[#f0f2f5] dark:bg-[#121212] transition-colors duration-300 font-sans">
       
@@ -207,7 +210,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
         </header>
         
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
+        {/* ★ CONDITIONAL PADDING APPLIED HERE */}
+        <main className={cn(
+            "flex-1 overflow-y-auto custom-scrollbar",
+            isPosterMakerPage ? "py-4 sm:p-6 lg:p-8" : "p-4 sm:p-6 lg:p-8"
+        )}>
             <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <AdminPushSetup />
                 {children}

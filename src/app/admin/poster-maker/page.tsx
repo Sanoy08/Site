@@ -182,124 +182,122 @@ export default function PosterMaker() {
 
       <div className="flex flex-col md:flex-row gap-4 items-center md:items-start relative">
         
-        {/* ★ CANVAS SECTION - Fully Responsive Logic ★ */}
-<div className="w-full flex justify-center items-center overflow-hidden py-4 px-1">
-  <div 
-    className="relative shrink-0 shadow-2xl ring-1 ring-border touch-none origin-center"
-    style={{ 
-      width: '360px', 
-      height: '360px', 
-      // ★ দিস ইজ দ্য ম্যাজিক: ফোনের স্ক্রিন ছোট হলে ক্যানভাস স্কেল ডাউন হবে
-      transform: typeof window !== 'undefined' && window.innerWidth < 380 
-        ? `scale(${(window.innerWidth - 30) / 360})` 
-        : 'scale(1)',
-    }}
-  >
-    <div 
-      ref={posterRef}
-      className="w-full h-full bg-black overflow-hidden relative"
-      style={{ 
-        backgroundImage: `url(${activePreset.bgUrl})`, 
-        backgroundSize: '100% 100%', 
-        backgroundPosition: 'center' 
-      }}
-      onClick={(e) => { 
-        if (e.target === posterRef.current) { 
-          setActiveId(null); 
-          setEditingId(null); 
-          setShowColorPicker(false);
-        } 
-      }}
-    >
-      {/* VISIBLE NEON SNAPPING GUIDES */}
-      {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
-      {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
-
-      {elements.map((el) => {
-        const isActive = activeId === el.id;
-        const isEditing = editingId === el.id;
-        const isDragging = draggingId === el.id;
-        const lines = el.text.split('\n');
-        const maxLineLength = Math.max(...lines.map(l => l.length), 1);
-
-        return (
-          <motion.div
-            key={el.id}
-            drag={!isEditing}
-            dragMomentum={false}
-            initial={{ x: el.x, y: el.y }}
-            animate={isDragging ? undefined : { x: el.x, y: el.y }}
-            transition={{ type: 'tween', duration: 0 }}
-            onPointerDown={() => { 
-                if (!isEditing && activeId !== el.id) {
-                    setActiveId(el.id);
-                    setShowColorPicker(false);
-                }
-            }}
-            onDragStart={() => {
-                saveHistory();
-                setDraggingId(el.id);
-            }}
-            onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
-            onDrag={(e, info) => {
-                const currentX = el.x + info.offset.x;
-                const currentY = el.y + info.offset.y;
-                setSnapLines({
-                    x: Math.abs(currentX - 180) < 12,
-                    y: Math.abs(currentY - 180) < 12
-                });
-            }}
-            onDragEnd={(e, info) => {
-                setSnapLines({ x: false, y: false });
-                setDraggingId(null);
-                let finalX = el.x + info.offset.x;
-                let finalY = el.y + info.offset.y;
-                if (Math.abs(finalX - 180) < 12) finalX = 180;
-                if (Math.abs(finalY - 180) < 12) finalY = 180;
-                setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
-            }}
-            style={{
-              position: 'absolute', top: 0, left: 0,
-              touchAction: 'none',
-              zIndex: isActive ? 20 : 1
-            }}
-          >
-            <div 
-                style={{
-                    transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
-                    fontSize: `${el.fontSize}px`, 
-                    fontFamily: el.fontFamily, 
-                    color: el.color, 
-                    textAlign: el.align,
-                    fontWeight: 'normal', 
-                    cursor: isEditing ? 'text' : 'grab', 
-                    whiteSpace: 'pre-wrap', 
-                    lineHeight: '1.2',
-                }}
-                className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
+        {/* ★ CANVAS SECTION - Fully Responsive Mobile Setup ★ */}
+        <div className="w-full flex justify-center shrink-0 overflow-x-auto scrollbar-hide py-1">
+            <div 
+              ref={posterRef}
+              className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none shrink-0"
+              style={{ width: '360px', height: '360px', backgroundImage: `url(${activePreset.bgUrl})`, backgroundSize: '100% 100%', backgroundPosition: 'center' }}
+              onClick={(e) => { 
+                if (e.target === posterRef.current) { 
+                  setActiveId(null); 
+                  setEditingId(null); 
+                  setShowColorPicker(false);
+                } 
+              }}
             >
-                {isEditing ? (
-                    <textarea
-                        autoFocus 
-                        value={el.text}
-                        onChange={(e) => handleTextChange(el.id, e.target.value)}
-                        onBlur={() => setEditingId(null)}
-                        className="bg-transparent border-none outline-none p-0 m-0 resize-none overflow-hidden block"
-                        style={{ 
-                            color: el.color, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily, textAlign: el.align,
-                            width: `${maxLineLength + 2}ch`, height: `${lines.length * 1.25}em`
+              {/* VISIBLE NEON SNAPPING GUIDES */}
+              {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
+              {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
+
+              {elements.map((el) => {
+                const isActive = activeId === el.id;
+                const isEditing = editingId === el.id;
+                const isDragging = draggingId === el.id;
+
+                const lines = el.text.split('\n');
+                const maxLineLength = Math.max(...lines.map(l => l.length), 1);
+
+                return (
+                  <motion.div
+                    key={el.id}
+                    drag={!isEditing}
+                    dragMomentum={false}
+                    initial={{ x: el.x, y: el.y }}
+                    // ★ MAGIC JITTER FIX: Disable animate prop entirely while dragging
+                    animate={isDragging ? undefined : { x: el.x, y: el.y }}
+                    transition={{ type: 'tween', duration: 0 }}
+                    onPointerDown={() => { 
+                        if (!isEditing && activeId !== el.id) {
+                            setActiveId(el.id);
+                            setShowColorPicker(false);
+                        }
+                    }}
+                    onDragStart={() => {
+                        saveHistory();
+                        setDraggingId(el.id); // Triggers animate drop
+                    }}
+                    onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
+                    onDrag={(e, info) => {
+                        const currentX = el.x + info.offset.x;
+                        const currentY = el.y + info.offset.y;
+                        setSnapLines({
+                            x: Math.abs(currentX - 180) < 12,
+                            y: Math.abs(currentY - 180) < 12
+                        });
+                    }}
+                    onDragEnd={(e, info) => {
+                        setSnapLines({ x: false, y: false });
+                        setDraggingId(null);
+                        
+                        let finalX = el.x + info.offset.x;
+                        let finalY = el.y + info.offset.y;
+                        
+                        // MAGNETIC SNAPPING (Snaps to exactly 180)
+                        if (Math.abs(finalX - 180) < 12) finalX = 180;
+                        if (Math.abs(finalY - 180) < 12) finalY = 180;
+
+                        setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
+                    }}
+                    style={{
+                      position: 'absolute', top: 0, left: 0,
+                      touchAction: 'none',
+                      zIndex: isActive ? 20 : 1
+                    }}
+                  >
+                    {/* INNER WRAPPER FOR ALIGNMENT AND ROTATION */}
+                    <div 
+                        style={{
+                            transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
+                            fontSize: `${el.fontSize}px`, 
+                            fontFamily: el.fontFamily, 
+                            color: el.color, 
+                            textAlign: el.align,
+                            fontWeight: 'normal', 
+                            cursor: isEditing ? 'text' : 'grab', 
+                            whiteSpace: 'pre-wrap', 
+                            lineHeight: '1.2',
+                            textShadow: 'none',
                         }}
-                    />
-                ) : (
-                    <span className="select-none">{el.text}</span>
-                )}
+                        className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
+                    >
+                        {isEditing ? (
+                            <textarea
+                                autoFocus 
+                                value={el.text}
+                                onChange={(e) => handleTextChange(el.id, e.target.value)}
+                                onBlur={() => setEditingId(null)}
+                                wrap="off"
+                                className="bg-transparent border-none outline-none p-0 m-0 resize-none overflow-hidden block"
+                                style={{ 
+                                    color: el.color, 
+                                    fontSize: `${el.fontSize}px`, 
+                                    fontFamily: el.fontFamily, 
+                                    textAlign: el.align, 
+                                    lineHeight: '1.2',
+                                    width: `${maxLineLength + 2}ch`,
+                                    height: `${lines.length * 1.25}em`
+                                }}
+                            />
+                        ) : (
+                            <span className="select-none">{el.text}</span>
+                        )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
-          </motion.div>
-        );
-      })}
-    </div>
-  </div>
-</div>
+        </div>
 
         {/* STYLING CONTROLS */}
         <div className="w-full flex-1 max-w-[360px] md:max-w-full mx-auto">

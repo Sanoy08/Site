@@ -43,7 +43,7 @@ type PosterPreset = {
 const POSTER_PRESETS: PosterPreset[] = [
   {
     id: 'preset-1',
-    bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/IMG_20260503_075105_urswie.png',
+    bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/both_z7nfww.jpg',
     elements: [
       { id: 'heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
       { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
@@ -53,7 +53,7 @@ const POSTER_PRESETS: PosterPreset[] = [
   },
   {
     id: 'preset-2',
-    bgUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop',
+    bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/lunch_oapbyb.jpg',
     elements: [
       { id: 'heading', text: 'উইকেন্ড পিৎজা অফার', x: 180, y: 80, fontSize: 32, color: '#FF3366', align: 'center', fontFamily: '"Atma", system-ui', rotation: -5 },
       { id: 'menu', text: 'চিকেন চিজ পিৎজা', x: 180, y: 130, fontSize: 36, color: '#FFFFFF', align: 'center', fontFamily: '"Atma", system-ui', rotation: 0 },
@@ -61,16 +61,6 @@ const POSTER_PRESETS: PosterPreset[] = [
       { id: 'deadline', text: 'অর্ডার: রাত ৮টার মধ্যে', x: 180, y: 320, fontSize: 16, color: '#FFFFFF', align: 'center', fontFamily: 'sans-serif', rotation: 0 },
     ]
   },
-  {
-    id: 'preset-3',
-    bgUrl: 'https://images.unsplash.com/photo-1563379926898-05f45c51040c?q=80&w=1000&auto=format&fit=crop',
-    elements: [
-      { id: 'heading', text: 'মিনিমাল ডিনার থালি', x: 20, y: 60, fontSize: 24, color: '#333333', align: 'left', fontFamily: '"Galada", cursive', rotation: 0 },
-      { id: 'menu', text: 'মাটন কারি উইথ রাইস', x: 20, y: 110, fontSize: 32, color: '#000000', align: 'left', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-      { id: 'price', text: '₹249 Only', x: 20, y: 160, fontSize: 40, color: '#D32F2F', align: 'left', fontFamily: 'sans-serif', rotation: 0 },
-      { id: 'deadline', text: 'সীমিত স্টক! দ্রুত অর্ডার করুন', x: 20, y: 320, fontSize: 14, color: '#555555', align: 'left', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-    ]
-  }
 ];
 
 export default function PosterMaker() {

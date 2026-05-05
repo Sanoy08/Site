@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { Download, LayoutTemplate, RotateCcw, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw } from 'lucide-react';
+import { Download, LayoutTemplate, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -82,8 +82,8 @@ export default function PosterMaker() {
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null); // ★ FIX: Anti-Jitter State
   
-  // ★ Snapping Guides State
   const [snapLines, setSnapLines] = useState({ x: false, y: false });
   const [showColorPicker, setShowColorPicker] = useState(false);
 
@@ -120,14 +120,13 @@ export default function PosterMaker() {
     setElements(elements.map(el => el.id === id ? { ...el, text: newText } : el));
   };
 
-  // ★ Anchor Point Alignment Logic
+  // ★ Perfect Anchor Point Alignment Logic
   const alignText = (alignment: 'left' | 'center' | 'right') => {
     if (!activeId) return;
     saveHistory();
-    let newX = 180; 
-    if (alignment === 'left') newX = 20; 
-    if (alignment === 'center') newX = 180; 
-    if (alignment === 'right') newX = 340; 
+    let newX = 180; // Default Center Anchor
+    if (alignment === 'left') newX = 20; // 20px padding from left edge
+    if (alignment === 'right') newX = 340; // 20px padding from right edge (360 - 20)
     updateActiveElement({ align: alignment, x: newX });
   };
 
@@ -159,7 +158,7 @@ export default function PosterMaker() {
   const activeElement = elements.find(e => e.id === activeId);
 
   return (
-    <div className="max-w-lg mx-auto md:max-w-4xl space-y-3 pb-10">
+    <div className="max-w-lg mx-auto md:max-w-4xl space-y-3 pb-10 px-2 sm:px-0">
       
       {/* HEADER */}
       <div className="flex items-center justify-between bg-white dark:bg-card p-3 rounded-xl border shadow-sm">
@@ -191,13 +190,13 @@ export default function PosterMaker() {
         </div>
       </Card>
 
-      <div className="flex flex-col md:flex-row gap-3 items-center md:items-start relative">
+      <div className="flex flex-col md:flex-row gap-4 items-center md:items-start relative">
         
-        {/* CANVAS SECTION */}
-        <div className="w-full flex justify-center shrink-0 md:w-[360px]">
+        {/* ★ CANVAS SECTION - Fully Responsive Mobile Setup ★ */}
+        <div className="w-full flex justify-center shrink-0 overflow-x-auto scrollbar-hide py-1">
             <div 
               ref={posterRef}
-              className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none"
+              className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none shrink-0"
               style={{ width: '360px', height: '360px', backgroundImage: `url(${activePreset.bgUrl})`, backgroundSize: '100% 100%', backgroundPosition: 'center' }}
               onClick={(e) => { 
                 if (e.target === posterRef.current) { 
@@ -207,15 +206,15 @@ export default function PosterMaker() {
                 } 
               }}
             >
-              {/* ★ VISIBLE NEON SNAPPING GUIDES ★ */}
+              {/* VISIBLE NEON SNAPPING GUIDES */}
               {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
               {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
 
               {elements.map((el) => {
                 const isActive = activeId === el.id;
                 const isEditing = editingId === el.id;
+                const isDragging = draggingId === el.id;
 
-                // Multiline textarea support (width & height calculate kora)
                 const lines = el.text.split('\n');
                 const maxLineLength = Math.max(...lines.map(l => l.length), 1);
 
@@ -225,32 +224,38 @@ export default function PosterMaker() {
                     drag={!isEditing}
                     dragMomentum={false}
                     initial={{ x: el.x, y: el.y }}
-                    animate={{ x: el.x, y: el.y }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    // ★ MAGIC JITTER FIX: Disable animate prop entirely while dragging
+                    animate={isDragging ? undefined : { x: el.x, y: el.y }}
+                    transition={{ type: 'tween', duration: 0 }}
                     onPointerDown={() => { 
                         if (!isEditing && activeId !== el.id) {
                             setActiveId(el.id);
                             setShowColorPicker(false);
                         }
                     }}
-                    onDragStart={() => saveHistory()}
+                    onDragStart={() => {
+                        saveHistory();
+                        setDraggingId(el.id); // Triggers animate drop
+                    }}
                     onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
                     onDrag={(e, info) => {
                         const currentX = el.x + info.offset.x;
                         const currentY = el.y + info.offset.y;
                         setSnapLines({
-                            x: Math.abs(currentX - 180) < 15,
-                            y: Math.abs(currentY - 180) < 15
+                            x: Math.abs(currentX - 180) < 12,
+                            y: Math.abs(currentY - 180) < 12
                         });
                     }}
                     onDragEnd={(e, info) => {
                         setSnapLines({ x: false, y: false });
+                        setDraggingId(null);
+                        
                         let finalX = el.x + info.offset.x;
                         let finalY = el.y + info.offset.y;
                         
-                        // ★ MAGNETIC SNAPPING
-                        if (Math.abs(finalX - 180) < 15) finalX = 180;
-                        if (Math.abs(finalY - 180) < 15) finalY = 180;
+                        // MAGNETIC SNAPPING (Snaps to exactly 180)
+                        if (Math.abs(finalX - 180) < 12) finalX = 180;
+                        if (Math.abs(finalY - 180) < 12) finalY = 180;
 
                         setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
                     }}
@@ -260,10 +265,9 @@ export default function PosterMaker() {
                       zIndex: isActive ? 20 : 1
                     }}
                   >
-                    {/* ★ INNER WRAPPER (Perfect Anchor Point Alignment) ★ */}
+                    {/* INNER WRAPPER FOR ALIGNMENT AND ROTATION */}
                     <div 
                         style={{
-                            // Transform perfectly handles alignment anchors
                             transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
                             fontSize: `${el.fontSize}px`, 
                             fontFamily: el.fontFamily, 
@@ -271,21 +275,20 @@ export default function PosterMaker() {
                             textAlign: el.align,
                             fontWeight: 'normal', 
                             cursor: isEditing ? 'text' : 'grab', 
-                            whiteSpace: 'pre-wrap', // ★ Multiline support
+                            whiteSpace: 'pre-wrap', 
                             lineHeight: '1.2',
                             textShadow: 'none',
                         }}
                         className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
                     >
                         {isEditing ? (
-                            // ★ TEXTAREA FOR LINE BREAK (ENTER KEY) SUPPORT ★
                             <textarea
                                 autoFocus 
                                 value={el.text}
                                 onChange={(e) => handleTextChange(el.id, e.target.value)}
                                 onBlur={() => setEditingId(null)}
                                 wrap="off"
-                                className="bg-transparent border-none outline-none p-0 m-0 resize-none overflow-hidden"
+                                className="bg-transparent border-none outline-none p-0 m-0 resize-none overflow-hidden block"
                                 style={{ 
                                     color: el.color, 
                                     fontSize: `${el.fontSize}px`, 
@@ -293,7 +296,7 @@ export default function PosterMaker() {
                                     textAlign: el.align, 
                                     lineHeight: '1.2',
                                     width: `${maxLineLength + 2}ch`,
-                                    height: `${lines.length * 1.2}em`
+                                    height: `${lines.length * 1.25}em`
                                 }}
                             />
                         ) : (
@@ -307,16 +310,17 @@ export default function PosterMaker() {
         </div>
 
         {/* STYLING CONTROLS */}
-        <div className="w-full flex-1 max-w-[360px] md:max-w-full">
+        <div className="w-full flex-1 max-w-[360px] md:max-w-full mx-auto">
           
           <AnimatePresence mode="popLayout">
               {activeElement ? (
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-                      <Card className="p-3 shadow-sm border-primary/20 relative overflow-hidden bg-card">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                      {/* ★ FIX: Removed overflow-hidden so Color Picker can pop up properly */}
+                      <Card className="p-3 shadow-sm border-primary/20 relative bg-card rounded-xl">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-xl" />
                         
                         <div className="flex items-center justify-between mb-3 pb-2 border-b">
-                            <h3 className="font-semibold text-xs flex items-center gap-1.5 text-primary uppercase tracking-wider">
+                            <h3 className="font-semibold text-xs flex items-center gap-1.5 text-primary uppercase tracking-wider pl-2">
                                 <Edit3 className="h-3.5 w-3.5"/> Element Styling
                             </h3>
                             <div className="text-[10px] text-muted-foreground flex items-center gap-1 bg-muted px-2 py-0.5 rounded">
@@ -324,7 +328,7 @@ export default function PosterMaker() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-4 relative">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-2">
                             
                             {/* Font Selection */}
                             <div className="space-y-1.5">
@@ -372,9 +376,9 @@ export default function PosterMaker() {
                             </div>
 
                             {/* Color Wheel Picker */}
-                            <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                            <div className="space-y-1.5 col-span-2 sm:col-span-1 relative">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Palette className="h-3 w-3"/> Color</Label>
-                                <div className="flex items-center gap-2 relative">
+                                <div className="flex items-center gap-2">
                                     <div 
                                         className="h-8 w-10 rounded cursor-pointer border border-border shadow-sm shrink-0" 
                                         style={{ backgroundColor: activeElement.color }}
@@ -385,25 +389,31 @@ export default function PosterMaker() {
                                         onChange={(e) => { saveHistory(); updateActiveElement({ color: e.target.value }); }} 
                                         className="w-full text-xs h-8 font-mono px-2" 
                                     />
-                                    
-                                    {showColorPicker && (
-                                        <div className="absolute top-10 right-0 sm:left-0 z-50">
-                                            <div className="fixed inset-0" onClick={() => setShowColorPicker(false)} />
-                                            <div className="relative bg-white p-2 rounded-xl shadow-2xl border border-border">
-                                                <div className="flex justify-between items-center pb-2 mb-2 border-b">
-                                                    <span className="text-xs font-semibold">Pick Color</span>
-                                                    <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setShowColorPicker(false)}><X className="h-3 w-3"/></Button>
-                                                </div>
-                                                <ChromePicker 
-                                                    color={activeElement.color} 
-                                                    onChange={(color) => updateActiveElement({ color: color.hex })}
-                                                    onChangeComplete={() => saveHistory()}
-                                                    disableAlpha={true}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
+                                
+                                {/* ★ Color Wheel Popover (Now perfectly positions Above the input) ★ */}
+                                <AnimatePresence>
+                                {showColorPicker && (
+                                    <motion.div 
+                                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                      className="absolute bottom-full mb-2 left-0 z-[100]"
+                                    >
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowColorPicker(false)} />
+                                        <div className="relative z-50 bg-white p-2 rounded-xl shadow-2xl border border-border">
+                                            <div className="flex justify-between items-center pb-2 mb-2 border-b">
+                                                <span className="text-xs font-semibold">Pick Color</span>
+                                                <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setShowColorPicker(false)}><X className="h-3 w-3"/></Button>
+                                            </div>
+                                            <ChromePicker 
+                                                color={activeElement.color} 
+                                                onChange={(color) => updateActiveElement({ color: color.hex })}
+                                                onChangeComplete={() => saveHistory()}
+                                                disableAlpha={true}
+                                            />
+                                        </div>
+                                    </motion.div>
+                                )}
+                                </AnimatePresence>
                             </div>
 
                         </div>

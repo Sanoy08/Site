@@ -82,11 +82,51 @@ const POSTER_PRESETS: PosterPreset[] = [
     id: 'preset-1',
     bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/both_z7nfww.jpg',
     elements: [
-      { id: 'heading', text: 'রবিবারের স্পেশাল লাঞ্চ', x: 180, y: 50, fontSize: 28, color: '#FFD700', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-      { id: 'menu', text: 'চিকেন বিরিয়ানি কম্বো', x: 180, y: 100, fontSize: 40, color: '#FFFFFF', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-      { id: 'price', text: 'মাত্র ১৯৯ টাকায়', x: 180, y: 170, fontSize: 48, color: '#4CAF50', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-      { id: 'deadline', text: 'অর্ডার দেওয়ার শেষ সময়\nকাল সকাল ১০:৩০', x: 180, y: 300, fontSize: 16, color: '#FF5252', align: 'center', fontFamily: '"Anek Bangla", sans-serif', rotation: 0 },
-    ]
+  {
+    "id": "heading",
+    "text": "রবিবারের স্পেশাল\nমেনু",
+    "x": 210,
+    "y": 63,
+    "fontSize": 34,
+    "color": "#ff0000",
+    "align": "center",
+    "fontFamily": "\"Ekush\", sans-serif",
+    "rotation": 0
+  },
+  {
+    "id": "menu",
+    "text": "এখানে মেনু লিখুন...",
+    "x": 128,
+    "y": 215,
+    "fontSize": 12,
+    "color": "#0013a5",
+    "align": "center",
+    "fontFamily": "\"Ekushey Aloucik\", sans-serif",
+    "rotation": 0
+  },
+  {
+    "id": "price",
+    "text": "এখানে মেনু লিখুন...",
+    "x": 279,
+    "y": 256,
+    "fontSize": 12,
+    "color": "#0013a5",
+    "align": "center",
+    "fontFamily": "\"Ekushey Aloucik\", sans-serif",
+    "rotation": 0
+  },
+  {
+    "id": "deadline",
+    "text": "অর্ডার দেওয়ার শেষ সময় ২০/২৩/২৬ সকাল ১০:৩০",
+    "x": 180,
+    "y": 335,
+    "fontSize": 16,
+    "color": "#ffffff",
+    "align": "center",
+    "fontFamily": "\"Alkatra\", cursive",
+    "rotation": 0
+  }
+]
   },
   {
     id: 'preset-2',

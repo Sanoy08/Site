@@ -357,16 +357,31 @@ export default function PosterMaker() {
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-2">
                             
-                            {/* Font Selection */}
+                            {/* ★ UPDATED: Font Selection with Text Preview ★ */}
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Type className="h-3 w-3"/> Font</Label>
                                 <select 
                                     value={activeElement.fontFamily}
                                     onChange={(e) => { saveHistory(); updateActiveElement({ fontFamily: e.target.value }); }}
-                                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-[13px] shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                     style={{ fontFamily: activeElement.fontFamily }}
                                 >
-                                    {FONTS.map(font => <option key={font.name} value={font.value} style={{ fontFamily: font.value }}>{font.name}</option>)}
+                                    {FONTS.map(font => {
+                                      // Get the first line of the text and trim spaces
+                                      const firstLine = activeElement.text.split('\n')[0].trim();
+                                      // Display first line, or fallback to font name if text is empty
+                                      const displayString = firstLine ? firstLine : font.name;
+                                      
+                                      return (
+                                        <option 
+                                          key={font.name} 
+                                          value={font.value} 
+                                          style={{ fontFamily: font.value, fontSize: '15px', padding: '4px' }}
+                                        >
+                                          {displayString}
+                                        </option>
+                                      );
+                                    })}
                                 </select>
                             </div>
 

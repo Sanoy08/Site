@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { Download, LayoutTemplate, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw } from 'lucide-react';
+import { Download, LayoutTemplate, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -109,16 +109,17 @@ export default function PosterMaker() {
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null); // ★ FIX: Anti-Jitter State
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   
   const [snapLines, setSnapLines] = useState({ x: false, y: false });
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [isFontDropdownOpen, setIsFontDropdownOpen] = useState(false);
 
   useEffect(() => {
-    if (activeId || editingId || showColorPicker) document.body.style.overscrollBehaviorY = 'contain';
+    if (activeId || editingId || showColorPicker || isFontDropdownOpen) document.body.style.overscrollBehaviorY = 'contain';
     else document.body.style.overscrollBehaviorY = 'auto';
     return () => { document.body.style.overscrollBehaviorY = 'auto'; };
-  }, [activeId, editingId, showColorPicker]);
+  }, [activeId, editingId, showColorPicker, isFontDropdownOpen]);
 
   const saveHistory = () => setHistory(prev => [...prev, elements]);
 
@@ -137,6 +138,7 @@ export default function PosterMaker() {
     setActiveId(null);
     setEditingId(null);
     setShowColorPicker(false);
+    setIsFontDropdownOpen(false);
   };
 
   const updateActiveElement = (updates: Partial<TextElement>) => {
@@ -147,19 +149,18 @@ export default function PosterMaker() {
     setElements(elements.map(el => el.id === id ? { ...el, text: newText } : el));
   };
 
-  // ★ Perfect Anchor Point Alignment Logic
   const alignText = (alignment: 'left' | 'center' | 'right') => {
     if (!activeId) return;
     saveHistory();
-    let newX = 180; // Default Center Anchor
-    if (alignment === 'left') newX = 20; // 20px padding from left edge
-    if (alignment === 'right') newX = 340; // 20px padding from right edge (360 - 20)
+    let newX = 180; 
+    if (alignment === 'left') newX = 20; 
+    if (alignment === 'right') newX = 340; 
     updateActiveElement({ align: alignment, x: newX });
   };
 
   const handleDownload = async () => {
     if (!posterRef.current) return;
-    setActiveId(null); setEditingId(null); setSnapLines({ x: false, y: false }); setShowColorPicker(false);
+    setActiveId(null); setEditingId(null); setSnapLines({ x: false, y: false }); setShowColorPicker(false); setIsFontDropdownOpen(false);
     
     toast.loading("Generating 2000x2000 HD Poster...");
 
@@ -183,6 +184,13 @@ export default function PosterMaker() {
   };
 
   const activeElement = elements.find(e => e.id === activeId);
+
+  // Helper to get preview text (first line only)
+  const getPreviewText = (text: string, fontName: string) => {
+    const cleanText = text.trim();
+    if (!cleanText) return fontName;
+    return cleanText.split('\n')[0];
+  };
 
   return (
     <div className="w-full mx-auto md:max-w-4xl space-y-3 pb-10">
@@ -219,7 +227,7 @@ export default function PosterMaker() {
 
       <div className="flex flex-col md:flex-row gap-4 items-center md:items-start relative mt-4">
         
-        {/* ★ CANVAS SECTION - Fixed padding issue for smaller screens ★ */}
+        {/* CANVAS SECTION */}
         <div className="w-full flex justify-center shrink-0 py-1">
             <div 
               ref={posterRef}
@@ -230,10 +238,10 @@ export default function PosterMaker() {
                   setActiveId(null); 
                   setEditingId(null); 
                   setShowColorPicker(false);
+                  setIsFontDropdownOpen(false);
                 } 
               }}
             >
-              {/* VISIBLE NEON SNAPPING GUIDES */}
               {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
               {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
 
@@ -251,18 +259,18 @@ export default function PosterMaker() {
                     drag={!isEditing}
                     dragMomentum={false}
                     initial={{ x: el.x, y: el.y }}
-                    // ★ MAGIC JITTER FIX: Disable animate prop entirely while dragging
                     animate={isDragging ? undefined : { x: el.x, y: el.y }}
                     transition={{ type: 'tween', duration: 0 }}
                     onPointerDown={() => { 
                         if (!isEditing && activeId !== el.id) {
                             setActiveId(el.id);
                             setShowColorPicker(false);
+                            setIsFontDropdownOpen(false);
                         }
                     }}
                     onDragStart={() => {
                         saveHistory();
-                        setDraggingId(el.id); // Triggers animate drop
+                        setDraggingId(el.id);
                     }}
                     onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
                     onDrag={(e, info) => {
@@ -280,7 +288,6 @@ export default function PosterMaker() {
                         let finalX = el.x + info.offset.x;
                         let finalY = el.y + info.offset.y;
                         
-                        // MAGNETIC SNAPPING (Snaps to exactly 180)
                         if (Math.abs(finalX - 180) < 12) finalX = 180;
                         if (Math.abs(finalY - 180) < 12) finalY = 180;
 
@@ -292,7 +299,6 @@ export default function PosterMaker() {
                       zIndex: isActive ? 20 : 1
                     }}
                   >
-                    {/* INNER WRAPPER FOR ALIGNMENT AND ROTATION */}
                     <div 
                         style={{
                             transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
@@ -342,7 +348,6 @@ export default function PosterMaker() {
           <AnimatePresence mode="popLayout">
               {activeElement ? (
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-                      {/* ★ FIX: Removed overflow-hidden so Color Picker can pop up properly */}
                       <Card className="p-3 shadow-sm border-primary/20 relative bg-card rounded-xl">
                         <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-xl" />
                         
@@ -357,32 +362,50 @@ export default function PosterMaker() {
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-2">
                             
-                            {/* ★ UPDATED: Font Selection with Text Preview ★ */}
-                            <div className="space-y-1.5">
+                            {/* ★ CUSTOM FONT DROPDOWN (Photoshop Style) ★ */}
+                            <div className="space-y-1.5 relative">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Type className="h-3 w-3"/> Font</Label>
-                                <select 
-                                    value={activeElement.fontFamily}
-                                    onChange={(e) => { saveHistory(); updateActiveElement({ fontFamily: e.target.value }); }}
-                                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-[13px] shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                
+                                <div 
+                                    className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm cursor-pointer hover:bg-accent/50"
+                                    onClick={() => setIsFontDropdownOpen(!isFontDropdownOpen)}
                                     style={{ fontFamily: activeElement.fontFamily }}
                                 >
-                                    {FONTS.map(font => {
-                                      // Get the first line of the text and trim spaces
-                                      const firstLine = activeElement.text.split('\n')[0].trim();
-                                      // Display first line, or fallback to font name if text is empty
-                                      const displayString = firstLine ? firstLine : font.name;
-                                      
-                                      return (
-                                        <option 
-                                          key={font.name} 
-                                          value={font.value} 
-                                          style={{ fontFamily: font.value, fontSize: '15px', padding: '4px' }}
+                                    <span className="truncate pr-2">
+                                        {getPreviewText(activeElement.text, FONTS.find(f => f.value === activeElement.fontFamily)?.name || 'Font')}
+                                    </span>
+                                    <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+                                </div>
+
+                                {/* Dropdown Menu */}
+                                <AnimatePresence>
+                                {isFontDropdownOpen && (
+                                    <>
+                                        {/* Background Overlay to close dropdown */}
+                                        <div className="fixed inset-0 z-[60]" onClick={() => setIsFontDropdownOpen(false)} />
+                                        
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                                            className="absolute top-[52px] left-0 w-[150%] md:w-full bg-white dark:bg-card border shadow-xl rounded-md z-[70] max-h-56 overflow-y-auto py-1"
                                         >
-                                          {displayString}
-                                        </option>
-                                      );
-                                    })}
-                                </select>
+                                            {FONTS.map(font => (
+                                                <div 
+                                                    key={font.value}
+                                                    className={`cursor-pointer px-3 py-2 text-base md:text-lg hover:bg-muted transition-colors truncate ${activeElement.fontFamily === font.value ? 'bg-primary/10 text-primary' : ''}`}
+                                                    style={{ fontFamily: font.value }}
+                                                    onClick={() => {
+                                                        saveHistory();
+                                                        updateActiveElement({ fontFamily: font.value });
+                                                        setIsFontDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    {getPreviewText(activeElement.text, font.name)}
+                                                </div>
+                                            ))}
+                                        </motion.div>
+                                    </>
+                                )}
+                                </AnimatePresence>
                             </div>
 
                             {/* Alignment */}
@@ -433,7 +456,6 @@ export default function PosterMaker() {
                                     />
                                 </div>
                                 
-                                {/* ★ Color Wheel Popover */}
                                 <AnimatePresence>
                                 {showColorPicker && (
                                     <motion.div 

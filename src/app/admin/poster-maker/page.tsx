@@ -212,27 +212,11 @@ export default function PosterMaker() {
                 useCORS: true, 
                 backgroundColor: '#000' 
             });
-            
-            // ★ NATIVE SHARE LOGIC ★
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            const blob = await (await fetch(dataUrl)).blob();
-            const fileName = `Poster-${new Date().getTime()}.jpg`;
-            const file = new File([blob], fileName, { type: 'image/jpeg' });
-
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'Special Poster',
-                });
-                toast.success("Ready to share!");
-            } else {
-                // Fallback for browsers that don't support sharing files
-                const link = document.createElement('a');
-                link.href = dataUrl;
-                link.download = fileName;
-                link.click();
-                toast.success("Poster downloaded!");
-            }
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            link.download = `BK-Offer-${new Date().getTime()}.jpg`;
+            link.click();
+            toast.success("Poster generated successfully!");
         } catch (e) {
             toast.error("Error generating poster");
         }

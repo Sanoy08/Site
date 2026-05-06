@@ -24,6 +24,7 @@ import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { registerBackHandler } from '@/hooks/use-back-button';
 import { optimizeImageUrl } from '@/lib/imageUtils';
+import Fuse from 'fuse.js'; // ★ Fuse.js ইমপোর্ট করা হলো
 
 interface SearchSheetProps {
   children?: React.ReactNode;
@@ -38,12 +39,13 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
   const pathname = usePathname();
   
   const [query, setQuery] = useState('');
+  const [allProducts, setAllProducts] = useState<any[]>([]); // ★ সমস্ত প্রোডাক্ট রাখার স্টেট
   const [results, setResults] = useState<any[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   
-  const debouncedQuery = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, 200); // রেসপন্স আরও ফাস্ট করার জন্য ২০০ms করা হলো
 
   // ১. অটোমেটিক শিট ক্লোজ লজিক
   useEffect(() => {
@@ -63,7 +65,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     return () => registerBackHandler(null);
   }, [open, onOpenChange]);
 
-  // ৩. হিস্ট্রি লোড (LocalStorage for Search History is fine/safe)
+  // ৩. হিস্ট্রি লোড (LocalStorage)
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
     if (saved) {
@@ -81,35 +83,48 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, []);
 
-  // ৪. সার্চ রেজাল্ট ফেচিং
+  // ৪. ★ Menu Page-এর মতো একবার সমস্ত প্রোডাক্ট ফেচ করা
   useEffect(() => {
-    const fetchResults = async () => {
-      if (!debouncedQuery.trim()) {
-        setResults([]);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`);
-        const data = await res.json();
-        if (data.success && Array.isArray(data.products)) {
-          setResults(data.products);
-        } else {
-           setResults([]);
+    if (open && allProducts.length === 0) {
+      const fetchAllProducts = async () => {
+        setIsLoading(true);
+        try {
+          const res = await fetch(`/api/products?limit=1000`);
+          const data = await res.json();
+          if (data.success && Array.isArray(data.products)) {
+            setAllProducts(data.products);
+          }
+        } catch (error) {
+          console.error("Search fetch error:", error);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error("Search error:", error);
-        setResults([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      };
 
-    fetchResults();
-  }, [debouncedQuery]);
+      fetchAllProducts();
+    }
+  }, [open, allProducts.length]);
 
-  // ৫. ক্লিক হ্যান্ডলার
+  // ৫. ★ Fuse.js দিয়ে ক্লায়েন্ট সাইড ইনস্ট্যান্ট সার্চ
+  useEffect(() => {
+    if (!debouncedQuery.trim()) {
+      setResults([]);
+      return;
+    }
+
+    if (allProducts.length > 0) {
+      const fuse = new Fuse(allProducts, {
+        keys: ['name', 'category.name', 'description'],
+        threshold: 0.3,
+        distance: 100
+      });
+      
+      const searchResults = fuse.search(debouncedQuery).map(r => r.item);
+      setResults(searchResults);
+    }
+  }, [debouncedQuery, allProducts]);
+
+  // ৬. ক্লিক হ্যান্ডলার
   const handleProductClick = (slug: string) => {
     setIsNavigating(true);
     addToHistory(query);
@@ -165,7 +180,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
               placeholder="What are you craving?" 
               className="pl-10 h-12 rounded-xl bg-muted/50 border-transparent focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/20 text-base"
               autoFocus
-              disabled={isNavigating}
+              disabled={isNavigating || isLoading} // লোডিংয়ের সময় ইনপুট ডিসেবল রাখা ভালো
             />
             {query && !isNavigating && (
               <button 
@@ -184,7 +199,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-10 space-y-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Finding delicious items...</p>
+                <p className="text-sm text-muted-foreground">Syncing menu...</p>
               </div>
             )}
 
@@ -201,7 +216,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                   </div>
                 ) : (
                   results.map((product, index) => {
-                    // ✅ ইমেজের URL বের করার লজিক
                     const rawUrl = (product.images && product.images.length > 0 && product.images[0].url) 
                         ? product.images[0].url 
                         : (PLACEHOLDER_IMAGE_URL || '/placeholder.png');
@@ -213,12 +227,11 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                         className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group border border-transparent hover:border-border"
                       >
                         <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-muted shrink-0">
-                          {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
                           <Image 
                             src={optimizeImageUrl(rawUrl)} 
                             alt={product.name} 
                             fill
-                            sizes="64px" // 16 * 4 = 64px
+                            sizes="64px"
                             className="object-cover"
                             onError={(e) => {
                                 const target = e.target as HTMLImageElement;

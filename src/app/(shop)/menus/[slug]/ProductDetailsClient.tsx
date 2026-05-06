@@ -44,7 +44,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
 
   const validImages = product.images?.filter(img => img.url && img.url.trim() !== '') || [];
   const displayImages = validImages.length > 0 ? validImages : [fallbackImage];
@@ -55,13 +54,11 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const [activeSlide, setActiveSlide] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  // States for Layout Logic
   const [isScrolled, setIsScrolled] = useState(false);
   const [isInlineVisible, setIsInlineVisible] = useState(true);
   const [randomItems, setRandomItems] = useState<Product[]>([]);
   const inlineCartRef = useRef<HTMLDivElement>(null);
 
-  // Description Parsing Logic for "Top Highlights"
   const rawDescription = (product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.").replace(/\\n/g, '\n');
   let highlights: string[] = [];
   let cleanDescriptionText = rawDescription;
@@ -76,15 +73,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       }
   }
 
-  // State for Show More / Show Less Description
   const [showFullDesc, setShowFullDesc] = useState(false);
   const DESC_LIMIT = 350;
   const isLongDescription = cleanDescriptionText.length > DESC_LIMIT;
 
-  // ★ Function to format description text (Bold between bullet and colon)
   const formatDescription = (text: string) => {
     return text.split('\n').map((line, idx) => {
-        // রেগুলার এক্সপ্রেশন চেক করবে লাইনটি • দিয়ে শুরু হয়ে মাঝে : আছে কিনা
         const match = line.match(/^(\s*•\s*)([^:]+)(:.*)$/);
         if (match) {
             return (
@@ -100,10 +94,8 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     });
   };
 
-  // Carousel Logic
   useEffect(() => {
     if (!api) return;
-    setCount(api.scrollSnapList().length);
     setCurrent(api.selectedScrollSnap() + 1);
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap() + 1);
@@ -115,7 +107,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     if (api) api.scrollTo(activeSlide);
   }, [activeSlide, api]);
 
-  // Favorites Logic
   useEffect(() => {
     const savedFavs = JSON.parse(localStorage.getItem('bumbas_favorites') || '[]');
     setIsFavorite(savedFavs.some((fav: any) => fav.id === product.id));
@@ -127,10 +118,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         savedFavs = savedFavs.filter((fav: any) => fav.id !== product.id);
         toast.info("Removed from favorites");
     } else {
-        // ★ এখানে slug অ্যাড করা হলো
         savedFavs.push({ 
             id: product.id, 
-            slug: product.slug, // <-- New added
+            slug: product.slug, 
             name: product.name, 
             image: displayImages[0].url, 
             price: product.price 
@@ -141,7 +131,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     setIsFavorite(!isFavorite);
   };
 
-  // Scroll & Intersection Observers
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 150);
     window.addEventListener('scroll', handleScroll);
@@ -159,7 +148,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     };
   }, []);
 
-  // Fetch Random 8 Products for "Complete Your Meal"
   useEffect(() => {
       const fetchRandomProducts = async () => {
           try {
@@ -179,10 +167,68 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   const showBottomBar = isScrolled && !isInlineVisible;
 
-  const handleAddToCart = () => {
+  // ★ UNIFIED "POP & SWING" FLY TO CART LOGIC
+  const flyToCart = (e: React.MouseEvent) => {
+    const target = document.getElementById('global-cart-target');
+    if (!target) return;
+
+    const targetRect = target.getBoundingClientRect();
+    const buttonRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+
+    const flyingImg = document.createElement('img');
+    flyingImg.src = optimizeImageUrl(displayImages[activeSlide].url);
+    flyingImg.style.position = 'fixed';
+    flyingImg.style.zIndex = '99999';
+    // Square image with beautiful slight rounded corners
+    flyingImg.style.borderRadius = '12px'; 
+    flyingImg.style.objectFit = 'cover';
+    flyingImg.style.boxShadow = '0 20px 40px rgba(0,0,0,0.5)';
+    flyingImg.style.pointerEvents = 'none';
+
+    // Always Pop out from the button!
+    const spawnSize = 80; 
+    flyingImg.style.top = `${buttonRect.top - spawnSize}px`; // Starts above the button
+    flyingImg.style.left = `${buttonRect.left + buttonRect.width/2 - spawnSize/2}px`;
+    flyingImg.style.width = `${spawnSize}px`;
+    flyingImg.style.height = `${spawnSize}px`;
+    flyingImg.style.transform = 'scale(0) translateY(30px)';
+    flyingImg.style.opacity = '0';
+    flyingImg.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    
+    document.body.appendChild(flyingImg);
+    flyingImg.offsetWidth; // Force Reflow
+
+    // 1. Pop In
+    flyingImg.style.transform = 'scale(1) translateY(0)';
+    flyingImg.style.opacity = '1';
+
+    // 2. Wait, then Swing to Cart
+    setTimeout(() => {
+        // The "Swing" Magic
+        flyingImg.style.transition = 'top 0.75s ease-out, left 0.75s ease-in, width 0.75s ease-in, height 0.75s ease-in, opacity 0.75s ease-in, transform 0.75s linear';
+        
+        flyingImg.style.top = `${targetRect.top}px`;
+        flyingImg.style.left = `${targetRect.left}px`;
+        flyingImg.style.width = '24px';
+        flyingImg.style.height = '24px';
+        flyingImg.style.opacity = '0.3';
+        flyingImg.style.transform = 'rotate(2turn)';
+        
+        setTimeout(() => {
+            flyingImg.remove();
+            window.dispatchEvent(new Event('cart-animated-bump'));
+        }, 750);
+    }, 350); 
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
     if (isOutOfStock) return;
+    
     addItem(product, quantity, false);
     toast.success(`Added ${quantity} ${product.name} to cart`, { duration: 2000 });
+    
+    // Trigger the unified pop & swing animation
+    flyToCart(e);
   };
 
   const handleShare = async () => {
@@ -217,7 +263,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             <CarouselContent className="-ml-0">
                 {displayImages.map((img, index) => (
                 <CarouselItem key={index} className="pl-0 basis-full">
-                    <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
+                    <div 
+                        className="relative w-full aspect-square bg-gray-100 overflow-hidden"
+                    >
                         <Image
                             src={optimizeImageUrl(img.url)}
                             alt={img.alt || product.name}
@@ -264,7 +312,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           
           {/* Desktop Images */}
           <div className="hidden md:block space-y-4">
-             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
+             <div 
+                className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border"
+             >
                  <Image
                     src={optimizeImageUrl(displayImages[activeSlide].url)}
                     alt={product.name}
@@ -351,7 +401,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                             <span className="flex-1 text-center font-bold text-lg">{quantity}</span>
                             <Button variant="ghost" className="h-full px-3" onClick={() => setQuantity(q => q + 1)}><Plus className="h-4 w-4" /></Button>
                         </div>
-                        <Button className="flex-1 h-12 rounded-xl text-lg font-bold" onClick={handleAddToCart}>
+                        <Button className="flex-1 h-12 rounded-xl text-lg font-bold overflow-hidden relative" onClick={handleAddToCart}>
                             <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart — {formatPrice(product.price * quantity)}
                         </Button>
                     </div>
@@ -362,7 +412,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ YOU MAY ALSO LIKE SECTION */}
+            {/* YOU MAY ALSO LIKE SECTION */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
@@ -391,14 +441,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 </div>
             )}
 
-            {/* ★ UPDATED DESCRIPTION SECTION */}
+            {/* DESCRIPTION SECTION */}
             <div className="mt-10">
-                {/* ★ Underline Added Here */}
                 <h3 className="inline-block font-bold text-xl mb-5 text-gray-900 border-b-2 border-gray-900 pb-1">
                     About This Dish :
                 </h3>
                 
-                {/* Highlights Section */}
                 {highlights.length > 0 && (
                     <div className="mb-5 bg-orange-50/50 border border-orange-100 rounded-xl p-4">
                         <h4 className="font-semibold text-[15px] text-orange-800 mb-3 flex items-center gap-2">
@@ -423,7 +471,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </div>
                 )}
 
-                {/* Main Description with Formatted Text (Bold bullets) */}
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
                     {formatDescription(
                         isLongDescription && !showFullDesc 
@@ -442,8 +489,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             </div>
           </div>
         </div>
-
-        {/* ★ COMPLETE YOUR MEAL */}
+{/* ★ COMPLETE YOUR MEAL */}
         {randomItems.length > 0 && (
             <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
@@ -464,7 +510,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       {/* MOBILE ACTION BAR */}
       <div 
         className={cn(
-            "fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40 transition-transform duration-300",
+            "fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40 transition-transform duration-300 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]",
             showBottomBar ? "translate-y-0" : "translate-y-full"
         )}
       >
@@ -475,7 +521,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     <span className="w-8 text-center font-bold text-lg">{quantity}</span>
                     <Button variant="ghost" size="icon" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
                 </div>
-                <Button className="flex-1 h-12 rounded-lg font-bold flex justify-between px-6" onClick={handleAddToCart}>
+                <Button className="flex-1 h-12 rounded-lg font-bold flex justify-between px-6 overflow-hidden relative" onClick={handleAddToCart}>
                     <span>Add Item</span>
                     <span>{formatPrice(product.price * quantity)}</span>
                 </Button>

@@ -11,6 +11,11 @@ import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 
+// ★ Capacitor Imports
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+
 // ★ Color Wheel Import
 import { ChromePicker } from 'react-color';
 
@@ -82,51 +87,51 @@ const POSTER_PRESETS: PosterPreset[] = [
     id: 'preset-1',
     bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/both_z7nfww.jpg',
     elements: [
-  {
-    "id": "heading",
-    "text": "রবিবারের স্পেশাল\nমেনু",
-    "x": 210,
-    "y": 63,
-    "fontSize": 34,
-    "color": "#ff0000",
-    "align": "center",
-    "fontFamily": "\"Ekush\", sans-serif",
-    "rotation": 0
-  },
-  {
-    "id": "menu",
-    "text": "এখানে মেনু লিখুন...",
-    "x": 128,
-    "y": 215,
-    "fontSize": 12,
-    "color": "#0013a5",
-    "align": "center",
-    "fontFamily": "\"Ekushey Aloucik\", sans-serif",
-    "rotation": 0
-  },
-  {
-    "id": "price",
-    "text": "এখানে মেনু লিখুন...",
-    "x": 279,
-    "y": 256,
-    "fontSize": 12,
-    "color": "#0013a5",
-    "align": "center",
-    "fontFamily": "\"Ekushey Aloucik\", sans-serif",
-    "rotation": 0
-  },
-  {
-    "id": "deadline",
-    "text": "অর্ডার দেওয়ার শেষ সময় ২০/২৩/২৬ সকাল ১০:৩০",
-    "x": 180,
-    "y": 335,
-    "fontSize": 16,
-    "color": "#ffffff",
-    "align": "center",
-    "fontFamily": "\"Alkatra\", cursive",
-    "rotation": 0
-  }
-]
+      {
+        id: "heading",
+        text: "রবিবারের স্পেশাল\nমেনু",
+        x: 210,
+        y: 63,
+        fontSize: 34,
+        color: "#ff0000",
+        align: "center",
+        fontFamily: "\"Ekush\", sans-serif",
+        rotation: 0
+      },
+      {
+        id: "menu",
+        text: "এখানে মেনু লিখুন...",
+        x: 128,
+        y: 215,
+        fontSize: 12,
+        color: "#0013a5",
+        align: "center",
+        fontFamily: "\"Ekushey Aloucik\", sans-serif",
+        rotation: 0
+      },
+      {
+        id: "price",
+        text: "এখানে মেনু লিখুন...",
+        x: 279,
+        y: 256,
+        fontSize: 12,
+        color: "#0013a5",
+        align: "center",
+        fontFamily: "\"Ekushey Aloucik\", sans-serif",
+        rotation: 0
+      },
+      {
+        id: "deadline",
+        text: "অর্ডার দেওয়ার শেষ সময় ২০/২৩/২৬ সকাল ১০:৩০",
+        x: 180,
+        y: 335,
+        fontSize: 16,
+        color: "#ffffff",
+        align: "center",
+        fontFamily: "\"Alkatra\", cursive",
+        rotation: 0
+      }
+    ]
   },
   {
     id: 'preset-2',
@@ -198,9 +203,16 @@ export default function PosterMaker() {
     updateActiveElement({ align: alignment, x: newX });
   };
 
+  // ★ UPDATED CAPACITOR DOWNLOAD/SHARE LOGIC ★
   const handleDownload = async () => {
     if (!posterRef.current) return;
-    setActiveId(null); setEditingId(null); setSnapLines({ x: false, y: false }); setShowColorPicker(false); setIsFontDropdownOpen(false);
+    
+    // Clear UI selections before capturing
+    setActiveId(null); 
+    setEditingId(null); 
+    setSnapLines({ x: false, y: false }); 
+    setShowColorPicker(false); 
+    setIsFontDropdownOpen(false);
     
     toast.loading("Generating 2000x2000 HD Poster...");
 
@@ -212,12 +224,41 @@ export default function PosterMaker() {
                 useCORS: true, 
                 backgroundColor: '#000' 
             });
-            const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/jpeg', 0.95);
-            link.download = `BK-Offer-${new Date().getTime()}.jpg`;
-            link.click();
-            toast.success("Poster generated successfully!");
+            
+            const base64ImageString = canvas.toDataURL('image/jpeg', 0.95);
+            const fileName = `BK-Offer-${new Date().getTime()}.jpg`;
+
+            if (Capacitor.isNativePlatform()) {
+                // Native Capacitor Logic
+                const base64Data = base64ImageString.split(',')[1];
+                const savedFile = await Filesystem.writeFile({
+                    path: fileName,
+                    data: base64Data,
+                    directory: Directory.Cache 
+                });
+
+                await Share.share({
+                    title: 'Bumba\'s Kitchen Offer',
+                    text: 'Check out our new offer poster!',
+                    url: savedFile.uri,
+                    dialogTitle: 'Share Poster'
+                });
+                
+                toast.dismiss();
+                toast.success("Poster generated successfully!");
+            } else {
+                // Web Fallback Logic
+                const link = document.createElement('a');
+                link.href = base64ImageString;
+                link.download = fileName;
+                link.click();
+                
+                toast.dismiss();
+                toast.success("Poster downloaded successfully!");
+            }
         } catch (e) {
+            console.error(e);
+            toast.dismiss();
             toast.error("Error generating poster");
         }
     }, 200);

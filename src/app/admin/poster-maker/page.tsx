@@ -224,9 +224,9 @@ export default function PosterMaker() {
             const canvas = await html2canvas(posterRef.current!, { 
                 scale: exportScale, 
                 useCORS: true, 
-                allowTaint: true,
+                allowTaint: true, // helps with cross-origin images
                 backgroundColor: '#000',
-                scrollY: 0, 
+                scrollY: 0, // strict rendering coordinate
                 scrollX: 0
             });
             
@@ -264,7 +264,7 @@ export default function PosterMaker() {
             }
         } catch (e) {
             console.error(e);
-            window.scrollTo(0, originalScrollY); 
+            window.scrollTo(0, originalScrollY); // Restore scroll even on error
             toast.dismiss();
             toast.error("Error generating poster");
         }
@@ -319,7 +319,8 @@ export default function PosterMaker() {
             <div 
               ref={posterRef}
               className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none shrink-0"
-              style={{ width: '360px', height: '360px', textRendering: 'geometricPrecision', WebkitFontSmoothing: 'antialiased' }}
+              // ★ BLURRY BACKGROUND FIX: Removed background properties from style
+              style={{ width: '360px', height: '360px' }}
               onClick={(e) => { 
                 if (e.target === posterRef.current || (e.target as HTMLElement).tagName === 'IMG') { 
                   setActiveId(null); 
@@ -329,7 +330,7 @@ export default function PosterMaker() {
                 } 
               }}
             >
-              {/* HIGH-RES IMAGE TAG INSTEAD OF CSS BACKGROUND */}
+              {/* ★ HIGH-RES IMAGE TAG INSTEAD OF CSS BACKGROUND ★ */}
               <img 
                 src={activePreset.bgUrl} 
                 alt="Background" 
@@ -341,104 +342,107 @@ export default function PosterMaker() {
               {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
 
               {elements.map((el) => {
-                const isActive = activeId === el.id;
-                const isEditing = editingId === el.id;
-                const isDragging = draggingId === el.id;
+  const isActive = activeId === el.id;
+  const isEditing = editingId === el.id;
+  const isDragging = draggingId === el.id;
 
-                const lines = el.text.split('\n');
-                const maxLineLength = Math.max(...lines.map(l => l.length), 1);
+  const lines = el.text.split('\n');
+  const maxLineLength = Math.max(...lines.map(l => l.length), 1);
 
-                return (
-                  <motion.div
-                    key={el.id}
-                    drag={!isEditing}
-                    dragMomentum={false}
-                    initial={{ x: el.x, y: el.y }}
-                    animate={isDragging ? undefined : { x: el.x, y: el.y }}
-                    transition={{ type: 'tween', duration: 0 }}
-                    onPointerDown={() => { 
-                        if (!isEditing && activeId !== el.id) {
-                            setActiveId(el.id);
-                            setShowColorPicker(false);
-                            setIsFontDropdownOpen(false);
-                        }
-                    }}
-                    onDragStart={() => {
-                        saveHistory();
-                        setDraggingId(el.id);
-                    }}
-                    onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
-                    onDrag={(e, info) => {
-                        const currentX = el.x + info.offset.x;
-                        const currentY = el.y + info.offset.y;
-                        setSnapLines({
-                            x: Math.abs(currentX - 180) < 12,
-                            y: Math.abs(currentY - 180) < 12
-                        });
-                    }}
-                    onDragEnd={(e, info) => {
-                        setSnapLines({ x: false, y: false });
-                        setDraggingId(null);
-                        
-                        let finalX = el.x + info.offset.x;
-                        let finalY = el.y + info.offset.y;
-                        
-                        if (Math.abs(finalX - 180) < 12) finalX = 180;
-                        if (Math.abs(finalY - 180) < 12) finalY = 180;
+  return (
+    <motion.div
+      key={el.id}
+      drag={!isEditing}
+      dragMomentum={false}
+      // ★ FIX 1: Nested transform বন্ধ করার জন্য x, y এর মান 0 রাখুন
+      initial={{ x: 0, y: 0 }}
+      animate={isDragging ? undefined : { x: 0, y: 0 }}
+      transition={{ type: 'tween', duration: 0 }}
+      onPointerDown={() => { 
+          if (!isEditing && activeId !== el.id) {
+              setActiveId(el.id);
+              setShowColorPicker(false);
+              setIsFontDropdownOpen(false);
+          }
+      }}
+      onDragStart={() => {
+          saveHistory();
+          setDraggingId(el.id);
+      }}
+      onDoubleClick={() => { setActiveId(el.id); setEditingId(el.id); }}
+      onDrag={(e, info) => {
+          // info.offset ব্যবহার করে snapping ক্যালকুলেট করা হচ্ছে
+          const currentX = el.x + info.offset.x;
+          const currentY = el.y + info.offset.y;
+          setSnapLines({
+              x: Math.abs(currentX - 180) < 12,
+              y: Math.abs(currentY - 180) < 12
+          });
+      }}
+      onDragEnd={(e, info) => {
+          setSnapLines({ x: false, y: false });
+          setDraggingId(null);
+          
+          // ★ FIX 2: info.offset থেকে সরাসরি পজিশন আপডেট করা
+          let finalX = el.x + info.offset.x;
+          let finalY = el.y + info.offset.y;
+          
+          if (Math.abs(finalX - 180) < 12) finalX = 180;
+          if (Math.abs(finalY - 180) < 12) finalY = 180;
 
-                        setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
-                    }}
-                    style={{
-                      position: 'absolute', top: 0, left: 0,
-                      touchAction: 'none',
-                      zIndex: isActive ? 20 : 10 
-                    }}
-                  >
-                    <div 
-                        style={{
-                            transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
-                            fontSize: `${el.fontSize}px`, 
-                            fontFamily: el.fontFamily, 
-                            color: el.color, 
-                            textAlign: el.align,
-                            fontWeight: 'normal', 
-                            cursor: isEditing ? 'text' : 'grab', 
-                            whiteSpace: 'pre-wrap', 
-                            // ★ TEXT DOWNWARD SHIFT FIX: Explicit pixel lineHeight & block display
-                            lineHeight: `${el.fontSize * 1.2}px`, 
-                            display: 'block',
-                            width: 'max-content',
-                            textShadow: 'none',
-                        }}
-                        className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
-                    >
-                        {isEditing ? (
-                            <textarea
-                                autoFocus 
-                                value={el.text}
-                                onChange={(e) => handleTextChange(el.id, e.target.value)}
-                                onBlur={() => setEditingId(null)}
-                                wrap="off"
-                                className="bg-transparent border-none outline-none p-0 m-0 resize-none overflow-hidden block"
-                                style={{ 
-                                    color: el.color, 
-                                    fontSize: `${el.fontSize}px`, 
-                                    fontFamily: el.fontFamily, 
-                                    textAlign: el.align, 
-                                    // Match exact pixel height
-                                    lineHeight: `${el.fontSize * 1.2}px`,
-                                    width: `${maxLineLength + 2}ch`,
-                                    height: `${lines.length * 1.2}em` 
-                                }}
-                            />
-                        ) : (
-                            // ★ TEXT DOWNWARD SHIFT FIX: <div> instead of <span>
-                            <div className="select-none">{el.text}</div>
-                        )}
-                    </div>
-                  </motion.div>
-                );
-              })}
+          setElements(elements.map(item => item.id === el.id ? { ...item, x: Math.round(finalX), y: Math.round(finalY) } : item));
+      }}
+      style={{
+        position: 'absolute', 
+        top: el.y,   // ★ FIX 3: Framer Motion-এর বদলে সরাসরি Absolute Top/Left ব্যবহার করা
+        left: el.x,  
+        touchAction: 'none',
+        zIndex: isActive ? 20 : 10
+      }}
+    >
+      <div 
+          style={{
+              transform: `translate(${el.align === 'center' ? '-50%' : el.align === 'right' ? '-100%' : '0%'}, -50%) rotate(${el.rotation || 0}deg)`,
+              // ★ FIX 4: html2canvas যাতে height-এর সঠিক bounding box পায়
+              display: 'inline-block',
+              width: 'max-content',
+              fontSize: `${el.fontSize}px`, 
+              fontFamily: el.fontFamily, 
+              color: el.color, 
+              textAlign: el.align,
+              fontWeight: 'normal', 
+              cursor: isEditing ? 'text' : 'grab', 
+              whiteSpace: 'pre-wrap', 
+              lineHeight: '1.2',
+              textShadow: 'none',
+          }}
+          className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
+      >
+          {isEditing ? (
+              <textarea
+                  autoFocus 
+                  value={el.text}
+                  onChange={(e) => handleTextChange(el.id, e.target.value)}
+                  onBlur={() => setEditingId(null)}
+                  wrap="off"
+                  className="bg-transparent border-none outline-none p-0 m-0 resize-none overflow-hidden block"
+                  style={{ 
+                      color: el.color, 
+                      fontSize: `${el.fontSize}px`, 
+                      fontFamily: el.fontFamily, 
+                      textAlign: el.align, 
+                      lineHeight: '1.2',
+                      width: `${maxLineLength + 2}ch`,
+                      height: `${lines.length * 1.25}em`
+                  }}
+              />
+          ) : (
+              <span className="select-none block">{el.text}</span> // Added block here
+          )}
+      </div>
+    </motion.div>
+  );
+})}
             </div>
         </div>
 

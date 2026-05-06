@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import html2canvas from 'html2canvas';
+import { toJpeg } from 'html-to-image';
 import { Download, LayoutTemplate, Edit3, AlignLeft, AlignCenter, AlignRight, Undo2, Code, Type, Palette, Scaling, X, RotateCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -214,26 +214,25 @@ export default function PosterMaker() {
     
     toast.loading("Generating 2000x2000 HD Poster...");
 
-    // ★ TEXT SHIFT FIX: Scroll to top temporarily
-    const originalScrollY = window.scrollY;
-    window.scrollTo(0, 0);
-
     setTimeout(async () => {
         try {
             const exportScale = 2000 / 360; 
-            const canvas = await html2canvas(posterRef.current!, { 
-                scale: exportScale, 
-                useCORS: true, 
-                allowTaint: true, // helps with cross-origin images
-                backgroundColor: '#000',
-                scrollY: 0, // strict rendering coordinate
-                scrollX: 0
-            });
             
-            // Restore original scroll
-            window.scrollTo(0, originalScrollY);
+            // html-to-image ব্যবহার করে রেন্ডারিং (text shifting problem solved)
+            const base64ImageString = await toJpeg(posterRef.current, {
+                quality: 0.95,
+                width: 360 * exportScale,
+                height: 360 * exportScale,
+                style: {
+                    transform: `scale(${exportScale})`,
+                    transformOrigin: 'top left',
+                    width: '360px',
+                    height: '360px'
+                },
+                pixelRatio: 1, // অতিরিক্ত স্কেলিং বন্ধ করার জন্য
+                backgroundColor: '#000',
+            });
 
-            const base64ImageString = canvas.toDataURL('image/jpeg', 0.95);
             const fileName = `BK-Offer-${new Date().getTime()}.jpg`;
 
             if (Capacitor.isNativePlatform()) {
@@ -264,12 +263,11 @@ export default function PosterMaker() {
             }
         } catch (e) {
             console.error(e);
-            window.scrollTo(0, originalScrollY); // Restore scroll even on error
             toast.dismiss();
             toast.error("Error generating poster");
         }
-    }, 200);
-  };
+    }, 300); // UI clear হওয়ার জন্য একটু বেশি সময় দেওয়া হলো
+};
 
   const activeElement = elements.find(e => e.id === activeId);
 

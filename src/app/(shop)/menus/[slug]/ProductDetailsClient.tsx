@@ -26,6 +26,10 @@ import {
 import { Share } from '@capacitor/share';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
+// ★ Capacitor Imports
+import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+
 const fallbackImage: ProductImage = { 
   id: 'placeholder', 
   url: PLACEHOLDER_IMAGE_URL, 
@@ -58,6 +62,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const [isInlineVisible, setIsInlineVisible] = useState(true);
   const [randomItems, setRandomItems] = useState<Product[]>([]);
   const inlineCartRef = useRef<HTMLDivElement>(null);
+
+  // ★ Animation Overlay State
+  const [isFlying, setIsFlying] = useState(false);
 
   const rawDescription = (product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.").replace(/\\n/g, '\n');
   let highlights: string[] = [];
@@ -167,45 +174,49 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   const showBottomBar = isScrolled && !isInlineVisible;
 
-  // ★ UNIFIED "POP & SWING" FLY TO CART LOGIC
-  const flyToCart = (e: React.MouseEvent) => {
+  // ★ UNIVERSAL CENTER POP & SWING FLY TO CART LOGIC ★
+  const flyToCart = () => {
     const target = document.getElementById('global-cart-target');
     if (!target) return;
 
     const targetRect = target.getBoundingClientRect();
-    const buttonRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+
+    // Enable Background Dimming Overlay
+    setIsFlying(true);
 
     const flyingImg = document.createElement('img');
     flyingImg.src = optimizeImageUrl(displayImages[activeSlide].url);
     flyingImg.style.position = 'fixed';
     flyingImg.style.zIndex = '99999';
-    // Square image with beautiful slight rounded corners
-    flyingImg.style.borderRadius = '12px'; 
+    flyingImg.style.borderRadius = '16px'; 
     flyingImg.style.objectFit = 'cover';
-    flyingImg.style.boxShadow = '0 20px 40px rgba(0,0,0,0.5)';
+    flyingImg.style.boxShadow = '0 25px 50px rgba(0,0,0,0.6)';
     flyingImg.style.pointerEvents = 'none';
 
-    // Always Pop out from the button!
-    const spawnSize = 80; 
-    flyingImg.style.top = `${buttonRect.top - spawnSize}px`; // Starts above the button
-    flyingImg.style.left = `${buttonRect.left + buttonRect.width/2 - spawnSize/2}px`;
+    // ALWAYS POP FROM CENTER
+    const spawnSize = 140; // Big nice popup
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    flyingImg.style.top = `${centerY - spawnSize/2}px`;
+    flyingImg.style.left = `${centerX - spawnSize/2}px`;
     flyingImg.style.width = `${spawnSize}px`;
     flyingImg.style.height = `${spawnSize}px`;
-    flyingImg.style.transform = 'scale(0) translateY(30px)';
+    flyingImg.style.transform = 'scale(0.2) translateY(50px)';
     flyingImg.style.opacity = '0';
-    flyingImg.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    flyingImg.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
     
     document.body.appendChild(flyingImg);
     flyingImg.offsetWidth; // Force Reflow
 
-    // 1. Pop In
+    // 1. Pop In at the center
     flyingImg.style.transform = 'scale(1) translateY(0)';
     flyingImg.style.opacity = '1';
 
-    // 2. Wait, then Swing to Cart
+    // 2. Wait slightly, then Swing to Cart
     setTimeout(() => {
-        // The "Swing" Magic
-        flyingImg.style.transition = 'top 0.75s ease-out, left 0.75s ease-in, width 0.75s ease-in, height 0.75s ease-in, opacity 0.75s ease-in, transform 0.75s linear';
+        // Parabolic curve: top accelerates (ease-in), left moves steadily
+        flyingImg.style.transition = 'top 0.7s cubic-bezier(0.5, -0.5, 1, 1), left 0.7s linear, width 0.7s ease-in, height 0.7s ease-in, opacity 0.7s ease-in, transform 0.7s linear';
         
         flyingImg.style.top = `${targetRect.top}px`;
         flyingImg.style.left = `${targetRect.left}px`;
@@ -216,19 +227,29 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         
         setTimeout(() => {
             flyingImg.remove();
+            setIsFlying(false); // Remove Overlay
             window.dispatchEvent(new Event('cart-animated-bump'));
-        }, 750);
-    }, 350); 
+        }, 700);
+    }, 400); // 400ms pause for user to see the image clearly in the center
   };
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async () => {
     if (isOutOfStock) return;
     
+    // Add to cart state
     addItem(product, quantity, false);
-    toast.success(`Added ${quantity} ${product.name} to cart`, { duration: 2000 });
-    
-    // Trigger the unified pop & swing animation
-    flyToCart(e);
+
+    // Native Haptic Vibration instead of Toast
+    if (Capacitor.isNativePlatform()) {
+        try {
+            await Haptics.impact({ style: ImpactStyle.Heavy });
+        } catch (e) {
+            console.error("Haptics not supported", e);
+        }
+    }
+
+    // Trigger the universal animation
+    flyToCart();
   };
 
   const handleShare = async () => {
@@ -255,8 +276,16 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   };
 
   return (
-    <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden">
+    <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden relative">
       
+      {/* ★ DARK OVERLAY DURING FLY ANIMATION ★ */}
+      <div 
+        className={cn(
+            "fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[45] transition-all duration-300",
+            isFlying ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+      />
+
       {/* --- MOBILE TOP IMAGE SLIDER --- */}
       <div className="md:hidden w-full relative group">
          <Carousel setApi={setApi} className="w-full">
@@ -412,7 +441,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* YOU MAY ALSO LIKE SECTION */}
+            {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED) ★ */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
@@ -487,24 +516,25 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </button>
                 )}
             </div>
+
+            {/* ★ COMPLETE YOUR MEAL (RESTORED) ★ */}
+            {randomItems.length > 0 && (
+                <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-6 md:mb-8">
+                        <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
+                        <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
+                            See all <ChevronRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
+                        {randomItems.map((p) => (
+                            <ProductCard key={p.id} product={p} />
+                        ))}
+                    </div>
+                </div>
+            )}
           </div>
         </div>
-{/* ★ COMPLETE YOUR MEAL */}
-        {randomItems.length > 0 && (
-            <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-6 md:mb-8">
-                    <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
-                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
-                        See all <ChevronRight className="h-4 w-4" />
-                    </Link>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
-                    {randomItems.map((p) => (
-                        <ProductCard key={p.id} product={p} />
-                    ))}
-                </div>
-            </div>
-        )}
       </div>
 
       {/* MOBILE ACTION BAR */}

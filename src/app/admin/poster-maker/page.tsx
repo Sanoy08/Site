@@ -75,7 +75,6 @@ type TextElement = {
   rotation: number;
 };
 
-// ★ PRESETS ARCHITECTURE
 type PosterPreset = {
   id: string;
   bgUrl: string;
@@ -203,11 +202,10 @@ export default function PosterMaker() {
     updateActiveElement({ align: alignment, x: newX });
   };
 
-  // ★ UPDATED CAPACITOR DOWNLOAD/SHARE LOGIC ★
   const handleDownload = async () => {
     if (!posterRef.current) return;
     
-    // Clear UI selections before capturing
+    // UI Selection clear
     setActiveId(null); 
     setEditingId(null); 
     setSnapLines({ x: false, y: false }); 
@@ -216,20 +214,29 @@ export default function PosterMaker() {
     
     toast.loading("Generating 2000x2000 HD Poster...");
 
+    // ★ TEXT SHIFT FIX: Scroll to top temporarily
+    const originalScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
     setTimeout(async () => {
         try {
             const exportScale = 2000 / 360; 
             const canvas = await html2canvas(posterRef.current!, { 
                 scale: exportScale, 
                 useCORS: true, 
-                backgroundColor: '#000' 
+                allowTaint: true, // helps with cross-origin images
+                backgroundColor: '#000',
+                scrollY: 0, // strict rendering coordinate
+                scrollX: 0
             });
             
+            // Restore original scroll
+            window.scrollTo(0, originalScrollY);
+
             const base64ImageString = canvas.toDataURL('image/jpeg', 0.95);
             const fileName = `BK-Offer-${new Date().getTime()}.jpg`;
 
             if (Capacitor.isNativePlatform()) {
-                // Native Capacitor Logic
                 const base64Data = base64ImageString.split(',')[1];
                 const savedFile = await Filesystem.writeFile({
                     path: fileName,
@@ -247,7 +254,6 @@ export default function PosterMaker() {
                 toast.dismiss();
                 toast.success("Poster generated successfully!");
             } else {
-                // Web Fallback Logic
                 const link = document.createElement('a');
                 link.href = base64ImageString;
                 link.download = fileName;
@@ -258,6 +264,7 @@ export default function PosterMaker() {
             }
         } catch (e) {
             console.error(e);
+            window.scrollTo(0, originalScrollY); // Restore scroll even on error
             toast.dismiss();
             toast.error("Error generating poster");
         }
@@ -266,7 +273,6 @@ export default function PosterMaker() {
 
   const activeElement = elements.find(e => e.id === activeId);
 
-  // Helper to get preview text (first line only)
   const getPreviewText = (text: string, fontName: string) => {
     const cleanText = text.trim();
     if (!cleanText) return fontName;
@@ -313,9 +319,10 @@ export default function PosterMaker() {
             <div 
               ref={posterRef}
               className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none shrink-0"
-              style={{ width: '360px', height: '360px', backgroundImage: `url(${activePreset.bgUrl})`, backgroundSize: '100% 100%', backgroundPosition: 'center' }}
+              // ★ BLURRY BACKGROUND FIX: Removed background properties from style
+              style={{ width: '360px', height: '360px' }}
               onClick={(e) => { 
-                if (e.target === posterRef.current) { 
+                if (e.target === posterRef.current || (e.target as HTMLElement).tagName === 'IMG') { 
                   setActiveId(null); 
                   setEditingId(null); 
                   setShowColorPicker(false);
@@ -323,6 +330,14 @@ export default function PosterMaker() {
                 } 
               }}
             >
+              {/* ★ HIGH-RES IMAGE TAG INSTEAD OF CSS BACKGROUND ★ */}
+              <img 
+                src={activePreset.bgUrl} 
+                alt="Background" 
+                crossOrigin="anonymous" 
+                className="absolute inset-0 w-full h-full object-fill z-0 pointer-events-none" 
+              />
+
               {snapLines.x && <div className="absolute top-0 bottom-0 left-[180px] w-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
               {snapLines.y && <div className="absolute left-0 right-0 top-[180px] h-px bg-cyan-400 shadow-[0_0_8px_cyan] z-50 pointer-events-none" />}
 
@@ -377,7 +392,7 @@ export default function PosterMaker() {
                     style={{
                       position: 'absolute', top: 0, left: 0,
                       touchAction: 'none',
-                      zIndex: isActive ? 20 : 1
+                      zIndex: isActive ? 20 : 10 // Ensure text is above image
                     }}
                   >
                     <div 
@@ -443,7 +458,6 @@ export default function PosterMaker() {
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-2">
                             
-                            {/* ★ CUSTOM FONT DROPDOWN (Photoshop Style) ★ */}
                             <div className="space-y-1.5 relative">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Type className="h-3 w-3"/> Font</Label>
                                 
@@ -458,11 +472,9 @@ export default function PosterMaker() {
                                     <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
                                 </div>
 
-                                {/* Dropdown Menu */}
                                 <AnimatePresence>
                                 {isFontDropdownOpen && (
                                     <>
-                                        {/* Background Overlay to close dropdown */}
                                         <div className="fixed inset-0 z-[60]" onClick={() => setIsFontDropdownOpen(false)} />
                                         
                                         <motion.div 
@@ -489,7 +501,6 @@ export default function PosterMaker() {
                                 </AnimatePresence>
                             </div>
 
-                            {/* Alignment */}
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><AlignLeft className="h-3 w-3"/> Align</Label>
                                 <div className="flex gap-1">
@@ -499,7 +510,6 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* Size Slider */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Scaling className="h-3 w-3"/> Size</Label>
@@ -510,7 +520,6 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* Rotate Slider */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><RotateCw className="h-3 w-3"/> Rotate</Label>
@@ -521,7 +530,6 @@ export default function PosterMaker() {
                                 </div>
                             </div>
 
-                            {/* Color Wheel Picker */}
                             <div className="space-y-1.5 col-span-2 sm:col-span-1 relative">
                                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1"><Palette className="h-3 w-3"/> Color</Label>
                                 <div className="flex items-center gap-2">
@@ -575,7 +583,6 @@ export default function PosterMaker() {
         </div>
       </div>
 
-      {/* DEVELOPER OUTPUT BOX */}
       <div className="mt-8 pt-4 border-t border-dashed px-2 sm:px-0">
         <div className="bg-slate-900 rounded-xl p-4 shadow-inner relative group">
            <div className="flex items-center justify-between mb-3">

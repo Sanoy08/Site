@@ -86,51 +86,51 @@ const POSTER_PRESETS: PosterPreset[] = [
     id: 'preset-1',
     bgUrl: 'https://images.bumbaskitchen.app/dhhfisazd/both_z7nfww.jpg',
     elements: [
-  {
-    "id": "heading",
-    "text": "রবিবারের স্পেশাল\nমেনু",
-    "x": 210,
-    "y": 63,
-    "fontSize": 34,
-    "color": "#ff0000",
-    "align": "center",
-    "fontFamily": "\"Ekush\", sans-serif",
-    "rotation": 0
-  },
-  {
-    "id": "menu",
-    "text": "এখানে মেনু লিখুন...",
-    "x": 128,
-    "y": 215,
-    "fontSize": 12,
-    "color": "#0013a5",
-    "align": "center",
-    "fontFamily": "\"Ekushey Aloucik\", sans-serif",
-    "rotation": 0
-  },
-  {
-    "id": "price",
-    "text": "এখানে মেনু লিখুন...",
-    "x": 279,
-    "y": 256,
-    "fontSize": 12,
-    "color": "#0013a5",
-    "align": "center",
-    "fontFamily": "\"Ekushey Aloucik\", sans-serif",
-    "rotation": 0
-  },
-  {
-    "id": "deadline",
-    "text": "অর্ডার দেওয়ার শেষ সময় ২০/২৩/২৬ সকাল ১০:৩০",
-    "x": 180,
-    "y": 335,
-    "fontSize": 16,
-    "color": "#ffffff",
-    "align": "center",
-    "fontFamily": "\"Alkatra\", cursive",
-    "rotation": 0
-  }
-]
+      {
+        id: "heading",
+        text: "রবিবারের স্পেশাল\nমেনু",
+        x: 210,
+        y: 63,
+        fontSize: 34,
+        color: "#ff0000",
+        align: "center",
+        fontFamily: "\"Ekush\", sans-serif",
+        rotation: 0
+      },
+      {
+        id: "menu",
+        text: "এখানে মেনু লিখুন...",
+        x: 128,
+        y: 215,
+        fontSize: 12,
+        color: "#0013a5",
+        align: "center",
+        fontFamily: "\"Ekushey Aloucik\", sans-serif",
+        rotation: 0
+      },
+      {
+        id: "price",
+        text: "এখানে মেনু লিখুন...",
+        x: 279,
+        y: 256,
+        fontSize: 12,
+        color: "#0013a5",
+        align: "center",
+        fontFamily: "\"Ekushey Aloucik\", sans-serif",
+        rotation: 0
+      },
+      {
+        id: "deadline",
+        text: "অর্ডার দেওয়ার শেষ সময় ২০/২৩/২৬ সকাল ১০:৩০",
+        x: 180,
+        y: 335,
+        fontSize: 16,
+        color: "#ffffff",
+        align: "center",
+        fontFamily: "\"Alkatra\", cursive",
+        rotation: 0
+      }
+    ]
   },
   {
     id: 'preset-2',
@@ -224,9 +224,9 @@ export default function PosterMaker() {
             const canvas = await html2canvas(posterRef.current!, { 
                 scale: exportScale, 
                 useCORS: true, 
-                allowTaint: true, // helps with cross-origin images
+                allowTaint: true,
                 backgroundColor: '#000',
-                scrollY: 0, // strict rendering coordinate
+                scrollY: 0, 
                 scrollX: 0
             });
             
@@ -264,7 +264,7 @@ export default function PosterMaker() {
             }
         } catch (e) {
             console.error(e);
-            window.scrollTo(0, originalScrollY); // Restore scroll even on error
+            window.scrollTo(0, originalScrollY); 
             toast.dismiss();
             toast.error("Error generating poster");
         }
@@ -319,8 +319,7 @@ export default function PosterMaker() {
             <div 
               ref={posterRef}
               className="relative bg-black overflow-hidden shadow-xl ring-1 ring-border touch-none shrink-0"
-              // ★ BLURRY BACKGROUND FIX: Removed background properties from style
-              style={{ width: '360px', height: '360px' }}
+              style={{ width: '360px', height: '360px', textRendering: 'geometricPrecision', WebkitFontSmoothing: 'antialiased' }}
               onClick={(e) => { 
                 if (e.target === posterRef.current || (e.target as HTMLElement).tagName === 'IMG') { 
                   setActiveId(null); 
@@ -330,7 +329,7 @@ export default function PosterMaker() {
                 } 
               }}
             >
-              {/* ★ HIGH-RES IMAGE TAG INSTEAD OF CSS BACKGROUND ★ */}
+              {/* HIGH-RES IMAGE TAG INSTEAD OF CSS BACKGROUND */}
               <img 
                 src={activePreset.bgUrl} 
                 alt="Background" 
@@ -392,7 +391,7 @@ export default function PosterMaker() {
                     style={{
                       position: 'absolute', top: 0, left: 0,
                       touchAction: 'none',
-                      zIndex: isActive ? 20 : 10 // Ensure text is above image
+                      zIndex: isActive ? 20 : 10 
                     }}
                   >
                     <div 
@@ -405,7 +404,10 @@ export default function PosterMaker() {
                             fontWeight: 'normal', 
                             cursor: isEditing ? 'text' : 'grab', 
                             whiteSpace: 'pre-wrap', 
-                            lineHeight: '1.2',
+                            // ★ TEXT DOWNWARD SHIFT FIX: Explicit pixel lineHeight & block display
+                            lineHeight: `${el.fontSize * 1.2}px`, 
+                            display: 'block',
+                            width: 'max-content',
                             textShadow: 'none',
                         }}
                         className={`p-1 ${isActive && !isEditing ? 'ring-2 ring-dashed ring-white/70 bg-white/10 rounded' : ''}`}
@@ -423,13 +425,15 @@ export default function PosterMaker() {
                                     fontSize: `${el.fontSize}px`, 
                                     fontFamily: el.fontFamily, 
                                     textAlign: el.align, 
-                                    lineHeight: '1.2',
+                                    // Match exact pixel height
+                                    lineHeight: `${el.fontSize * 1.2}px`,
                                     width: `${maxLineLength + 2}ch`,
-                                    height: `${lines.length * 1.25}em`
+                                    height: `${lines.length * 1.2}em` 
                                 }}
                             />
                         ) : (
-                            <span className="select-none">{el.text}</span>
+                            // ★ TEXT DOWNWARD SHIFT FIX: <div> instead of <span>
+                            <div className="select-none">{el.text}</div>
                         )}
                     </div>
                   </motion.div>

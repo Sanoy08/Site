@@ -68,7 +68,6 @@ export function AppUpdater() {
     toast.info("Starting download...");
 
     try {
-        // Real-time download using fetch stream
         const response = await fetch(updateInfo.apkUrl, {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
@@ -165,27 +164,27 @@ export function AppUpdater() {
 
       <Dialog open={showUpdate} onOpenChange={() => {}}>
         <DialogContent 
-          className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden !z-[99999]" 
+          className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden !z-[99999]"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          {/* Lottie Animation Header */}
-          <div className="relative w-full h-48 bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-            <div className="w-40 h-40">
+          {/* White Header with Lottie Animation - Taller shape */}
+          <div className="relative w-full h-64 bg-white flex items-center justify-center">
+            <div className="w-48 h-48">
               <DotLottiePlayer
-                src="/Update-App.lottie"  // Make sure this file exists in public/lottie/
+                src="/lottie/update-app.lottie"  // Make sure this file exists in public/lottie/
                 autoplay
                 loop
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-100/60 to-transparent flex items-end p-4">
               <span className="bg-red-600 text-white font-bold tracking-widest border-0 rounded-full px-2.5 py-0.5 text-xs">
                 UPDATE REQUIRED
               </span>
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-6 pt-2">
             <DialogHeader className="text-left space-y-1.5">
               <DialogTitle className="flex items-center gap-2 text-2xl font-black text-gray-900">
                 App Update

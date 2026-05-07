@@ -6,11 +6,10 @@ import { useEffect, useState } from 'react';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils'; // ★ Shadcn Dialog সরিয়ে cn আনা হলো
+import { cn } from '@/lib/utils';
 
 // Import DotLottie Player
 import { DotLottiePlayer } from '@dotlottie/react-player';
@@ -20,6 +19,18 @@ export function AppUpdater() {
   const [updateInfo, setUpdateInfo] = useState({ latestVersion: '', apkUrl: '', force: false });
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+
+  // ★ Background scroll bondho korar logic
+  useEffect(() => {
+    if (showUpdate) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showUpdate]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -139,18 +150,12 @@ export function AppUpdater() {
 
     } catch (error: any) {
         toast.error('Update failed. Please try again.');
-        setTimeout(() => {
-            if(confirm("In-app update failed. Open in browser instead?")) {
-                window.open(updateInfo.apkUrl, '_system');
-            }
-        }, 1000);
         setIsDownloading(false);
     }
   };
 
   return (
     <div 
-        // ★ MAGIC FIX: এটি সবসময় DOM-এ থাকবে। showUpdate ফলস হলে এটি invisible হয়ে যাবে।
         className={cn(
             "fixed inset-0 z-[99999] flex items-center justify-center transition-all duration-300",
             showUpdate ? "visible opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"
@@ -166,12 +171,10 @@ export function AppUpdater() {
                 showUpdate ? "scale-100 translate-y-0" : "scale-95 translate-y-8"
             )}
         >
-            {/* Minimal Badge */}
             <span className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest mt-2">
                 Action Required
             </span>
 
-            {/* Lottie Animation (আগে থেকেই লোড হয়ে থাকবে) */}
             <div className="w-52 h-52 sm:w-56 sm:h-56 -my-4 relative flex items-center justify-center">
                 <DotLottiePlayer
                     src="/Update-App.lottie"
@@ -181,7 +184,6 @@ export function AppUpdater() {
                 />
             </div>
 
-            {/* Minimal Text */}
             <div className="space-y-1.5 w-full">
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">
                     New Update
@@ -191,7 +193,6 @@ export function AppUpdater() {
                 </p>
             </div>
             
-            {/* Progress / Button */}
             <div className="w-full mt-2">
                 {isDownloading ? (
                     <div className="w-full space-y-2 animate-in fade-in duration-300">

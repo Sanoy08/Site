@@ -5,14 +5,14 @@
 import { useEffect, useState } from 'react';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils'; // ★ Shadcn Dialog সরিয়ে cn আনা হলো
 
-// ★ Import DotLottie Player
+// Import DotLottie Player
 import { DotLottiePlayer } from '@dotlottie/react-player';
 
 export function AppUpdater() {
@@ -23,9 +23,6 @@ export function AppUpdater() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-
-    // ★ MAGIC FIX: পপআপ আসার আগেই ব্যাকগ্রাউন্ডে লটি ফাইলটি ফেচ (Preload) করে ক্যাশে রেখে দেওয়া হচ্ছে
-    fetch('/Update-App.lottie').catch(() => {});
 
     const checkUpdate = async () => {
       try {
@@ -152,68 +149,73 @@ export function AppUpdater() {
   };
 
   return (
-    <>
-      {showUpdate && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99998]" />
-      )}
+    <div 
+        // ★ MAGIC FIX: এটি সবসময় DOM-এ থাকবে। showUpdate ফলস হলে এটি invisible হয়ে যাবে।
+        className={cn(
+            "fixed inset-0 z-[99999] flex items-center justify-center transition-all duration-300",
+            showUpdate ? "visible opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"
+        )}
+    >
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
-      <Dialog open={showUpdate} onOpenChange={() => {}}>
-        <DialogContent 
-          className="w-[85vw] max-w-[340px] p-6 sm:p-8 overflow-hidden border-0 shadow-2xl rounded-3xl [&>button]:hidden !z-[99999] mx-auto flex flex-col items-center text-center gap-5 outline-none" 
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
+        {/* Custom Minimal Modal */}
+        <div 
+            className={cn(
+                "relative w-[85vw] max-w-[340px] bg-background p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center gap-5 transition-transform duration-300",
+                showUpdate ? "scale-100 translate-y-0" : "scale-95 translate-y-8"
+            )}
         >
-          {/* Minimal Badge */}
-          <span className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest mt-2">
-              Action Required
-          </span>
+            {/* Minimal Badge */}
+            <span className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest mt-2">
+                Action Required
+            </span>
 
-          {/* Lottie Animation - Updated path and ensured fixed dimensions */}
-          <div className="w-52 h-52 sm:w-56 sm:h-56 -my-4 relative flex items-center justify-center">
-              <DotLottiePlayer
-                  src="/Update-App.lottie"
-                  autoplay
-                  loop
-                  className="w-full h-full"
-              />
-          </div>
+            {/* Lottie Animation (আগে থেকেই লোড হয়ে থাকবে) */}
+            <div className="w-52 h-52 sm:w-56 sm:h-56 -my-4 relative flex items-center justify-center">
+                <DotLottiePlayer
+                    src="/Update-App.lottie"
+                    autoplay
+                    loop
+                    className="w-full h-full"
+                />
+            </div>
 
-          {/* Minimal Text */}
-          <div className="space-y-1.5 w-full">
-              <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
-                  New Update
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                  Version {updateInfo.latestVersion} is required to continue.
-              </p>
-          </div>
-          
-          {/* Progress / Button */}
-          <div className="w-full mt-2">
-              {isDownloading ? (
-                  <div className="w-full space-y-2 animate-in fade-in zoom-in-95 duration-300">
-                      <div className="flex justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-1">
-                          <span>Downloading</span>
-                          <span className="text-primary">{downloadProgress}%</span>
-                      </div>
-                      <div className="w-full h-2.5 bg-primary/10 rounded-full overflow-hidden">
-                          <div 
-                              className="h-full bg-primary transition-all duration-300 ease-out" 
-                              style={{ width: `${downloadProgress}%` }} 
-                          />
-                      </div>
-                  </div>
-              ) : (
-                  <Button 
-                      onClick={handleDownloadAndInstall} 
-                      className="w-full text-base font-semibold h-12 rounded-2xl shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
-                  >
-                      Update Now
-                  </Button>
-              )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+            {/* Minimal Text */}
+            <div className="space-y-1.5 w-full">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                    New Update
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                    Version {updateInfo.latestVersion || '...'} is required to continue.
+                </p>
+            </div>
+            
+            {/* Progress / Button */}
+            <div className="w-full mt-2">
+                {isDownloading ? (
+                    <div className="w-full space-y-2 animate-in fade-in duration-300">
+                        <div className="flex justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-1">
+                            <span>Downloading</span>
+                            <span className="text-primary">{downloadProgress}%</span>
+                        </div>
+                        <div className="w-full h-2.5 bg-primary/10 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-primary transition-all duration-300 ease-out" 
+                                style={{ width: `${downloadProgress}%` }} 
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <Button 
+                        onClick={handleDownloadAndInstall} 
+                        className="w-full text-base font-semibold h-12 rounded-2xl shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+                    >
+                        Update Now
+                    </Button>
+                )}
+            </div>
+        </div>
+    </div>
   );
 }

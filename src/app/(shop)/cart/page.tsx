@@ -153,7 +153,7 @@ export default function CartPage() {
           {/* ★ Negative margin (-mt-16) দিয়ে লটি অ্যানিমেশনটাকে উপরে তোলা হয়েছে */}
           <div className="w-72 h-72 sm:w-96 sm:h-96 relative -mt-16 mb-2">
               <DotLottiePlayer
-                  src="/lottie/Empty Cart - Bag.lottie"
+                  src="/Empty Cart - Bag.lottie"
                   autoplay
                   loop
               />

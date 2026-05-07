@@ -56,7 +56,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://banglawebfonts.pages.dev" />
         
         {/* ★ Lottie Animation Preloader - ফাস্ট লোডিংয়ের জন্য ★ */}
-        <link rel="preload" href="/lottie/Food Courier.lottie" as="fetch" crossOrigin="anonymous" />
+        <link rel="preload" href="/Food Courier.lottie" as="fetch" crossOrigin="anonymous" />
 
         {/* All Bangla Web Fonts from the list */}
         <link href="https://banglawebfonts.pages.dev/css/solaiman-lipi.css" rel="stylesheet" />

@@ -173,7 +173,7 @@ export function AppUpdater() {
           <div className="relative w-full h-48 bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
             <div className="w-40 h-40">
               <DotLottiePlayer
-                src="/lottie/update-app.lottie"  // Make sure this file exists in public/lottie/
+                src="/lottie/Update-App.lottie"  // Make sure this file exists in public/lottie/
                 autoplay
                 loop
               />

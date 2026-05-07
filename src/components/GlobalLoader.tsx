@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils'; // cn ইউটিলিটি ইম্পোর্ট করা হলো ক্লাস মার্জ করার জন্য
+
+// ★ Import DotLottie Player
+import { DotLottiePlayer } from '@dotlottie/react-player';
 
 export default function GlobalLoader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const [isVideoReady, setIsVideoReady] = useState(false); // ★ নতুন স্টেট
 
   useEffect(() => {
     setIsLoading(false);
@@ -26,7 +27,6 @@ export default function GlobalLoader() {
         anchor.pathname !== window.location.pathname
       ) {
         setIsLoading(true);
-        setIsVideoReady(false); // লোডিং শুরু হলে ভিডিও স্টেট রিসেট হবে
         document.body.classList.add('overflow-hidden');
       }
     };
@@ -49,35 +49,23 @@ export default function GlobalLoader() {
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white touch-none"
         >
           
-          {/* ★★★ MP4 VIDEO LOADER WITH FADE-IN FIX ★★★ */}
-          <div className="relative w-64 h-64 mb-4"> 
-            <video
-              src="/images/loader.mp4"
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              // ভিডিও রেডি হলে এই ফাংশনটি কল হবে এবং ভিডিও দৃশ্যমান হবে
-              onLoadedData={() => setIsVideoReady(true)}
-              className={cn(
-                "w-full h-full object-contain pointer-events-none transition-opacity duration-500", 
-                isVideoReady ? "opacity-100" : "opacity-0" // রেডি না হওয়া পর্যন্ত ভিডিও লুকানো থাকবে
-              )}
+          {/* ★★★ LOTTIE ANIMATION LOADER ★★★ */}
+          <div className="relative w-72 h-72 mb-2"> 
+            <DotLottiePlayer
+                src="/Food Courier.lottie"
+                autoplay
+                loop
             />
           </div>
 
-          {/* Branding Text - ভিডিও রেডি হওয়ার পরেই টেক্সট দেখাবে (অপশনাল, চাইলে সবসময় দেখাতে পারেন) */}
+          {/* Loader Text (Bumba's Kitchen removed) */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: isVideoReady ? 1 : 0, y: isVideoReady ? 0 : 10 }} // ভিডিওর সাথে সিঙ্ক করা হলো
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="text-center"
           >
-            <h2 className="text-2xl font-bold font-headline text-primary tracking-wide">
-              Bumba's Kitchen
-            </h2>
-            <p className="text-sm font-medium text-muted-foreground animate-pulse mt-1">
+            <p className="text-base font-semibold text-muted-foreground animate-pulse">
               Your page is on the way...
             </p>
           </motion.div>

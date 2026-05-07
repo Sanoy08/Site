@@ -15,12 +15,15 @@ import { Separator } from '@/components/ui/separator';
 import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 
 // ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
+
+// ★ Import DotLottie Player
+import { DotLottiePlayer } from '@dotlottie/react-player';
 
 export default function CartPage() {
   const { state, itemCount, totalPrice, updateQuantity, removeItem } =
@@ -49,7 +52,7 @@ export default function CartPage() {
                         <div className="flex items-center gap-4">
                           <Link href={`/menus/${item.slug}`}>
                             <div className="relative h-20 w-20 rounded-md overflow-hidden border bg-muted">
-                              {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
+                              {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
                               <Image
                                 src={optimizeImageUrl(rawUrl)}
                                 alt={item.name}
@@ -146,13 +149,17 @@ export default function CartPage() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-16">
-          <ShoppingCart className="mx-auto h-24 w-24 text-muted-foreground" />
-          <h2 className="mt-6 text-2xl font-bold">Your cart is empty</h2>
-          <p className="mt-2 text-muted-foreground">
-            Looks like you haven't added anything to your cart yet.
-          </p>
-          <Button asChild className="mt-6">
+        <div className="flex flex-col items-center justify-center pt-4 pb-16 text-center animate-in fade-in duration-500">
+          {/* ★ Negative margin (-mt-16) দিয়ে লটি অ্যানিমেশনটাকে উপরে তোলা হয়েছে */}
+          <div className="w-72 h-72 sm:w-96 sm:h-96 relative -mt-16 mb-2">
+              <DotLottiePlayer
+                  src="/Empty Cart - Bag.lottie"
+                  autoplay
+                  loop
+              />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground">Your cart is empty</h2>
+          <Button asChild className="mt-8 rounded-full px-10 shadow-md shadow-primary/20" size="lg">
             <Link href="/menus">Continue Shopping</Link>
           </Button>
         </div>

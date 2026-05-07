@@ -24,7 +24,10 @@ import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { registerBackHandler } from '@/hooks/use-back-button';
 import { optimizeImageUrl } from '@/lib/imageUtils';
-import Fuse from 'fuse.js'; // ★ Fuse.js ইমপোর্ট করা হলো
+import Fuse from 'fuse.js';
+
+// ★ Import DotLottie Player
+import { DotLottiePlayer } from '@dotlottie/react-player';
 
 interface SearchSheetProps {
   children?: React.ReactNode;
@@ -39,13 +42,13 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
   const pathname = usePathname();
   
   const [query, setQuery] = useState('');
-  const [allProducts, setAllProducts] = useState<any[]>([]); // ★ সমস্ত প্রোডাক্ট রাখার স্টেট
+  const [allProducts, setAllProducts] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   
-  const debouncedQuery = useDebounce(query, 200); // রেসপন্স আরও ফাস্ট করার জন্য ২০০ms করা হলো
+  const debouncedQuery = useDebounce(query, 200);
 
   // ১. অটোমেটিক শিট ক্লোজ লজিক
   useEffect(() => {
@@ -83,7 +86,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, []);
 
-  // ৪. ★ Menu Page-এর মতো একবার সমস্ত প্রোডাক্ট ফেচ করা
+  // ৪. Menu Page-এর মতো একবার সমস্ত প্রোডাক্ট ফেচ করা
   useEffect(() => {
     if (open && allProducts.length === 0) {
       const fetchAllProducts = async () => {
@@ -105,7 +108,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, [open, allProducts.length]);
 
-  // ৫. ★ Fuse.js দিয়ে ক্লায়েন্ট সাইড ইনস্ট্যান্ট সার্চ
+  // ৫. Fuse.js দিয়ে ক্লায়েন্ট সাইড ইনস্ট্যান্ট সার্চ
   useEffect(() => {
     if (!debouncedQuery.trim()) {
       setResults([]);
@@ -125,24 +128,30 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
   }, [debouncedQuery, allProducts]);
 
   // ৬. ক্লিক হ্যান্ডলার
-  const handleProductClick = (slug: string) => {
+  const handleProductClick = (productName: string, slug: string) => {
     setIsNavigating(true);
-    addToHistory(query);
+    // অসম্পূর্ণ কুয়েরির বদলে পুরো প্রোডাক্টের নাম সেভ করা হলো
+    addToHistory(productName); 
     router.push(`/menus/${slug}`);
   };
 
+  // ★ History Fix: Functional State Update (prev) ব্যবহার করা হয়েছে যাতে stale state না থাকে
   const addToHistory = (term: string) => {
     if (!term.trim()) return;
-    const newHistory = [term, ...recentSearches.filter(s => s !== term)].slice(0, 5);
-    setRecentSearches(newHistory);
-    localStorage.setItem('recentSearches', JSON.stringify(newHistory));
+    setRecentSearches(prev => {
+      const newHistory = [term, ...prev.filter(s => s !== term)].slice(0, 5);
+      localStorage.setItem('recentSearches', JSON.stringify(newHistory));
+      return newHistory;
+    });
   };
 
   const removeHistory = (term: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newHistory = recentSearches.filter(s => s !== term);
-    setRecentSearches(newHistory);
-    localStorage.setItem('recentSearches', JSON.stringify(newHistory));
+    setRecentSearches(prev => {
+      const newHistory = prev.filter(s => s !== term);
+      localStorage.setItem('recentSearches', JSON.stringify(newHistory));
+      return newHistory;
+    });
   };
 
   const getCategoryName = (category: any) => {
@@ -177,10 +186,16 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
             <Input 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter চাপলেও সার্চ হিস্ট্রি সেভ হবে
+                if (e.key === 'Enter' && query.trim()) {
+                  addToHistory(query.trim());
+                }
+              }}
               placeholder="What are you craving?" 
               className="pl-10 h-12 rounded-xl bg-muted/50 border-transparent focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/20 text-base"
               autoFocus
-              disabled={isNavigating || isLoading} // লোডিংয়ের সময় ইনপুট ডিসেবল রাখা ভালো
+              disabled={isNavigating || isLoading} 
             />
             {query && !isNavigating && (
               <button 
@@ -210,9 +225,15 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                 </h3>
                 
                 {results.length === 0 ? (
-                  <div className="text-center py-10">
-                    <p className="text-lg">😕</p>
-                    <p className="text-muted-foreground mt-2">No items found for "{query}"</p>
+                  // ★ Lottie Animation for Empty State (Bigger & Cleaned up)
+                  <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in duration-500">
+                    <div className="w-82 h-82 sm:w-90 sm:h-90 relative">
+                        <DotLottiePlayer
+                            src="/notfound.lottie"
+                            autoplay
+                            loop
+                        />
+                    </div>
                   </div>
                 ) : (
                   results.map((product, index) => {
@@ -223,7 +244,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                     return (
                       <div 
                         key={`${product._id || 'prod'}-${index}`} 
-                        onClick={() => handleProductClick(product.slug)}
+                        onClick={() => handleProductClick(product.name, product.slug)} 
                         className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group border border-transparent hover:border-border"
                       >
                         <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-muted shrink-0">
@@ -293,7 +314,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                           <span className="text-sm text-muted-foreground group-hover:text-foreground">{term}</span>
                           <button 
                             onClick={(e) => removeHistory(term, e)}
-                            className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted"
+                            className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity"
                           >
                             <X className="h-3 w-3 text-muted-foreground" />
                           </button>

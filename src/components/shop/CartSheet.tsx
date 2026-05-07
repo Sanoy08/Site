@@ -19,6 +19,9 @@ import { registerBackHandler } from '@/hooks/use-back-button';
 // ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
+// ★ Import DotLottie Player
+import { DotLottiePlayer } from '@dotlottie/react-player';
+
 export function CartSheet() {
   const { state, itemCount, totalPrice, updateQuantity, removeItem } = useCart();
   const [isOpen, setIsOpen] = useState(false);
@@ -64,7 +67,7 @@ export function CartSheet() {
             <div className="flex-grow overflow-y-auto pr-2 -mr-2">
               <div className="flex flex-col gap-6 py-6">
                 {state.items.map(item => {
-                  // ✅ ইমেজের সোর্স বের করার লজিক আপডেট করা হয়েছে
+                  // ✅ ইমেজের সোর্স বের করার লজিক আপডেট করা হয়েছে
                   const rawUrl = (item.image && item.image.url && item.image.url.trim() !== '') 
                     ? item.image.url 
                     : PLACEHOLDER_IMAGE_URL;
@@ -72,12 +75,12 @@ export function CartSheet() {
                   return (
                     <div key={item.id} className="flex gap-4 group">
                       <Link href={`/menus/${item.slug}`} className="flex-shrink-0 relative h-24 w-24 overflow-hidden rounded-xl border bg-muted">
-                         {/* ✅ অপটিমাইজড ইমেজ ব্যবহার এবং sizes সেট করা হয়েছে */}
+                          {/* ✅ অপটিমাইজড ইমেজ ব্যবহার এবং sizes সেট করা হয়েছে */}
                          <Image 
                             src={optimizeImageUrl(rawUrl)} 
                             alt={item.name} 
                             fill 
-                            sizes="100px" // থাম্বনেইলের জন্য সাইজ বলে দেওয়া হলো (Performance Boost)
+                            sizes="100px" // থাম্বনেইলের জন্য সাইজ বলে দেওয়া হলো (Performance Boost)
                             className="object-cover transition-transform group-hover:scale-105"
                          />
                       </Link>
@@ -152,16 +155,21 @@ export function CartSheet() {
             </SheetFooter>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 pb-12">
-            <div className="h-24 w-24 bg-muted/30 rounded-full flex items-center justify-center mb-2">
-                <ShoppingCart className="h-10 w-10 text-muted-foreground/50" />
+          <div className="flex flex-col items-center justify-center h-full text-center pb-12 animate-in fade-in duration-500">
+            {/* ★ Large Lottie Animation for Empty Cart */}
+            <div className="w-72 h-72 sm:w-80 sm:h-80 relative -mt-8 mb-4">
+                <DotLottiePlayer
+                    src="/Empty Cart - Bag.lottie"
+                    autoplay
+                    loop
+                />
             </div>
             <div>
                 <p className="text-xl font-bold text-foreground">Your cart is empty</p>
-                <p className="text-sm text-muted-foreground mt-1 max-w-[200px] mx-auto">Looks like you haven't added anything to your cart yet.</p>
+                {/* Text removed as requested */}
             </div>
             <SheetTrigger asChild>
-                <Button asChild className="mt-4 rounded-full px-8">
+                <Button asChild className="mt-6 rounded-full px-8 shadow-md shadow-primary/20">
                     <Link href="/menus">Start Shopping</Link>
                 </Button>
             </SheetTrigger>

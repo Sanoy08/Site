@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   Search, SlidersHorizontal, X, 
-  UtensilsCrossed, ArrowUpDown, Leaf, Loader2
+  ArrowUpDown, Leaf, Loader2
 } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -23,6 +23,9 @@ import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import { motion } from 'framer-motion';
 import Fuse from 'fuse.js';
+
+// Import DotLottie Player
+import { DotLottiePlayer } from '@dotlottie/react-player';
 
 const CATEGORIES = [
     { name: "All", image: "/Categories/9.webp" }, 
@@ -80,7 +83,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     // Prothom bar load hobe
     fetchAll();
 
-    // 🌟 Pusher theke update asle automatic abar load hobe
+    // Pusher theke update asle automatic abar load hobe
     const handleRealtimeUpdate = () => {
       console.log("Syncing new menu data...");
       fetchAll();
@@ -160,12 +163,11 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       setIsFilterOpen(false); 
   };
 
-    // ★ আগের কোডটা ডিলিট করে এটা বসান ★
   const handleCategoryChange = (category: string) => {
-      // ১. ক্লিক করা মাত্রই ইনস্ট্যান্ট UI আপডেট (কোনো ডিলে নেই)
+      // ১. ক্লিক করা মাত্রই ইনস্ট্যান্ট UI আপডেট
       setActiveCategory(category);
       
-      // ২. সাইলেন্টলি URL আপডেট (Next.js রাউটারকে বাইপাস করে)
+      // ২. সাইলেন্টলি URL আপডেট
       const newUrl = category === 'All' ? '/menus' : `/menus?category=${category.toLowerCase()}`;
       window.history.pushState(null, '', newUrl);
   };
@@ -303,9 +305,9 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       </div>
 
       {/* --- PRODUCTS GRID --- */}
-      <div className="container pt-2 pb-8 min-h-[60vh]">
+      <div className="container pt-2 pb-8 min-h-[60vh] flex flex-col">
         {isLoading && allProducts.length === 0 ? (
-             <div className="flex justify-center py-20">
+             <div className="flex justify-center py-20 flex-grow">
                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
              </div>
         ) : filteredAndSortedProducts.length > 0 ? (
@@ -315,7 +317,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                         key={product.id}
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: false, margin: "-50px" }} // 🌟 CHANGED: once: false kora hoyeche jate bar bar scroll e animation hoy
+                        viewport={{ once: false, margin: "-50px" }}
                         transition={{ duration: 0.4, ease: "easeOut" }}
                     >
                         <ProductCard product={product} />
@@ -323,21 +325,18 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                 ))}
             </div>
         ) : (
-            // No items state
-            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-in zoom-in duration-300">
-                <div className="h-40 w-40 bg-muted/30 rounded-full flex items-center justify-center relative">
-                    <UtensilsCrossed className="h-16 w-16 text-muted-foreground/30" />
-                    <Search className="h-8 w-8 text-primary absolute bottom-8 right-8 bg-white rounded-full p-1 shadow-md" />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800">No items found!</h2>
-                    <p className="text-muted-foreground mt-2 max-w-xs mx-auto leading-relaxed">
-                        We couldn't find any dishes matching "{searchQuery}". Try changing the category or search term.
-                    </p>
+            // No items state with Lottie (Fade in, Centered vertically without -mt-12)
+            <div className="flex flex-col items-center justify-center flex-grow animate-in fade-in duration-500">
+                <div className="w-80 h-80 sm:w-[400px] sm:h-[400px] md:w-[450px] md:h-[450px] relative mb-2">
+                    <DotLottiePlayer
+                        src="/notfound.lottie"
+                        autoplay
+                        loop
+                    />
                 </div>
                 <Button 
                     onClick={() => { setActiveCategory('All'); setSearchQuery(''); setShowVegOnly(false); router.push('/menus'); }} 
-                    className="rounded-full px-8 shadow-lg shadow-primary/20"
+                    className="rounded-full px-8 shadow-lg shadow-primary/20 z-10"
                 >
                     Clear All Filters
                 </Button>

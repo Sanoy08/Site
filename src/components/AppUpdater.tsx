@@ -172,7 +172,7 @@ export function AppUpdater() {
           <div className="relative flex flex-col items-center justify-center pb-4">
             <div className="w-48 h-48 -mt-8">
               <DotLottiePlayer
-                src="/update-app.lottie"   // Path without "lottie/" folder
+                src="/Update-App.lottie"   // Path without "lottie/" folder
                 autoplay
                 loop
               />

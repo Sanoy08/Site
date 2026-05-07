@@ -14,8 +14,11 @@ import { Badge } from '../ui/badge';
 import { differenceInDays } from 'date-fns';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { SpecialDishCard } from './SpecialDishCard';
-// ✅ আমাদের নতুন ফাংশন ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
+
+// ★ Capacitor Haptics Import
+import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 type ProductCardProps = {
   product: Product;
@@ -26,31 +29,54 @@ export function ProductCard({ product }: ProductCardProps) {
   const cartItem = state.items.find((item: CartItem) => item.id === product.id);
   const isOutOfStock = product.stock <= 0;
 
+  // ★ Trigger Haptic Vibration Function
+  const triggerVibration = async (style: ImpactStyle = ImpactStyle.Light) => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Haptics.impact({ style });
+      } catch (err) {
+        console.error("Haptics failed", err);
+      }
+    }
+  };
+
   const handleAdd = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (!isOutOfStock) addItem(product);
+    e.preventDefault(); 
+    e.stopPropagation();
+    if (!isOutOfStock) {
+        addItem(product);
+        triggerVibration(ImpactStyle.Medium); // Slightly heavier vibration for adding new item
+    }
   };
 
   const handleIncrease = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (cartItem) updateQuantity(product.id, cartItem.quantity + 1);
+    e.preventDefault(); 
+    e.stopPropagation();
+    if (cartItem) {
+        updateQuantity(product.id, cartItem.quantity + 1);
+        triggerVibration(ImpactStyle.Light); // Light vibration for quantity change
+    }
   };
 
   const handleDecrease = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (cartItem) updateQuantity(product.id, cartItem.quantity - 1);
+    e.preventDefault(); 
+    e.stopPropagation();
+    if (cartItem) {
+        updateQuantity(product.id, cartItem.quantity - 1);
+        triggerVibration(ImpactStyle.Light); // Light vibration for quantity change
+    }
   };
 
   const isNew = product.createdAt && differenceInDays(new Date(), new Date(product.createdAt)) < 7;
 
-  // ★ ইমেজ চেক লজিক আপডেটেড ★
+  // ইমেজ চেক লজিক আপডেটেড 
   const hasValidImage = product.images && product.images.length > 0 && product.images[0].url && product.images[0].url.trim() !== '';
   
-  // ✅ এখানে আমরা optimizeImageUrl ব্যবহার করছি
+  // এখানে আমরা optimizeImageUrl ব্যবহার করছি
   const rawImageUrl = hasValidImage ? product.images[0].url : PLACEHOLDER_IMAGE_URL;
   const imageSrc = optimizeImageUrl(rawImageUrl);
 
-  // ★ স্পেশাল ডিশ কার্ড লজিক ★
+  // স্পেশাল ডিশ কার্ড লজিক 
   if (product.isDailySpecial && !hasValidImage) {
       return (
           <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow cursor-pointer group border-amber-200 shadow-md bg-amber-50/30">
@@ -73,7 +99,7 @@ export function ProductCard({ product }: ProductCardProps) {
       );
   }
 
-  // ... (নরমাল কার্ড রেন্ডারিং)
+  // নরমাল কার্ড রেন্ডারিং
   return (
     <Card className={`flex flex-col overflow-hidden h-full transition-shadow hover:shadow-lg bg-card group border-muted/60 ${isOutOfStock ? 'opacity-75 grayscale-[0.5]' : ''}`}>
       <Link href={`/menus/${product.slug}`} className="block aspect-square relative overflow-hidden">
@@ -83,7 +109,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <Badge className="absolute top-2 right-2 bg-accent text-accent-foreground z-10 shadow-sm">NEW</Badge>
         )}
         
-        {/* ✅ Next.js Image Component এখন আমাদের প্রক্সি URL ব্যবহার করবে */}
+        {/* Next.js Image Component এখন আমাদের প্রক্সি URL ব্যবহার করবে */}
         <Image 
             src={imageSrc} 
             alt={product.name} 

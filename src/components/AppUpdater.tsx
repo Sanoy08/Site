@@ -5,32 +5,18 @@
 import { useEffect, useState } from 'react';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Download, Rocket, Loader2 } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-
-// Import DotLottie Player
-import { DotLottiePlayer } from '@dotlottie/react-player';
 
 export function AppUpdater() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState({ latestVersion: '', apkUrl: '', force: false });
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-
-  // ★ Background scroll bondho korar logic
-  useEffect(() => {
-    if (showUpdate) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [showUpdate]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -78,8 +64,10 @@ export function AppUpdater() {
 
     setIsDownloading(true);
     setDownloadProgress(0); 
+    toast.info("Starting download...");
 
     try {
+        // ★★★ Real-time Download Logic using Fetch Stream ★★★
         const response = await fetch(updateInfo.apkUrl, {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
@@ -87,6 +75,7 @@ export function AppUpdater() {
 
         if (!response.ok) throw new Error("Network response was not ok");
 
+        // মোট ফাইলের সাইজ নেওয়া
         const contentLength = response.headers.get('content-length');
         const total = contentLength ? parseInt(contentLength, 10) : 0;
         let loaded = 0;
@@ -103,6 +92,7 @@ export function AppUpdater() {
                 loaded += value.byteLength;
 
                 if (total) {
+                    // পার্সেন্টেজ ক্যালকুলেট করা (max 95% পর্যন্ত, বাকিটা সেভ হওয়ার সময়)
                     const percent = Math.round((loaded / total) * 100);
                     setDownloadProgress(Math.min(percent, 95));
                 }
@@ -110,7 +100,7 @@ export function AppUpdater() {
         }
 
         const blob = new Blob(chunks);
-        setDownloadProgress(96);
+        setDownloadProgress(96); // File is converting
 
         const base64Data = await new Promise<string>((resolve, reject) => {
             const fileReader = new FileReader();
@@ -123,12 +113,15 @@ export function AppUpdater() {
             fileReader.readAsDataURL(blob);
         });
 
-        setDownloadProgress(98); 
+        setDownloadProgress(98); // File is saving to device
 
         const fileName = 'update.apk';
 
         try {
-            await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache });
+            await Filesystem.deleteFile({
+                path: fileName,
+                directory: Directory.Cache
+            });
         } catch (e) { }
 
         await Filesystem.writeFile({
@@ -137,9 +130,12 @@ export function AppUpdater() {
             directory: Directory.Cache,
         });
 
-        setDownloadProgress(100); 
+        setDownloadProgress(100); // Download & Save Complete!
 
-        const uriResult = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
+        const uriResult = await Filesystem.getUri({
+            path: fileName,
+            directory: Directory.Cache
+        });
 
         await FileOpener.open({
             filePath: uriResult.uri,
@@ -149,74 +145,105 @@ export function AppUpdater() {
         setIsDownloading(false);
 
     } catch (error: any) {
-        toast.error('Update failed. Please try again.');
+        console.error("In-App Update Failed:", error);
+        toast.error(`Update failed: ${error.message || 'Unknown error'}`);
+        
+        setTimeout(() => {
+            if(confirm("In-app update failed. Open in browser instead?")) {
+                window.open(updateInfo.apkUrl, '_system');
+            }
+        }, 1000);
+        
         setIsDownloading(false);
     }
   };
 
   return (
-    <div 
-        className={cn(
-            "fixed inset-0 z-[99999] flex items-center justify-center transition-all duration-300",
-            showUpdate ? "visible opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"
-        )}
-    >
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+    <>
+      {showUpdate && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-[99998]" />
+      )}
 
-        {/* Custom Minimal Modal */}
-        <div 
-            className={cn(
-                "relative w-[85vw] max-w-[340px] bg-background p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center gap-5 transition-transform duration-300",
-                showUpdate ? "scale-100 translate-y-0" : "scale-95 translate-y-8"
-            )}
+      <Dialog open={showUpdate} onOpenChange={() => {}}>
+        <DialogContent 
+          className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden !z-[99999]" 
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
         >
-            <span className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest mt-2">
-                Action Required
-            </span>
+          
+          <div className="relative w-full h-48 bg-muted">
+              <img 
+                  src="https://res.cloudinary.com/dhhfisazd/image/upload/v1774462065/unnamed_wdwhvd.jpg" 
+                  alt="App Update Required"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.classList.add('bg-gradient-to-r', 'from-orange-400', 'to-red-500');
+                  }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                  <Badge variant="destructive" className="bg-red-600 text-white font-bold tracking-widest border-0">
+                      UPDATE REQUIRED
+                  </Badge>
+              </div>
+          </div>
 
-            <div className="w-52 h-52 sm:w-56 sm:h-56 -my-4 relative flex items-center justify-center">
-                <DotLottiePlayer
-                    src="/Update-App.lottie"
-                    autoplay
-                    loop
-                    className="w-full h-full"
-                />
-            </div>
+          <div className="p-6">
+              <DialogHeader className="text-left space-y-1.5">
+                  <DialogTitle className="flex items-center gap-2 text-2xl font-black text-gray-900">
+                      <Rocket className="h-6 w-6 text-primary" /> App Update
+                  </DialogTitle>
+                  <DialogDescription className="text-base text-gray-600">
+                      Please update to version <strong className="text-primary">{updateInfo.latestVersion}</strong> to continue using Bumba's Kitchen.
+                  </DialogDescription>
+              </DialogHeader>
+              
+              <DialogFooter className="sm:justify-center pt-5 flex flex-col gap-3 w-full">
+                  
+                  {/* ★★★ Real-time Progress Bar UI ★★★ */}
+                  {isDownloading && (
+                      <div className="w-full space-y-2 mb-2 animate-in fade-in">
+                          <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wide">
+                              <span>Downloading...</span>
+                              <span>{downloadProgress}%</span>
+                          </div>
+                          <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden border">
+                              <div 
+                                  className="h-full bg-primary transition-all duration-300 ease-out" 
+                                  style={{ width: `${downloadProgress}%` }} 
+                              />
+                          </div>
+                      </div>
+                  )}
 
-            <div className="space-y-1.5 w-full">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                    New Update
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                    Version {updateInfo.latestVersion || '...'} is required to continue.
-                </p>
-            </div>
-            
-            <div className="w-full mt-2">
-                {isDownloading ? (
-                    <div className="w-full space-y-2 animate-in fade-in duration-300">
-                        <div className="flex justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-1">
-                            <span>Downloading</span>
-                            <span className="text-primary">{downloadProgress}%</span>
-                        </div>
-                        <div className="w-full h-2.5 bg-primary/10 rounded-full overflow-hidden">
-                            <div 
-                                className="h-full bg-primary transition-all duration-300 ease-out" 
-                                style={{ width: `${downloadProgress}%` }} 
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <Button 
-                        onClick={handleDownloadAndInstall} 
-                        className="w-full text-base font-semibold h-12 rounded-2xl shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
-                    >
-                        Update Now
-                    </Button>
-                )}
-            </div>
-        </div>
-    </div>
+                  <Button 
+                      onClick={handleDownloadAndInstall} 
+                      disabled={isDownloading}
+                      className="w-full gap-2 text-lg h-14 rounded-xl shadow-lg hover:scale-[1.02] transition-transform"
+                  >
+                      {isDownloading ? (
+                          <>
+                              <Loader2 className="h-6 w-6 animate-spin" /> 
+                              {downloadProgress === 100 ? 'Installing...' : 'Please Wait...'}
+                          </>
+                      ) : (
+                          <>
+                              <Download className="h-6 w-6" /> Update Now
+                          </>
+                      )}
+                  </Button>
+              </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
+}
+
+function Badge({ children, className, variant }: { children: React.ReactNode, className?: string, variant?: string }) {
+    return (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${className}`}>
+            {children}
+        </span>
+    );
 }

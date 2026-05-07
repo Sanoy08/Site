@@ -7,7 +7,7 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Rocket } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
 import { toast } from 'sonner';
@@ -22,6 +22,9 @@ export function AppUpdater() {
   const [downloadProgress, setDownloadProgress] = useState(0);
 
   useEffect(() => {
+    // ★ ১. Prefetch Lottie File: পপআপ আসার আগেই ব্যাকগ্রাউন্ডে ফাইল লোড করে রাখা হচ্ছে
+    fetch('/Update-App.lottie').catch(() => {});
+
     if (!Capacitor.isNativePlatform()) return;
 
     const checkUpdate = async () => {
@@ -165,18 +168,25 @@ export function AppUpdater() {
               Action Required
           </span>
 
-          {/* Lottie Animation (Fixed size for instant loading placeholder) */}
+          {/* ★ ২. Animation Container with Skeleton Fallback */}
           <div className="w-52 h-52 sm:w-56 sm:h-56 -my-4 relative flex items-center justify-center">
+              
+              {/* Skeleton / Placeholder: লটি আসার আগে এই রকেটটা পালস করবে */}
+              <div className="absolute inset-0 m-6 bg-primary/5 rounded-full animate-pulse flex items-center justify-center">
+                  <Rocket className="h-10 w-10 text-primary/20 animate-bounce" />
+              </div>
+
+              {/* Lottie Player */}
               <DotLottiePlayer
                   src="/Update-App.lottie"
                   autoplay
                   loop
-                  className="w-full h-full"
+                  className="w-full h-full absolute inset-0 z-10"
               />
           </div>
 
           {/* Minimal Text */}
-          <div className="space-y-1.5 w-full">
+          <div className="space-y-1.5 w-full relative z-20">
               <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
                   New Update
               </DialogTitle>
@@ -186,7 +196,7 @@ export function AppUpdater() {
           </div>
           
           {/* Progress / Button */}
-          <div className="w-full mt-2">
+          <div className="w-full mt-2 relative z-20">
               {isDownloading ? (
                   <div className="w-full space-y-2 animate-in fade-in zoom-in-95 duration-300">
                       <div className="flex justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-1">

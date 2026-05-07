@@ -12,6 +12,9 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
 import { toast } from 'sonner';
 
+// ★ Import DotLottie Player
+import { DotLottiePlayer } from '@dotlottie/react-player';
+
 export function AppUpdater() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState({ latestVersion: '', apkUrl: '', force: false });
@@ -75,7 +78,6 @@ export function AppUpdater() {
 
         if (!response.ok) throw new Error("Network response was not ok");
 
-        // মোট ফাইলের সাইজ নেওয়া
         const contentLength = response.headers.get('content-length');
         const total = contentLength ? parseInt(contentLength, 10) : 0;
         let loaded = 0;
@@ -92,7 +94,6 @@ export function AppUpdater() {
                 loaded += value.byteLength;
 
                 if (total) {
-                    // পার্সেন্টেজ ক্যালকুলেট করা (max 95% পর্যন্ত, বাকিটা সেভ হওয়ার সময়)
                     const percent = Math.round((loaded / total) * 100);
                     setDownloadProgress(Math.min(percent, 95));
                 }
@@ -161,57 +162,62 @@ export function AppUpdater() {
   return (
     <>
       {showUpdate && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-[99998]" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99998]" />
       )}
 
       <Dialog open={showUpdate} onOpenChange={() => {}}>
         <DialogContent 
-          className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden !z-[99999]" 
+          // ★ Edge-to-edge রিমুভ করে ফ্লোটিং ডিজাইন (w-[90vw], rounded-[2.5rem]) করা হয়েছে
+          className="w-[90vw] sm:max-w-sm md:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-[2.5rem] [&>button]:hidden !z-[99999] mx-auto" 
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           
-          <div className="relative w-full h-48 bg-muted">
-              <img 
-                  src="https://res.cloudinary.com/dhhfisazd/image/upload/v1774462065/unnamed_wdwhvd.jpg" 
-                  alt="App Update Required"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).parentElement!.classList.add('bg-gradient-to-r', 'from-orange-400', 'to-red-500');
-                  }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                  <Badge variant="destructive" className="bg-red-600 text-white font-bold tracking-widest border-0">
+          {/* ★ লম্বা (Tall) Lottie Container */}
+          <div className="relative w-full h-64 sm:h-72 bg-gradient-to-b from-primary/10 via-primary/5 to-background flex flex-col items-center justify-center pt-8">
+              
+              <div className="absolute top-5 left-5">
+                  <Badge variant="destructive" className="bg-red-500/15 text-red-600 font-bold tracking-widest border border-red-200/50 shadow-sm px-3 py-1">
                       UPDATE REQUIRED
                   </Badge>
               </div>
+
+              <div className="w-56 h-56 sm:w-64 sm:h-64 mt-4">
+                  <DotLottiePlayer
+                      src="/Update-App.lottie"
+                      autoplay
+                      loop
+                  />
+              </div>
           </div>
 
-          <div className="p-6">
-              <DialogHeader className="text-left space-y-1.5">
-                  <DialogTitle className="flex items-center gap-2 text-2xl font-black text-gray-900">
-                      <Rocket className="h-6 w-6 text-primary" /> App Update
+          <div className="p-8 pt-2 flex flex-col items-center text-center">
+              <DialogHeader className="space-y-3 w-full">
+                  <DialogTitle className="flex items-center justify-center gap-2 text-2xl sm:text-3xl font-black text-gray-900">
+                      <Rocket className="h-7 w-7 text-primary" /> App Update
                   </DialogTitle>
-                  <DialogDescription className="text-base text-gray-600">
-                      Please update to version <strong className="text-primary">{updateInfo.latestVersion}</strong> to continue using Bumba's Kitchen.
+                  <DialogDescription className="text-base text-gray-600 leading-relaxed px-2">
+                      A fresh new version of <span className="font-semibold text-foreground">Bumba's Kitchen</span> is ready! Please update to version <strong className="text-primary text-lg">{updateInfo.latestVersion}</strong> to continue.
                   </DialogDescription>
               </DialogHeader>
               
-              <DialogFooter className="sm:justify-center pt-5 flex flex-col gap-3 w-full">
+              <DialogFooter className="sm:justify-center pt-8 flex flex-col gap-4 w-full">
                   
                   {/* ★★★ Real-time Progress Bar UI ★★★ */}
                   {isDownloading && (
-                      <div className="w-full space-y-2 mb-2 animate-in fade-in">
-                          <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      <div className="w-full space-y-2 mb-2 animate-in fade-in zoom-in-95 duration-300">
+                          <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wide px-1">
                               <span>Downloading...</span>
-                              <span>{downloadProgress}%</span>
+                              <span className="text-primary">{downloadProgress}%</span>
                           </div>
-                          <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden border">
+                          <div className="w-full h-3 bg-primary/10 rounded-full overflow-hidden border border-primary/20">
                               <div 
-                                  className="h-full bg-primary transition-all duration-300 ease-out" 
+                                  className="h-full bg-primary transition-all duration-300 ease-out relative overflow-hidden" 
                                   style={{ width: `${downloadProgress}%` }} 
-                              />
+                              >
+                                  {/* Shimmer effect inside progress bar */}
+                                  <div className="absolute top-0 left-0 bottom-0 right-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                              </div>
                           </div>
                       </div>
                   )}
@@ -219,7 +225,7 @@ export function AppUpdater() {
                   <Button 
                       onClick={handleDownloadAndInstall} 
                       disabled={isDownloading}
-                      className="w-full gap-2 text-lg h-14 rounded-xl shadow-lg hover:scale-[1.02] transition-transform"
+                      className="w-full gap-2 text-lg h-14 rounded-2xl shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
                   >
                       {isDownloading ? (
                           <>
@@ -228,7 +234,7 @@ export function AppUpdater() {
                           </>
                       ) : (
                           <>
-                              <Download className="h-6 w-6" /> Update Now
+                              <Download className="h-6 w-6 animate-bounce" /> Update Now
                           </>
                       )}
                   </Button>

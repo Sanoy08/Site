@@ -52,7 +52,7 @@ export default function GlobalLoader() {
           {/* ★★★ LOTTIE ANIMATION LOADER ★★★ */}
           <div className="relative w-72 h-72 mb-2"> 
             <DotLottiePlayer
-                src="/Food Courier.lottie"
+                src="/lottie/Food Courier.lottie"
                 autoplay
                 loop
             />

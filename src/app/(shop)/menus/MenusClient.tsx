@@ -329,7 +329,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
             <div className="flex flex-col items-center justify-center flex-grow animate-in fade-in duration-500">
                 <div className="w-80 h-80 sm:w-[400px] sm:h-[400px] md:w-[450px] md:h-[450px] relative mb-2">
                     <DotLottiePlayer
-                        src="/notfound.lottie"
+                        src="/lottie/notfound.lottie"
                         autoplay
                         loop
                     />

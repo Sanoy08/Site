@@ -229,7 +229,7 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                   <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in duration-500">
                     <div className="w-82 h-82 sm:w-90 sm:h-90 relative">
                         <DotLottiePlayer
-                            src="/notfound.lottie"
+                            src="/lottie/notfound.lottie"
                             autoplay
                             loop
                         />

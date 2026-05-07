@@ -159,7 +159,7 @@ export function CartSheet() {
             {/* ★ Large Lottie Animation for Empty Cart */}
             <div className="w-72 h-72 sm:w-80 sm:h-80 relative -mt-8 mb-4">
                 <DotLottiePlayer
-                    src="/Empty Cart - Bag.lottie"
+                    src="/lottie/Empty Cart - Bag.lottie"
                     autoplay
                     loop
                 />

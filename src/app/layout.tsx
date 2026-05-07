@@ -55,6 +55,9 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://banglawebfonts.pages.dev" />
         
+        {/* ★ Lottie Animation Preloader - ফাস্ট লোডিংয়ের জন্য ★ */}
+        <link rel="preload" href="/lottie/Food Courier.lottie" as="fetch" crossOrigin="anonymous" />
+
         {/* All Bangla Web Fonts from the list */}
         <link href="https://banglawebfonts.pages.dev/css/solaiman-lipi.css" rel="stylesheet" />
         <link href="https://banglawebfonts.pages.dev/css/kalpurush.css" rel="stylesheet" />
@@ -108,11 +111,6 @@ export default function RootLayout({
           atma.variable,
           galada.variable
       )}>
-          
-          <div className="hidden" aria-hidden="true">
-            <video src="/images/loader.mp4" preload="auto" muted width={0} height={0} />
-          </div>
-
           <AppUrlListener />
           <StatusBarLogic /> 
           <CartProvider>

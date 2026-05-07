@@ -164,38 +164,38 @@ export function AppUpdater() {
 
       <Dialog open={showUpdate} onOpenChange={() => {}}>
         <DialogContent 
-          className="sm:max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl [&>button]:hidden !z-[99999]"
+          className="sm:max-w-md p-6 overflow-visible border-0 shadow-2xl rounded-3xl [&>button]:hidden !z-[99999]"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          {/* White Header with Lottie Animation - Taller shape */}
-          <div className="relative w-full h-64 bg-white flex items-center justify-center">
-            <div className="w-48 h-48">
+          {/* Lottie Animation Header - White background, not edge-to-edge */}
+          <div className="relative flex flex-col items-center justify-center pb-4">
+            <div className="w-48 h-48 -mt-8">
               <DotLottiePlayer
-                src="/lottie/update-app.lottie"  // Make sure this file exists in public/lottie/
+                src="/update-app.lottie"   // Path without "lottie/" folder
                 autoplay
                 loop
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-100/60 to-transparent flex items-end p-4">
-              <span className="bg-red-600 text-white font-bold tracking-widest border-0 rounded-full px-2.5 py-0.5 text-xs">
-                UPDATE REQUIRED
+            <div className="mt-2">
+              <span className="bg-red-600 text-white font-bold tracking-widest rounded-full px-3 py-1 text-xs uppercase shadow-sm">
+                Update Required
               </span>
             </div>
           </div>
 
-          <div className="p-6 pt-2">
-            <DialogHeader className="text-left space-y-1.5">
-              <DialogTitle className="flex items-center gap-2 text-2xl font-black text-gray-900">
-                App Update
+          <div className="flex flex-col space-y-5">
+            <DialogHeader className="text-center space-y-2">
+              <DialogTitle className="flex items-center justify-center gap-2 text-2xl font-black text-gray-900">
+                <Download className="h-6 w-6 text-primary" /> App Update
               </DialogTitle>
-              <DialogDescription className="text-base text-gray-600">
+              <DialogDescription className="text-base text-gray-600 text-center">
                 Please update to version <strong className="text-primary">{updateInfo.latestVersion}</strong> to continue using Bumba's Kitchen.
               </DialogDescription>
             </DialogHeader>
             
-            <DialogFooter className="sm:justify-center pt-5 flex flex-col gap-3 w-full">
-                
+            <DialogFooter className="flex flex-col gap-3 w-full pt-2">
+              
               {isDownloading && (
                 <div className="w-full space-y-2 mb-2 animate-in fade-in">
                   <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wide">
@@ -204,7 +204,7 @@ export function AppUpdater() {
                   </div>
                   <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden border">
                     <div 
-                      className="h-full bg-primary transition-all duration-300 ease-out" 
+                      className="h-full bg-primary transition-all duration-300 ease-out rounded-full" 
                       style={{ width: `${downloadProgress}%` }} 
                     />
                   </div>

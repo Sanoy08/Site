@@ -441,7 +441,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED) ★ */}
+                        {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED & FIXED) ★ */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
@@ -450,11 +450,13 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                             Swipe <ChevronRight className="h-3 w-3" />
                         </div>
                     </div>
+                    {/* ফিক্স ১: এখানে 'group' ক্লাস অ্যাড করা হয়েছে */}
                     <Carousel 
                         opts={{ align: "start", dragFree: true }} 
-                        className="w-full relative"
+                        className="w-full relative group"
                     >
-                        <CarouselContent className="-ml-3 sm:-ml-4">
+                        {/* ফিক্স ২: py-2 অ্যাড করা হয়েছে যাতে শ্যাডো কেটে না যায় */}
+                        <CarouselContent className="-ml-3 sm:-ml-4 py-2">
                             {relatedProducts.map((p) => (
                                 <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%]">
                                     <ProductCard product={p} />
@@ -463,12 +465,14 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                         </CarouselContent>
                         
                         <div className="hidden md:block">
-                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
-                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
+                            {/* ফিক্স ৩: z-10 অ্যাড করা হয়েছে যাতে বাটনগুলো কার্ডের উপরে থাকে */}
+                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100 z-10" />
+                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100 z-10" />
                         </div>
                     </Carousel>
                 </div>
             )}
+
 
             {/* DESCRIPTION SECTION */}
             <div className="mt-10">

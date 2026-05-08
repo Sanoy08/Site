@@ -48,7 +48,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
 
   const validImages = product.images?.filter(img => img.url && img.url.trim() !== '') || [];
   const displayImages = validImages.length > 0 ? validImages : [fallbackImage];
@@ -67,7 +66,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   // ★ Animation Overlay State
   const [isFlying, setIsFlying] = useState(false);
 
-  // Description Parsing Logic for "Top Highlights"
   const rawDescription = (product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.").replace(/\\n/g, '\n');
   let highlights: string[] = [];
   let cleanDescriptionText = rawDescription;
@@ -105,7 +103,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   useEffect(() => {
     if (!api) return;
-    setCount(api.scrollSnapList().length);
     setCurrent(api.selectedScrollSnap() + 1);
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap() + 1);
@@ -444,7 +441,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ YOU MAY ALSO LIKE SECTION */}
+            {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED) ★ */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
@@ -519,25 +516,25 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </button>
                 )}
             </div>
+
+            {/* ★ COMPLETE YOUR MEAL (RESTORED) ★ */}
+            {randomItems.length > 0 && (
+                <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-6 md:mb-8">
+                        <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
+                        <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
+                            See all <ChevronRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
+                        {randomItems.map((p) => (
+                            <ProductCard key={p.id} product={p} />
+                        ))}
+                    </div>
+                </div>
+            )}
           </div>
         </div>
-
-        {/* ★ COMPLETE YOUR MEAL (Moved OUTSIDE the Grid!) ★ */}
-        {randomItems.length > 0 && (
-            <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-6 md:mb-8">
-                    <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
-                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
-                        See all <ChevronRight className="h-4 w-4" />
-                    </Link>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
-                    {randomItems.map((p) => (
-                        <ProductCard key={p.id} product={p} />
-                    ))}
-                </div>
-            </div>
-        )}
       </div>
 
       {/* MOBILE ACTION BAR */}

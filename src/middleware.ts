@@ -16,8 +16,21 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const path = url.pathname;
   
-  // স্ট্যাটিক ফাইল (ছবি, ফন্ট, .apk) ও API রুট ইগনোর করো
-  if (path.startsWith('/_next/') || path.includes('.') || path.startsWith('/api/')) {
+  // স্ট্যাটিক ফাইল (ছবি, ফন্ট, .apk) ইগনোর করো
+  if (path.startsWith('/_next/') || path.includes('.')) {
+    return NextResponse.next();
+  }
+
+  // ==========================================
+  // ★ API BLOCKER: ব্রাউজার থেকে সরাসরি এক্সেস বন্ধ
+  // ==========================================
+  if (path.startsWith('/api/')) {
+    const acceptHeader = request.headers.get('accept') || '';
+    // যদি কেউ ব্রাউজারে টাইপ করে (GET request & text/html)
+    if (request.method === 'GET' && acceptHeader.includes('text/html')) {
+        return NextResponse.rewrite(new URL('/404', request.url));
+    }
+    // অ্যাপ/ফ্রন্টএন্ড থেকে কল হলে নরমালি যেতে দাও
     return NextResponse.next();
   }
 
@@ -30,23 +43,23 @@ export async function middleware(request: NextRequest) {
       const { payload } = await jwtVerify(token, JWT_SECRET);
       userRole = (payload.role as string) || 'customer';
     } catch (e) {
-      // টোকেন এক্সপায়ার হলে বা ভুল হলে
+      // টোকেন এক্সপায়ার হলে কুকি ক্লিয়ার করে দাও
+      const response = NextResponse.next();
+      response.cookies.delete('auth_token');
+      return response;
     }
   }
 
   const isPublicPath = publicPaths.some(p => path.startsWith(p));
 
   // ==========================================
-  // ★ FORCE LOGIN LOGIC (সবার জন্য বাধ্যতামূলক)
+  // ★ FORCE LOGIN LOGIC
   // ==========================================
-  
-  // ১. যদি ইউজার লগইন না থাকে এবং সে পাবলিক পেজে না থাকে -> সোজা লগইন পেজে পাঠাও
   if (!token && !isPublicPath) {
       const loginUrl = new URL('/login', request.url);
       return NextResponse.redirect(loginUrl);
   }
 
-  // ২. যদি লগইন করা থাকে, আর সে আবার /login পেজে যেতে চায় -> তাকে হোমপেজে পাঠিয়ে দাও
   if (token && (path === '/login' || path === '/register' || path === '/signup')) {
       if (isAdminDomain && userRole === 'admin') {
           return NextResponse.redirect(new URL('/', request.url));
@@ -56,15 +69,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // ==========================================
-  // CASE 1: অ্যাডমিন ডোমেইন সুরক্ষা (admin.bumbaskitchen.app)
+  // CASE 1: অ্যাডমিন ডোমেইন সুরক্ষা 
   // ==========================================
   if (isAdminDomain) {
-    // লগইন আছে কিন্তু অ্যাডমিন না -> মেইন ডোমেইনের হোমে পাঠিয়ে দাও
     if (userRole !== 'admin') {
-        return NextResponse.redirect(new URL('/', 'https://bumbaskitchen.app'));
+        // ডাইনামিক বেস ইউআরএল ব্যবহার করা হলো (লোকালহোস্টেও কাজ করবে)
+        const mainDomainUrl = new URL('/', request.url);
+        mainDomainUrl.hostname = mainDomainUrl.hostname.replace('admin.', '');
+        return NextResponse.redirect(mainDomainUrl);
     }
 
-    // URL Rewrite (ফোল্ডার ম্যাপ করা)
     if (path.startsWith('/admin')) {
         const newPath = path.replace(/^\/admin/, '') || '/';
         return NextResponse.redirect(new URL(newPath, request.url));
@@ -73,10 +87,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // ==========================================
-  // CASE 2: মেইন ডোমেইন (www.bumbaskitchen.app)
+  // CASE 2: মেইন ডোমেইন 
   // ==========================================
   if (!isAdminDomain) {
-    // মেইন ডোমেইনে কেউ /admin এ এক্সেস করতে চাইলে 404 দেখাও (সিকিউরিটি)
     if (path.startsWith('/admin')) {
       return NextResponse.rewrite(new URL('/404', request.url));
     }
@@ -86,6 +99,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // যেসব রুটে মিডলওয়্যার চলবে না
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // ★ matcher থেকে 'api' বাদ দেওয়া হয়েছে, যাতে API রুটেও মিডলওয়্যার রান করে
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

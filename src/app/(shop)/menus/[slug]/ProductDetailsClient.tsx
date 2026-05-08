@@ -48,6 +48,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
 
   const validImages = product.images?.filter(img => img.url && img.url.trim() !== '') || [];
   const displayImages = validImages.length > 0 ? validImages : [fallbackImage];
@@ -66,6 +67,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   // ★ Animation Overlay State
   const [isFlying, setIsFlying] = useState(false);
 
+  // Description Parsing Logic for "Top Highlights"
   const rawDescription = (product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.").replace(/\\n/g, '\n');
   let highlights: string[] = [];
   let cleanDescriptionText = rawDescription;
@@ -103,6 +105,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   useEffect(() => {
     if (!api) return;
+    setCount(api.scrollSnapList().length);
     setCurrent(api.selectedScrollSnap() + 1);
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap() + 1);
@@ -292,7 +295,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             <CarouselContent className="-ml-0">
                 {displayImages.map((img, index) => (
                 <CarouselItem key={index} className="pl-0 basis-full">
-                    <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
+                    <div 
+                        className="relative w-full aspect-square bg-gray-100 overflow-hidden"
+                    >
                         <Image
                             src={optimizeImageUrl(img.url)}
                             alt={img.alt || product.name}
@@ -339,7 +344,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           
           {/* Desktop Images */}
           <div className="hidden md:block space-y-4">
-             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
+             <div 
+                className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border"
+             >
                  <Image
                     src={optimizeImageUrl(displayImages[activeSlide].url)}
                     alt={product.name}
@@ -512,11 +519,10 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </button>
                 )}
             </div>
-
           </div>
         </div>
 
-        {/* ★ COMPLETE YOUR MEAL (MOVED OUTSIDE GRID TO FIX CAROUSEL WIDTH) ★ */}
+        {/* ★ COMPLETE YOUR MEAL (Moved OUTSIDE the Grid!) ★ */}
         {randomItems.length > 0 && (
             <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">

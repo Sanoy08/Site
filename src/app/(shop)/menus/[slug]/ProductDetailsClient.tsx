@@ -292,9 +292,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             <CarouselContent className="-ml-0">
                 {displayImages.map((img, index) => (
                 <CarouselItem key={index} className="pl-0 basis-full">
-                    <div 
-                        className="relative w-full aspect-square bg-gray-100 overflow-hidden"
-                    >
+                    <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
                         <Image
                             src={optimizeImageUrl(img.url)}
                             alt={img.alt || product.name}
@@ -341,9 +339,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           
           {/* Desktop Images */}
           <div className="hidden md:block space-y-4">
-             <div 
-                className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border"
-             >
+             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
                  <Image
                     src={optimizeImageUrl(displayImages[activeSlide].url)}
                     alt={product.name}
@@ -441,48 +437,34 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-                                    {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED & FIXED) ★ */}
+            {/* ★ YOU MAY ALSO LIKE SECTION */}
             {relatedProducts.length > 0 && (
-                {/* ফিক্স ৪: max-w-full এবং overflow-hidden অ্যাড করা হয়েছে যাতে কন্টেইনার গ্রিডের বাইরে না যায় */}
-                <div className="mt-10 pt-4 w-full min-w-0 max-w-full overflow-hidden">
-                    <div className="flex items-center justify-between mb-4 px-1">
+                <div className="mt-10 pt-4 w-full min-w-0">
+                    <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-lg text-gray-900">You may also like</h3>
-                        {/* আইটেম ১টার বেশি হলেই কেবল Swipe লেখাটা দেখাবে */}
-                        {relatedProducts.length > 1 && (
-                            <div className="text-xs font-medium text-gray-400 flex items-center gap-1 md:hidden">
-                                Swipe <ChevronRight className="h-3 w-3" />
-                            </div>
-                        )}
+                        <div className="text-xs font-medium text-gray-400 flex items-center gap-1 md:hidden">
+                            Swipe <ChevronRight className="h-3 w-3" />
+                        </div>
                     </div>
-                    
-                    {/* ফিক্স ১: group ক্লাস আগে থেকেই ছিল */}
                     <Carousel 
-                        opts={{ align: "start", dragFree: true, containScroll: "trimSnaps" }} 
-                        className="w-full relative group"
+                        opts={{ align: "start", dragFree: true }} 
+                        className="w-full relative"
                     >
-                        {/* ফিক্স ২: py-2 */}
-                        <CarouselContent className="-ml-3 sm:-ml-4 py-2">
+                        <CarouselContent className="-ml-3 sm:-ml-4">
                             {relatedProducts.map((p) => (
-                                <CarouselItem 
-                                    key={p.id} 
-                                    {/* ফিক্স ৫: shrink-0 এবং select-none অ্যাড করা হয়েছে */}
-                                    className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%] shrink-0 select-none"
-                                >
+                                <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%]">
                                     <ProductCard product={p} />
                                 </CarouselItem>
                             ))}
                         </CarouselContent>
                         
                         <div className="hidden md:block">
-                            {/* ফিক্স ৩: z-10 */}
-                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100 z-10" />
-                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100 z-10" />
+                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
+                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
                         </div>
                     </Carousel>
                 </div>
             )}
-
-
 
             {/* DESCRIPTION SECTION */}
             <div className="mt-10">
@@ -531,24 +513,25 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ COMPLETE YOUR MEAL (RESTORED) ★ */}
-            {randomItems.length > 0 && (
-                <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
-                    <div className="flex items-center justify-between mb-6 md:mb-8">
-                        <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
-                        <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
-                            See all <ChevronRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
-                        {randomItems.map((p) => (
-                            <ProductCard key={p.id} product={p} />
-                        ))}
-                    </div>
-                </div>
-            )}
           </div>
         </div>
+
+        {/* ★ COMPLETE YOUR MEAL (MOVED OUTSIDE GRID TO FIX CAROUSEL WIDTH) ★ */}
+        {randomItems.length > 0 && (
+            <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-6 md:mb-8">
+                    <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
+                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
+                        See all <ChevronRight className="h-4 w-4" />
+                    </Link>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
+                    {randomItems.map((p) => (
+                        <ProductCard key={p.id} product={p} />
+                    ))}
+                </div>
+            </div>
+        )}
       </div>
 
       {/* MOBILE ACTION BAR */}

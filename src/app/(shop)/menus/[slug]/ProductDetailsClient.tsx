@@ -441,37 +441,47 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-                        {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED & FIXED) ★ */}
+                                    {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED & FIXED) ★ */}
             {relatedProducts.length > 0 && (
-                <div className="mt-10 pt-4 w-full min-w-0">
-                    <div className="flex items-center justify-between mb-4">
+                {/* ফিক্স ৪: max-w-full এবং overflow-hidden অ্যাড করা হয়েছে যাতে কন্টেইনার গ্রিডের বাইরে না যায় */}
+                <div className="mt-10 pt-4 w-full min-w-0 max-w-full overflow-hidden">
+                    <div className="flex items-center justify-between mb-4 px-1">
                         <h3 className="font-bold text-lg text-gray-900">You may also like</h3>
-                        <div className="text-xs font-medium text-gray-400 flex items-center gap-1 md:hidden">
-                            Swipe <ChevronRight className="h-3 w-3" />
-                        </div>
+                        {/* আইটেম ১টার বেশি হলেই কেবল Swipe লেখাটা দেখাবে */}
+                        {relatedProducts.length > 1 && (
+                            <div className="text-xs font-medium text-gray-400 flex items-center gap-1 md:hidden">
+                                Swipe <ChevronRight className="h-3 w-3" />
+                            </div>
+                        )}
                     </div>
-                    {/* ফিক্স ১: এখানে 'group' ক্লাস অ্যাড করা হয়েছে */}
+                    
+                    {/* ফিক্স ১: group ক্লাস আগে থেকেই ছিল */}
                     <Carousel 
-                        opts={{ align: "start", dragFree: true }} 
+                        opts={{ align: "start", dragFree: true, containScroll: "trimSnaps" }} 
                         className="w-full relative group"
                     >
-                        {/* ফিক্স ২: py-2 অ্যাড করা হয়েছে যাতে শ্যাডো কেটে না যায় */}
+                        {/* ফিক্স ২: py-2 */}
                         <CarouselContent className="-ml-3 sm:-ml-4 py-2">
                             {relatedProducts.map((p) => (
-                                <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%]">
+                                <CarouselItem 
+                                    key={p.id} 
+                                    {/* ফিক্স ৫: shrink-0 এবং select-none অ্যাড করা হয়েছে */}
+                                    className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%] shrink-0 select-none"
+                                >
                                     <ProductCard product={p} />
                                 </CarouselItem>
                             ))}
                         </CarouselContent>
                         
                         <div className="hidden md:block">
-                            {/* ফিক্স ৩: z-10 অ্যাড করা হয়েছে যাতে বাটনগুলো কার্ডের উপরে থাকে */}
+                            {/* ফিক্স ৩: z-10 */}
                             <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100 z-10" />
                             <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100 z-10" />
                         </div>
                     </Carousel>
                 </div>
             )}
+
 
 
             {/* DESCRIPTION SECTION */}

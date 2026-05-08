@@ -4,25 +4,21 @@ import { HomeClient } from '@/components/shop/HomeClient';
 import { clientPromise } from '@/lib/mongodb';
 import { Product } from '@/lib/types';
 
-// ★ বেস্ট প্র্যাকটিস: 'force-dynamic' সরিয়ে ISR ব্যবহার করা হলো
-// এটি পেজটিকে ক্যাশ করবে এবং প্রতি 60 সেকেন্ডে ব্যাকগ্রাউন্ডে ডেটা আপডেট করবে।
-export const revalidate = 60; 
+// রিয়েল-টাইম আপডেটের জন্য ক্যাশিং বন্ধ
+export const dynamic = 'force-dynamic';
 
 async function getHomePageData() {
   try {
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
 
-    // ★ Projection ব্যবহার করা হলো: পুরো ডকুমেন্ট না এনে শুধু যে ফিল্ডগুলো দরকার সেগুলো আনা হচ্ছে
-    // এতে মেমরি কম খরচ হবে এবং ডেটা ফাস্ট লোড হবে।
+    // সব ডেটা একসাথে আনা হচ্ছে (Parallel Fetching)
+    // ★★★ UPDATE: homeSliderImages কালেকশন যোগ করা হয়েছে
     const [slidesData, offersData, productsData, sliderImagesData] = await Promise.all([
       db.collection('heroSlides').find({}).sort({ order: 1 }).toArray(),
       db.collection('offers').find({ active: true }).toArray(),
-      db.collection('menuItems').find({}).project({ 
-        Name: 1, Description: 1, Price: 1, Category: 1, 
-        ImageURLs: 1, InStock: 1, Bestseller: 1, isDailySpecial: 1, CreatedAt: 1 
-      }).toArray(),
-      db.collection('homeSliderImages').find({}).sort({ order: 1 }).toArray()
+      db.collection('menuItems').find({}).toArray(),
+      db.collection('homeSliderImages').find({}).sort({ order: 1 }).toArray() // নতুন লাইন
     ]);
 
     // স্লাইডার ম্যাপ
@@ -32,7 +28,7 @@ async function getHomePageData() {
       clickUrl: slide.clickUrl,
     }));
 
-    // মিডল স্লাইডার ম্যাপ
+    // ★★★ UPDATE: নতুন মিডল স্লাইডার ম্যাপ
     const sliderImages = sliderImagesData.map(slide => ({
       id: slide._id.toString(),
       imageUrl: slide.imageUrl,
@@ -61,16 +57,20 @@ async function getHomePageData() {
       reviewCount: 0,
       stock: item.InStock ? 100 : 0,
       featured: item.Bestseller === true || item.Bestseller === "true",
+      // ★★★ এই ফ্ল্যাগটি অ্যাডমিন থেকে সেট করা হয় ★★★
       isDailySpecial: item.isDailySpecial === true, 
       createdAt: item.CreatedAt ? new Date(item.CreatedAt).toISOString() : undefined
     }));
 
+    // ফিল্টারিং
     const bestsellers = allProducts.filter((p: any) => p.featured).slice(0, 8);
 
+    // ★★★ sliderImages রিটার্ন করা হচ্ছে
     return { heroSlides, offers, bestsellers, allProducts, sliderImages };
 
   } catch (error) {
     console.error("Error fetching homepage data:", error);
+    // এরর হলে সব খালি অ্যারে রিটার্ন করবে
     return { heroSlides: [], offers: [], bestsellers: [], allProducts: [], sliderImages: [] };
   }
 }
@@ -81,7 +81,7 @@ export default async function HomePage() {
   return (
     <HomeClient 
       heroSlides={data.heroSlides} 
-      sliderImages={data.sliderImages}
+      sliderImages={data.sliderImages} // ★ নতুন প্রপ পাস করা হলো
       offers={data.offers} 
       bestsellers={data.bestsellers as Product[]} 
       allProducts={data.allProducts as Product[]} 

@@ -26,9 +26,8 @@ import {
 import { Share } from '@capacitor/share';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// ★ Capacitor Imports
-import { Capacitor } from '@capacitor/core';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+// ★ NOTE: Removed top-level Capacitor/Haptics imports to prevent SSR Crash. 
+// They are now dynamically imported inside the handleAddToCart function.
 
 const fallbackImage: ProductImage = { 
   id: 'placeholder', 
@@ -63,7 +62,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const [randomItems, setRandomItems] = useState<Product[]>([]);
   const inlineCartRef = useRef<HTMLDivElement>(null);
 
-  // ★ Animation Overlay State
+  // Animation Overlay State
   const [isFlying, setIsFlying] = useState(false);
 
   const rawDescription = (product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.").replace(/\\n/g, '\n');
@@ -174,14 +173,13 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   const showBottomBar = isScrolled && !isInlineVisible;
 
-  // ★ UNIVERSAL CENTER POP & SWING FLY TO CART LOGIC ★
+  // ★ UNIVERSAL CENTER POP & SWING FLY TO CART LOGIC
   const flyToCart = () => {
     const target = document.getElementById('global-cart-target');
     if (!target) return;
 
     const targetRect = target.getBoundingClientRect();
 
-    // Enable Background Dimming Overlay
     setIsFlying(true);
 
     const flyingImg = document.createElement('img');
@@ -193,8 +191,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     flyingImg.style.boxShadow = '0 25px 50px rgba(0,0,0,0.6)';
     flyingImg.style.pointerEvents = 'none';
 
-    // ALWAYS POP FROM CENTER
-    const spawnSize = 140; // Big nice popup
+    const spawnSize = 140; 
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
 
@@ -207,15 +204,12 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
     flyingImg.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
     
     document.body.appendChild(flyingImg);
-    flyingImg.offsetWidth; // Force Reflow
+    flyingImg.offsetWidth; 
 
-    // 1. Pop In at the center
     flyingImg.style.transform = 'scale(1) translateY(0)';
     flyingImg.style.opacity = '1';
 
-    // 2. Wait slightly, then Swing to Cart
     setTimeout(() => {
-        // Parabolic curve: top accelerates (ease-in), left moves steadily
         flyingImg.style.transition = 'top 0.7s cubic-bezier(0.5, -0.5, 1, 1), left 0.7s linear, width 0.7s ease-in, height 0.7s ease-in, opacity 0.7s ease-in, transform 0.7s linear';
         
         flyingImg.style.top = `${targetRect.top}px`;
@@ -227,28 +221,31 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         
         setTimeout(() => {
             flyingImg.remove();
-            setIsFlying(false); // Remove Overlay
+            setIsFlying(false); 
             window.dispatchEvent(new Event('cart-animated-bump'));
         }, 700);
-    }, 400); // 400ms pause for user to see the image clearly in the center
+    }, 400); 
   };
 
   const handleAddToCart = async () => {
     if (isOutOfStock) return;
     
-    // Add to cart state
     addItem(product, quantity, false);
 
-    // Native Haptic Vibration instead of Toast
-    if (Capacitor.isNativePlatform()) {
+    // ★ FIX: Dynamically import Capacitor to prevent SSR Hydration Crash
+    if (typeof window !== 'undefined') {
         try {
-            await Haptics.impact({ style: ImpactStyle.Heavy });
+            const { Capacitor } = await import('@capacitor/core');
+            const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
+            
+            if (Capacitor.isNativePlatform()) {
+                await Haptics.impact({ style: ImpactStyle.Heavy });
+            }
         } catch (e) {
-            console.error("Haptics not supported", e);
+            console.error("Haptics not supported or failed to load", e);
         }
     }
 
-    // Trigger the universal animation
     flyToCart();
   };
 
@@ -278,13 +275,10 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   return (
     <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden relative">
       
-      {/* ★ DARK OVERLAY DURING FLY ANIMATION ★ */}
-      <div 
-        className={cn(
-            "fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[45] transition-all duration-300",
-            isFlying ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        )}
-      />
+      {/* ★ FIX: Conditionally Render Dark Overlay so it never blocks touch events when hidden */}
+      {isFlying && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[45] transition-all duration-300 opacity-100 pointer-events-auto" />
+      )}
 
       {/* --- MOBILE TOP IMAGE SLIDER --- */}
       <div className="md:hidden w-full relative group">
@@ -441,7 +435,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ YOU MAY ALSO LIKE SECTION (RESTORED) ★ */}
+            {/* ★ YOU MAY ALSO LIKE SECTION */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
@@ -516,25 +510,25 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     </button>
                 )}
             </div>
-
-            {/* ★ COMPLETE YOUR MEAL (RESTORED) ★ */}
-            {randomItems.length > 0 && (
-                <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
-                    <div className="flex items-center justify-between mb-6 md:mb-8">
-                        <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
-                        <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
-                            See all <ChevronRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
-                        {randomItems.map((p) => (
-                            <ProductCard key={p.id} product={p} />
-                        ))}
-                    </div>
-                </div>
-            )}
           </div>
         </div>
+
+        {/* ★ FIX: Moved 'Complete Your Meal' back outside the right column for proper layout (Like Code 1) */}
+        {randomItems.length > 0 && (
+            <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-6 md:mb-8">
+                    <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
+                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
+                        See all <ChevronRight className="h-4 w-4" />
+                    </Link>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
+                    {randomItems.map((p) => (
+                        <ProductCard key={p.id} product={p} />
+                    ))}
+                </div>
+            </div>
+        )}
       </div>
 
       {/* MOBILE ACTION BAR */}

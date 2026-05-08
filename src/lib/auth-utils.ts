@@ -1,35 +1,37 @@
 // src/lib/auth-utils.ts
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose'; // ★ jsonwebtoken এর বদলে jose ব্যবহার করা হলো
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_SECRET_STR = process.env.JWT_SECRET!;
 const COOKIE_NAME = 'auth_token';
 const CRON_SECRET = process.env.CRON_SECRET!;
 
-if (!JWT_SECRET) {
+if (!JWT_SECRET_STR) {
   throw new Error('JWT_SECRET is not defined');
 }
 
-// 1. Cookie Options (UPDATED for Subdomains)
+// jose লাইব্রেরি স্ট্রিংয়ের বদলে Uint8Array ব্যবহার করে সিক্রেট হিসেবে
+const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STR);
+
+// 1. Cookie Options
 export const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
   path: '/',
-  // কুকি সাবডোমেইনে কাজ করার জন্য
   domain: process.env.NODE_ENV === 'production' ? '.bumbaskitchen.app' : undefined, 
   maxAge: 30 * 24 * 60 * 60, // 30 Days
 };
 
-// 2. ★★★ Verify Admin Helper (এটি মিসিং ছিল) ★★★
+// 2. Verify Admin Helper
 export async function verifyAdmin(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
   if (!token) return false;
 
   try {
-    const decoded: any = jwt.verify(token, JWT_SECRET);
-    return decoded.role === 'admin';
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return payload.role === 'admin';
   } catch (error) {
     return false;
   }
@@ -41,8 +43,8 @@ export async function getUser(request: NextRequest) {
   if (!token) return null;
 
   try {
-    const decoded: any = jwt.verify(token, JWT_SECRET);
-    return decoded;
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return payload; // jose ডিফল্টভাবে payload রিটার্ন করে
   } catch (error) {
     return null;
   }
@@ -55,13 +57,13 @@ export function responseWithCookie(data: any, token: string, status = 200) {
   return response;
 }
 
-// 5. Verify Cron Helper
+// 5. Verify Cron Helper (Secured)
 export function verifyCron(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');
-  const { searchParams } = new URL(request.url);
-  const queryKey = searchParams.get('key');
-
-  if (authHeader === `Bearer ${CRON_SECRET}` || queryKey === CRON_SECRET) {
+  
+  // ★ URL queryKey বাদ দেওয়া হয়েছে সিকিউরিটির জন্য। 
+  // এখন শুধু Header দিয়ে ভেরিফাই হবে।
+  if (authHeader === `Bearer ${CRON_SECRET}`) {
     return true;
   }
   return false;

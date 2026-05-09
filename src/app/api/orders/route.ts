@@ -1,0 +1,154 @@
+// src/app/api/orders/route.ts
+// (Keep all your existing imports and setup)
+import { NextRequest, NextResponse } from 'next/server';
+import { clientPromise } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
+import { sendNotificationToAdmins } from '@/lib/notification';
+import { getUser } from '@/lib/auth-utils';
+
+const DB_NAME = 'BumbasKitchenDB';
+const ORDERS_COLLECTION = 'orders';
+const USERS_COLLECTION = 'users';
+const TRANSACTIONS_COLLECTION = 'coinTransactions';
+const MENU_COLLECTION = 'menuItems';
+const COUPONS_COLLECTION = 'coupons';
+const COIN_VALUE = 1; 
+
+export async function POST(request: NextRequest) {
+  try {
+    const orderData = await request.json(); 
+    // ★ DELIVERY FEE EKHANE DESTRUCTURE KORA HOCCHE
+    const { items, couponCode, useCoins, address, deliveryAddress, orderType, name, altPhone, mealTime, preferredDate, instructions, deliveryFee } = orderData;
+
+    const currentUser = await getUser(request);
+    let userIdToSave: ObjectId | null = null;
+    
+    if (currentUser) {
+        userIdToSave = new ObjectId(currentUser._id || currentUser.id);
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return NextResponse.json({ success: false, error: 'Order must contain items.' }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const session = client.startSession();
+
+    let orderId = '';
+    let finalAmountForLog = 0; 
+
+    try {
+        await session.withTransaction(async () => {
+            const productIds = items.map((item: any) => new ObjectId(item.id));
+            const dbProducts = await db.collection(MENU_COLLECTION)
+                .find({ _id: { $in: productIds } }, { session })
+                .toArray();
+
+            let calculatedSubtotal = 0;
+            const validatedItems = [];
+
+            for (const item of items) {
+                const dbProduct = dbProducts.find(p => p._id.toString() === item.id);
+                if (!dbProduct) throw new Error(`Product not found`);
+
+                const itemTotal = (dbProduct.Price || 0) * item.quantity;
+                calculatedSubtotal += itemTotal;
+
+                validatedItems.push({
+                    ...item,
+                    price: dbProduct.Price || 0,
+                    name: dbProduct.Name,
+                });
+            }
+
+            let couponDiscount = 0;
+            let appliedCouponCode = null;
+
+            if (couponCode) {
+                // (Your existing coupon validation logic here)
+                const coupon = await db.collection(COUPONS_COLLECTION).findOne({ code: couponCode.toUpperCase() }, { session });
+                if (coupon) {
+                   // validation logic ...
+                   couponDiscount = coupon.discountType === 'percentage' ? (calculatedSubtotal * coupon.value) / 100 : coupon.value;
+                   couponDiscount = Math.min(couponDiscount, calculatedSubtotal);
+                   appliedCouponCode = coupon.code;
+                   await db.collection(COUPONS_COLLECTION).updateOne({ _id: coupon._id }, { $inc: { timesUsed: 1 } }, { session });
+                }
+            }
+
+            let coinsRedeemed = 0;
+            let coinDiscount = 0;
+
+            if (userIdToSave && useCoins) {
+                // (Your existing coin validation logic here)
+                const user = await db.collection(USERS_COLLECTION).findOne({ _id: userIdToSave }, { session });
+                const userBalance = user?.wallet?.currentBalance || 0;
+                coinsRedeemed = Math.min(userBalance, Math.floor((calculatedSubtotal * 0.5) / COIN_VALUE));
+                coinDiscount = coinsRedeemed * COIN_VALUE;
+                if (coinsRedeemed > 0) {
+                    await db.collection(USERS_COLLECTION).updateOne({ _id: userIdToSave }, { $inc: { "wallet.currentBalance": -coinsRedeemed } }, { session });
+                    orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+                    await db.collection(TRANSACTIONS_COLLECTION).insertOne({ userId: userIdToSave, type: 'redeem', amount: coinsRedeemed, description: `Redeemed for Order #${orderId}`, createdAt: new Date() }, { session });
+                }
+            }
+
+            if (!orderId) orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+            // ★ CALCULATE TOTAL INCLUDING DELIVERY FEE
+            const totalDiscount = couponDiscount + coinDiscount;
+            const finalDeliveryCharge = orderType === 'delivery' ? (Number(deliveryFee) || 0) : 0;
+            const finalPrice = Math.max(0, calculatedSubtotal + finalDeliveryCharge - totalDiscount);
+            
+            finalAmountForLog = finalPrice; 
+
+            const newOrder = {
+                OrderNumber: orderId,
+                userId: userIdToSave,
+                Timestamp: new Date(),
+                Name: name,
+                Phone: altPhone,
+                Address: address,
+                DeliveryAddress: deliveryAddress || address,
+                OrderType: orderType || 'Delivery',
+                MealTime: mealTime,
+                PreferredDate: new Date(preferredDate),
+                Instructions: instructions,
+                
+                Subtotal: calculatedSubtotal,
+                DeliveryFee: finalDeliveryCharge, // SAVING DELIVERY FEE
+                Discount: totalDiscount,
+                CouponCode: appliedCouponCode,
+                CouponDiscount: couponDiscount,
+                CoinsRedeemed: coinsRedeemed,
+                CoinDiscount: coinDiscount,
+                FinalPrice: finalPrice, 
+                
+                Items: validatedItems,
+                Status: "Pending Verification",
+                coinsAwarded: false,
+                coinsRefunded: false
+            };
+
+            await db.collection(ORDERS_COLLECTION).insertOne(newOrder, { session });
+        });
+
+        sendNotificationToAdmins(
+            client,
+            "New Order (Pending) ⚠️",
+            `Order #${orderId} received. Amount: ₹${finalAmountForLog}`, 
+            `https://admin.bumbaskitchen.app/orders?id=${orderId}`
+        ).catch(err => console.error("Notification Error:", err));
+
+        return NextResponse.json({ success: true, message: "Order placed successfully!", orderId: orderId, finalPrice: finalAmountForLog }, { status: 201 });
+
+    } catch (error: any) {
+        return NextResponse.json({ success: false, error: error.message || 'Failed to process order.' }, { status: 500 });
+    } finally {
+        await session.endSession();
+    }
+
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: 'Server error processing order.' }, { status: 500 });
+  }
+}

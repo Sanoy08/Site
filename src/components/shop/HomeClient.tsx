@@ -1,5 +1,4 @@
 // src/components/shop/HomeClient.tsx
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -14,14 +13,14 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import Autoplay from "embla-carousel-autoplay";
 import { formatPrice } from '@/lib/utils';
 import type { Product } from '@/lib/types';
-import { Utensils, Truck, ShieldCheck, Leaf, Gift, Calendar, Heart } from 'lucide-react';
+import { Truck, ShieldCheck, Leaf, Gift, X, Loader2 } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import { useAuth } from '@/hooks/use-auth';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
 export type Offer = { id: string; title: string; description: string; price: number; imageUrl: string; };
@@ -61,36 +60,39 @@ const testimonials = [
 ];
 
 export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
-  const { user, isLoading } = useAuth();
-  const [showSpecialDatesModal, setShowSpecialDatesModal] = useState(false);
+  const { user, setUser } = useAuth();
+  
+  const [heroApi, setHeroApi] = useState<CarouselApi>();
+  const [heroCurrent, setHeroCurrent] = useState(0);
+  const [heroCount, setHeroCount] = useState(0);
+  const [middleApi, setMiddleApi] = useState<CarouselApi>();
+  const [middleCurrent, setMiddleCurrent] = useState(0);
+  const [middleCount, setMiddleCount] = useState(0);
+  const [offersApi, setOffersApi] = useState<CarouselApi>();
+  const [offersCurrent, setOffersCurrent] = useState(0);
+  const [offersCount, setOffersCount] = useState(0);
+  const [bestsellersApi, setBestsellersApi] = useState<CarouselApi>();
+  const [bestsellersCurrent, setBestsellersCurrent] = useState(0);
+  const [bestsellersCount, setBestsellersCount] = useState(0);
+
+  const [showPopup, setShowPopup] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileData, setProfileData] = useState({ dob: '', anniversary: '' });
 
-  // Form State
-  const [dob, setDob] = useState('');
-  const [anniversary, setAnniversary] = useState('');
-
-  // 1. Check if dates are missing when user loads
   useEffect(() => {
-    if (!isLoading && user && user.role === 'customer') {
-      if (!user.dob || !user.anniversary) {
-        // ছোট ডিলে দেওয়া হলো যাতে হোমপেজ লোড হওয়ার পর স্মুথলি পপআপ আসে
-        const timer = setTimeout(() => setShowSpecialDatesModal(true), 2000);
-        return () => clearTimeout(timer);
-      }
+    if (user && !user.dob && !user.anniversary) {
+      const timer = setTimeout(() => setShowPopup(true), 3000); 
+      return () => clearTimeout(timer);
     }
-  }, [user, isLoading]);
+  }, [user]);
 
-  const handleUpdateDates = async (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dob && !anniversary) {
-      toast.error("Please select at least one date.");
-      return;
-    }
-
+    if (!profileData.dob) return toast.error("Please select your Birthday!");
+    
     setIsSubmitting(true);
     try {
-      // নাম স্প্লিট করা হচ্ছে কারণ API firstName/lastName চায়
-      const names = user?.name.split(' ') || ['User', ''];
+      const names = user?.name.split(' ') || ['User'];
       const fName = names[0];
       const lName = names.slice(1).join(' ') || 'Customer';
 
@@ -100,19 +102,18 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
         body: JSON.stringify({
           firstName: fName,
           lastName: lName,
-          dob: dob || user?.dob,
-          anniversary: anniversary || user?.anniversary
+          dob: profileData.dob,
+          anniversary: profileData.anniversary || null
         })
       });
 
       const data = await res.json();
       if (data.success) {
-        toast.success("Special dates saved! Get ready for surprises 🎁");
-        setShowSpecialDatesModal(false);
-        // Page reload to update auth state without extra complex logic
-        window.location.reload();
+        setUser(data.user); 
+        toast.success("Profile updated! Enjoy your 5% discount on your special day! 🎉");
+        setShowPopup(false);
       } else {
-        toast.error(data.error || "Update failed");
+        toast.error(data.error || "Failed to update");
       }
     } catch (err) {
       toast.error("Something went wrong");
@@ -121,20 +122,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
     }
   };
 
-  // Carousel States
-  const [heroApi, setHeroApi] = useState<CarouselApi>()
-  const [heroCurrent, setHeroCurrent] = useState(0)
-  const [heroCount, setHeroCount] = useState(0)
-  const [middleApi, setMiddleApi] = useState<CarouselApi>()
-  const [middleCurrent, setMiddleCurrent] = useState(0)
-  const [middleCount, setMiddleCount] = useState(0)
-  const [offersApi, setOffersApi] = useState<CarouselApi>()
-  const [offersCurrent, setOffersCurrent] = useState(0)
-  const [offersCount, setOffersCount] = useState(0)
-  const [bestsellersApi, setBestsellersApi] = useState<CarouselApi>()
-  const [bestsellersCurrent, setBestsellersCurrent] = useState(0)
-  const [bestsellersCount, setBestsellersCount] = useState(0)
-  
   const dailySpecial = allProducts.find(p => p.isDailySpecial);
 
   const useCarouselEffect = (api: CarouselApi | undefined, setCount: (c: number) => void, setCurrent: (c: number) => void) => {
@@ -162,66 +149,59 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
   return (
     <div className="bg-background pb-20 md:pb-0">
       
-      {/* --- Special Dates Popup --- */}
-      <Dialog open={showSpecialDatesModal} onOpenChange={setShowSpecialDatesModal}>
-        <DialogContent className="sm:max-w-[400px] rounded-3xl">
-          <DialogHeader>
-            <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-              <Gift className="w-8 h-8 text-primary animate-bounce" />
+      {/* --- Theme Integrated Sleek Popup --- */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="max-w-[85vw] sm:max-w-[380px] rounded-[2rem] p-6 md:p-8 bg-background border border-border shadow-2xl overflow-hidden [&>button]:hidden">
+          
+          {/* Custom Close Button matched with theme */}
+          <button 
+            onClick={() => setShowPopup(false)} 
+            className="absolute right-5 top-5 text-muted-foreground hover:text-foreground transition-colors bg-muted/50 hover:bg-muted p-1.5 rounded-full"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="text-center mb-6 mt-2">
+            <div className="mx-auto h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 shadow-sm border border-primary/20">
+               <Gift className="h-8 w-8 text-primary" />
             </div>
-            <DialogTitle className="text-2xl font-bold text-center">Let's Celebrate! 🥳</DialogTitle>
-            <DialogDescription className="text-center">
-              Share your special dates with us to get exclusive discounts and gifts from Bumba's Kitchen!
+            <DialogTitle className="text-2xl font-bold text-foreground tracking-tight font-headline">A Special Treat! 🎉</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-2.5 leading-relaxed">
+              Save your special dates and enjoy a <span className="font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">5% discount</span> on those days at Bumba's Kitchen.
             </DialogDescription>
-          </DialogHeader>
+          </div>
 
-          <form onSubmit={handleUpdateDates} className="space-y-6 py-4">
-            {!user?.dob && (
-              <div className="space-y-2">
-                <Label htmlFor="dob" className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" /> Birthday
-                </Label>
-                <Input 
-                  id="dob" 
-                  type="date" 
-                  required 
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  className="rounded-xl h-12"
-                />
-              </div>
-            )}
+          <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="dob" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider ml-1">Birthday (Required)</Label>
+              <Input 
+                id="dob"
+                type="date" 
+                required
+                className="rounded-2xl border-border bg-muted/30 h-12 px-4 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-foreground shadow-sm"
+                value={profileData.dob}
+                onChange={(e) => setProfileData({...profileData, dob: e.target.value})}
+              />
+            </div>
 
-            {!user?.anniversary && (
-              <div className="space-y-2">
-                <Label htmlFor="anniversary" className="flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-red-500" /> Anniversary (Optional)
-                </Label>
-                <Input 
-                  id="anniversary" 
-                  type="date" 
-                  value={anniversary}
-                  onChange={(e) => setAnniversary(e.target.value)}
-                  className="rounded-xl h-12"
-                />
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="anniversary" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider ml-1">Anniversary (Optional)</Label>
+              <Input 
+                id="anniversary"
+                type="date" 
+                className="rounded-2xl border-border bg-muted/30 h-12 px-4 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-foreground shadow-sm"
+                value={profileData.anniversary}
+                onChange={(e) => setProfileData({...profileData, anniversary: e.target.value})}
+              />
+            </div>
 
             <Button 
               type="submit" 
-              className="w-full h-12 rounded-xl text-lg font-bold" 
               disabled={isSubmitting}
+              className="w-full h-12 mt-4 rounded-2xl text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
             >
-              {isSubmitting ? "Saving..." : "Save & Get Rewards"}
+              {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Save & Claim Offer"}
             </Button>
-            
-            <button 
-              type="button"
-              onClick={() => setShowSpecialDatesModal(false)}
-              className="w-full text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
-              Maybe later
-            </button>
           </form>
         </DialogContent>
       </Dialog>
@@ -252,11 +232,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             </Carousel>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
               {Array.from({ length: heroCount }).map((_, index) => (
-                <button 
-                    key={index} 
-                    onClick={() => heroApi?.scrollTo(index)} 
-                    className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${heroCurrent === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} 
-                />
+                <button key={index} onClick={() => heroApi?.scrollTo(index)} 
+                  className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${heroCurrent === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} />
               ))}
             </div>
           </>
@@ -282,7 +259,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                       <Link key={idx} href={cat.link} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
                           <div className={`relative h-14 w-14 md:h-20 md:w-20 rounded-full border-[3px] ${cat.borderColor} p-0.5 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 bg-white`}>
                               <div className="relative h-full w-full rounded-full overflow-hidden bg-white">
-                                  <Image src={cat.image} alt={cat.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized={true} />
+                                  <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 20vw, 10vw" className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized={true} />
                               </div>
                           </div>
                           <span className="text-xs md:text-sm font-semibold text-gray-700 group-hover:text-primary transition-colors">{cat.name}</span>
@@ -309,7 +286,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           </div>
       </section>
 
-      {/* 4. Middle Slider */}
+      {/* 4. Middle Image Slider Section */}
       {sliderImages && sliderImages.length > 0 && (
         <section className="py-8 bg-background">
           <div className="container">
@@ -321,7 +298,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                         <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
                             <Card className="overflow-hidden border-none shadow-md rounded-2xl bg-card">
                                 <CardContent className="p-0">
-                                <Image src={optimizeImageUrl(slide.imageUrl)} alt="Slider" width={0} height={0} sizes="(max-width: 768px) 90vw, 33vw" style={{ width: '100%', height: 'auto' }} className="object-contain" />
+                                <Image src={optimizeImageUrl(slide.imageUrl)} alt="Slider Image" width={0} height={0} sizes="(max-width: 768px) 90vw, 33vw" style={{ width: '100%', height: 'auto' }} className="object-contain" />
                                 </CardContent>
                             </Card>
                         </Link>
@@ -341,7 +318,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
         </section>
       )}
 
-      {/* 5. Daily Special */}
+      {/* 5. Daily Special Section */}
       {dailySpecial && (
         <section className="py-16 bg-amber-50/50">
             <div className="container">
@@ -367,7 +344,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
         </section>
       )}
 
-      {/* 6. Hot Offers */}
+      {/* 6. Upcoming Offers */}
       {offers.length > 0 && (
         <section className="py-16 bg-background">
           <div className="container">
@@ -414,7 +391,9 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                 <CarouselContent>
                     {bestsellers.map((product) => (
                     <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
-                        <div className="p-1 h-full"><ProductCard product={product} /></div>
+                        <div className="p-1 h-full">
+                            <ProductCard product={product} />
+                        </div>
                     </CarouselItem>
                     ))}
                 </CarouselContent>
@@ -453,7 +432,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                         <CarouselItem key={index} className="md:basis-1/2 pl-4">
                             <Card className="border-none shadow-md bg-white h-full rounded-2xl">
                                 <CardContent className="p-6 flex flex-col h-full">
-                                    <div className="flex gap-1 mb-4"><Rating rating={testimonial.rating} /></div>
+                                    <div className="flex gap-1 mb-4"><Rating rating={testimonial.rating} className="" /></div>
                                     <p className="text-gray-600 italic flex-grow">"{testimonial.quote}"</p>
                                     <div className="mt-6 flex items-center gap-3">
                                         <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center font-bold text-primary">{testimonial.name[0]}</div>
@@ -470,7 +449,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             </Carousel>
         </div>
       </section>
-      
       <MobileNav />
     </div>
   );

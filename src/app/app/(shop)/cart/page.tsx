@@ -1,0 +1,169 @@
+// src/app/(shop)/cart/page.tsx
+
+'use client';
+
+import { useCart } from '@/hooks/useCart';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { formatPrice } from '@/lib/utils';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Plus, Minus, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+
+// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
+import { optimizeImageUrl } from '@/lib/imageUtils';
+
+// ★ Import DotLottie Player
+import { DotLottiePlayer } from '@dotlottie/react-player';
+
+export default function CartPage() {
+  const { state, itemCount, totalPrice, updateQuantity, removeItem } =
+    useCart();
+  const router = useRouter();
+
+  return (
+    <div className="container py-12">
+      <h1 className="text-3xl md:text-4xl font-bold font-headline mb-8 text-center">
+        Your Cart
+      </h1>
+      {itemCount > 0 ? (
+        <div className="grid lg:grid-cols-3 gap-12 items-start">
+          <div className="lg:col-span-2">
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  {state.items.map((item) => {
+                    // ✅ Raw URL বের করা
+                    const rawUrl = (item.image && item.image.url && item.image.url.trim() !== '') 
+                      ? item.image.url 
+                      : PLACEHOLDER_IMAGE_URL;
+                    
+                    return (
+                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex items-center gap-4">
+                          <Link href={`/menus/${item.slug}`}>
+                            <div className="relative h-20 w-20 rounded-md overflow-hidden border bg-muted">
+                              {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
+                              <Image
+                                src={optimizeImageUrl(rawUrl)}
+                                alt={item.name}
+                                fill
+                                sizes="80px" // 20 * 4 = 80px
+                                className="object-cover"
+                              />
+                            </div>
+                          </Link>
+                          <div>
+                            <Link href={`/menus/${item.slug}`}>
+                              <p className="font-semibold hover:text-primary">{item.name}</p>
+                            </Link>
+                            <p className="text-sm text-muted-foreground">
+                              {formatPrice(item.price)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center border rounded-md">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                updateQuantity(item.id, item.quantity - 1)
+                              }
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="w-8 text-center font-medium">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                updateQuantity(item.id, item.quantity + 1)
+                              }
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="font-semibold w-20 text-right">
+                            {formatPrice(item.price * item.quantity)}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="lg:col-span-1">
+            <Card className="sticky top-24">
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Subtotal</p>
+                    <p>{formatPrice(totalPrice)}</p>
+                  </div>
+                  {/* Shipping and Taxes REMOVED */}
+                </div>
+                <Separator className="my-4" />
+                <div className="flex justify-between font-bold text-lg">
+                  <p>Total</p>
+                  <p>{formatPrice(totalPrice)}</p>
+                </div>
+              </CardContent>
+              <CardFooter>
+                {/* ★★★ পরিবর্তন: বাটন টেক্সট এবং অনক্লিক ফাংশন ★★★ */}
+                <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={() => router.push('/checkout/summary')} // নতুন পেজে যাবে
+                >
+                    Proceed to Summary
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center pt-4 pb-16 text-center animate-in fade-in duration-500">
+          {/* ★ Negative margin (-mt-16) দিয়ে লটি অ্যানিমেশনটাকে উপরে তোলা হয়েছে */}
+          <div className="w-72 h-72 sm:w-96 sm:h-96 relative -mt-16 mb-2">
+              <DotLottiePlayer
+                  src="/Empty Cart - Bag.lottie"
+                  autoplay
+                  loop
+              />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground">Your cart is empty</h2>
+          <Button asChild className="mt-8 rounded-full px-10 shadow-md shadow-primary/20" size="lg">
+            <Link href="/menus">Continue Shopping</Link>
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

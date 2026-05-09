@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { getUser } from '@/lib/auth-utils'; // ★★★ Fix: verifyUser -> getUser
+import { getUser } from '@/lib/auth-utils'; 
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
     const db = client.db(DB_NAME);
     
     // ২. ডাটাবেস থেকে ফ্রেশ ডেটা আনা (যাতে রোল বা অন্যান্য তথ্য আপডেটেড থাকে)
-    // payload._id বা payload.id দুটোই চেক করা হচ্ছে সেইফটির জন্য
     const userId = payload._id || payload.id;
     
     const user = await db.collection(COLLECTION_NAME).findOne(
@@ -46,7 +45,9 @@ export async function GET(request: NextRequest) {
             picture: user.picture,
             phone: user.phone,
             address: user.address,
-            wallet: user.wallet
+            wallet: user.wallet,
+            dob: user.dob,                 // ★★★ FIX: dob যোগ করা হলো
+            anniversary: user.anniversary  // ★★★ FIX: anniversary যোগ করা হলো
         } 
     });
 

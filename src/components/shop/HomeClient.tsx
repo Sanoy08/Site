@@ -78,6 +78,18 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
   
   const dailySpecial = allProducts.find(p => p.isDailySpecial);
 
+  // ★★★ NEW: Local Storage Saving Logic for Capacitor App ★★★
+  useEffect(() => {
+    if (allProducts && allProducts.length > 0) {
+      try {
+        // Capacitor WebViews retain localStorage perfectly across app launches
+        localStorage.setItem('bumbas_all_products', JSON.stringify(allProducts));
+      } catch (error) {
+        console.error("Error saving products to local storage:", error);
+      }
+    }
+  }, [allProducts]);
+
   // Helper Hook to handle carousel state updates
   const useCarouselEffect = (api: CarouselApi | undefined, setCount: (c: number) => void, setCurrent: (c: number) => void) => {
     useEffect(() => {

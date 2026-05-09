@@ -25,8 +25,6 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { registerBackHandler } from '@/hooks/use-back-button';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import Fuse from 'fuse.js';
-
-// ★ Import DotLottie Player
 import { DotLottiePlayer } from '@dotlottie/react-player';
 
 interface SearchSheetProps {
@@ -50,7 +48,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
   
   const debouncedQuery = useDebounce(query, 200);
 
-  // ১. অটোমেটিক শিট ক্লোজ লজিক
   useEffect(() => {
     if (open) {
       setIsNavigating(false);
@@ -58,7 +55,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, [pathname]);
 
-  // ২. ব্যাক বাটন হ্যান্ডলার
   useEffect(() => {
     if (open) {
       registerBackHandler(() => onOpenChange(false));
@@ -68,7 +64,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     return () => registerBackHandler(null);
   }, [open, onOpenChange]);
 
-  // ৩. হিস্ট্রি লোড (LocalStorage)
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
     if (saved) {
@@ -86,16 +81,36 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, []);
 
-  // ৪. Menu Page-এর মতো একবার সমস্ত প্রোডাক্ট ফেচ করা
+  // ★★★ UPGRADED: LocalStorage First Search Data Fetching ★★★
   useEffect(() => {
     if (open && allProducts.length === 0) {
       const fetchAllProducts = async () => {
-        setIsLoading(true);
+        // ১. Local Storage থেকে ডাটা এনে সার্চ রেডি করুন 0 সেকেন্ডে
+        const cachedData = localStorage.getItem('bumbas_all_products');
+        let hasCache = false;
+        
+        if (cachedData) {
+          try {
+            const parsed = JSON.parse(cachedData);
+            if (parsed && parsed.length > 0) {
+              setAllProducts(parsed);
+              hasCache = true;
+            }
+          } catch (e) { console.error(e); }
+        }
+
+        // ২. যদি ক্যাশে ডাটা না থাকে, তবেই লোডার দেখাবে
+        if (!hasCache) {
+          setIsLoading(true);
+        }
+
+        // ৩. ব্যাকগ্রাউন্ডে নতুন ডাটা সিঙ্ক
         try {
           const res = await fetch(`/api/products?limit=1000`);
           const data = await res.json();
           if (data.success && Array.isArray(data.products)) {
             setAllProducts(data.products);
+            localStorage.setItem('bumbas_all_products', JSON.stringify(data.products)); // ক্যাশ আপডেট
           }
         } catch (error) {
           console.error("Search fetch error:", error);
@@ -108,7 +123,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, [open, allProducts.length]);
 
-  // ৫. Fuse.js দিয়ে ক্লায়েন্ট সাইড ইনস্ট্যান্ট সার্চ
   useEffect(() => {
     if (!debouncedQuery.trim()) {
       setResults([]);
@@ -127,15 +141,12 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
     }
   }, [debouncedQuery, allProducts]);
 
-  // ৬. ক্লিক হ্যান্ডলার
   const handleProductClick = (productName: string, slug: string) => {
     setIsNavigating(true);
-    // অসম্পূর্ণ কুয়েরির বদলে পুরো প্রোডাক্টের নাম সেভ করা হলো
     addToHistory(productName); 
     router.push(`/menus/${slug}`);
   };
 
-  // ★ History Fix: Functional State Update (prev) ব্যবহার করা হয়েছে যাতে stale state না থাকে
   const addToHistory = (term: string) => {
     if (!term.trim()) return;
     setRecentSearches(prev => {
@@ -171,7 +182,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
       
       <SheetContent side="left" className="w-full sm:w-[400px] p-0 gap-0 border-r bg-background">
         
-        {/* নেভিগেশন লোডার ওভারলে */}
         {isNavigating && (
           <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-200">
             <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
@@ -187,7 +197,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                // Enter চাপলেও সার্চ হিস্ট্রি সেভ হবে
                 if (e.key === 'Enter' && query.trim()) {
                   addToHistory(query.trim());
                 }
@@ -225,7 +234,6 @@ export function SearchSheet({ children, open, onOpenChange }: SearchSheetProps) 
                 </h3>
                 
                 {results.length === 0 ? (
-                  // ★ Lottie Animation for Empty State (Bigger & Cleaned up)
                   <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in duration-500">
                     <div className="w-82 h-82 sm:w-90 sm:h-90 relative">
                         <DotLottiePlayer

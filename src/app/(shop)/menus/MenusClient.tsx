@@ -63,41 +63,51 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const [tempSortBy, setTempSortBy] = useState('recommended');
   const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
 
-  // Load All Products for Client-side Search
+  // ★★★ UPGRADED: LocalStorage Cache-First Approach ★★★
   useEffect(() => {
     const fetchAll = async () => {
-      setIsLoading(true);
+      // ১. প্রথমে Local Storage চেক করুন (Instant Load)
+      const cachedData = localStorage.getItem('bumbas_all_products');
+      if (cachedData) {
+        try {
+          const parsedProducts = JSON.parse(cachedData);
+          if (parsedProducts && parsedProducts.length > 0) {
+            setAllProducts(parsedProducts); // জিরো সেকেন্ডে ডাটা লোড
+          }
+        } catch (e) {
+          console.error("Cache parsing error", e);
+        }
+      } else {
+        // যদি ক্যাশে না থাকে, তবেই লোডার দেখান
+        setIsLoading(true); 
+      }
+
+      // ২. ব্যাকগ্রাউন্ডে সাইলেন্ট API কল (নতুন ডাটা সিঙ্ক করতে)
       try {
         const res = await fetch(`/api/products?limit=1000`);
         const data = await res.json();
-        if (data.success) {
-          setAllProducts(data.products);
+        if (data.success && data.products) {
+          setAllProducts(data.products); // UI তে ফ্রেশ ডাটা দিন
+          localStorage.setItem('bumbas_all_products', JSON.stringify(data.products)); // ক্যাশ আপডেট করুন
         }
       } catch (e) {
-        console.error("Error loading products", e);
+        console.error("Error loading products from server", e);
       } finally {
         setIsLoading(false);
       }
     };
     
-    // Prothom bar load hobe
     fetchAll();
 
-    // Pusher theke update asle automatic abar load hobe
     const handleRealtimeUpdate = () => {
       console.log("Syncing new menu data...");
-      fetchAll();
+      fetchAll(); // ডাটা আপডেট হলে আবার ক্যাশ রিফ্রেশ করবে
     };
 
     window.addEventListener('menu-updated', handleRealtimeUpdate);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('menu-updated', handleRealtimeUpdate);
-    };
+    return () => window.removeEventListener('menu-updated', handleRealtimeUpdate);
   }, []);
 
-  // Fuse.js Fuzzy Filtering Logic
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...allProducts];
 
@@ -164,10 +174,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   };
 
   const handleCategoryChange = (category: string) => {
-      // ১. ক্লিক করা মাত্রই ইনস্ট্যান্ট UI আপডেট
       setActiveCategory(category);
-      
-      // ২. সাইলেন্টলি URL আপডেট
       const newUrl = category === 'All' ? '/menus' : `/menus?category=${category.toLowerCase()}`;
       window.history.pushState(null, '', newUrl);
   };
@@ -325,7 +332,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                 ))}
             </div>
         ) : (
-            // No items state with Lottie (Fade in, Centered vertically without -mt-12)
             <div className="flex flex-col items-center justify-center flex-grow animate-in fade-in duration-500">
                 <div className="w-80 h-80 sm:w-[400px] sm:h-[400px] md:w-[450px] md:h-[450px] relative mb-2">
                     <DotLottiePlayer

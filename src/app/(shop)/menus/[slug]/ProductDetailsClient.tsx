@@ -15,25 +15,10 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  type CarouselApi,
-} from "@/components/ui/carousel";
-import { Share } from '@capacitor/share';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// ★ NOTE: Removed top-level Capacitor/Haptics imports to prevent SSR Crash. 
-// They are now dynamically imported inside the handleAddToCart function.
-
-const fallbackImage: ProductImage = { 
-  id: 'placeholder', 
-  url: PLACEHOLDER_IMAGE_URL, 
-  alt: 'Placeholder Image' 
-};
+const fallbackImage: ProductImage = { id: 'placeholder', url: PLACEHOLDER_IMAGE_URL, alt: 'Placeholder Image' };
 
 const CustomShareIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" className={className} fill="currentColor">
@@ -61,8 +46,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   const [isInlineVisible, setIsInlineVisible] = useState(true);
   const [randomItems, setRandomItems] = useState<Product[]>([]);
   const inlineCartRef = useRef<HTMLDivElement>(null);
-
-  // Animation Overlay State
   const [isFlying, setIsFlying] = useState(false);
 
   const rawDescription = (product.description || "A delicious delicacy prepared with authentic spices and fresh ingredients.").replace(/\\n/g, '\n');
@@ -89,10 +72,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         if (match) {
             return (
                 <span key={idx}>
-                    {match[1]}
-                    <span className="font-bold text-gray-900">{match[2]}</span>
-                    {match[3]}
-                    {'\n'}
+                    {match[1]}<span className="font-bold text-gray-900">{match[2]}</span>{match[3]}{'\n'}
                 </span>
             );
         }
@@ -124,13 +104,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
         savedFavs = savedFavs.filter((fav: any) => fav.id !== product.id);
         toast.info("Removed from favorites");
     } else {
-        savedFavs.push({ 
-            id: product.id, 
-            slug: product.slug, 
-            name: product.name, 
-            image: displayImages[0].url, 
-            price: product.price 
-        });
+        savedFavs.push({ id: product.id, slug: product.slug, name: product.name, image: displayImages[0].url, price: product.price });
         toast.success("Added to favorites! ❤️", { duration: 2000 });
     }
     localStorage.setItem('bumbas_favorites', JSON.stringify(savedFavs));
@@ -144,42 +118,50 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
   }, []);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-        ([entry]) => setIsInlineVisible(entry.isIntersecting),
-        { threshold: 0 } 
-    );
+    const observer = new IntersectionObserver(([entry]) => setIsInlineVisible(entry.isIntersecting), { threshold: 0 });
     if (inlineCartRef.current) observer.observe(inlineCartRef.current);
-    return () => {
-        if (inlineCartRef.current) observer.unobserve(inlineCartRef.current);
-    };
+    return () => { if (inlineCartRef.current) observer.unobserve(inlineCartRef.current); };
   }, []);
 
+  // ★★★ LOCAL STORAGE FIRST APPROACH ★★★
   useEffect(() => {
-      const fetchRandomProducts = async () => {
+      const loadRandomProducts = async () => {
           try {
+              // ১. প্রথমে Local Storage চেক করো
+              const cachedData = localStorage.getItem('bumbas_all_products');
+              if (cachedData) {
+                  const parsedProducts = JSON.parse(cachedData);
+                  if (parsedProducts && parsedProducts.length > 0) {
+                      const allOtherProducts = parsedProducts.filter((p: Product) => p.id !== product.id);
+                      const shuffled = allOtherProducts.sort(() => 0.5 - Math.random());
+                      setRandomItems(shuffled.slice(0, 8));
+                      return; // ★ লোকাল স্টোরেজে ডাটা পেলে এখানেই থেমে যাবে, API কল করবে না!
+                  }
+              }
+
+              // ২. যদি Local Storage খালি থাকে (যেমন ডিরেক্ট লিংকে ঢুকলে), তখন API কল করবে
               const res = await fetch('/api/products');
               const data = await res.json();
               if (data.success && data.products) {
                   const allOtherProducts = data.products.filter((p: Product) => p.id !== product.id);
                   const shuffled = allOtherProducts.sort(() => 0.5 - Math.random());
                   setRandomItems(shuffled.slice(0, 8));
+                  // ভবিষ্যতের জন্য সেভ করে রাখা
+                  localStorage.setItem('bumbas_all_products', JSON.stringify(data.products));
               }
           } catch (e) {
               console.error("Failed to fetch random products", e);
           }
       };
-      fetchRandomProducts();
+      loadRandomProducts();
   }, [product.id]);
 
   const showBottomBar = isScrolled && !isInlineVisible;
 
-  // ★ UNIVERSAL CENTER POP & SWING FLY TO CART LOGIC
   const flyToCart = () => {
     const target = document.getElementById('global-cart-target');
     if (!target) return;
-
     const targetRect = target.getBoundingClientRect();
-
     setIsFlying(true);
 
     const flyingImg = document.createElement('img');
@@ -211,7 +193,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
     setTimeout(() => {
         flyingImg.style.transition = 'top 0.7s cubic-bezier(0.5, -0.5, 1, 1), left 0.7s linear, width 0.7s ease-in, height 0.7s ease-in, opacity 0.7s ease-in, transform 0.7s linear';
-        
         flyingImg.style.top = `${targetRect.top}px`;
         flyingImg.style.left = `${targetRect.left}px`;
         flyingImg.style.width = '24px';
@@ -229,23 +210,19 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   const handleAddToCart = async () => {
     if (isOutOfStock) return;
-    
     addItem(product, quantity, false);
 
-    // ★ FIX: Dynamically import Capacitor to prevent SSR Hydration Crash
     if (typeof window !== 'undefined') {
         try {
             const { Capacitor } = await import('@capacitor/core');
-            const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
-            
             if (Capacitor.isNativePlatform()) {
+                const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
                 await Haptics.impact({ style: ImpactStyle.Heavy });
             }
         } catch (e) {
-            console.error("Haptics not supported or failed to load", e);
+            console.error("Haptics failed", e);
         }
     }
-
     flyToCart();
   };
 
@@ -257,6 +234,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
       dialogTitle: 'Share this dish',
     };
     try {
+      const { Share } = await import('@capacitor/share');
       const canShare = await Share.canShare();
       if (canShare.value) {
         await Share.share(shareOptions);
@@ -274,11 +252,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   return (
     <div className="bg-white min-h-screen pb-24 md:pb-12 w-full max-w-[100vw] overflow-x-hidden relative">
-      
-      {/* ★ FIX: Conditionally Render Dark Overlay so it never blocks touch events when hidden */}
-      {isFlying && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[45] transition-all duration-300 opacity-100 pointer-events-auto" />
-      )}
+      {isFlying && <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[45] transition-all duration-300 opacity-100 pointer-events-auto" />}
 
       {/* --- MOBILE TOP IMAGE SLIDER --- */}
       <div className="md:hidden w-full relative group">
@@ -286,16 +260,10 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
             <CarouselContent className="-ml-0">
                 {displayImages.map((img, index) => (
                 <CarouselItem key={index} className="pl-0 basis-full">
-                    <div 
-                        className="relative w-full aspect-square bg-gray-100 overflow-hidden"
-                    >
+                    <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
                         <Image
-                            src={optimizeImageUrl(img.url)}
-                            alt={img.alt || product.name}
-                            fill
-                            sizes="100vw"
-                            className={cn("object-cover", isOutOfStock && "grayscale opacity-80")}
-                            priority={index === 0}
+                            src={optimizeImageUrl(img.url)} alt={img.alt || product.name} fill sizes="100vw"
+                            className={cn("object-cover", isOutOfStock && "grayscale opacity-80")} priority={index === 0}
                         />
                         {isOutOfStock && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/10 z-10">
@@ -321,8 +289,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
                  {displayImages.map((_, idx) => (
                      <button
-                        key={idx}
-                        onClick={() => api?.scrollTo(idx)}
+                        key={idx} onClick={() => api?.scrollTo(idx)}
                         className={cn("h-1.5 rounded-full transition-all shadow-sm pointer-events-auto", current === idx + 1 ? "w-4 bg-white" : "w-1.5 bg-white/60 hover:bg-white/80")}
                      />
                  ))}
@@ -335,40 +302,23 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           
           {/* Desktop Images */}
           <div className="hidden md:block space-y-4">
-             <div 
-                className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border"
-             >
-                 <Image
-                    src={optimizeImageUrl(displayImages[activeSlide].url)}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className={cn("object-cover transition-all duration-500", isOutOfStock && "grayscale opacity-80")}
-                    priority
-                 />
+             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border">
+                 <Image src={optimizeImageUrl(displayImages[activeSlide].url)} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className={cn("object-cover transition-all duration-500", isOutOfStock && "grayscale opacity-80")} priority />
                  {isOutOfStock && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                         <span className="bg-red-600 text-white px-8 py-3 rounded-xl font-bold text-2xl shadow-xl transform -rotate-12">SOLD OUT</span>
                     </div>
                  )}
                  <div className="absolute top-4 right-4 flex flex-col gap-2">
-                     <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors">
-                         <CustomShareIcon className="h-5 w-5" />
-                     </button>
-                     <button onClick={toggleFavorite} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 transition-colors">
-                         <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} />
-                     </button>
+                     <button onClick={handleShare} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 text-gray-700 transition-colors"><CustomShareIcon className="h-5 w-5" /></button>
+                     <button onClick={toggleFavorite} className="bg-white p-2.5 rounded-full shadow-md hover:bg-gray-50 transition-colors"><Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-red-500 text-red-500" : "text-gray-700")} /></button>
                  </div>
              </div>
 
              {displayImages.length > 1 && (
                  <div className="grid grid-cols-4 gap-0 w-full">
                      {displayImages.map((img, idx) => (
-                         <button 
-                           key={idx}
-                           onClick={() => setActiveSlide(idx)}
-                           className={cn("relative w-full aspect-square overflow-hidden transition-all", activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100")}
-                         >
+                         <button key={idx} onClick={() => setActiveSlide(idx)} className={cn("relative w-full aspect-square overflow-hidden transition-all", activeSlide === idx ? "opacity-100" : "opacity-70 hover:opacity-100")}>
                            <Image src={optimizeImageUrl(img.url)} alt="thumb" fill sizes="20vw" className="object-cover" />
                          </button>
                      ))}
@@ -391,9 +341,7 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     )}
                 </div>
 
-                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
-                    {product.name}
-                </h1>
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">{product.name}</h1>
                 <p className="text-base md:text-xl text-muted-foreground">{product.category.name}</p>
 
                 <div className="flex flex-wrap gap-2">
@@ -406,13 +354,9 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
             <div>
                 <div className="flex items-baseline gap-2">
-                    <span className="text-3xl md:text-4xl font-extrabold text-gray-900">
-                        {formatPrice(product.price)}
-                    </span>
+                    <span className="text-3xl md:text-4xl font-extrabold text-gray-900">{formatPrice(product.price)}</span>
                 </div>
-                <p className="text-xs md:text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                    <Info className="h-3.5 w-3.5" /> Inclusive of all taxes
-                </p>
+                <p className="text-xs md:text-sm text-muted-foreground mt-1 flex items-center gap-1"><Info className="h-3.5 w-3.5" /> Inclusive of all taxes</p>
             </div>
 
             {/* INLINE ADD TO CART */}
@@ -435,19 +379,14 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
             </div>
 
-            {/* ★ YOU MAY ALSO LIKE SECTION */}
+            {/* YOU MAY ALSO LIKE SECTION */}
             {relatedProducts.length > 0 && (
                 <div className="mt-10 pt-4 w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-lg text-gray-900">You may also like</h3>
-                        <div className="text-xs font-medium text-gray-400 flex items-center gap-1 md:hidden">
-                            Swipe <ChevronRight className="h-3 w-3" />
-                        </div>
+                        <div className="text-xs font-medium text-gray-400 flex items-center gap-1 md:hidden">Swipe <ChevronRight className="h-3 w-3" /></div>
                     </div>
-                    <Carousel 
-                        opts={{ align: "start", dragFree: true }} 
-                        className="w-full relative"
-                    >
+                    <Carousel opts={{ align: "start", dragFree: true }} className="w-full relative">
                         <CarouselContent className="-ml-3 sm:-ml-4">
                             {relatedProducts.map((p) => (
                                 <CarouselItem key={p.id} className="pl-3 sm:pl-4 basis-[65%] sm:basis-[45%] md:basis-[38%] lg:basis-[30%]">
@@ -455,7 +394,6 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                                 </CarouselItem>
                             ))}
                         </CarouselContent>
-                        
                         <div className="hidden md:block">
                             <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
                             <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/95 shadow-md border-gray-200 hover:bg-gray-50 opacity-0 transition-opacity group-hover:opacity-100 lg:opacity-100" />
@@ -466,27 +404,20 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
             {/* DESCRIPTION SECTION */}
             <div className="mt-10">
-                <h3 className="inline-block font-bold text-xl mb-5 text-gray-900 border-b-2 border-gray-900 pb-1">
-                    About This Dish :
-                </h3>
+                <h3 className="inline-block font-bold text-xl mb-5 text-gray-900 border-b-2 border-gray-900 pb-1">About This Dish :</h3>
                 
                 {highlights.length > 0 && (
                     <div className="mb-5 bg-orange-50/50 border border-orange-100 rounded-xl p-4">
-                        <h4 className="font-semibold text-[15px] text-orange-800 mb-3 flex items-center gap-2">
-                            <Star className="w-4 h-4 fill-orange-500 text-orange-500" /> Delicious Details :
-                        </h4>
+                        <h4 className="font-semibold text-[15px] text-orange-800 mb-3 flex items-center gap-2"><Star className="w-4 h-4 fill-orange-500 text-orange-500" /> Delicious Details :</h4>
                         <ul className="space-y-2">
                             {highlights.map((hl, idx) => {
                                 const parts = hl.split(':');
                                 const key = parts[0];
                                 const val = parts.slice(1).join(':').trim();
-                                
                                 return (
                                     <li key={idx} className="text-sm text-gray-700 flex items-start gap-2.5">
                                         <CheckCircle2 className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
-                                        <span>
-                                            <span className="font-semibold text-gray-900">{key.trim()}:</span> {val}
-                                        </span>
+                                        <span><span className="font-semibold text-gray-900">{key.trim()}:</span> {val}</span>
                                     </li>
                                 )
                             })}
@@ -495,17 +426,10 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                 )}
 
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line break-words">
-                    {formatDescription(
-                        isLongDescription && !showFullDesc 
-                            ? `${cleanDescriptionText.substring(0, DESC_LIMIT)}...` 
-                            : cleanDescriptionText
-                    )}
+                    {formatDescription(isLongDescription && !showFullDesc ? `${cleanDescriptionText.substring(0, DESC_LIMIT)}...` : cleanDescriptionText)}
                 </p>
                 {isLongDescription && (
-                    <button 
-                        onClick={() => setShowFullDesc(!showFullDesc)}
-                        className="mt-2 text-primary font-semibold text-sm hover:underline focus:outline-none"
-                    >
+                    <button onClick={() => setShowFullDesc(!showFullDesc)} className="mt-2 text-primary font-semibold text-sm hover:underline focus:outline-none">
                         {showFullDesc ? "Show less" : "Show more"}
                     </button>
                 )}
@@ -513,31 +437,21 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
           </div>
         </div>
 
-        {/* ★ FIX: Moved 'Complete Your Meal' back outside the right column for proper layout (Like Code 1) */}
         {randomItems.length > 0 && (
             <div className="mt-16 lg:mt-32 pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
                     <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Complete Your Meal</h2>
-                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">
-                        See all <ChevronRight className="h-4 w-4" />
-                    </Link>
+                    <Link href="/menus" className="text-primary font-medium hover:underline flex items-center gap-1">See all <ChevronRight className="h-4 w-4" /></Link>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-8">
-                    {randomItems.map((p) => (
-                        <ProductCard key={p.id} product={p} />
-                    ))}
+                    {randomItems.map((p) => <ProductCard key={p.id} product={p} />)}
                 </div>
             </div>
         )}
       </div>
 
       {/* MOBILE ACTION BAR */}
-      <div 
-        className={cn(
-            "fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40 transition-transform duration-300 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]",
-            showBottomBar ? "translate-y-0" : "translate-y-full"
-        )}
-      >
+      <div className={cn("fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 lg:hidden z-40 transition-transform duration-300 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]", showBottomBar ? "translate-y-0" : "translate-y-full")}>
         {!isOutOfStock ? (
             <div className="flex gap-3 items-center">
                  <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg h-12 px-1">
@@ -546,14 +460,11 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
                     <Button variant="ghost" size="icon" onClick={() => setQuantity(q => q + 1)}><Plus /></Button>
                 </div>
                 <Button className="flex-1 h-12 rounded-lg font-bold flex justify-between px-6 overflow-hidden relative" onClick={handleAddToCart}>
-                    <span>Add Item</span>
-                    <span>{formatPrice(product.price * quantity)}</span>
+                    <span>Add Item</span><span>{formatPrice(product.price * quantity)}</span>
                 </Button>
             </div>
         ) : (
-             <Button disabled className="w-full h-12 rounded-lg font-bold bg-muted text-muted-foreground">
-                <Ban className="h-4 w-4 mr-2" /> Item Sold Out
-            </Button>
+             <Button disabled className="w-full h-12 rounded-lg font-bold bg-muted text-muted-foreground"><Ban className="h-4 w-4 mr-2" /> Item Sold Out</Button>
         )}
       </div>
     </div>

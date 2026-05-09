@@ -10,7 +10,6 @@ const COLLECTION_NAME = 'users';
 
 export async function PUT(request: NextRequest) {
   try {
-    // ১. কুকি থেকে ইউজার ভেরিফিকেশন
     const currentUser = await getUser(request);
     if (!currentUser) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -28,8 +27,8 @@ export async function PUT(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const usersCollection = db.collection(COLLECTION_NAME);
+    const specialDatesCollection = db.collection('specialdates');
 
-    // ২. বর্তমান ইউজার ডেটা আনা
     const userId = currentUser._id || currentUser.id;
     const currentDbUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
 
@@ -37,28 +36,48 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    // ৩. আপডেট অবজেক্ট তৈরি
     const updateDoc: any = {
         name: fullName,
         updatedAt: new Date(),
     };
 
-    // ★★★ Birthday Check (একবার সেট হলে আর বদলানো যাবে না)
+    // ★★★ Birthday Check & specialdates Update ★★★
     if (!currentDbUser.dob && dob) {
         updateDoc.dob = dob;
-    } else if (currentDbUser.dob && dob && currentDbUser.dob !== dob) {
-        // ইউজার বদলাতে চাইলে আমরা ইগনোর করব এবং ওয়ার্নিং লগ করব
-        console.warn(`User ${userId} tried to change DOB from ${currentDbUser.dob} to ${dob}`);
-    }
+        await specialDatesCollection.updateOne(
+            { title: fullName, type: 'birthday' },
+            { 
+              $set: { 
+                  title: fullName, 
+                  date: new Date(dob), 
+                  type: 'birthday',
+                  userId: userId 
+              },
+              $setOnInsert: { createdAt: new Date() }
+            },
+            { upsert: true }
+        );
+    } 
 
-    // ★★★ Anniversary Check (একবার সেট হলে আর বদলানো যাবে না)
+    // ★★★ Anniversary Check & specialdates Update ★★★
     if (!currentDbUser.anniversary && anniversary) {
         updateDoc.anniversary = anniversary;
-    } else if (currentDbUser.anniversary && anniversary && currentDbUser.anniversary !== anniversary) {
-        console.warn(`User ${userId} tried to change Anniversary from ${currentDbUser.anniversary} to ${anniversary}`);
+        await specialDatesCollection.updateOne(
+            { title: fullName, type: 'anniversary' },
+            { 
+              $set: { 
+                  title: fullName, 
+                  date: new Date(anniversary), 
+                  type: 'anniversary',
+                  userId: userId 
+              },
+              $setOnInsert: { createdAt: new Date() }
+            },
+            { upsert: true }
+        );
     }
 
-    // ৪. ডাটাবেস আপডেট
+    // ৪. ইউজার ডাটাবেস আপডেট
     const result = await usersCollection.findOneAndUpdate(
       { _id: new ObjectId(userId) },
       { $set: updateDoc },
@@ -77,14 +96,13 @@ export async function PUT(request: NextRequest) {
       user: {
         id: updatedUser._id.toString(),
         name: updatedUser.name,
-        // আমরা ইমেল পাঠাচ্ছি যাতে টাইপ এরর না হয়, কিন্তু ফ্রন্টএন্ড এটা দেখাবে না
         email: updatedUser.email, 
         role: updatedUser.role,
         phone: updatedUser.phone,
         address: updatedUser.address,
         picture: updatedUser.picture,
-        dob: updatedUser.dob,
-        anniversary: updatedUser.anniversary
+        dob: updatedUser.dob || dob,
+        anniversary: updatedUser.anniversary || anniversary
       }
     });
 

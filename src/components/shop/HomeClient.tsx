@@ -1,4 +1,5 @@
 // src/components/shop/HomeClient.tsx
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,14 +14,9 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import Autoplay from "embla-carousel-autoplay";
 import { formatPrice } from '@/lib/utils';
 import type { Product } from '@/lib/types';
-import { Truck, ShieldCheck, Leaf, Gift, X, Loader2 } from 'lucide-react';
+import { Utensils, Truck, ShieldCheck, Leaf } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
 import { optimizeImageUrl } from '@/lib/imageUtils';
-import { useAuth } from '@/hooks/use-auth';
-import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
 export type Offer = { id: string; title: string; description: string; price: number; imageUrl: string; };
@@ -60,80 +56,42 @@ const testimonials = [
 ];
 
 export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
-  const { user, setUser } = useAuth();
+  // Hero Carousel State
+  const [heroApi, setHeroApi] = useState<CarouselApi>()
+  const [heroCurrent, setHeroCurrent] = useState(0)
+  const [heroCount, setHeroCount] = useState(0)
+
+  // Middle Slider State
+  const [middleApi, setMiddleApi] = useState<CarouselApi>()
+  const [middleCurrent, setMiddleCurrent] = useState(0)
+  const [middleCount, setMiddleCount] = useState(0)
+
+  // Offers Slider State
+  const [offersApi, setOffersApi] = useState<CarouselApi>()
+  const [offersCurrent, setOffersCurrent] = useState(0)
+  const [offersCount, setOffersCount] = useState(0)
+
+  // Bestsellers Slider State
+  const [bestsellersApi, setBestsellersApi] = useState<CarouselApi>()
+  const [bestsellersCurrent, setBestsellersCurrent] = useState(0)
+  const [bestsellersCount, setBestsellersCount] = useState(0)
   
-  const [heroApi, setHeroApi] = useState<CarouselApi>();
-  const [heroCurrent, setHeroCurrent] = useState(0);
-  const [heroCount, setHeroCount] = useState(0);
-  const [middleApi, setMiddleApi] = useState<CarouselApi>();
-  const [middleCurrent, setMiddleCurrent] = useState(0);
-  const [middleCount, setMiddleCount] = useState(0);
-  const [offersApi, setOffersApi] = useState<CarouselApi>();
-  const [offersCurrent, setOffersCurrent] = useState(0);
-  const [offersCount, setOffersCount] = useState(0);
-  const [bestsellersApi, setBestsellersApi] = useState<CarouselApi>();
-  const [bestsellersCurrent, setBestsellersCurrent] = useState(0);
-  const [bestsellersCount, setBestsellersCount] = useState(0);
-
-  const [showPopup, setShowPopup] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [profileData, setProfileData] = useState({ dob: '', anniversary: '' });
-
-  useEffect(() => {
-    if (user && !user.dob && !user.anniversary) {
-      const timer = setTimeout(() => setShowPopup(true), 3000); 
-      return () => clearTimeout(timer);
-    }
-  }, [user]);
-
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profileData.dob) return toast.error("Please select your Birthday!");
-    
-    setIsSubmitting(true);
-    try {
-      const names = user?.name.split(' ') || ['User'];
-      const fName = names[0];
-      const lName = names.slice(1).join(' ') || 'Customer';
-
-      const res = await fetch('/api/auth/update-profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: fName,
-          lastName: lName,
-          dob: profileData.dob,
-          anniversary: profileData.anniversary || null
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setUser(data.user); 
-        toast.success("Profile updated! Enjoy your 5% discount on your special day! 🎉");
-        setShowPopup(false);
-      } else {
-        toast.error(data.error || "Failed to update");
-      }
-    } catch (err) {
-      toast.error("Something went wrong");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const dailySpecial = allProducts.find(p => p.isDailySpecial);
 
+  // Helper Hook to handle carousel state updates
   const useCarouselEffect = (api: CarouselApi | undefined, setCount: (c: number) => void, setCurrent: (c: number) => void) => {
     useEffect(() => {
         if (!api) return;
+        
         const updateState = () => {
             setCount(api.scrollSnapList().length);
             setCurrent(api.selectedScrollSnap());
         };
+
         updateState();
         api.on("select", updateState);
-        api.on("reInit", updateState);
+        api.on("reInit", updateState); // Handle responsive resizing
+
         return () => {
             api.off("select", updateState);
             api.off("reInit", updateState);
@@ -149,63 +107,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
   return (
     <div className="bg-background pb-20 md:pb-0">
       
-      {/* --- Theme Integrated Sleek Popup --- */}
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="max-w-[85vw] sm:max-w-[380px] rounded-[2rem] p-6 md:p-8 bg-background border border-border shadow-2xl overflow-hidden [&>button]:hidden">
-          
-          {/* Custom Close Button matched with theme */}
-          <button 
-            onClick={() => setShowPopup(false)} 
-            className="absolute right-5 top-5 text-muted-foreground hover:text-foreground transition-colors bg-muted/50 hover:bg-muted p-1.5 rounded-full"
-          >
-            <X className="h-4 w-4" />
-          </button>
-
-          <div className="text-center mb-6 mt-2">
-            <div className="mx-auto h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 shadow-sm border border-primary/20">
-               <Gift className="h-8 w-8 text-primary" />
-            </div>
-            <DialogTitle className="text-2xl font-bold text-foreground tracking-tight font-headline">A Special Treat! 🎉</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-2.5 leading-relaxed">
-              Save your special dates and enjoy a <span className="font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">5% discount</span> on those days at Bumba's Kitchen.
-            </DialogDescription>
-          </div>
-
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="dob" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider ml-1">Birthday (Required)</Label>
-              <Input 
-                id="dob"
-                type="date" 
-                required
-                className="rounded-2xl border-border bg-muted/30 h-12 px-4 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-foreground shadow-sm"
-                value={profileData.dob}
-                onChange={(e) => setProfileData({...profileData, dob: e.target.value})}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="anniversary" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider ml-1">Anniversary (Optional)</Label>
-              <Input 
-                id="anniversary"
-                type="date" 
-                className="rounded-2xl border-border bg-muted/30 h-12 px-4 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-foreground shadow-sm"
-                value={profileData.anniversary}
-                onChange={(e) => setProfileData({...profileData, anniversary: e.target.value})}
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="w-full h-12 mt-4 rounded-2xl text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
-            >
-              {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Save & Claim Offer"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* 1. Hero Section */}
       <section className="relative -mt-20 md:-mt-24 w-full">
         {heroSlides.length > 0 ? (
@@ -230,10 +131,16 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                 ))}
               </CarouselContent>
             </Carousel>
+            
+            {/* Hero Dots */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
               {Array.from({ length: heroCount }).map((_, index) => (
-                <button key={index} onClick={() => heroApi?.scrollTo(index)} 
-                  className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${heroCurrent === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} />
+                <button 
+                    key={index} 
+                    onClick={() => heroApi?.scrollTo(index)} 
+                    className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${heroCurrent === index ? 'w-8 bg-white' : 'w-2 bg-white/60'}`} 
+                    aria-label={`Go to slide ${index + 1}`}
+                />
               ))}
             </div>
           </>
@@ -250,16 +157,25 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {/* 2. Category Slider */}
       <section className="py-8 md:py-12 bg-background">
           <div className="container">
+              {/* ★★★ STANDARDIZED HEADING ★★★ */}
               <div className="text-center mb-8">
                  <h2 className="text-3xl font-bold font-headline mb-2">What's on your mind? 😋</h2>
                  <p className="text-muted-foreground">Explore our wide range of categories.</p>
               </div>
+              
               <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 pt-2 px-1 scrollbar-hide md:justify-center">
                   {CATEGORIES.map((cat, idx) => (
                       <Link key={idx} href={cat.link} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
                           <div className={`relative h-14 w-14 md:h-20 md:w-20 rounded-full border-[3px] ${cat.borderColor} p-0.5 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 bg-white`}>
                               <div className="relative h-full w-full rounded-full overflow-hidden bg-white">
-                                  <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 20vw, 10vw" className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized={true} />
+                                  <Image 
+                                    src={cat.image} 
+                                    alt={cat.name} 
+                                    fill 
+                                    sizes="(max-width: 768px) 20vw, 10vw"
+                                    className="object-cover group-hover:scale-110 transition-transform duration-500" 
+                                    unoptimized={true}
+                                  />
                               </div>
                           </div>
                           <span className="text-xs md:text-sm font-semibold text-gray-700 group-hover:text-primary transition-colors">{cat.name}</span>
@@ -298,7 +214,15 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                         <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
                             <Card className="overflow-hidden border-none shadow-md rounded-2xl bg-card">
                                 <CardContent className="p-0">
-                                <Image src={optimizeImageUrl(slide.imageUrl)} alt="Slider Image" width={0} height={0} sizes="(max-width: 768px) 90vw, 33vw" style={{ width: '100%', height: 'auto' }} className="object-contain" />
+                                <Image 
+                                    src={optimizeImageUrl(slide.imageUrl)} 
+                                    alt="Slider Image" 
+                                    width={0} 
+                                    height={0}
+                                    sizes="(max-width: 768px) 90vw, 33vw"
+                                    style={{ width: '100%', height: 'auto' }}
+                                    className="object-contain"
+                                />
                                 </CardContent>
                             </Card>
                         </Link>
@@ -307,10 +231,19 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                     ))}
                 </CarouselContent>
             </Carousel>
+
+            {/* Middle Slider Dots */}
             {middleCount > 1 && (
                 <div className="flex justify-center gap-1.5 mt-4">
                     {Array.from({ length: middleCount }).map((_, index) => (
-                        <button key={index} onClick={() => middleApi?.scrollTo(index)} className={`h-1.5 rounded-full transition-all duration-300 ${middleCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'}`} />
+                        <button
+                            key={index}
+                            onClick={() => middleApi?.scrollTo(index)}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                                middleCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'
+                            }`}
+                            aria-label={`Go to slide ${index + 1}`}
+                        />
                     ))}
                 </div>
             )}
@@ -322,21 +255,36 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {dailySpecial && (
         <section className="py-16 bg-amber-50/50">
             <div className="container">
+                {/* ★★★ STANDARDIZED HEADING ★★★ */}
                 <div className="text-center mb-12">
                     <h2 className="text-3xl font-bold font-headline mb-2">Today's Special 🌟</h2>
                     <p className="text-muted-foreground">Freshly prepared just for you.</p>
                 </div>
+
                 <div className="max-w-md mx-auto bg-white p-4 rounded-3xl shadow-xl border border-amber-100 hover:shadow-2xl transition-shadow duration-300">
                     <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-sm bg-muted">
                          {dailySpecial.images && dailySpecial.images.length > 0 && dailySpecial.images[0].url ? (
-                            <Image src={optimizeImageUrl(dailySpecial.images[0].url)} alt={dailySpecial.name} fill sizes="(max-width: 768px) 90vw, 50vw" className="object-cover" />
+                            <Image 
+                                src={optimizeImageUrl(dailySpecial.images[0].url)}
+                                alt={dailySpecial.name}
+                                fill
+                                sizes="(max-width: 768px) 90vw, 50vw"
+                                className="object-cover"
+                             />
                          ) : (
-                             <SpecialDishCard name={dailySpecial.name} description={dailySpecial.description} price={dailySpecial.price} />
+                             <SpecialDishCard 
+                                name={dailySpecial.name} 
+                                description={dailySpecial.description} 
+                                price={dailySpecial.price} 
+                             />
                          )}
                     </div>
+
                     <div className="mt-6 px-2 pb-2">
                         <Button asChild size="lg" className="w-full rounded-xl text-lg font-bold h-14 shadow-md shadow-primary/20 hover:scale-[1.02] transition-transform">
-                            <Link href={`/menus/${dailySpecial.slug}`}>Order Now - {formatPrice(dailySpecial.price)}</Link>
+                            <Link href={`/menus/${dailySpecial.slug}`}>
+                                Order Now - {formatPrice(dailySpecial.price)}
+                            </Link>
                         </Button>
                     </div>
                 </div>
@@ -348,10 +296,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {offers.length > 0 && (
         <section className="py-16 bg-background">
           <div className="container">
+            {/* ★★★ STANDARDIZED HEADING ★★★ */}
             <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold font-headline mb-2">Hot Offers 🔥</h2>
                 <p className="text-muted-foreground">Grab the best deals before they are gone.</p>
             </div>
+            
             <Carousel setApi={setOffersApi} opts={{ align: "start", loop: true }} className="w-full">
                 <CarouselContent>
                     {offers.map((offer) => (
@@ -359,7 +309,15 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                         <div className="p-1 h-full">
                         <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
                             <CardContent className="p-0 relative">
-                            <Image src={optimizeImageUrl(offer.imageUrl)} alt={offer.title} width={0} height={0} sizes="(max-width: 768px) 85vw, 33vw" style={{ width: '100%', height: 'auto' }} className="block" />
+                            <Image 
+                                src={optimizeImageUrl(offer.imageUrl)} 
+                                alt={offer.title} 
+                                width={0}
+                                height={0}
+                                sizes="(max-width: 768px) 85vw, 33vw"
+                                style={{ width: '100%', height: 'auto' }}
+                                className="block"
+                            />
                             </CardContent>
                         </Card>
                         </div>
@@ -367,10 +325,19 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                     ))}
                 </CarouselContent>
             </Carousel>
+
+            {/* Offers Dots */}
             {offersCount > 1 && (
                 <div className="flex justify-center gap-1.5 mt-6">
                     {Array.from({ length: offersCount }).map((_, index) => (
-                        <button key={index} onClick={() => offersApi?.scrollTo(index)} className={`h-1.5 rounded-full transition-all duration-300 ${offersCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'}`} />
+                        <button
+                            key={index}
+                            onClick={() => offersApi?.scrollTo(index)}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                                offersCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'
+                            }`}
+                            aria-label={`Go to offer slide ${index + 1}`}
+                        />
                     ))}
                 </div>
             )}
@@ -378,13 +345,14 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
         </section>
       )}
 
-      {/* 7. Bestsellers */}
+      {/* 7. Bestsellers (REFERENCE STANDARD) */}
        <section className="py-16 md:py-24 bg-background">
         <div className="container">
           <div className="text-center mb-12">
              <h2 className="text-3xl font-bold font-headline mb-2">Customer Favorites ❤️</h2>
              <p className="text-muted-foreground">The most loved dishes from our kitchen.</p>
           </div>
+          
           {bestsellers.length > 0 ? (
             <div className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
                 <Carousel setApi={setBestsellersApi} opts={{ align: "start", loop: true }} className="w-full">
@@ -400,10 +368,19 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                 <CarouselPrevious className="hidden md:flex" />
                 <CarouselNext className="hidden md:flex" />
                 </Carousel>
+
+                {/* Bestsellers Dots */}
                 {bestsellersCount > 1 && (
                     <div className="flex justify-center gap-1.5 mt-8">
                         {Array.from({ length: bestsellersCount }).map((_, index) => (
-                            <button key={index} onClick={() => bestsellersApi?.scrollTo(index)} className={`h-1.5 rounded-full transition-all duration-300 ${bestsellersCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'}`} />
+                            <button
+                                key={index}
+                                onClick={() => bestsellersApi?.scrollTo(index)}
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                    bestsellersCurrent === index ? 'w-6 bg-primary' : 'w-1.5 bg-primary/20'
+                                }`}
+                                aria-label={`Go to product slide ${index + 1}`}
+                            />
                         ))}
                     </div>
                 )}
@@ -411,6 +388,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           ) : (
             <p className="text-center text-muted-foreground">No products found.</p>
           )}
+          
           <div className="text-center mt-12">
               <Button asChild variant="outline" className="rounded-full px-8 border-primary/50 text-primary hover:bg-primary/5">
                   <Link href="/menus">View Full Menu</Link>
@@ -422,10 +400,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {/* 8. Testimonials */}
       <section className="py-16 bg-slate-50">
         <div className="container">
+          {/* ★★★ STANDARDIZED HEADING ★★★ */}
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold font-headline mb-2">Happy Tummies 😊</h2>
             <p className="text-muted-foreground">What our customers say about us.</p>
           </div>
+          
             <Carousel plugins={[Autoplay({ delay: 4000 })]} opts={{ align: "start", loop: true }} className="w-full max-w-4xl mx-auto">
                 <CarouselContent>
                     {testimonials.map((testimonial, index) => (
@@ -435,7 +415,9 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                                     <div className="flex gap-1 mb-4"><Rating rating={testimonial.rating} className="" /></div>
                                     <p className="text-gray-600 italic flex-grow">"{testimonial.quote}"</p>
                                     <div className="mt-6 flex items-center gap-3">
-                                        <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center font-bold text-primary">{testimonial.name[0]}</div>
+                                        <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center font-bold text-primary">
+                                            {testimonial.name[0]}
+                                        </div>
                                         <div>
                                             <p className="font-bold text-sm text-gray-900">{testimonial.name}</p>
                                             <p className="text-xs text-muted-foreground">{testimonial.location}</p>
@@ -449,6 +431,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             </Carousel>
         </div>
       </section>
+      
       <MobileNav />
     </div>
   );

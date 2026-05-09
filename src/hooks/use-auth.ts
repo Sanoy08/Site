@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 
+// src/hooks/use-auth.ts
+
 export type User = {
   id: string;
   name: string;
@@ -14,8 +16,10 @@ export type User = {
   phone?: string;
   address?: string;
   picture?: string;
+  dob?: string;          // নতুন যোগ করা হলো
+  anniversary?: string;  // নতুন যোগ করা হলো
 };
-
+// বাকি কোড অপরিবর্তিত থাকবে...
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);

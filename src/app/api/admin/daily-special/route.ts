@@ -5,55 +5,61 @@ import { clientPromise } from '@/lib/mongodb';
 import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher';
 import { sendNotificationToAllUsers } from '@/lib/notification';
-import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { verifyAdmin } from '@/lib/auth-utils';
+import { ObjectId } from 'mongodb'; // ★ ObjectId ইম্পোর্ট করা হলো আইডি চেক করার জন্য
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক (Optional, but good practice for admin routes)
     if (!await verifyAdmin(request)) {
        return NextResponse.json({ success: false, error: 'Unauthorized Access' }, { status: 401 });
     }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    const specialItem = await db.collection(COLLECTION_NAME).findOne({ isDailySpecial: true });
+    
+    // ★ findOne এর বদলে find().toArray() ব্যবহার করা হলো যাতে সব ডেইলি স্পেশাল লিস্ট পাওয়া যায়
+    const specialItems = await db.collection(COLLECTION_NAME).find({ isDailySpecial: true }).toArray();
 
-    if (!specialItem) {
-        return NextResponse.json({ success: false, message: "No daily special set yet." });
+    if (!specialItems || specialItems.length === 0) {
+        return NextResponse.json({ success: false, data: [], message: "No daily special set yet." });
     }
 
-    return NextResponse.json({ 
-        success: true, 
-        data: {
-            id: specialItem._id,
-            name: specialItem.Name,
-            price: specialItem.Price,
-            description: specialItem.Description,
-            // GET করার সময় ImageURLs অ্যারে এবং ফলব্যাক imageUrl দুটোই পাঠিয়ে দেওয়া হলো
-            ImageURLs: specialItem.ImageURLs || [],
-            imageUrl: specialItem.ImageURLs?.[1] || specialItem.ImageURLs?.[0] || '',
-            inStock: specialItem.InStock
-        }
-    });
+    // ফ্রন্টএন্ডের জন্য ডাটা ম্যাপ করে পাঠানো হচ্ছে
+    const formattedData = specialItems.map(item => ({
+        _id: item._id.toString(), // ফ্রন্টএন্ড id হিসেবে এটি ব্যবহার করবে
+        name: item.Name,
+        price: item.Price,
+        description: item.Description,
+        ImageURLs: item.ImageURLs || [],
+        imageUrl: item.ImageURLs?.[1] || item.ImageURLs?.[0] || '',
+        inStock: item.InStock
+    }));
+
+    return NextResponse.json({ success: true, data: formattedData });
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("GET Daily Special Error:", error);
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // ২. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    // ★ ফ্রন্টএন্ড থেকে আসা ImageURLs (Array) রিসিভ করা হচ্ছে
-    const { name, price, items, ImageURLs, imageUrl, inStock, notifyUsers } = body;
+    // ★ ফ্রন্টএন্ড থেকে আসা `id` রিসিভ করা হলো
+    const { id, name, price, items, ImageURLs, imageUrl, inStock, notifyUsers } = body;
+
+    // ★ যদি id না আসে বা ভুল ফরম্যাটের হয়
+    if (!id || !ObjectId.isValid(id)) {
+        return NextResponse.json({ success: false, error: 'Invalid or missing Menu ID' }, { status: 400 });
+    }
 
     const description = items.map((item: string) => `• ${item}`).join('\n');
 
@@ -65,21 +71,19 @@ export async function POST(request: NextRequest) {
         Name: name,
         Price: parseFloat(price),
         Description: description,
-        Category: "Thali",
-        // ★ ImageURLs অ্যারে থাকলে সেটা সেভ হবে, না থাকলে imageUrl দিয়ে অ্যারে তৈরি হবে
         ImageURLs: ImageURLs || (imageUrl ? [imageUrl] : []),
         InStock: inStock,
-        isDailySpecial: true,
-        Bestseller: false,
         UpdatedAt: new Date()
     };
 
-    const existing = await collection.findOne({ isDailySpecial: true });
+    // ★ নির্দিষ্ট ID ধরে আপডেট করা হচ্ছে
+    const updateResult = await collection.updateOne(
+        { _id: new ObjectId(id) }, 
+        { $set: productData }
+    );
 
-    if (existing) {
-        await collection.updateOne({ _id: existing._id }, { $set: productData });
-    } else {
-        await collection.insertOne({ ...productData, CreatedAt: new Date() });
+    if (updateResult.matchedCount === 0) {
+        return NextResponse.json({ success: false, error: 'Menu item not found in database' }, { status: 404 });
     }
 
     revalidatePath('/menus');
@@ -87,24 +91,28 @@ export async function POST(request: NextRequest) {
 
     // Frontend Realtime Trigger
     await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: "Daily Special Menu Updated! 🍛",
+        message: `${name} Updated! 🍛`, // ডাইনামিক নাম দেওয়া হলো
         type: 'update'
     });
 
     // Notification Logic
     if (notifyUsers) {
+        // মেনুর নাম থেকে ডাইনামিক লিংক তৈরি করার চেষ্টা (যেমন: special-veg-thali)
+        const slug = name.toLowerCase().replace(/ /g, '-');
+        
         await sendNotificationToAllUsers(
             client,
-            "Today's Special! 🍛",
-            `New ${name} is now available. Order before it runs out!`,
-            imageUrl || (ImageURLs && ImageURLs[1]) || "", // নোটিফিকেশনে পোস্টার (২য় ছবি) বা ফলব্যাক ইমেজ যাবে
-            '/menus/special-veg-thalii' // Link
+            "Today's Special Updated! 🍛",
+            `${name} is ready! Order before it runs out.`,
+            imageUrl || (ImageURLs && ImageURLs[1]) || "", 
+            `/menus/${slug}` // ডাইনামিক লিংক
         ).catch(console.error);
     }
 
     return NextResponse.json({ success: true, message: 'Daily menu updated successfully' });
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("POST Daily Special Error:", error);
+    return NextResponse.json({ success: false, error: "Failed to update menu" }, { status: 500 });
   }
 }

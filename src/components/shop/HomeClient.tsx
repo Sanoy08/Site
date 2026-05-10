@@ -14,9 +14,14 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import Autoplay from "embla-carousel-autoplay";
 import { formatPrice } from '@/lib/utils';
 import type { Product } from '@/lib/types';
-import { Utensils, Truck, ShieldCheck, Leaf } from 'lucide-react';
+import { Utensils, Truck, ShieldCheck, Leaf, Gift, CalendarHeart } from 'lucide-react';
 import { SpecialDishCard } from './SpecialDishCard';
 import { optimizeImageUrl } from '@/lib/imageUtils';
+
+// ★★★ NEW IMPORTS FOR POPUP ★★★
+import { useAuth } from '@/hooks/use-auth';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
 export type Offer = { id: string; title: string; description: string; price: number; imageUrl: string; };
@@ -56,22 +61,26 @@ const testimonials = [
 ];
 
 export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
-  // Hero Carousel State
+  // ★★★ AUTH & POPUP STATES ★★★
+  const { user, login } = useAuth();
+  const [showDatePopup, setShowDatePopup] = useState(false);
+  const [dob, setDob] = useState("");
+  const [anniversary, setAnniversary] = useState("");
+  const [isSavingDates, setIsSavingDates] = useState(false);
+
+  // Carousel States
   const [heroApi, setHeroApi] = useState<CarouselApi>()
   const [heroCurrent, setHeroCurrent] = useState(0)
   const [heroCount, setHeroCount] = useState(0)
 
-  // Middle Slider State
   const [middleApi, setMiddleApi] = useState<CarouselApi>()
   const [middleCurrent, setMiddleCurrent] = useState(0)
   const [middleCount, setMiddleCount] = useState(0)
 
-  // Offers Slider State
   const [offersApi, setOffersApi] = useState<CarouselApi>()
   const [offersCurrent, setOffersCurrent] = useState(0)
   const [offersCount, setOffersCount] = useState(0)
 
-  // Bestsellers Slider State
   const [bestsellersApi, setBestsellersApi] = useState<CarouselApi>()
   const [bestsellersCurrent, setBestsellersCurrent] = useState(0)
   const [bestsellersCount, setBestsellersCount] = useState(0)
@@ -90,7 +99,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
 
         updateState();
         api.on("select", updateState);
-        api.on("reInit", updateState); // Handle responsive resizing
+        api.on("reInit", updateState);
 
         return () => {
             api.off("select", updateState);
@@ -103,6 +112,68 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
   useCarouselEffect(middleApi, setMiddleCount, setMiddleCurrent);
   useCarouselEffect(offersApi, setOffersCount, setOffersCurrent);
   useCarouselEffect(bestsellersApi, setBestsellersCount, setBestsellersCurrent);
+
+  // ★★★ POPUP LOGIC EFFECT ★★★
+  useEffect(() => {
+    if (user) {
+        // @ts-ignore (ignore type warning if dob is strictly not defined in type yet)
+        const missingDob = !user.dob; 
+        // @ts-ignore
+        const missingAnniversary = !user.anniversary;
+        
+        const hasSkipped = sessionStorage.getItem('skippedDatePopup');
+
+        // যদি DOB বা Anniversary ফাঁকা থাকে এবং ইউজার সেশনে এটি স্কিপ না করে থাকে
+        if ((missingDob || missingAnniversary) && !hasSkipped) {
+            // ২ সেকেন্ড পর পপআপ আসবে যাতে ইউজার একটু পেজটা দেখতে পারে
+            const timer = setTimeout(() => setShowDatePopup(true), 2000);
+            return () => clearTimeout(timer);
+        }
+    }
+  }, [user]);
+
+  // ★★★ SAVE DATES HANDLER ★★★
+  const handleSaveDates = async () => {
+      try {
+          setIsSavingDates(true);
+          
+          // API এর requirement অনুযায়ী first & last name split করা হচ্ছে
+          const nameParts = user?.name ? user.name.trim().split(' ') : ['User', ''];
+          const firstName = nameParts[0] || 'User';
+          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '.'; // fallback for single names
+
+          const res = await fetch('/api/auth/update-profile', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  firstName,
+                  lastName,
+                  // @ts-ignore
+                  dob: dob || user?.dob,
+                  // @ts-ignore
+                  anniversary: anniversary || user?.anniversary
+              })
+          });
+          
+          const data = await res.json();
+          if (res.ok) {
+              toast.success("Special dates saved! 🎉");
+              login(data.user); // State Update without API Fetch
+              setShowDatePopup(false);
+          } else {
+              toast.error(data.error || "Failed to save");
+          }
+      } catch (e) {
+          toast.error("An error occurred");
+      } finally {
+          setIsSavingDates(false);
+      }
+  };
+
+  const handleSkipPopup = () => {
+      sessionStorage.setItem('skippedDatePopup', 'true');
+      setShowDatePopup(false);
+  };
 
   return (
     <div className="bg-background pb-20 md:pb-0">
@@ -157,7 +228,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {/* 2. Category Slider */}
       <section className="py-8 md:py-12 bg-background">
           <div className="container">
-              {/* ★★★ STANDARDIZED HEADING ★★★ */}
               <div className="text-center mb-8">
                  <h2 className="text-3xl font-bold font-headline mb-2">What's on your mind? 😋</h2>
                  <p className="text-muted-foreground">Explore our wide range of categories.</p>
@@ -255,7 +325,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {dailySpecial && (
         <section className="py-16 bg-amber-50/50">
             <div className="container">
-                {/* ★★★ STANDARDIZED HEADING ★★★ */}
                 <div className="text-center mb-12">
                     <h2 className="text-3xl font-bold font-headline mb-2">Today's Special 🌟</h2>
                     <p className="text-muted-foreground">Freshly prepared just for you.</p>
@@ -296,7 +365,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {offers.length > 0 && (
         <section className="py-16 bg-background">
           <div className="container">
-            {/* ★★★ STANDARDIZED HEADING ★★★ */}
             <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold font-headline mb-2">Hot Offers 🔥</h2>
                 <p className="text-muted-foreground">Grab the best deals before they are gone.</p>
@@ -345,7 +413,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
         </section>
       )}
 
-      {/* 7. Bestsellers (REFERENCE STANDARD) */}
+      {/* 7. Bestsellers */}
        <section className="py-16 md:py-24 bg-background">
         <div className="container">
           <div className="text-center mb-12">
@@ -400,7 +468,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       {/* 8. Testimonials */}
       <section className="py-16 bg-slate-50">
         <div className="container">
-          {/* ★★★ STANDARDIZED HEADING ★★★ */}
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold font-headline mb-2">Happy Tummies 😊</h2>
             <p className="text-muted-foreground">What our customers say about us.</p>
@@ -432,6 +499,71 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
         </div>
       </section>
       
+      {/* ★★★ SPECIAL DATES POPUP DIALOG ★★★ */}
+      <Dialog open={showDatePopup} onOpenChange={(open) => { if (!open) handleSkipPopup(); }}>
+          <DialogContent className="w-[90%] max-w-sm rounded-3xl p-6 bg-white border-0 shadow-2xl">
+              <DialogHeader className="text-center">
+                  <div className="mx-auto w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mb-3 shadow-inner">
+                      <Gift className="w-8 h-8" />
+                  </div>
+                  <DialogTitle className="text-xl font-bold text-gray-900">
+                      Surprise Awaits! 🎁
+                  </DialogTitle>
+                  <DialogDescription className="text-sm mt-1 text-gray-500">
+                      Save your special dates to get exclusive discounts on your celebrations!
+                  </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2 mt-2">
+                  {/* @ts-ignore */}
+                  {!user?.dob && (
+                      <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                              <CalendarHeart className="w-3.5 h-3.5 text-pink-500" /> Birthday
+                          </label>
+                          <input
+                              type="date"
+                              value={dob}
+                              onChange={(e) => setDob(e.target.value)}
+                              className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-primary text-sm text-gray-800 transition-colors focus:bg-white"
+                          />
+                      </div>
+                  )}
+                  {/* @ts-ignore */}
+                  {!user?.anniversary && (
+                      <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                              <CalendarHeart className="w-3.5 h-3.5 text-red-500" /> Anniversary <span className="text-[10px] text-gray-400 font-normal lowercase">(optional)</span>
+                          </label>
+                          <input
+                              type="date"
+                              value={anniversary}
+                              onChange={(e) => setAnniversary(e.target.value)}
+                              className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-primary text-sm text-gray-800 transition-colors focus:bg-white"
+                          />
+                      </div>
+                  )}
+              </div>
+
+              <div className="flex flex-col gap-2 mt-4">
+                  <Button 
+                      className="w-full rounded-xl h-12 text-base font-bold shadow-lg shadow-primary/20" 
+                      onClick={handleSaveDates} 
+                      disabled={isSavingDates || (!dob && !anniversary)}
+                  >
+                      {isSavingDates ? "Saving..." : "Save Special Dates"}
+                  </Button>
+                  <Button 
+                      variant="ghost" 
+                      className="w-full rounded-xl h-10 text-gray-400 hover:text-gray-600 text-sm" 
+                      onClick={handleSkipPopup}
+                  >
+                      Maybe Later
+                  </Button>
+              </div>
+          </DialogContent>
+      </Dialog>
+
       <MobileNav />
     </div>
   );

@@ -172,7 +172,7 @@ export default function CheckoutPage() {
 
   const [timeValidationError, setTimeValidationError] = useState({ show: false, title: '', message: '' });
 
-  // GOOGLE PLACES API EFFECT
+  // OLA MAPS API EFFECT
   useEffect(() => {
     const fetchLocations = async () => {
         if (!debouncedSearch || debouncedSearch.length < 3) {
@@ -333,7 +333,7 @@ export default function CheckoutPage() {
               altPhone: user?.phone || '',
               items: state.items,
               subtotal: totalPrice,
-              deliveryFee: currentDeliveryFee, // SENDING DELIVERY FEE TO BACKEND
+              deliveryFee: currentDeliveryFee, 
               total: finalTotal,
               discount: couponDiscount + coinDiscountAmount,
               couponCode: couponCode,
@@ -447,7 +447,7 @@ export default function CheckoutPage() {
                   <div className="space-y-3 pt-2">
                     <div className="flex justify-between items-center">
                         <h4 className="text-sm font-semibold text-muted-foreground">Delivery Location</h4>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Google Maps</span>
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ola Maps</span>
                     </div>
 
                     <div className="relative z-20">
@@ -467,7 +467,7 @@ export default function CheckoutPage() {
                                         </div>
                                     </div>
                                 ))}
-                                <div className="p-2 bg-muted/20 text-center border-t"><p className="text-[10px] text-muted-foreground">Powered by Google Maps</p></div>
+                                <div className="p-2 bg-muted/20 text-center border-t"><p className="text-[10px] text-muted-foreground">Powered by Ola Maps</p></div>
                             </div>
                         )}
                     </div>

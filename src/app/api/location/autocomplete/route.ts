@@ -3,32 +3,31 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const q = searchParams.get('q');
-    
-    if (!q) return NextResponse.json({ suggestions: [] });
+    const query = searchParams.get('q');
 
-    // Ensure this key is in your .env file
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY; 
-    
-    // API Call to Google Places Autocomplete (Restricted to India using components=country:in)
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&components=country:in&key=${apiKey}`;
+    if (!query) {
+        return NextResponse.json({ suggestions: [] });
+    }
 
     try {
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        if (data.status === 'OK') {
-            const suggestions = data.predictions.map((p: any) => ({
-                place_id: p.place_id,
-                description: p.description,
-                main_text: p.structured_formatting.main_text,
-                secondary_text: p.structured_formatting.secondary_text
-            }));
-            return NextResponse.json({ suggestions });
-        } else {
-            return NextResponse.json({ suggestions: [] });
-        }
+        const apiKey = process.env.OLA_MAPS_API_KEY;
+        // Ola Maps Autocomplete API Endpoint
+        const olaUrl = `https://api.olamaps.io/places/v1/autocomplete?input=${encodeURIComponent(query)}&api_key=${apiKey}`;
+
+        const response = await fetch(olaUrl);
+        const data = await response.json();
+
+        // Map Ola's response format to our frontend format
+        const suggestions = data.predictions?.map((item: any) => ({
+            place_id: item.place_id,
+            description: item.description,
+            main_text: item.structured_formatting?.main_text || item.description,
+            secondary_text: item.structured_formatting?.secondary_text || ''
+        })) || [];
+
+        return NextResponse.json({ suggestions });
     } catch (error) {
+        console.error("Ola Maps Autocomplete Error:", error);
         return NextResponse.json({ suggestions: [] }, { status: 500 });
     }
 }

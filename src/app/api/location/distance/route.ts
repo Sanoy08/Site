@@ -1,36 +1,54 @@
 // src/app/api/location/distance/route.ts
 import { NextResponse } from 'next/server';
 
+// Your Kitchen/Store Location Coordinates (Latitude, Longitude)
+// Example: Janai, Hooghly
+const STORE_LAT = 22.71805437725246; // Replace with your exact Latitude
+const STORE_LNG = 88.26018355434981; // Replace with your exact Longitude
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const destinationId = searchParams.get('destinationId');
-    
-    if (!destinationId) return NextResponse.json({ success: false, error: 'Destination required' });
+    const placeId = searchParams.get('destinationId');
 
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-    
-    // Apnar store er exact location. "Janai, Garbagan" ba latitude,longitude dite paren.
-    // Example lat/lng (Best for accurate 2km check): "22.7093,88.2570" 
-    const originAddress = "Janai, Hooghly, West Bengal, India"; 
-    
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(originAddress)}&destinations=place_id:${destinationId}&key=${apiKey}`;
+    if (!placeId) {
+        return NextResponse.json({ success: false, error: 'Missing destination' }, { status: 400 });
+    }
 
     try {
-        const res = await fetch(url);
-        const data = await res.json();
+        const apiKey = process.env.OLA_MAPS_API_KEY;
 
-        if (data.status === 'OK' && data.rows[0].elements[0].status === 'OK') {
-            const element = data.rows[0].elements[0];
+        // Step 1: Get Lat/Lng from Place ID using Ola Place Details API
+        const placeDetailsUrl = `https://api.olamaps.io/places/v1/details?place_id=${placeId}&api_key=${apiKey}`;
+        const placeRes = await fetch(placeDetailsUrl);
+        const placeData = await placeRes.json();
+
+        if (!placeData.result?.geometry?.location) {
+             throw new Error("Could not find location coordinates");
+        }
+
+        const destLat = placeData.result.geometry.location.lat;
+        const destLng = placeData.result.geometry.location.lng;
+
+        // Step 2: Get Distance using Ola Routing API
+        const routingUrl = `https://api.olamaps.io/routing/v1/directions?origin=${STORE_LAT},${STORE_LNG}&destination=${destLat},${destLng}&api_key=${apiKey}`;
+        const routeRes = await fetch(routingUrl, { method: 'POST' }); // Routing API often requires POST
+        const routeData = await routeRes.json();
+
+        if (routeData.routes && routeData.routes.length > 0) {
+            const distanceMeters = routeData.routes[0].legs[0].distance;
+            const distanceKm = (distanceMeters / 1000).toFixed(1);
+            
             return NextResponse.json({
                 success: true,
-                distanceText: element.distance.text,     // e.g., "4.5 km"
-                distanceValue: element.distance.value,   // e.g., 4500 (in meters)
-                durationText: element.duration.text
+                distanceValue: distanceMeters,
+                distanceText: `${distanceKm} km`
             });
         } else {
-            return NextResponse.json({ success: false, error: 'Could not calculate distance' });
+             throw new Error("Could not calculate route");
         }
+
     } catch (error) {
-        return NextResponse.json({ success: false, error: 'API Error' });
+        console.error("Ola Maps Distance Error:", error);
+        return NextResponse.json({ success: false, error: 'Distance calculation failed' }, { status: 500 });
     }
 }

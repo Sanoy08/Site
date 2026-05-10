@@ -15,8 +15,7 @@ import GlobalLoader from '@/components/GlobalLoader';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
-import AppUrlListener from '@/components/AppUrlListener'; 
-import { Chatbot } from "@/components/Chatbot";
+import AppUrlListener from '@/components/AppUrlListener';
 import { AppUpdater } from '@/components/AppUpdater'; 
 import StatusBarLogic from '@/components/StatusBarLogic'; 
 
@@ -127,7 +126,6 @@ export default function RootLayout({
                 {children}
             </StoreStatusProvider>
             <AppUpdater />
-            <Chatbot />
             <Toaster />
           </CartProvider>
           <MobileNav />

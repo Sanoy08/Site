@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { MoreVertical, Plus, MapPin, Loader2, Trash2, Pencil, Home, Briefcase, Search, AlertCircle } from "lucide-react";
+import { MoreVertical, Plus, MapPin, Loader2, Trash2, Pencil, Home, Briefcase, Search, AlertCircle, Info } from "lucide-react";
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
@@ -258,7 +258,7 @@ export default function AccountAddressesPage() {
             </Card>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="w-[90%] md:w-full rounded-2xl sm:max-w-md p-0 gap-0 overflow-y-auto max-h-[90vh]">
+                <DialogContent className="w-[90%] md:w-full rounded-2xl sm:max-w-md p-0 gap-0 overflow-y-auto max-h-[90vh] custom-scrollbar">
                     <DialogHeader className="p-6 border-b bg-muted/10"><DialogTitle>{editingId ? 'Edit Address' : 'Add New Address'}</DialogTitle></DialogHeader>
                     <div className="p-6 space-y-5">
                         <div className="space-y-3">
@@ -275,7 +275,7 @@ export default function AccountAddressesPage() {
                             <div className="flex justify-between items-center"><Label className="font-bold">Locate on Map</Label></div>
                             <div className="relative z-20">
                                 <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Search area (e.g. Janai...)" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value.length === 0) setShowSuggestions(false); }} className="pl-9 h-11 bg-gray-50/50" />
+                                <Input placeholder="Search area (e.g. Janai...)" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value.length === 0) setShowSuggestions(false); }} className="pl-9 h-11 bg-gray-50/50 border-primary/20 focus-visible:ring-primary/20" />
                                 {showSuggestions && suggestions.length > 0 && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-48 overflow-y-auto z-50">
                                         {suggestions.map((item: any) => (
@@ -286,6 +286,15 @@ export default function AccountAddressesPage() {
                             </div>
 
                             <div className="rounded-xl overflow-hidden border border-gray-200"><MapPicker onLocationSelect={handleLocationSelect} selectedLocation={formData.coordinates} /></div>
+
+                            {/* ★ IMPORTANT WARNING FOR MAP PIN ★ */}
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3.5 flex items-start gap-3">
+                                <Info className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
+                                <p className="text-xs text-yellow-800 leading-relaxed font-medium">
+                                    <strong className="text-yellow-900 block mb-0.5">Delivery tip:</strong> 
+                                    Please ensure the map pin is placed at your exact location to avoid delivery issues. You can manually edit your detailed address below if needed.
+                                </p>
+                            </div>
 
                             {formData.distanceText && (
                                 <div className={`p-3 rounded-xl border flex items-start gap-2 ${outOfRange ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
@@ -311,7 +320,7 @@ export default function AccountAddressesPage() {
                     
                     <DialogFooter className="p-6 border-t bg-muted/10 flex-row justify-end gap-2">
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                        <Button onClick={handleSave} disabled={isSaving || outOfRange || !formData.coordinates} className="gap-2 rounded-xl">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />}{editingId ? 'Update' : 'Save'}</Button>
+                        <Button onClick={handleSave} disabled={isSaving || outOfRange || !formData.coordinates} className="gap-2 rounded-xl shadow-md">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />}{editingId ? 'Update' : 'Save'}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

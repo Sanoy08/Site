@@ -7,12 +7,13 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DotLottiePlayer } from '@dotlottie/react-player';
 
-// ★ ল্যাগ ফিক্স ১: Memoized Player (যাতে State Change হলে বারবার রি-রেন্ডার না হয়)
-const OptimizedLottie = memo(({ src, loop }: { src: string, loop: boolean }) => (
+// ★ ল্যাগ ফিক্স ১: Memoized Player
+const OptimizedLottie = memo(({ src, loop, className }: { src: string, loop: boolean, className?: string }) => (
   <DotLottiePlayer
       src={src}
       autoplay
       loop={loop}
+      className={className} // ★ Custom class allow kora holo size baranor jonno
   />
 ));
 OptimizedLottie.displayName = 'OptimizedLottie';
@@ -23,12 +24,16 @@ export default function GlobalLoader() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAppLaunching, setIsAppLaunching] = useState(true);
 
-  // ★ ল্যাগ ফিক্স ২: RAM Caching State
+  // ★ র‍্যাম ক্যাশিং এর জন্য
   const [launchSrc, setLaunchSrc] = useState<string>('/Food Market App Interaction.lottie');
   const [loaderSrc, setLoaderSrc] = useState<string>('/Food Courier.lottie');
 
-  // ★ Capacitor App এর জন্য Caching লজিক
+  // ★ ব্ল্যাঙ্ক স্ক্রিন দূর করার জন্য মাউন্ট স্টেট
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true); // কম্পোনেন্ট মাউন্ট হতেই ট্রু হবে যাতে দ্রুত রেন্ডার হয়
+    
     const prefetchAndCacheLottie = async (url: string, setSrcCallback: (src: string) => void) => {
       try {
         const cacheName = 'bumbas-lottie-cache-v1';
@@ -42,7 +47,6 @@ export default function GlobalLoader() {
           }
         }
 
-        // Blob URL এ কনভার্ট করা হচ্ছে (Phone Storage এর বদলে সরাসরি RAM থেকে প্লে হবে)
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
         setSrcCallback(objectUrl);
@@ -51,7 +55,6 @@ export default function GlobalLoader() {
       }
     };
 
-    // অ্যাপ লোড হওয়ার সাথে সাথেই ব্যাকগ্রাউন্ডে ক্যাশ করে নেবে
     prefetchAndCacheLottie('/Food Market App Interaction.lottie', setLaunchSrc);
     prefetchAndCacheLottie('/Food Courier.lottie', setLoaderSrc);
   }, []);
@@ -103,19 +106,26 @@ export default function GlobalLoader() {
     };
   }, []);
 
+  // ★ ব্ল্যাঙ্ক স্ক্রিন রোধ করতে মাউন্ট না হওয়া পর্যন্ত পুরো ব্যাকগ্রাউন্ড কালার দিয়ে ঢেকে রাখা
+  if (!isMounted && isAppLaunching) {
+     return <div className="fixed inset-0 z-[99999] bg-[#F8F9FA] touch-none"></div>;
+  }
+
   return (
     <AnimatePresence>
-      {/* ★ ১. অ্যাপ লঞ্চ অ্যানিমেশন (Off-white Background) ★ */}
+      {/* ★ ১. অ্যাপ লঞ্চ অ্যানিমেশন ★ */}
       {isAppLaunching && (
         <motion.div 
           key="launch-animation"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#F8F9FA] touch-none"
+          // padding-top (pt) দিয়ে একটু নিচে নামানো হয়েছে
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#F8F9FA] touch-none pt-12" 
         >
-          <div className="relative w-80 h-80"> 
-            <OptimizedLottie src={launchSrc} loop={true} />
+          {/* ★ সাইজ বাড়ানো হয়েছে (w-96 h-96 = 384px) এবং scale-110 দিয়ে আরও একটু জুম করা হয়েছে ★ */}
+          <div className="relative w-96 h-96 scale-110"> 
+            <OptimizedLottie src={launchSrc} loop={true} className="w-full h-full object-contain" />
           </div>
         </motion.div>
       )}

@@ -11,16 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatPrice } from '@/lib/utils';
 import { 
     User, MapPin, Phone, Clock, FileText, X, 
-    Calendar, CreditCard, ChevronRight, Truck, Utensils
+    Calendar, CreditCard, ChevronRight, Truck, Utensils, Navigation
 } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-// ✅ আমাদের ইমেজ অপটিমাইজেশন ইউটিলিটি
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// ★★★ FIX: Removed intermediate statuses ★★★
-const STATUS_OPTIONS = ['Pending Verification', 'Received', 'Delivered', 'Cancelled'];
+const STATUS_OPTIONS = ['Pending Verification', 'Received', 'Cooking', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
 type OrderDetailSheetProps = {
     order: any | null;
@@ -30,6 +27,10 @@ type OrderDetailSheetProps = {
     onDownloadInvoice: (order: any) => void;
 };
 
+// ★ Your Store Coordinates
+const STORE_LAT = 22.717958;
+const STORE_LNG = 88.260207;
+
 export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownloadInvoice }: OrderDetailSheetProps) {
     if (!order) return null;
 
@@ -38,12 +39,30 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
             case 'Delivered': return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200', icon: '✅' };
             case 'Cancelled': return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', icon: '❌' };
             case 'Received': return { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', icon: '📥' };
+            case 'Cooking': return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', icon: '🍳' };
+            case 'Out for Delivery': return { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200', icon: '🛵' };
             case 'Pending Verification': return { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200', icon: '⏳' };
             default: return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', icon: '🕒' };
         }
     };
 
     const statusStyle = getStatusStyles(order.Status);
+
+    // ★ Open Google Maps for Direction
+    const handleOpenMap = () => {
+        if (order.Coordinates && order.Coordinates.lat && order.Coordinates.lng) {
+            const destLat = order.Coordinates.lat;
+            const destLng = order.Coordinates.lng;
+            // Google Maps direction URL format
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${STORE_LAT},${STORE_LNG}&destination=${destLat},${destLng}&travelmode=driving`;
+            window.open(mapsUrl, '_blank');
+        } else {
+            // Fallback: search address if exact coordinates are missing
+            const encodedAddress = encodeURIComponent(order.DeliveryAddress || order.Address);
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${STORE_LAT},${STORE_LNG}&destination=${encodedAddress}&travelmode=driving`;
+            window.open(mapsUrl, '_blank');
+        }
+    };
 
     return (
         <Sheet open={open} onOpenChange={(val) => !val && onClose()}>
@@ -70,7 +89,6 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                         </SheetClose>
                     </div>
 
-                    {/* Status Updater Bar */}
                     <div className={`flex items-center justify-between p-1 pl-3 pr-1 rounded-xl border ${statusStyle.bg} ${statusStyle.border}`}>
                         <div className="flex items-center gap-2">
                             <span className="text-base">{statusStyle.icon}</span>
@@ -117,11 +135,22 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                                 
                                 <div className="flex gap-3 items-start">
                                     <MapPin className="h-5 w-5 text-orange-500 mt-0.5 shrink-0" />
-                                    <div>
+                                    <div className="flex-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase mb-0.5">Delivery Address</p>
                                         <p className="text-sm text-gray-800 leading-relaxed font-medium">
                                             {order.DeliveryAddress || order.Address}
                                         </p>
+                                        {/* ★ Navigate Button */}
+                                        {order.OrderType.toLowerCase() === 'delivery' && (
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="mt-2 h-7 px-3 text-xs bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
+                                                onClick={handleOpenMap}
+                                            >
+                                                <Navigation className="w-3 h-3 mr-1.5" /> View on Map
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -140,14 +169,7 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                                     <div key={idx} className="p-4 flex gap-4 hover:bg-gray-50/50 transition-colors">
                                         <div className="h-16 w-16 bg-gray-100 rounded-xl relative overflow-hidden shrink-0 border border-gray-200">
                                             {item.image?.url ? (
-                                                // ✅ অপটিমাইজড ইমেজ ব্যবহার করা হয়েছে
-                                                <Image 
-                                                    src={optimizeImageUrl(item.image.url)} 
-                                                    alt={item.name} 
-                                                    fill 
-                                                    sizes="64px" // 16 * 4 = 64px
-                                                    className="object-cover" 
-                                                />
+                                                <Image src={optimizeImageUrl(item.image.url)} alt={item.name} fill sizes="64px" className="object-cover" />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-gray-300 text-[10px]">No Image</div>
                                             )}
@@ -198,7 +220,7 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                             </div>
                         )}
 
-                        {/* 4. Payment Bill (Receipt Style) */}
+                        {/* 4. Payment Bill */}
                         <div className="bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 relative">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent opacity-50"></div>
                             
@@ -211,7 +233,9 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                                 </div>
                                 <div className="flex justify-between text-gray-600">
                                     <span>Delivery Charge</span>
-                                    <span className="font-medium tabular-nums text-green-600">FREE</span>
+                                    <span className="font-medium tabular-nums text-green-600">
+                                        {order.DeliveryFee > 0 ? formatPrice(order.DeliveryFee) : 'FREE'}
+                                    </span>
                                 </div>
                                 {order.Discount > 0 && (
                                     <div className="flex justify-between text-green-600">
@@ -235,18 +259,12 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                                 </Badge>
                             </div>
                         </div>
-
-                        {/* Bottom Spacer */}
                         <div className="h-10"></div>
                     </div>
                 </ScrollArea>
 
-                {/* --- FOOTER (Sticky) --- */}
                 <div className="p-4 bg-white border-t sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                    <Button 
-                        className="w-full h-14 text-base font-bold rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-[0.98]" 
-                        onClick={() => onDownloadInvoice(order)}
-                    >
+                    <Button className="w-full h-14 text-base font-bold rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-[0.98]" onClick={() => onDownloadInvoice(order)}>
                         <FileText className="mr-2 h-5 w-5" /> Download Invoice PDF
                     </Button>
                 </div>

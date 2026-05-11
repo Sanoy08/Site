@@ -144,6 +144,9 @@ export default function CheckoutPage() {
 
   const [timeValidationError, setTimeValidationError] = useState({ show: false, title: '', message: '' });
 
+  // ★ Added inside the component
+  const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
+
   // FREE MAPS API EFFECT (Nominatim)
   useEffect(() => {
     const fetchLocations = async () => {
@@ -164,6 +167,7 @@ export default function CheckoutPage() {
 
   // HANDLE MAP/SEARCH SELECTION
   const handleLocationSelect = async (lat: number, lng: number, addressStr?: string) => {
+      setSelectedLocation({ lat, lng }); // ★ Set location here
       try {
           toast.loading("Calculating route...", { id: 'dist' });
           setOutOfRange(false);
@@ -325,6 +329,7 @@ export default function CheckoutPage() {
               useCoins: useCoins,
               orderType: orderType,
               deliveryAddress: orderType === 'delivery' ? (values.deliveryAddress || values.address) : undefined,
+              coordinates: selectedLocation // ★ Included in payload
           };
 
           const res = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderPayload) });

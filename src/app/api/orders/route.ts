@@ -1,5 +1,5 @@
 // src/app/api/orders/route.ts
-// (Keep all your existing imports and setup)
+
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -17,8 +17,12 @@ const COIN_VALUE = 1;
 export async function POST(request: NextRequest) {
   try {
     const orderData = await request.json(); 
-    // ★ DELIVERY FEE EKHANE DESTRUCTURE KORA HOCCHE
-    const { items, couponCode, useCoins, address, deliveryAddress, orderType, name, altPhone, mealTime, preferredDate, instructions, deliveryFee } = orderData;
+    // ★ coordinates destructured from request
+    const { 
+        items, couponCode, useCoins, address, deliveryAddress, 
+        orderType, name, altPhone, mealTime, preferredDate, 
+        instructions, deliveryFee, coordinates 
+    } = orderData;
 
     const currentUser = await getUser(request);
     let userIdToSave: ObjectId | null = null;
@@ -59,6 +63,7 @@ export async function POST(request: NextRequest) {
                     ...item,
                     price: dbProduct.Price || 0,
                     name: dbProduct.Name,
+                    image: dbProduct.Image // Keeping image structure if needed
                 });
             }
 
@@ -66,10 +71,8 @@ export async function POST(request: NextRequest) {
             let appliedCouponCode = null;
 
             if (couponCode) {
-                // (Your existing coupon validation logic here)
                 const coupon = await db.collection(COUPONS_COLLECTION).findOne({ code: couponCode.toUpperCase() }, { session });
                 if (coupon) {
-                   // validation logic ...
                    couponDiscount = coupon.discountType === 'percentage' ? (calculatedSubtotal * coupon.value) / 100 : coupon.value;
                    couponDiscount = Math.min(couponDiscount, calculatedSubtotal);
                    appliedCouponCode = coupon.code;
@@ -81,7 +84,6 @@ export async function POST(request: NextRequest) {
             let coinDiscount = 0;
 
             if (userIdToSave && useCoins) {
-                // (Your existing coin validation logic here)
                 const user = await db.collection(USERS_COLLECTION).findOne({ _id: userIdToSave }, { session });
                 const userBalance = user?.wallet?.currentBalance || 0;
                 coinsRedeemed = Math.min(userBalance, Math.floor((calculatedSubtotal * 0.5) / COIN_VALUE));
@@ -95,13 +97,13 @@ export async function POST(request: NextRequest) {
 
             if (!orderId) orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-            // ★ CALCULATE TOTAL INCLUDING DELIVERY FEE
             const totalDiscount = couponDiscount + coinDiscount;
             const finalDeliveryCharge = orderType === 'delivery' ? (Number(deliveryFee) || 0) : 0;
             const finalPrice = Math.max(0, calculatedSubtotal + finalDeliveryCharge - totalDiscount);
             
             finalAmountForLog = finalPrice; 
 
+            // ★ Saving Coordinates to DB
             const newOrder = {
                 OrderNumber: orderId,
                 userId: userIdToSave,
@@ -110,13 +112,14 @@ export async function POST(request: NextRequest) {
                 Phone: altPhone,
                 Address: address,
                 DeliveryAddress: deliveryAddress || address,
+                Coordinates: coordinates || null, // { lat: number, lng: number }
                 OrderType: orderType || 'Delivery',
                 MealTime: mealTime,
                 PreferredDate: new Date(preferredDate),
                 Instructions: instructions,
                 
                 Subtotal: calculatedSubtotal,
-                DeliveryFee: finalDeliveryCharge, // SAVING DELIVERY FEE
+                DeliveryFee: finalDeliveryCharge,
                 Discount: totalDiscount,
                 CouponCode: appliedCouponCode,
                 CouponDiscount: couponDiscount,

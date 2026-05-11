@@ -12,15 +12,33 @@ export default function GlobalLoader() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   
-  // ★ নতুন স্টেট: অ্যাপ লঞ্চের অ্যানিমেশনের জন্য
+  // ★ অ্যাপ লঞ্চের অ্যানিমেশনের স্টেট
   const [isAppLaunching, setIsAppLaunching] = useState(true);
 
-  // অ্যাপ লঞ্চের সময় 2.5 সেকেন্ড অ্যানিমেশন দেখাবে, তারপর মেইন পেজ
+  // অ্যাপ ওপেন হওয়ার পর মিনিমাম 2.5 সেকেন্ড এবং পুরোপুরি লোড হওয়া পর্যন্ত অ্যানিমেশন দেখাবে
   useEffect(() => {
-    const launchTimer = setTimeout(() => {
-      setIsAppLaunching(false);
-    }, 2500); // আপনি চাইলে সময় বাড়াতে/কমাতে পারেন
-    return () => clearTimeout(launchTimer);
+    const hideLaunchScreen = () => {
+      // একটু সময় দেওয়া হলো যাতে অ্যানিমেশনটা ইউজার ভালোভাবে দেখতে পারে
+      setTimeout(() => {
+        setIsAppLaunching(false);
+      }, 2500); 
+    };
+
+    // যদি অলরেডি লোড হয়ে গিয়ে থাকে
+    if (document.readyState === 'complete') {
+      hideLaunchScreen();
+    } else {
+      // পুরো পেজ এবং রিসোর্স লোড হওয়ার জন্য অপেক্ষা করবে
+      window.addEventListener('load', hideLaunchScreen);
+      
+      // ফলব্যাক: কোনো কারণে লোড ইভেন্ট ফায়ার না হলে ৪ সেকেন্ড পর হাইড হয়ে যাবে
+      const fallbackTimer = setTimeout(() => setIsAppLaunching(false), 4000);
+      
+      return () => {
+        window.removeEventListener('load', hideLaunchScreen);
+        clearTimeout(fallbackTimer);
+      };
+    }
   }, []);
 
   // রাউটিংয়ের সময় লোডার বন্ধ করার জন্য
@@ -52,20 +70,21 @@ export default function GlobalLoader() {
 
   return (
     <AnimatePresence>
-      {/* ★ ১. অ্যাপ লঞ্চ অ্যানিমেশন (Food Market App Interaction.lottie) ★ */}
+      {/* ★ ১. অ্যাপ লঞ্চ অ্যানিমেশন (Off-white Background) ★ */}
       {isAppLaunching && (
         <motion.div 
           key="launch-animation"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#7D9A4D] touch-none"
+          // গ্রিন ব্যাকগ্রাউন্ডের বদলে হালকা অফ-হোয়াইট (#F8F9FA) দেওয়া হলো
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#F8F9FA] touch-none"
         >
           <div className="relative w-80 h-80"> 
             <DotLottiePlayer
                 src="/Food Market App Interaction.lottie"
                 autoplay
-                loop={false}
+                loop={true} // ★ যতক্ষণ লোডিং চলবে, লটি অ্যানিমেশনটা ঘুরতে থাকবে
             />
           </div>
         </motion.div>

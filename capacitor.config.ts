@@ -19,7 +19,7 @@ const config: CapacitorConfig = {
     // @ts-ignore
     adjustMarginsForEdgeToEdge: 'disable',
     zoomEnabled: false,
-    backgroundColor: "#7D9A4D"
+    backgroundColor: "#F8F9FA"
   },
   plugins: {
     Keyboard: {
@@ -35,9 +35,9 @@ const config: CapacitorConfig = {
       providers: ["google.com"],
     },
     SplashScreen: {
-      launchShowDuration: 2000, // ২ সেকেন্ড পর হাইড হবে
+      launchShowDuration: 1000, // ২ সেকেন্ড পর হাইড হবে
       launchAutoHide: true,     // ★ true করা হলো
-      backgroundColor: "#ffffff",
+      backgroundColor: "#F8F9FA",
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP",
       showSpinner: false

@@ -59,11 +59,11 @@ export async function POST(request: NextRequest) {
                 const itemTotal = (dbProduct.Price || 0) * item.quantity;
                 calculatedSubtotal += itemTotal;
 
+                // ★ FIX: Using item from cart request instead of dbProduct.Image
                 validatedItems.push({
-                    ...item,
+                    ...item, // This already contains the correct image object from the frontend cart
                     price: dbProduct.Price || 0,
                     name: dbProduct.Name,
-                    image: dbProduct.Image // Keeping image structure if needed
                 });
             }
 
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
                 CoinDiscount: coinDiscount,
                 FinalPrice: finalPrice, 
                 
-                Items: validatedItems,
+                Items: validatedItems, // Correctly pushed with image
                 Status: "Pending Verification",
                 coinsAwarded: false,
                 coinsRefunded: false

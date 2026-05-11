@@ -15,7 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { 
   Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, 
-  Calendar as CalendarIcon, AlertCircle, Search, Save
+  Calendar as CalendarIcon, AlertCircle, Search, Save, Map
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
+import dynamic from 'next/dynamic';
 
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -36,6 +37,12 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import { optimizeImageUrl } from '@/lib/imageUtils';
+
+// Leaflet Map dynamically imported
+const MapPicker = dynamic(() => import('@/components/shop/MapPicker'), { 
+    ssr: false, 
+    loading: () => <div className="h-[250px] w-full bg-muted animate-pulse rounded-xl flex items-center justify-center">Loading Map...</div> 
+});
 
 const checkoutSchema = z.object({
   name: z.string().min(2, 'Please enter a valid name.'),
@@ -68,75 +75,39 @@ const FloatingLabelTextarea = ({ field, label }: any) => (
   </div>
 );
 
-const slideVariants = {
-  enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction < 0 ? 50 : -50, opacity: 0 }),
-};
-
+const slideVariants = { enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }), center: { x: 0, opacity: 1 }, exit: (direction: number) => ({ x: direction < 0 ? 50 : -50, opacity: 0 }) };
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const currentYear = new Date().getFullYear();
 const years = [currentYear, currentYear + 1];
 
-function SwipeableCalendar({ selected, onSelect, viewDate, setViewDate, onClose }: { selected?: Date, onSelect: (date?: Date) => void, viewDate: Date, setViewDate: (date: Date) => void, onClose: () => void }) {
+function SwipeableCalendar({ selected, onSelect, viewDate, setViewDate, onClose }: any) {
   const [direction, setDirection] = useState(0);
-
-  const handleMonthChange = (newMonthIndex: number) => {
-    const newDate = setMonth(viewDate, newMonthIndex);
-    setDirection(newMonthIndex > getMonth(viewDate) ? 1 : -1);
-    setViewDate(newDate);
-  };
-
-  const handleYearChange = (newYear: string) => {
-    const newDate = setYear(viewDate, parseInt(newYear));
-    setViewDate(newDate);
-  };
-
-  const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const swipeThreshold = 50;
-    if (info.offset.x < -swipeThreshold) {
-      setDirection(1); setViewDate(addMonths(viewDate, 1));
-    } else if (info.offset.x > swipeThreshold) {
-      setDirection(-1); setViewDate(subMonths(viewDate, 1));
-    }
+  const handleMonthChange = (idx: number) => { setDirection(idx > getMonth(viewDate) ? 1 : -1); setViewDate(setMonth(viewDate, idx)); };
+  const handleYearChange = (yr: string) => setViewDate(setYear(viewDate, parseInt(yr)));
+  const onDragEnd = (e: any, info: PanInfo) => {
+    if (info.offset.x < -50) { setDirection(1); setViewDate(addMonths(viewDate, 1)); } 
+    else if (info.offset.x > 50) { setDirection(-1); setViewDate(subMonths(viewDate, 1)); }
   };
 
   return (
     <div className="flex flex-col items-center gap-4 p-4 bg-white overflow-hidden">
         <div className="flex gap-2 w-full max-w-xs z-20 relative">
-            <Select value={months[getMonth(viewDate)]} onValueChange={(month) => handleMonthChange(months.indexOf(month))}>
-                <SelectTrigger className="w-[140px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg"><SelectValue placeholder="Month" /></SelectTrigger>
-                <SelectContent>{months.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={getYear(viewDate).toString()} onValueChange={handleYearChange}>
-                <SelectTrigger className="w-[120px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg"><SelectValue placeholder="Year" /></SelectTrigger>
-                <SelectContent>{years.map((year) => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}</SelectContent>
-            </Select>
+            <Select value={months[getMonth(viewDate)]} onValueChange={(m) => handleMonthChange(months.indexOf(m))}><SelectTrigger className="w-[140px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg"><SelectValue placeholder="Month" /></SelectTrigger><SelectContent>{months.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select>
+            <Select value={getYear(viewDate).toString()} onValueChange={handleYearChange}><SelectTrigger className="w-[120px] h-10 border-primary/20 bg-primary/5 focus:ring-primary rounded-lg"><SelectValue placeholder="Year" /></SelectTrigger><SelectContent>{years.map((y) => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
         </div>
-
         <div className="relative w-full overflow-hidden min-h-[350px]">
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div key={viewDate.toISOString()} custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.2} onDragEnd={onDragEnd} className="w-full h-full cursor-grab active:cursor-grabbing touch-pan-y">
               <Calendar mode="single" month={viewDate} onMonthChange={setViewDate} selected={selected} onSelect={(date) => { onSelect(date); onClose(); }} disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus className="rounded-md border-0 w-full"
                   classNames={{
-                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                      month: "space-y-4 w-full", caption: "hidden", nav: "hidden", 
-                      table: "w-full border-collapse space-y-1 select-none",
-                      head_row: "flex w-full justify-between",
-                      head_cell: "text-muted-foreground rounded-md w-9 font-medium text-[0.8rem] h-9 flex items-center justify-center",
-                      row: "flex w-full mt-2 justify-between",
-                      cell: "h-10 w-10 text-center text-sm p-0 relative", 
-                      day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-primary/10 rounded-xl transition-all data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:shadow-lg",
-                      day_today: "bg-primary/5 text-primary font-bold border border-primary/20",
-                      day_outside: "text-muted-foreground opacity-30",
-                      day_disabled: "text-muted-foreground opacity-30 cursor-not-allowed line-through",
-                      day_hidden: "invisible",
+                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0", month: "space-y-4 w-full", caption: "hidden", nav: "hidden", 
+                      table: "w-full border-collapse space-y-1 select-none", head_row: "flex w-full justify-between", head_cell: "text-muted-foreground rounded-md w-9 font-medium text-[0.8rem] h-9 flex items-center justify-center", row: "flex w-full mt-2 justify-between", cell: "h-10 w-10 text-center text-sm p-0 relative", 
+                      day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-primary/10 rounded-xl transition-all data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:shadow-lg", day_today: "bg-primary/5 text-primary font-bold border border-primary/20", day_outside: "text-muted-foreground opacity-30", day_disabled: "text-muted-foreground opacity-30 cursor-not-allowed line-through", day_hidden: "invisible",
                   }}
               />
             </motion.div>
           </AnimatePresence>
         </div>
-        <p className="text-[10px] text-muted-foreground/60">Swipe left or right to change month</p>
     </div>
   );
 }
@@ -156,6 +127,7 @@ export default function CheckoutPage() {
   // Delivery Charge State
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
   const [distanceText, setDistanceText] = useState<string>('');
+  const [outOfRange, setOutOfRange] = useState(false); // Used for > 50km block
 
   const [hasSavedAddresses, setHasSavedAddresses] = useState(true); 
   const [showSaveAddressPrompt, setShowSaveAddressPrompt] = useState(false);
@@ -172,15 +144,14 @@ export default function CheckoutPage() {
 
   const [timeValidationError, setTimeValidationError] = useState({ show: false, title: '', message: '' });
 
-  // OLA MAPS API EFFECT
+  // FREE MAPS API EFFECT (Nominatim)
   useEffect(() => {
     const fetchLocations = async () => {
         if (!debouncedSearch || debouncedSearch.length < 3) {
-            setSuggestions([]);
-            return;
+            setSuggestions([]); return;
         }
         try {
-            const res = await fetch(`/api/location/autocomplete?q=${debouncedSearch}`);
+            const res = await fetch(`/api/location/search?q=${debouncedSearch}`);
             const data = await res.json();
             setSuggestions(data.suggestions || []);
             setShowSuggestions(true);
@@ -191,55 +162,67 @@ export default function CheckoutPage() {
     fetchLocations();
   }, [debouncedSearch]);
 
-  // ADDRESS SELECTION & DISTANCE CALCULATION
-  const handleSelectAddress = async (item: any) => {
-    form.setValue('address', item.description, { shouldValidate: true });
-    setSearchQuery("");
-    setShowSuggestions(false);
-    
-    try {
-        toast.loading("Calculating delivery distance & charges...", { id: 'dist' });
-        
-        const res = await fetch(`/api/location/distance?destinationId=${item.place_id}`);
-        const data = await res.json();
-        
-        if(data.success) {
-            const distKm = data.distanceValue / 1000; // API returns meters
-            let fee = 0;
-            
-            // DELIVERY LOGIC: Under 2km Free. Beyond 2km: 50 Base + 10/km
-            if(distKm > 2) {
-                const extraKm = Math.ceil(distKm - 2);
-                fee = 50 + (extraKm * 10);
-            }
-            
-            setDeliveryFee(fee);
-            setDistanceText(data.distanceText);
-            
-            if (fee === 0) {
-               toast.success(`Distance: ${data.distanceText}. Yay! Delivery is Free! 🎉`, { id: 'dist' });
-            } else {
-               toast.success(`Distance: ${data.distanceText}. Delivery Fee: ${formatPrice(fee)}`, { id: 'dist' });
-            }
-        } else {
-            toast.error("Failed to calculate distance. Defaulting to standard rates.", { id: 'dist' });
-            setDeliveryFee(50); // Fallback
-        }
-    } catch(e) {
-        toast.error("Error calculating distance.", { id: 'dist' });
-    }
+  // HANDLE MAP/SEARCH SELECTION
+  const handleLocationSelect = async (lat: number, lng: number, addressStr?: string) => {
+      try {
+          toast.loading("Calculating route...", { id: 'dist' });
+          setOutOfRange(false);
+          
+          // 1. If address string wasn't passed (marker drag), do reverse geocode
+          if (!addressStr) {
+             const revRes = await fetch(`/api/location/reverse?lat=${lat}&lon=${lng}`);
+             const revData = await revRes.json();
+             addressStr = revData.address;
+          }
+          
+          if(addressStr) form.setValue('address', addressStr, { shouldValidate: true });
+
+          // 2. Calculate Distance
+          const res = await fetch(`/api/location/distance?lat=${lat}&lng=${lng}`);
+          const data = await res.json();
+          
+          if(data.success) {
+              const distKm = data.distanceValue / 1000;
+              let fee = 0;
+              
+              if(distKm > 50) {
+                  setOutOfRange(true);
+                  toast.error(`Distance: ${data.distanceText}. Sorry, we only deliver within 50km!`, { id: 'dist', duration: 4000 });
+                  setDeliveryFee(0);
+                  setDistanceText(data.distanceText);
+                  return;
+              }
+
+              // DELIVERY LOGIC: Under 2km Free. Beyond 2km: 50 Base + 10/km
+              if(distKm > 2) {
+                  const extraKm = Math.ceil(distKm - 2);
+                  fee = 50 + (extraKm * 10);
+              }
+              
+              setDeliveryFee(fee);
+              setDistanceText(data.distanceText);
+              
+              if (fee === 0) toast.success(`Distance: ${data.distanceText}. Delivery is Free! 🎉`, { id: 'dist' });
+              else toast.success(`Distance: ${data.distanceText}. Delivery Fee: ${formatPrice(fee)}`, { id: 'dist' });
+          } else {
+              toast.error("Failed to calculate exact route distance.", { id: 'dist' });
+              setDeliveryFee(50); // Fallback
+          }
+      } catch(e) {
+          toast.error("Error calculating distance.", { id: 'dist' });
+      }
+  };
+
+  const handleSelectSearchItem = (item: any) => {
+      setSearchQuery("");
+      setShowSuggestions(false);
+      handleLocationSelect(item.lat, item.lon, item.description);
   };
 
   useEffect(() => {
     if (!isLoading && !isInitialized) return;
-    if (!isLoading && !user) {
-      toast.error("Please login to checkout.");
-      router.push('/login');
-      return;
-    }
-    if (isInitialized && itemCount === 0 && !isSuccess) {
-      router.push('/menus');
-    }
+    if (!isLoading && !user) { toast.error("Please login to checkout."); router.push('/login'); return; }
+    if (isInitialized && itemCount === 0 && !isSuccess) router.push('/menus');
   }, [itemCount, user, isLoading, isInitialized, router, isSuccess]);
 
   const form = useForm<z.infer<typeof checkoutSchema>>({
@@ -259,15 +242,13 @@ export default function CheckoutPage() {
             const res = await fetch('/api/user/addresses');
             const data = await res.json();
             if (data.success && Array.isArray(data.addresses)) {
-                if (data.addresses.length === 0) {
-                    setHasSavedAddresses(false);
-                } else {
+                if (data.addresses.length === 0) setHasSavedAddresses(false);
+                else {
                     const defaultAddr = data.addresses.find((a: any) => a.isDefault);
                     savedAddress = defaultAddr ? defaultAddr.address : (data.addresses[0]?.address || '');
                 }
             }
         } catch (error) {}
-        
         reset({ name: user.name || '', address: savedAddress, deliveryAddress: '', preferredDate: '', mealTime: 'lunch', instructions: '', terms: false, shareLocation: false });
     };
     initializeCheckoutData();
@@ -278,12 +259,16 @@ export default function CheckoutPage() {
     else if (watch('deliveryAddress') === primaryAddress) setValue('deliveryAddress', '');
   }, [isSameAsAddress, primaryAddress, setValue, watch]);
 
-  // TOTAL CALCULATION
   const coinDiscountAmount = useCoins ? (savedCoinDiscount || 0) : 0;
   const currentDeliveryFee = orderType === 'delivery' ? deliveryFee : 0;
   const finalTotal = Math.max(0, totalPrice + currentDeliveryFee - couponDiscount - coinDiscountAmount);
 
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
+    if (orderType === 'delivery' && outOfRange) {
+        toast.error("Your location is out of our 50km delivery range. Please select Pickup.");
+        return;
+    }
+
     const today = new Date();
     const todayStr = format(today, "yyyy-MM-dd");
     const currentHour = today.getHours();
@@ -447,66 +432,61 @@ export default function CheckoutPage() {
                   <div className="space-y-3 pt-2">
                     <div className="flex justify-between items-center">
                         <h4 className="text-sm font-semibold text-muted-foreground">Delivery Location</h4>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ola Maps</span>
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium flex items-center gap-1"><Map className="w-3 h-3"/> GPS Auto-Detect</span>
                     </div>
 
-                    <div className="relative z-20">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Search area (e.g. Janai, Dankuni...)" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value.length === 0) setShowSuggestions(false); }} className="pl-9 h-11 rounded-xl border-primary/20 bg-white focus-visible:ring-primary/20" />
-                        </div>
-
-                        {showSuggestions && suggestions.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-                                {suggestions.map((item: any) => (
-                                    <div key={item.place_id} onClick={() => handleSelectAddress(item)} className="p-3 hover:bg-muted/50 cursor-pointer flex items-start gap-3 border-b last:border-0 transition-colors">
-                                        <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground">{item.main_text}</p>
-                                            <p className="text-xs text-muted-foreground">{item.secondary_text}</p>
-                                        </div>
+                    {/* INTERACTIVE MAP Component */}
+                    {orderType === 'delivery' && (
+                        <div className="space-y-3 animate-in fade-in zoom-in duration-300">
+                             <div className="relative z-20">
+                                <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="Search area (e.g. Janai, Dankuni...)" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value.length === 0) setShowSuggestions(false); }} className="pl-9 h-11 rounded-xl border-primary/20 bg-white focus-visible:ring-primary/20" />
+                                
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 z-50">
+                                        {suggestions.map((item: any) => (
+                                            <div key={item.place_id} onClick={() => handleSelectSearchItem(item)} className="p-3 hover:bg-muted/50 cursor-pointer flex items-start gap-3 border-b last:border-0 transition-colors">
+                                                <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">{item.main_text}</p>
+                                                    <p className="text-xs text-muted-foreground">{item.secondary_text}</p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                                <div className="p-2 bg-muted/20 text-center border-t"><p className="text-[10px] text-muted-foreground">Powered by Ola Maps</p></div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    {distanceText && orderType === 'delivery' && (
-                        <p className="text-xs text-green-600 font-medium ml-1 flex items-center gap-1">
-                            <MapPin className="h-3 w-3" /> Distance from kitchen: {distanceText}
-                        </p>
+                            <MapPicker onLocationSelect={handleLocationSelect} />
+                            
+                            {distanceText && (
+                                <div className={`p-3 rounded-xl border flex items-start gap-2 ${outOfRange ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+                                    <AlertCircle className="w-5 h-5 shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold">Distance: {distanceText}</p>
+                                        <p className="text-xs mt-0.5">{outOfRange ? 'Sorry, we only deliver within a 50 km radius.' : 'Location is within our delivery range.'}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
 
-                    <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormControl><FloatingLabelTextarea field={field} label="Primary Address" /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormControl><FloatingLabelTextarea field={field} label="Detailed Address (House No, Landmark)" /></FormControl><FormMessage /></FormItem> )} />
                   </div>
               </div>
 
               <div className="space-y-4">
                   <h3 className="text-lg font-bold">Delivery Method</h3>
                   <div className="flex gap-4 p-1 bg-muted/20 rounded-2xl border">
-                      <Button type="button" onClick={() => setOrderType('delivery')} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'delivery' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Delivery</Button>
-                      <Button type="button" onClick={() => setOrderType('pickup')} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'pickup' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Pickup</Button>
+                      <Button type="button" onClick={() => { setOrderType('delivery'); if(outOfRange) toast.error("Location is too far for delivery."); }} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'delivery' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Delivery</Button>
+                      <Button type="button" onClick={() => { setOrderType('pickup'); setOutOfRange(false); }} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'pickup' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Pickup</Button>
                   </div>
               </div>
 
-              {orderType === 'delivery' ? (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="p-4 border rounded-xl bg-gray-50/50 space-y-4">
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                            <FormControl><Checkbox checked={isSameAsAddress} onCheckedChange={() => setIsSameAsAddress(prev => !prev)} /></FormControl>
-                            <div className="space-y-1 leading-none"><FormLabel className="font-normal cursor-pointer">Use as delivery address</FormLabel></div>
-                        </FormItem>
-                        
-                        {!isSameAsAddress && (
-                            <FormField control={form.control} name="deliveryAddress" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Delivery Address" /></FormControl><FormMessage /></FormItem> )} />
-                        )}
-                    </div>
-                </div>
-              ) : (
+              {orderType === 'pickup' && (
                 <div className="p-5 border rounded-xl bg-blue-50/50 animate-in fade-in slide-in-from-top-2 text-center space-y-2 border-blue-100">
-                    <p className="font-medium text-lg text-blue-900"><strong>Store Location:</strong> Janai, Garbagan, Hooghly</p>
-                    <a href="https://maps.google.com/?q=Janai,Garbagan,Hooghly" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:text-primary/80 underline font-medium text-sm transition-colors"><MapPin className="h-4 w-4" /> View on Google Maps</a>
+                    <p className="font-medium text-lg text-blue-900"><strong>Store Location:</strong> Janai, Garbagan, Hooghly (PIN: 712304)</p>
+                    <a href="https://maps.google.com/?q=22.717958,88.260207" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:text-primary/80 underline font-medium text-sm transition-colors"><MapPin className="h-4 w-4" /> View on Maps</a>
                 </div>
               )}
 
@@ -531,7 +511,7 @@ export default function CheckoutPage() {
                                             <span className="text-lg">Select Delivery Date</span>
                                         </DialogTitle>
                                     </DialogHeader>
-                                    <SwipeableCalendar viewDate={viewDate} setViewDate={setViewDate} selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} onClose={() => setIsCalendarOpen(false)} />
+                                    <SwipeableCalendar viewDate={viewDate} setViewDate={setViewDate} selected={field.value ? new Date(field.value) : undefined} onSelect={(date: any) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} onClose={() => setIsCalendarOpen(false)} />
                                 </DialogContent>
                             </Dialog>
                             <FormMessage />
@@ -552,9 +532,9 @@ export default function CheckoutPage() {
                   </FormItem> 
               )} />
               
-              <Button type="submit" disabled={isSubmitting || showSaveAddressPrompt} size="lg" className="w-full h-14 text-lg rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]">
+              <Button type="submit" disabled={isSubmitting || showSaveAddressPrompt || (orderType === 'delivery' && outOfRange)} size="lg" className={`w-full h-14 text-lg rounded-xl shadow-lg transition-all hover:scale-[1.01] active:scale-[0.99] ${(orderType === 'delivery' && outOfRange) ? 'bg-muted-foreground cursor-not-allowed shadow-none' : 'shadow-primary/20'}`}>
                 {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Lock className="mr-2 h-5 w-5" />}
-                {isSubmitting ? 'Placing Order...' : `Place Order — ${formatPrice(finalTotal)}`}
+                {isSubmitting ? 'Placing Order...' : (orderType === 'delivery' && outOfRange) ? 'Out of Delivery Area' : `Place Order — ${formatPrice(finalTotal)}`}
               </Button>
             </form>
           </Form>

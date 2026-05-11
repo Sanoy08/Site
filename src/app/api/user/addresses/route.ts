@@ -3,12 +3,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
+import { getUser } from '@/lib/auth-utils';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
 
-// হেল্পার ফাংশন: এখন শুধু getUser থেকে আইডি নেবে
 async function getUserId(request: NextRequest) {
     const user = await getUser(request);
     return user ? (user._id || user.id) : null;
@@ -41,17 +40,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, address, isDefault } = body;
+    const { name, address, isDefault, coordinates, distanceText, deliveryFee } = body;
 
-    if (!name || !address) {
-        return NextResponse.json({ error: 'Name and Address required' }, { status: 400 });
+    if (!name || !address || !coordinates) {
+        return NextResponse.json({ error: 'Label, Address and Map Location required' }, { status: 400 });
     }
 
     const newAddress = {
         id: new ObjectId().toString(),
         name,
         address,
-        isDefault: isDefault || false
+        isDefault: isDefault || false,
+        coordinates,
+        distanceText: distanceText || '',
+        deliveryFee: deliveryFee || 0
     };
 
     const client = await clientPromise;
@@ -82,10 +84,10 @@ export async function PUT(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { id, name, address, isDefault } = body;
+        const { id, name, address, isDefault, coordinates, distanceText, deliveryFee } = body;
 
-        if (!id || !name || !address) {
-            return NextResponse.json({ error: 'ID, Name and Address required' }, { status: 400 });
+        if (!id || !name || !address || !coordinates) {
+            return NextResponse.json({ error: 'ID, Label, Address and Location required' }, { status: 400 });
         }
 
         const client = await clientPromise;
@@ -105,7 +107,10 @@ export async function PUT(request: NextRequest) {
                 $set: { 
                     "savedAddresses.$.name": name,
                     "savedAddresses.$.address": address,
-                    "savedAddresses.$.isDefault": isDefault
+                    "savedAddresses.$.isDefault": isDefault,
+                    "savedAddresses.$.coordinates": coordinates,
+                    "savedAddresses.$.distanceText": distanceText || '',
+                    "savedAddresses.$.deliveryFee": deliveryFee || 0
                 } 
             }
         );

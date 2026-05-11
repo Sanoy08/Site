@@ -6,12 +6,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { formatPrice } from '@/lib/utils';
 import { 
     Loader2, ArrowRight, Ticket, Coins, Check, ShoppingBag, 
-    X, Sparkles, Receipt, Wallet, CheckCircle2, MapPin, AlertCircle 
+    X, Sparkles, Receipt, Wallet, CheckCircle2, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
@@ -20,16 +19,7 @@ import Image from 'next/image';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import { cn } from '@/lib/utils';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Input } from '@/components/ui/input';
 
 export default function OrderSummaryPage() {
   const { state, totalPrice, itemCount, isInitialized, setCheckoutData } = useCart();
@@ -42,9 +32,6 @@ export default function OrderSummaryPage() {
   
   const [walletBalance, setWalletBalance] = useState(0);
   const [useCoins, setUseCoins] = useState(false);
-
-  // Delivery Info Dialog State
-  const [showDeliveryInfo, setShowDeliveryInfo] = useState(false);
 
   // 1. Fetch Wallet Balance
   useEffect(() => {
@@ -128,26 +115,15 @@ export default function OrderSummaryPage() {
   const coinDiscountAmount = useCoins ? Math.min(walletBalance, Math.floor(maxCoinDiscount)) : 0;
   const finalTotal = Math.max(0, totalPrice - couponDiscount - coinDiscountAmount);
 
-  // 6. Proceed Handlers
-  const confirmProceed = () => {
+  // 6. Proceed Handler (No popup, direct to checkout)
+  const handleProceedClick = () => {
       setCheckoutData({
           couponCode: couponDiscount > 0 ? couponCode : '',
           couponDiscount: couponDiscount,
           useCoins: useCoins,
           coinDiscount: coinDiscountAmount 
       });
-      setShowDeliveryInfo(false);
       router.push('/checkout');
-  };
-
-  const handleProceedClick = () => {
-      // ★ যদি বিল 1000 টাকার বেশি হয়, সরাসরি চেকআউট পেজে যাবে
-      if (finalTotal > 1000) {
-          confirmProceed();
-      } else {
-          // নাহলে পপআপ দেখাবে
-          setShowDeliveryInfo(true);
-      }
   };
 
   if (isLoading || !isInitialized) return <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -155,65 +131,6 @@ export default function OrderSummaryPage() {
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
         
-        {/* ★ PREMIUM DELIVERY CHARGE NOTICE DIALOG ★ */}
-        <AlertDialog open={showDeliveryInfo} onOpenChange={setShowDeliveryInfo}>
-          <AlertDialogContent className="rounded-[2rem] max-w-[90%] md:max-w-[420px] p-0 overflow-hidden border-0 shadow-2xl">
-              
-              {/* Header Graphic Area */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 pb-5 flex flex-col items-center justify-center relative overflow-hidden">
-                  <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
-                  <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl"></div>
-                  
-                  <div className="h-16 w-16 bg-white rounded-full shadow-md flex items-center justify-center relative z-10 mb-3 border border-blue-100">
-                      <MapPin className="h-8 w-8 text-blue-500" />
-                      <div className="absolute -bottom-1 -right-1 bg-amber-400 rounded-full p-1 border-2 border-white shadow-sm">
-                          <AlertCircle className="h-3 w-3 text-white" />
-                      </div>
-                  </div>
-                  <AlertDialogTitle className="text-xl font-bold text-center text-blue-950 relative z-10">
-                      Delivery Information
-                  </AlertDialogTitle>
-              </div>
-
-              {/* Content Area */}
-              <div className="p-6 pt-4 bg-white">
-                  <AlertDialogDescription asChild>
-                      <div className="text-[14px] text-gray-600 leading-relaxed text-center space-y-3">
-                          
-                          <div className="bg-green-50/50 border border-green-100 rounded-xl p-3.5 flex items-start gap-3 text-left">
-                              <div className="mt-0.5 bg-green-100 p-1.5 rounded-full shrink-0">
-                                  <CheckCircle2 className="h-4 w-4 text-green-600"/>
-                              </div>
-                              <p className="text-green-900/90 text-sm">
-                                  Enjoy <strong>Free Delivery</strong> if your location is within a <strong>2km radius</strong> of our kitchen!
-                              </p>
-                          </div>
-                          
-                          <div className="bg-amber-50/50 border border-amber-100/50 rounded-xl p-3.5 flex items-start gap-3 text-left">
-                              <div className="mt-0.5 bg-amber-100 p-1.5 rounded-full shrink-0">
-                                  <AlertCircle className="h-4 w-4 text-amber-600"/>
-                              </div>
-                              <p className="text-amber-900/90 text-sm">
-                                  For distances <strong>beyond 2km</strong>, a minimal delivery fee will apply. We’ll calculate and confirm this with you via WhatsApp.
-                              </p>
-                          </div>
-
-                      </div>
-                  </AlertDialogDescription>
-
-                  <AlertDialogFooter className="flex-row gap-3 mt-7 sm:justify-between w-full">
-                      <AlertDialogCancel className="mt-0 flex-1 rounded-xl h-12 text-gray-500 font-bold border-gray-200 hover:bg-gray-50">
-                          Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction onClick={confirmProceed} className="flex-1 rounded-xl h-12 shadow-lg shadow-primary/20 font-bold bg-primary hover:bg-primary/90 text-white transition-transform active:scale-[0.98]">
-                          Got it, Continue
-                      </AlertDialogAction>
-                  </AlertDialogFooter>
-              </div>
-
-          </AlertDialogContent>
-        </AlertDialog>
-
         {/* Progress Steps */}
         <div className="bg-white border-b py-4 mb-8">
             <div className="container max-w-5xl mx-auto flex items-center justify-center gap-4 text-sm font-medium text-muted-foreground">
@@ -377,9 +294,10 @@ export default function OrderSummaryPage() {
                                 </div>
                                 <div className="flex justify-between text-gray-600 text-sm">
                                     <span>Delivery Fee</span>
-                                    <span className="text-green-600 font-bold flex items-center gap-1">
-                                        FREE*
-                                        <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                                    {/* ★ Updated Delivery Fee UI */}
+                                    <span className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-md text-xs">
+                                        Next Step
+                                        <MapPin className="h-3 w-3 text-orange-600" />
                                     </span>
                                 </div>
 
@@ -404,10 +322,10 @@ export default function OrderSummaryPage() {
                                 <Separator className="bg-dashed border-t-2 border-gray-200" />
 
                                 <div className="flex justify-between items-center pt-2">
-                                    <span className="text-lg font-bold text-gray-900">To Pay</span>
+                                    <span className="text-lg font-bold text-gray-900">Total (Excl. Delivery)</span>
                                     <span className="text-2xl font-extrabold text-primary">{formatPrice(finalTotal)}</span>
                                 </div>
-                                <p className="text-[10px] text-right text-muted-foreground uppercase tracking-wider font-medium">Inclusive of all taxes</p>
+                                <p className="text-[10px] text-right text-muted-foreground font-medium">*Delivery charges will be added at checkout</p>
                             </div>
                         </div>
 
@@ -424,9 +342,8 @@ export default function OrderSummaryPage() {
                             size="lg" 
                             className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-between px-8"
                         >
-                            <span>Proceed to Pay</span>
+                            <span>Select Address & Pay</span>
                             <div className="flex items-center gap-2">
-                                <span>{formatPrice(finalTotal)}</span>
                                 <ArrowRight className="h-5 w-5" />
                             </div>
                         </Button>

@@ -4,7 +4,6 @@
 
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatPrice } from '@/lib/utils';
@@ -13,10 +12,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { 
-  Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, 
-  Calendar as CalendarIcon, AlertCircle, Search, Save, Map
-} from 'lucide-react';
+import { Lock, ChevronDown, ChevronUp, MapPin, Loader2, Ticket, Coins, Calendar as CalendarIcon, AlertCircle, Home, Briefcase, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -26,52 +22,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
-import dynamic from 'next/dynamic';
-
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format, setMonth, setYear, getMonth, getYear, addMonths, subMonths } from "date-fns";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Haptics, NotificationType } from '@capacitor/haptics';
-import { useDebounce } from '@/hooks/use-debounce';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// Leaflet Map dynamically imported
-const MapPicker = dynamic(() => import('@/components/shop/MapPicker'), { 
-    ssr: false, 
-    loading: () => <div className="h-[250px] w-full bg-muted animate-pulse rounded-xl flex items-center justify-center">Loading Map...</div> 
-});
-
 const checkoutSchema = z.object({
-  name: z.string().min(2, 'Please enter a valid name.'),
-  address: z.string().min(10, 'Please enter your primary address (at least 10 characters).'),
-  deliveryAddress: z.string().optional(),
   preferredDate: z.string().min(1, 'Please select a preferred date.'),
   mealTime: z.enum(['lunch', 'dinner']),
   instructions: z.string().optional(),
-  terms: z.boolean().refine(val => val === true, {
-    message: "You must agree to the Terms and Conditions."
-  }),
-  shareLocation: z.boolean().optional(),
+  terms: z.boolean().refine(val => val === true, { message: "You must agree to the Terms and Conditions." })
 });
-
-const FloatingLabelInput = ({ field, label, type = 'text' }: any) => (
-  <div className="relative">
-    <Input type={type} placeholder=" " {...field} value={field.value ?? ''} className="block px-4 pb-2.5 pt-6 w-full text-sm text-foreground bg-background border-muted-foreground/30 rounded-xl border appearance-none focus:outline-none focus:ring-0 focus:border-primary peer h-12 transition-all shadow-sm hover:border-primary/50" />
-    <FormLabel className="absolute text-sm text-muted-foreground duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[0] start-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto pointer-events-none bg-background px-1">
-      {label}
-    </FormLabel>
-  </div>
-);
 
 const FloatingLabelTextarea = ({ field, label }: any) => (
   <div className="relative">
     <Textarea placeholder=" " {...field} value={field.value ?? ''} className="block px-4 pb-2.5 pt-6 w-full text-sm text-foreground bg-background border-muted-foreground/30 rounded-xl border appearance-none focus:outline-none focus:ring-0 focus:border-primary peer min-h-[100px] transition-all shadow-sm hover:border-primary/50 resize-y" />
-    <FormLabel className="absolute text-sm text-muted-foreground duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[0] start-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto pointer-events-none bg-background px-1">
-      {label}
-    </FormLabel>
+    <FormLabel className="absolute text-sm text-muted-foreground duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[0] start-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto pointer-events-none bg-background px-1">{label}</FormLabel>
   </div>
 );
 
@@ -124,109 +93,13 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Delivery Charge State
-  const [deliveryFee, setDeliveryFee] = useState<number>(0);
-  const [distanceText, setDistanceText] = useState<string>('');
-  const [outOfRange, setOutOfRange] = useState(false); // Used for > 50km block
-
-  const [hasSavedAddresses, setHasSavedAddresses] = useState(true); 
-  const [showSaveAddressPrompt, setShowSaveAddressPrompt] = useState(false);
-  const [pendingOrderValues, setPendingOrderValues] = useState<z.infer<typeof checkoutSchema> | null>(null);
-  const [addressLabel, setAddressLabel] = useState('Home');
+  // Address States
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewDate, setViewDate] = useState<Date>(new Date());
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debouncedSearch = useDebounce(searchQuery, 500);
-
   const [timeValidationError, setTimeValidationError] = useState({ show: false, title: '', message: '' });
-
-  const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
-
-  // FREE MAPS API EFFECT (Nominatim)
-  useEffect(() => {
-    const fetchLocations = async () => {
-        if (!debouncedSearch || debouncedSearch.length < 3) {
-            setSuggestions([]); return;
-        }
-        try {
-            const res = await fetch(`/api/location/search?q=${debouncedSearch}`);
-            const data = await res.json();
-            setSuggestions(data.suggestions || []);
-            setShowSuggestions(true);
-        } catch (e) {
-            console.error("Location search failed", e);
-        }
-    };
-    fetchLocations();
-  }, [debouncedSearch]);
-
-  // HANDLE MAP/SEARCH SELECTION
-  const handleLocationSelect = async (lat: number, lng: number, addressStr?: string) => {
-      setSelectedLocation({ lat, lng }); // ★ ম্যাপকে এই নতুন লোকেশনে পয়েন্ট করার জন্য
-      try {
-          toast.loading("Calculating route...", { id: 'dist' });
-          setOutOfRange(false);
-          
-          // ১. যদি ম্যাপ ড্র্যাগ করা হয় (addressStr না থাকে), তাহলে Reverse Geocode করে অ্যাড্রেস আনবে
-          if (!addressStr) {
-             const revRes = await fetch(`/api/location/reverse?lat=${lat}&lon=${lng}`);
-             const revData = await revRes.json();
-             addressStr = revData.address;
-          }
-          
-          // ২. Form এর বিস্তারিত অ্যাড্রেস ফিল্ডে অ্যাড্রেসটা বসিয়ে দেবে
-          if(addressStr) {
-              form.setValue('address', addressStr, { shouldValidate: true });
-          }
-
-          // ৩. OSRM API দিয়ে দূরত্ব মাপবে
-          const res = await fetch(`/api/location/distance?lat=${lat}&lng=${lng}`);
-          const data = await res.json();
-          
-          if(data.success) {
-              const distKm = data.distanceValue / 1000;
-              let fee = 0;
-              
-              // ৫০ কিমির বেশি হলে ব্লক করে দেবে
-              if(distKm > 50) {
-                  setOutOfRange(true);
-                  toast.error(`Distance: ${data.distanceText}. Sorry, we only deliver within 50km!`, { id: 'dist', duration: 4000 });
-                  setDeliveryFee(0);
-                  setDistanceText(data.distanceText);
-                  return;
-              }
-
-              // ডেলিভারি লজিক: ২ কিমি ফ্রি, এরপর ১০ টাকা প্রতি কিমিতে (৫০ বেস)
-              if(distKm > 2) {
-                  const extraKm = Math.ceil(distKm - 2);
-                  fee = 50 + (extraKm * 10);
-              }
-              
-              setDeliveryFee(fee);
-              setDistanceText(data.distanceText);
-              
-              if (fee === 0) toast.success(`Distance: ${data.distanceText}. Delivery is Free! 🎉`, { id: 'dist' });
-              else toast.success(`Distance: ${data.distanceText}. Delivery Fee: ${formatPrice(fee)}`, { id: 'dist' });
-          } else {
-              toast.error("Failed to calculate exact route distance.", { id: 'dist' });
-              setDeliveryFee(50); // Fallback
-          }
-      } catch(e) {
-          toast.error("Error calculating distance.", { id: 'dist' });
-      }
-  };
-
-  const handleSelectSearchItem = (item: any) => {
-      // সার্চ ইনপুটে ইউজারের সিলেক্ট করা মেইন টেক্সটটা রেখে দিলাম যাতে দেখতে ভালো লাগে
-      setSearchQuery(item.main_text); 
-      setShowSuggestions(false);
-      // ফাংশন কল করে ল্যাট, লং এবং ফুল অ্যাড্রেস পাঠিয়ে দিলাম
-      handleLocationSelect(item.lat, item.lon, item.description);
-  };
 
   useEffect(() => {
     if (!isLoading && !isInitialized) return;
@@ -234,47 +107,42 @@ export default function CheckoutPage() {
     if (isInitialized && itemCount === 0 && !isSuccess) router.push('/menus');
   }, [itemCount, user, isLoading, isInitialized, router, isSuccess]);
 
-  const form = useForm<z.infer<typeof checkoutSchema>>({
-    resolver: zodResolver(checkoutSchema),
-    defaultValues: { name: '', address: '', deliveryAddress: '', preferredDate: '', mealTime: 'lunch', instructions: '', terms: false, shareLocation: false },
-  });
-  
-  const { watch, setValue, reset } = form;
-  const primaryAddress = watch('address');
-  const [isSameAsAddress, setIsSameAsAddress] = useState(false);
-
   useEffect(() => {
-    const initializeCheckoutData = async () => {
+    const fetchAddresses = async () => {
         if (!user) return;
-        let savedAddress = '';
         try {
             const res = await fetch('/api/user/addresses');
             const data = await res.json();
-            if (data.success && Array.isArray(data.addresses)) {
-                if (data.addresses.length === 0) setHasSavedAddresses(false);
-                else {
-                    const defaultAddr = data.addresses.find((a: any) => a.isDefault);
-                    savedAddress = defaultAddr ? defaultAddr.address : (data.addresses[0]?.address || '');
-                }
+            if (data.success && data.addresses) {
+                setAddresses(data.addresses);
+                const defaultAddr = data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
+                if (defaultAddr) setSelectedAddressId(defaultAddr.id);
             }
         } catch (error) {}
-        reset({ name: user.name || '', address: savedAddress, deliveryAddress: '', preferredDate: '', mealTime: 'lunch', instructions: '', terms: false, shareLocation: false });
     };
-    initializeCheckoutData();
-  }, [user, reset]);
+    fetchAddresses();
+  }, [user]);
 
-  useEffect(() => {
-    if (isSameAsAddress) setValue('deliveryAddress', primaryAddress);
-    else if (watch('deliveryAddress') === primaryAddress) setValue('deliveryAddress', '');
-  }, [isSameAsAddress, primaryAddress, setValue, watch]);
+  const form = useForm<z.infer<typeof checkoutSchema>>({
+    resolver: zodResolver(checkoutSchema),
+    defaultValues: { preferredDate: '', mealTime: 'lunch', instructions: '', terms: false },
+  });
 
+  const getIcon = (name: string) => {
+      const n = name.toLowerCase();
+      if (n.includes('home')) return <Home className="h-5 w-5" />;
+      if (n.includes('work') || n.includes('office')) return <Briefcase className="h-5 w-5" />;
+      return <MapPin className="h-5 w-5" />;
+  };
+
+  const selectedAddress = addresses.find(a => a.id === selectedAddressId);
+  const currentDeliveryFee = orderType === 'delivery' ? (selectedAddress?.deliveryFee || 0) : 0;
   const coinDiscountAmount = useCoins ? (savedCoinDiscount || 0) : 0;
-  const currentDeliveryFee = orderType === 'delivery' ? deliveryFee : 0;
   const finalTotal = Math.max(0, totalPrice + currentDeliveryFee - couponDiscount - coinDiscountAmount);
 
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
-    if (orderType === 'delivery' && outOfRange) {
-        toast.error("Your location is out of our 50km delivery range. Please select Pickup.");
+    if (orderType === 'delivery' && !selectedAddress) {
+        toast.error("Please select a delivery address.");
         return;
     }
 
@@ -285,7 +153,7 @@ export default function CheckoutPage() {
     if (values.preferredDate === todayStr) {
         if (values.mealTime === 'lunch' && currentHour >= 9) {
             await Haptics.notification({ type: NotificationType.Error });
-            setTimeValidationError({ show: true, title: "Time Limit Exceeded!", message: "Today's lunch orders are accepted until 9 AM only. Please select a future date or choose Dinner." });
+            setTimeValidationError({ show: true, title: "Time Limit Exceeded!", message: "Today's lunch orders are accepted until 9 AM only. Please select a future date." });
             return; 
         }
         if (values.mealTime === 'dinner' && currentHour >= 18) {
@@ -295,65 +163,42 @@ export default function CheckoutPage() {
         }
     }
 
-    const targetAddress = orderType === 'delivery' ? (values.deliveryAddress || values.address) : values.address;
-    if (!hasSavedAddresses && targetAddress.length > 10) {
-        setPendingOrderValues(values);
-        setShowSaveAddressPrompt(true);
-        return; 
+    setIsSubmitting(true);
+    try {
+        const orderPayload = {
+            ...values,
+            name: user?.name || 'Customer',
+            altPhone: user?.phone || '',
+            items: state.items,
+            subtotal: totalPrice,
+            deliveryFee: currentDeliveryFee, 
+            total: finalTotal,
+            discount: couponDiscount + coinDiscountAmount,
+            couponCode: couponCode,
+            useCoins: useCoins,
+            orderType: orderType,
+            address: selectedAddress ? selectedAddress.address : 'Store Pickup',
+            deliveryAddress: selectedAddress ? selectedAddress.address : undefined,
+            coordinates: selectedAddress ? selectedAddress.coordinates : null
+        };
+
+        const res = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderPayload) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Order placement failed');
+
+        setIsSuccess(true);
+        clearCart();
+        
+        const orderNum = data.orderId || '0000'; 
+        const params = new URLSearchParams({ orderNumber: orderNum, name: user?.name || 'Customer', amount: finalTotal.toString() });
+        
+        router.push(`/checkout/success?${params.toString()}`);
+    } catch (error: any) {
+        toast.error(error.message || "Failed to place order.");
+    } finally {
+        setIsSubmitting(false);
     }
-
-    await executeOrderPlacement(values);
   }
-
-  const handleSaveAddressAndContinue = async (shouldSave: boolean) => {
-      setShowSaveAddressPrompt(false);
-      if (!pendingOrderValues) return;
-
-      if (shouldSave) {
-          const targetAddress = orderType === 'delivery' ? (pendingOrderValues.deliveryAddress || pendingOrderValues.address) : pendingOrderValues.address;
-          try {
-              await fetch('/api/user/addresses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: addressLabel, address: targetAddress, isDefault: true }) });
-              toast.success("Address saved successfully!");
-          } catch (e) {}
-      }
-      await executeOrderPlacement(pendingOrderValues);
-  };
-
-  const executeOrderPlacement = async (values: z.infer<typeof checkoutSchema>) => {
-      setIsSubmitting(true);
-      try {
-          const orderPayload = {
-              ...values,
-              altPhone: user?.phone || '',
-              items: state.items,
-              subtotal: totalPrice,
-              deliveryFee: currentDeliveryFee, 
-              total: finalTotal,
-              discount: couponDiscount + coinDiscountAmount,
-              couponCode: couponCode,
-              useCoins: useCoins,
-              orderType: orderType,
-              deliveryAddress: orderType === 'delivery' ? (values.deliveryAddress || values.address) : undefined,
-              coordinates: selectedLocation
-          };
-
-          const res = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderPayload) });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Order placement failed');
-
-          setIsSuccess(true);
-          clearCart();
-          
-          const orderNum = data.orderId || '0000'; 
-          const params = new URLSearchParams({ orderNumber: orderNum, name: values.name, amount: finalTotal.toString() });
-          
-          router.push(`/checkout/success?${params.toString()}`);
-      } catch (error: any) {
-          toast.error(error.message || "Failed to place order. Please try again.");
-      } finally {
-          setIsSubmitting(false);
-      }
-  };
 
   if (!isInitialized || isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   if (!user) return null;
@@ -371,28 +216,6 @@ export default function CheckoutPage() {
           <AlertDialogFooter><AlertDialogAction onClick={() => setTimeValidationError({ show: false, title: '', message: '' })} className="w-full sm:w-auto rounded-xl">I Understand</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={showSaveAddressPrompt} onOpenChange={(open) => !open && setShowSaveAddressPrompt(false)}>
-          <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
-              <div className="p-6 bg-primary/5 border-b border-primary/10">
-                  <DialogTitle className="flex items-center gap-2 text-xl"><Save className="h-5 w-5 text-primary" /> Save this address?</DialogTitle>
-                  <p className="text-sm text-muted-foreground mt-2">We noticed you don't have any saved addresses. Would you like to save this one for faster checkout next time?</p>
-              </div>
-              <div className="p-6 space-y-4">
-                  <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none">Label (e.g. Home, Office)</label>
-                      <Input value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} className="h-11 rounded-xl" />
-                  </div>
-                  <div className="p-3 bg-muted/30 rounded-xl border text-sm text-muted-foreground line-clamp-2">
-                      {orderType === 'delivery' ? (pendingOrderValues?.deliveryAddress || pendingOrderValues?.address) : pendingOrderValues?.address}
-                  </div>
-              </div>
-              <DialogFooter className="p-6 pt-0 sm:justify-between flex-row gap-2">
-                  <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => handleSaveAddressAndContinue(false)}>No, just order</Button>
-                  <Button className="flex-1 rounded-xl h-11 shadow-md shadow-primary/20" onClick={() => handleSaveAddressAndContinue(true)}>Yes, save it</Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
 
       {/* Mobile Summary */}
       <div className="lg:hidden mb-6">
@@ -416,7 +239,7 @@ export default function CheckoutPage() {
                       <div className="flex justify-between text-muted-foreground">
                           <span>Delivery Fee {orderType === 'pickup' && '(Pickup)'}</span>
                           <span className={currentDeliveryFee === 0 ? "text-green-600 font-medium" : "font-medium"}>
-                              {orderType === 'pickup' ? "Free" : currentDeliveryFee === 0 ? "Free (Under 2km)" : formatPrice(currentDeliveryFee)}
+                              {orderType === 'pickup' ? "Free" : currentDeliveryFee === 0 ? "Free" : formatPrice(currentDeliveryFee)}
                           </span>
                       </div>
 
@@ -436,64 +259,62 @@ export default function CheckoutPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               
               <div className="space-y-4">
-                  <h3 className="text-lg font-bold">Contact Info</h3>
-                  <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormControl><FloatingLabelInput field={field} label="Full Name" /></FormControl><FormMessage /></FormItem> )} />
-                  
-                  <div className="space-y-3 pt-2">
-                    <div className="flex justify-between items-center">
-                        <h4 className="text-sm font-semibold text-muted-foreground">Delivery Location</h4>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium flex items-center gap-1"><Map className="w-3 h-3"/> GPS Auto-Detect</span>
-                    </div>
-
-                    {/* INTERACTIVE MAP Component */}
-                    {orderType === 'delivery' && (
-                        <div className="space-y-3 animate-in fade-in zoom-in duration-300">
-                             <div className="relative z-20">
-                                <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Search area (e.g. Janai, Dankuni...)" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value.length === 0) setShowSuggestions(false); }} className="pl-9 h-11 rounded-xl border-primary/20 bg-white focus-visible:ring-primary/20" />
-                                
-                                {showSuggestions && suggestions.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 z-50">
-                                        {suggestions.map((item: any) => (
-                                            <div key={item.place_id} onClick={() => handleSelectSearchItem(item)} className="p-3 hover:bg-muted/50 cursor-pointer flex items-start gap-3 border-b last:border-0 transition-colors">
-                                                <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-medium text-foreground">{item.main_text}</p>
-                                                    <p className="text-xs text-muted-foreground">{item.secondary_text}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <MapPicker onLocationSelect={handleLocationSelect} selectedLocation={selectedLocation} />
-                            
-                            {distanceText && (
-                                <div className={`p-3 rounded-xl border flex items-start gap-2 ${outOfRange ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
-                                    <AlertCircle className="w-5 h-5 shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-bold">Distance: {distanceText}</p>
-                                        <p className="text-xs mt-0.5">{outOfRange ? 'Sorry, we only deliver within a 50 km radius.' : 'Location is within our delivery range.'}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormControl><FloatingLabelTextarea field={field} label="Detailed Address (House No, Landmark)" /></FormControl><FormMessage /></FormItem> )} />
-                  </div>
-              </div>
-
-              <div className="space-y-4">
                   <h3 className="text-lg font-bold">Delivery Method</h3>
                   <div className="flex gap-4 p-1 bg-muted/20 rounded-2xl border">
-                      <Button type="button" onClick={() => { setOrderType('delivery'); if(outOfRange) toast.error("Location is too far for delivery."); }} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'delivery' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Delivery</Button>
-                      <Button type="button" onClick={() => { setOrderType('pickup'); setOutOfRange(false); }} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'pickup' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Pickup</Button>
+                      <Button type="button" onClick={() => setOrderType('delivery')} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'delivery' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Delivery</Button>
+                      <Button type="button" onClick={() => setOrderType('pickup')} className={cn("flex-1 h-12 rounded-xl font-medium transition-all", orderType === 'pickup' ? "bg-white text-primary shadow-sm border border-primary/10" : "bg-transparent text-muted-foreground hover:bg-white/50")}>Pickup</Button>
                   </div>
               </div>
 
-              {orderType === 'pickup' && (
+              {orderType === 'delivery' ? (
+                  <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+                      <div className="flex justify-between items-center">
+                          <h3 className="text-lg font-bold">Select Delivery Address</h3>
+                          <Button variant="link" size="sm" className="text-primary" onClick={(e) => { e.preventDefault(); router.push('/account/addresses'); }}>
+                              <Plus className="h-4 w-4 mr-1"/> Add New
+                          </Button>
+                      </div>
+
+                      {addresses.length === 0 ? (
+                          <div className="text-center py-10 bg-muted/20 rounded-2xl border border-dashed">
+                              <MapPin className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                              <p className="text-muted-foreground mb-3">No saved addresses found.</p>
+                              <Button onClick={(e) => { e.preventDefault(); router.push('/account/addresses'); }}>Add Address</Button>
+                          </div>
+                      ) : (
+                          <div className="grid gap-3">
+                              {addresses.map((addr) => (
+                                  <div 
+                                      key={addr.id} 
+                                      onClick={() => setSelectedAddressId(addr.id)}
+                                      className={`relative border rounded-2xl p-4 cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-primary bg-primary/5 shadow-md' : 'border-gray-200 bg-white hover:border-primary/40 hover:bg-gray-50'}`}
+                                  >
+                                      <div className="flex gap-4">
+                                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${selectedAddressId === addr.id ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
+                                              {getIcon(addr.name)}
+                                          </div>
+                                          <div className="flex-1">
+                                              <div className="flex justify-between items-start">
+                                                  <h4 className="font-bold text-foreground">{addr.name}</h4>
+                                                  {selectedAddressId === addr.id && <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />}
+                                              </div>
+                                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{addr.address}</p>
+                                              
+                                              {/* Delivery Fee Display */}
+                                              <div className="mt-2 flex items-center gap-2">
+                                                  <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-medium">Dist: {addr.distanceText}</span>
+                                                  <span className={`text-xs px-2 py-0.5 rounded font-bold ${addr.deliveryFee === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                      Fee: {addr.deliveryFee === 0 ? 'FREE' : formatPrice(addr.deliveryFee)}
+                                                  </span>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              ) : (
                 <div className="p-5 border rounded-xl bg-blue-50/50 animate-in fade-in slide-in-from-top-2 text-center space-y-2 border-blue-100">
                     <p className="font-medium text-lg text-blue-900"><strong>Store Location:</strong> Janai, Garbagan, Hooghly (PIN: 712304)</p>
                     <a href="https://maps.google.com/?q=22.717958,88.260207" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:text-primary/80 underline font-medium text-sm transition-colors"><MapPin className="h-4 w-4" /> View on Maps</a>
@@ -542,9 +363,9 @@ export default function CheckoutPage() {
                   </FormItem> 
               )} />
               
-              <Button type="submit" disabled={isSubmitting || showSaveAddressPrompt || (orderType === 'delivery' && outOfRange)} size="lg" className={`w-full h-14 text-lg rounded-xl shadow-lg transition-all hover:scale-[1.01] active:scale-[0.99] ${(orderType === 'delivery' && outOfRange) ? 'bg-muted-foreground cursor-not-allowed shadow-none' : 'shadow-primary/20'}`}>
+              <Button type="submit" disabled={isSubmitting || (orderType === 'delivery' && !selectedAddress)} size="lg" className="w-full h-14 text-lg rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]">
                 {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Lock className="mr-2 h-5 w-5" />}
-                {isSubmitting ? 'Placing Order...' : (orderType === 'delivery' && outOfRange) ? 'Out of Delivery Area' : `Place Order — ${formatPrice(finalTotal)}`}
+                {isSubmitting ? 'Placing Order...' : `Place Order — ${formatPrice(finalTotal)}`}
               </Button>
             </form>
           </Form>

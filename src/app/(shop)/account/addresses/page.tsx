@@ -11,16 +11,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { MoreVertical, Plus, MapPin, Loader2, Trash2, Pencil, Home, Briefcase } from "lucide-react";
+import { MoreVertical, Plus, MapPin, Loader2, Trash2, Pencil, Home, Briefcase, Search } from "lucide-react";
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
+import dynamic from 'next/dynamic';
+import { useDebounce } from '@/hooks/use-debounce';
+
+// Leaflet Map dynamically imported
+const MapPicker = dynamic(() => import('@/components/shop/MapPicker'), { 
+    ssr: false, 
+    loading: () => <div className="h-[250px] w-full bg-muted animate-pulse rounded-xl flex items-center justify-center text-muted-foreground">Loading Map...</div> 
+});
+
+// ★ Inbuilt quick select labels
+const PRESET_LABELS = ["Home", "Work", "Office", "Mom's Place", "Other"];
 
 type Address = {
     id: string;
     name: string;
     address: string;
     isDefault: boolean;
+    coordinates?: { lat: number; lng: number } | null;
 };
 
 export default function AccountAddressesPage() {
@@ -32,20 +44,31 @@ export default function AccountAddressesPage() {
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Form State (Added coordinates)
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ name: '', address: '', isDefault: false });
+    const [formData, setFormData] = useState({ 
+        name: '', 
+        address: '', 
+        isDefault: false,
+        coordinates: null as { lat: number, lng: number } | null 
+    });
     const [isSaving, setIsSaving] = useState(false);
 
+    // Map Search State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const debouncedSearch = useDebounce(searchQuery, 500);
+
     const fetchAddresses = async () => {
-        // ★ ফিক্স: localStorage টোকেন চেক বাদ দেওয়া হয়েছে
         try {
-            const res = await fetch('/api/user/addresses'); // ★ ফিক্স: হেডার রিমুভ করা হয়েছে
+            const res = await fetch('/api/user/addresses');
             const data = await res.json();
             if (data.success) {
                 setAddresses(data.addresses);
             }
         } catch (error) {
-            console.error(error);
+            console.error("Failed to fetch addresses:", error);
         } finally {
             setIsLoading(false);
         }
@@ -55,40 +78,85 @@ export default function AccountAddressesPage() {
         fetchAddresses();
     }, []);
 
+    // FREE MAPS API EFFECT (Nominatim) for Address Page
+    useEffect(() => {
+        const fetchLocations = async () => {
+            if (!debouncedSearch || debouncedSearch.length < 3) {
+                setSuggestions([]); return;
+            }
+            try {
+                const res = await fetch(`/api/location/search?q=${debouncedSearch}`);
+                const data = await res.json();
+                setSuggestions(data.suggestions || []);
+                setShowSuggestions(true);
+            } catch (e) {
+                console.error("Location search failed", e);
+            }
+        };
+        fetchLocations();
+    }, [debouncedSearch]);
+
+    // Handle Map/Search Selection
+    const handleLocationSelect = async (lat: number, lng: number, addressStr?: string) => {
+        setFormData(prev => ({ ...prev, coordinates: { lat, lng } }));
+        
+        try {
+            // Reverse Geocode if dragging pin
+            if (!addressStr) {
+                toast.loading("Fetching address...", { id: 'geo' });
+                const revRes = await fetch(`/api/location/reverse?lat=${lat}&lon=${lng}`);
+                const revData = await revRes.json();
+                addressStr = revData.address;
+                toast.dismiss('geo');
+            }
+            
+            if(addressStr) {
+                setFormData(prev => ({ ...prev, address: addressStr as string }));
+            }
+        } catch(e) {
+            console.error("Error fetching address details.");
+            toast.dismiss('geo');
+        }
+    };
+
+    const handleSelectSearchItem = (item: any) => {
+        setSearchQuery(item.main_text); 
+        setShowSuggestions(false);
+        handleLocationSelect(item.lat, item.lon, item.description);
+    };
+
     const handleOpenDialog = (address?: Address) => {
         if (address) {
             setEditingId(address.id);
             setFormData({
                 name: address.name,
                 address: address.address,
-                isDefault: address.isDefault
+                isDefault: address.isDefault,
+                coordinates: address.coordinates || null
             });
+            setSearchQuery("");
         } else {
             setEditingId(null);
-            setFormData({ name: '', address: '', isDefault: false });
+            setFormData({ name: '', address: '', isDefault: false, coordinates: null });
+            setSearchQuery("");
         }
         setIsDialogOpen(true);
     };
 
     const handleSave = async () => {
         if (!formData.name || !formData.address) {
-            toast.error("Name and Address are required");
+            toast.error("Label and Address details are required");
             return;
         }
 
         setIsSaving(true);
-        // ★ ফিক্স: localStorage টোকেন গেট বাদ দেওয়া হয়েছে
-
         try {
             const method = editingId ? 'PUT' : 'POST';
             const body = editingId ? { ...formData, id: editingId } : formData;
 
             const res = await fetch('/api/user/addresses', {
                 method: method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
             
@@ -110,12 +178,9 @@ export default function AccountAddressesPage() {
     const confirmDelete = async () => {
         if (!deleteId) return;
         setIsDeleting(true);
-        // ★ ফিক্স: localStorage টোকেন গেট বাদ দেওয়া হয়েছে
-
         try {
             const res = await fetch(`/api/user/addresses?id=${deleteId}`, {
                 method: 'DELETE',
-                // ★ ফিক্স: Authorization হেডার রিমুভ করা হয়েছে
             });
             if (res.ok) {
                 toast.success("Address deleted");
@@ -242,32 +307,98 @@ export default function AccountAddressesPage() {
 
             {/* Add/Edit Modal (Card Style) */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="w-[90%] rounded-2xl sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+                <DialogContent className="w-[90%] md:w-full rounded-2xl sm:max-w-md p-0 gap-0 overflow-y-auto max-h-[90vh]">
                     <DialogHeader className="p-6 border-b bg-muted/10">
                         <DialogTitle>{editingId ? 'Edit Address' : 'Add New Address'}</DialogTitle>
                     </DialogHeader>
+                    
                     <div className="p-6 space-y-5">
-                        <div className="space-y-2">
-                            <Label>Label</Label>
+                        <div className="space-y-3">
+                            <Label className="font-bold">Label</Label>
                             <Input 
                                 value={formData.name} 
                                 onChange={(e) => setFormData({...formData, name: e.target.value})} 
                                 placeholder="e.g. Home, Office, Mom's Place" 
-                                className="h-11"
+                                className="h-11 bg-gray-50/50"
                             />
+                            
+                            {/* ★ Inbuilt Quick Select Labels */}
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {PRESET_LABELS.map((label) => (
+                                    <Badge 
+                                        key={label}
+                                        variant={formData.name.toLowerCase() === label.toLowerCase() ? "default" : "outline"}
+                                        className={`cursor-pointer px-3 py-1.5 text-xs rounded-full transition-colors ${
+                                            formData.name.toLowerCase() === label.toLowerCase() 
+                                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md border-primary" 
+                                                : "bg-white text-muted-foreground hover:bg-gray-100 hover:text-foreground border-gray-200"
+                                        }`}
+                                        onClick={() => setFormData({...formData, name: label})}
+                                    >
+                                        {label}
+                                    </Badge>
+                                ))}
+                            </div>
                         </div>
+
+                        {/* MAP INTEGRATION */}
+                        <div className="space-y-3 pt-2">
+                            <div className="flex justify-between items-center">
+                                <Label className="font-bold">Locate on Map</Label>
+                                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                    <MapPin className="w-3 h-3"/> GPS Auto-Detect
+                                </span>
+                            </div>
+
+                            <div className="relative z-20">
+                                <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Search area (e.g. Janai...)" 
+                                    value={searchQuery} 
+                                    onChange={(e) => { 
+                                        setSearchQuery(e.target.value); 
+                                        if(e.target.value.length === 0) setShowSuggestions(false); 
+                                    }} 
+                                    className="pl-9 h-11 bg-gray-50/50 border-gray-200" 
+                                />
+                                
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 z-50">
+                                        {suggestions.map((item: any) => (
+                                            <div key={item.place_id} onClick={() => handleSelectSearchItem(item)} className="p-3 hover:bg-muted/50 cursor-pointer flex items-start gap-3 border-b last:border-0 transition-colors">
+                                                <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">{item.main_text}</p>
+                                                    <p className="text-xs text-muted-foreground">{item.secondary_text}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Map Picker Component */}
+                            <div className="rounded-xl overflow-hidden border border-gray-200">
+                                <MapPicker 
+                                    onLocationSelect={handleLocationSelect} 
+                                    selectedLocation={formData.coordinates} 
+                                />
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
-                            <Label>Address Details</Label>
+                            <Label className="font-bold">Detailed Address</Label>
                             <Textarea 
                                 value={formData.address} 
                                 onChange={(e) => setFormData({...formData, address: e.target.value})} 
-                                placeholder="House No, Street, Area, City, Pincode..." 
-                                className="min-h-[100px] resize-none"
+                                placeholder="House No, Street, Landmark..." 
+                                className="min-h-[90px] resize-none bg-gray-50/50"
                             />
                         </div>
-                        <div className="flex items-center justify-between bg-muted/30 p-4 rounded-lg border">
+                        
+                        <div className="flex items-center justify-between bg-muted/30 p-4 rounded-xl border">
                             <div className="space-y-0.5">
-                                <Label className="text-base">Set as Default</Label>
+                                <Label className="text-base font-semibold">Set as Default</Label>
                                 <p className="text-xs text-muted-foreground">Use this address automatically for checkout.</p>
                             </div>
                             <Switch 
@@ -276,9 +407,10 @@ export default function AccountAddressesPage() {
                             />
                         </div>
                     </div>
-                    <DialogFooter className="p-6 border-t bg-muted/10">
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+                    
+                    <DialogFooter className="p-6 border-t bg-muted/10 flex-row justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                        <Button onClick={handleSave} disabled={isSaving} className="gap-2 rounded-xl">
                             {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                             {editingId ? 'Update Address' : 'Save Address'}
                         </Button>

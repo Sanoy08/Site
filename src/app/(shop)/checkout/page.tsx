@@ -144,7 +144,6 @@ export default function CheckoutPage() {
 
   const [timeValidationError, setTimeValidationError] = useState({ show: false, title: '', message: '' });
 
-  // ★ Added inside the component
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
 
   // FREE MAPS API EFFECT (Nominatim)
@@ -167,21 +166,24 @@ export default function CheckoutPage() {
 
   // HANDLE MAP/SEARCH SELECTION
   const handleLocationSelect = async (lat: number, lng: number, addressStr?: string) => {
-      setSelectedLocation({ lat, lng }); // ★ Set location here
+      setSelectedLocation({ lat, lng }); // ★ ম্যাপকে এই নতুন লোকেশনে পয়েন্ট করার জন্য
       try {
           toast.loading("Calculating route...", { id: 'dist' });
           setOutOfRange(false);
           
-          // 1. If address string wasn't passed (marker drag), do reverse geocode
+          // ১. যদি ম্যাপ ড্র্যাগ করা হয় (addressStr না থাকে), তাহলে Reverse Geocode করে অ্যাড্রেস আনবে
           if (!addressStr) {
              const revRes = await fetch(`/api/location/reverse?lat=${lat}&lon=${lng}`);
              const revData = await revRes.json();
              addressStr = revData.address;
           }
           
-          if(addressStr) form.setValue('address', addressStr, { shouldValidate: true });
+          // ২. Form এর বিস্তারিত অ্যাড্রেস ফিল্ডে অ্যাড্রেসটা বসিয়ে দেবে
+          if(addressStr) {
+              form.setValue('address', addressStr, { shouldValidate: true });
+          }
 
-          // 2. Calculate Distance
+          // ৩. OSRM API দিয়ে দূরত্ব মাপবে
           const res = await fetch(`/api/location/distance?lat=${lat}&lng=${lng}`);
           const data = await res.json();
           
@@ -189,6 +191,7 @@ export default function CheckoutPage() {
               const distKm = data.distanceValue / 1000;
               let fee = 0;
               
+              // ৫০ কিমির বেশি হলে ব্লক করে দেবে
               if(distKm > 50) {
                   setOutOfRange(true);
                   toast.error(`Distance: ${data.distanceText}. Sorry, we only deliver within 50km!`, { id: 'dist', duration: 4000 });
@@ -197,7 +200,7 @@ export default function CheckoutPage() {
                   return;
               }
 
-              // DELIVERY LOGIC: Under 2km Free. Beyond 2km: 50 Base + 10/km
+              // ডেলিভারি লজিক: ২ কিমি ফ্রি, এরপর ১০ টাকা প্রতি কিমিতে (৫০ বেস)
               if(distKm > 2) {
                   const extraKm = Math.ceil(distKm - 2);
                   fee = 50 + (extraKm * 10);
@@ -218,8 +221,10 @@ export default function CheckoutPage() {
   };
 
   const handleSelectSearchItem = (item: any) => {
-      setSearchQuery("");
+      // সার্চ ইনপুটে ইউজারের সিলেক্ট করা মেইন টেক্সটটা রেখে দিলাম যাতে দেখতে ভালো লাগে
+      setSearchQuery(item.main_text); 
       setShowSuggestions(false);
+      // ফাংশন কল করে ল্যাট, লং এবং ফুল অ্যাড্রেস পাঠিয়ে দিলাম
       handleLocationSelect(item.lat, item.lon, item.description);
   };
 
@@ -329,7 +334,7 @@ export default function CheckoutPage() {
               useCoins: useCoins,
               orderType: orderType,
               deliveryAddress: orderType === 'delivery' ? (values.deliveryAddress || values.address) : undefined,
-              coordinates: selectedLocation // ★ Included in payload
+              coordinates: selectedLocation
           };
 
           const res = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderPayload) });
@@ -462,7 +467,7 @@ export default function CheckoutPage() {
                                 )}
                             </div>
 
-                            <MapPicker onLocationSelect={handleLocationSelect} />
+                            <MapPicker onLocationSelect={handleLocationSelect} selectedLocation={selectedLocation} />
                             
                             {distanceText && (
                                 <div className={`p-3 rounded-xl border flex items-start gap-2 ${outOfRange ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>

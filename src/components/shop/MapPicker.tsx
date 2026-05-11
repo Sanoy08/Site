@@ -108,7 +108,10 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
             style={{ height: '100%', width: '100%' }} 
             attributionControl={false}
          >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer 
+    url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
+    maxZoom={20}
+/>
             
             {/* Markers & Controllers */}
             <LocationMarker position={position} setPosition={setPosition} onDragEnd={onLocationSelect} />

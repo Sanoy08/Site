@@ -1,31 +1,28 @@
+// src/components/StatusBarLogic.tsx
+
 'use client';
 
 import { useEffect } from 'react';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { StatusBar } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 
 export default function StatusBarLogic() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      const initStatusBar = async () => {
+      const makeFullScreen = async () => {
         try {
-          // ১. প্রথমে ওভারলে বন্ধ করা (সেফটি)
-          await StatusBar.setOverlaysWebView({ overlay: false });
+          // ১. অ্যাপটিকে স্ক্রিনের একদম এজ-টু-এজ (Edge-to-Edge) করা
+          await StatusBar.setOverlaysWebView({ overlay: true });
 
-          // ২. রঙ পরিবর্তন: সবুজ -> সাদা
-          await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
-
-          // ৩. আইকন পরিবর্তন: সাদা -> কালো
-          // Style.Light মানে হলো "ব্যাকগ্রাউন্ড লাইট", তাই আইকন হবে ডার্ক (কালো)
-          await StatusBar.setStyle({ style: Style.Light });
+          // ২. স্ট্যাটাস বার পুরোপুরি হাইড (Hide) করে দেওয়া
+          await StatusBar.hide();
           
         } catch (e) {
-          console.error("Status bar styling failed", e);
+          console.error("Fullscreen styling failed", e);
         }
       };
 
-      // অ্যাপ লোড হওয়ার সাথে সাথে কল হবে
-      initStatusBar();
+      makeFullScreen();
     }
   }, []);
 

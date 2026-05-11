@@ -8,7 +8,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Network } from '@capacitor/network';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
-import Image from 'next/image';
 
 export function AppInitializer() {
   usePushNotification();
@@ -17,43 +16,35 @@ export function AppInitializer() {
   const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
-    // 0. Admin App Mode Checker (New Feature)
     if (Capacitor.isNativePlatform()) {
       const checkAppMode = async () => {
         try {
           const { value } = await Preferences.get({ key: 'app_mode' });
           const currentUrl = window.location.href;
 
-          // যদি অ্যাডমিন মোড অন থাকে এবং বর্তমানে মেইন সাইটে থাকে, তবে রিডাইরেক্ট করবে
           if (value === 'admin' && !currentUrl.includes('admin.bumbaskitchen.app')) {
             window.location.href = 'https://admin.bumbaskitchen.app';
           }
-        } catch (e) {
-          console.error("Failed to check app mode", e);
-        }
+        } catch (e) {}
       };
       checkAppMode();
     }
 
-    // 1. Initial Network Check
     const initNetwork = async () => {
       const status = await Network.getStatus();
       setIsOffline(!status.connected);
       
-      // Hide Splash Screen
+      // ★ স্প্ল্যাশ স্ক্রিন খুব দ্রুত হাইড হবে যাতে Lottie অ্যানিমেশন শুরু হতে পারে
       setTimeout(async () => {
         try {
           await SplashScreen.hide();
         } catch (e) {}
-      }, 500);
+      }, 100); // 100ms 
     };
 
     initNetwork();
 
-    // 2. Network Listener Setup
-    // Note: TypeScript error fix korar jonno amra 'PluginListenerHandle' use korbo
     let networkListener: any;
-
     const setupListener = async () => {
       networkListener = await Network.addListener('networkStatusChange', (status) => {
         setIsOffline(!status.connected);
@@ -62,13 +53,10 @@ export function AppInitializer() {
 
     setupListener();
 
-    // 3. Disable Context Menu
     const handleContextMenu = (e: Event) => e.preventDefault();
     document.addEventListener('contextmenu', handleContextMenu);
 
-    // Cleanup Function
     return () => {
-      // ✅ Fixed: remove() er bodole ekhon eivabe remove korte hoy
       if (networkListener) {
         networkListener.remove();
       }
@@ -76,7 +64,6 @@ export function AppInitializer() {
     };
   }, []);
 
-  // Jodi offline hoy, tahole puro screen jure design-ta dekhabe
   if (isOffline) {
     return (
       <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center p-6 animate-in fade-in duration-300">

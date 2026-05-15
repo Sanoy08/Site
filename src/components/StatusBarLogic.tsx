@@ -5,7 +5,6 @@
 import { useEffect } from 'react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
-import { Component } from 'lucide-react';
 
 export default function StatusBarLogic() {
   useEffect(() => {

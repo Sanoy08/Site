@@ -2,6 +2,7 @@ package com.bumbaskitchen.app;
 
 import android.os.Bundle;
 import android.webkit.WebView;
+import androidx.core.view.WindowCompat; // ★ এটি ইম্পোর্ট করো
 import com.getcapacitor.BridgeActivity;
 
 // Plugins
@@ -19,7 +20,10 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
-        // ২. Android Native WebView থেকে স্ক্রলবার বন্ধ করা এবং ওভারস্ক্রোল গ্লিচ অফ করা
+        // ★ ২. Android Native Edge-to-Edge এনফোর্স করা
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        // ৩. Android Native WebView থেকে স্ক্রলবার বন্ধ করা
         WebView webView = this.bridge.getWebView();
         if (webView != null) {
             webView.setVerticalScrollBarEnabled(false);

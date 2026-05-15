@@ -99,6 +99,8 @@
 
   html {
     scroll-behavior: auto !important;
+    margin: 0;
+    padding: 0;
   }
 
   body {
@@ -107,6 +109,10 @@
     overscroll-behavior: none;
     overflow-x: hidden;
     width: 100%;
+    min-height: 100vh; /* Fallback */
+    min-height: 100dvh; /* ★ ফুল এজ-টু-এজ হাইট */
+    margin: 0;
+    padding: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

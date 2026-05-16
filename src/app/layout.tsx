@@ -1,5 +1,6 @@
 // src/app/layout.tsx
 
+import AnimatedSplash from '@/components/AnimatedSplash';
 import type { Metadata, Viewport } from 'next';
 import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider';
 import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico, Atma, Galada } from 'next/font/google';
@@ -110,6 +111,7 @@ export default function RootLayout({
           atma.variable,
           galada.variable
       )}>
+          <AnimatedSplash />
           <AppUrlListener />
           <StatusBarLogic /> 
           <CartProvider>

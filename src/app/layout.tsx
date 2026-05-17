@@ -2,8 +2,7 @@
 
 import type { Metadata, Viewport } from 'next';
 import { StoreStatusProvider } from '@/components/providers/StoreStatusProvider';
-import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico, Atma, Galada } from 'next/font/google';
-// @ts-expect-error -- Next.js supports global CSS side-effect imports in app/layout.tsx
+import { Poppins, Amarante, Montserrat, Anek_Bangla, Pacifico, Atma, Galada } from 'next/font/google';// @ts-expect-error -- Next.js supports global CSS side-effect imports in app/layout.tsx
 import './globals.css';
 import DeviceEnforcer from '@/components/DeviceEnforcer';
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -18,7 +17,6 @@ import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
 import AppUrlListener from '@/components/AppUrlListener';
 import { AppUpdater } from '@/components/AppUpdater';
-import SafeAreaController from '@/components/SafeAreaController';
 
 const poppins = Poppins({ subsets: ['latin'], display: 'swap', variable: '--font-sans', weight: ['400', '500', '600', '700'] });
 const amarante = Amarante({ subsets: ['latin'], display: 'swap', variable: '--font-headline', weight: '400' });
@@ -112,8 +110,7 @@ export default function RootLayout({
           atma.variable,
           galada.variable
       )}>
-          <SafeAreaController />
-          <AppUrlListener /> 
+          <AppUrlListener /
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />

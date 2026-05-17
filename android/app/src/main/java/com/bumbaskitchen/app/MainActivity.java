@@ -6,7 +6,6 @@ import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.os.Handler;
 import android.os.Looper;
-import androidx.activity.EdgeToEdge;
 
 // ★ Lottie ইম্পোর্ট
 import com.airbnb.lottie.LottieAnimationView; 
@@ -21,8 +20,9 @@ import com.getcapacitor.community.fcm.FCMPlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        EdgeToEdge.enable(this);
+        // ★ EdgeToEdge রিমুভ করা হয়েছে যাতে স্ট্যাটাস বার নিয়ে কোনো কালো ওভারলে না আসে
 
+        // ১. Register Plugins
         registerPlugin(AppPlugin.class);
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
@@ -50,15 +50,14 @@ public class MainActivity extends BridgeActivity {
         params.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
         splashLayout.addView(lottieView, params);
 
-        // ৩. এই পর্দাটাকে মেইন অ্যাপের (Next.js ওয়েবভিউ) ঠিক ওপরে বসিয়ে দিলাম
+        // ৩. এই পর্দাটাকে মেইন অ্যাপের ঠিক ওপরে বসিয়ে দিলাম
         addContentView(splashLayout, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        // ৪. ৩.৫ সেকেন্ড পর পর্দাটা গায়েব করে দেবো (ততক্ষণে পেছনের অ্যাপ ফুল লোড হয়ে যাবে!)
+        // ৪. ৩.৫ সেকেন্ড পর পর্দাটা গায়েব করে দেবো
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            // সুন্দর করে ফেড-আউট (Fade out) হওয়ার অ্যানিমেশন
             splashLayout.animate()
                     .alpha(0f)
                     .setDuration(500)

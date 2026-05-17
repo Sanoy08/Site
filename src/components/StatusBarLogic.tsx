@@ -1,37 +1,42 @@
-// src/components/StatusBarLogic.tsx
-
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation'; // ★ বর্তমান পেজ ট্র্যাক করার জন্য
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 
 export default function StatusBarLogic() {
+  const pathname = usePathname(); // ইউজারের বর্তমান পেজের পাথ (যেমন: '/', '/cart', '/profile')
+
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      const initStatusBar = async () => {
+      const updateStatusBar = async () => {
         try {
-          // ১. ওভারলে TRUE করা হলো (যাতে অ্যাপ নচ এরিয়া পর্যন্ত চলে যায়)
-          await StatusBar.setOverlaysWebView({ overlay: true });
-
-          // ২. রঙ পরিবর্তন: সাদা থেকে ট্রান্সপারেন্ট (স্বচ্ছ) করা হলো
-          await StatusBar.setBackgroundColor({ color: '#00000000' });
-
-          // ৩. আইকন পরিবর্তন: কালো (ডার্ক) আইকন
-          await StatusBar.setStyle({ style: Style.Light });
-          
-          // যদি স্ট্যাটাস বার (ব্যাটারি/টাইম) পুরোপুরি গায়েব করে দিতে চাও, 
-          // তাহলে নিচের লাইনটি আনকমেন্ট করতে পারো:
-          // await StatusBar.hide();
-
+          if (pathname === '/') {
+            // ==========================================
+            // ★ শুধুমাত্র হোমপেজের জন্য (Edge-to-Edge)
+            // ==========================================
+            await StatusBar.setOverlaysWebView({ overlay: true }); // নচের ভেতর ঢুকবে
+            await StatusBar.setBackgroundColor({ color: '#00000000' }); // ট্রান্সপারেন্ট
+            await StatusBar.setStyle({ style: Style.Light }); // কালো আইকন
+            
+          } else {
+            // ==========================================
+            // ★ বাকি সব পেজের জন্য (Normal White Status Bar)
+            // ==========================================
+            await StatusBar.setOverlaysWebView({ overlay: false }); // নচের নিচে থাকবে
+            await StatusBar.setBackgroundColor({ color: '#FFFFFF' }); // সাদা ব্যাকগ্রাউন্ড
+            await StatusBar.setStyle({ style: Style.Light }); // কালো আইকন
+          }
         } catch (e) {
           console.error("Status bar styling failed", e);
         }
       };
 
-      initStatusBar();
+      // পেজ পরিবর্তন হওয়ার সাথে সাথেই এই ফাংশনটা কল হবে
+      updateStatusBar();
     }
-  }, []);
+  }, [pathname]); // ★ pathname চেঞ্জ হলেই useEffect আবার রান করবে
 
   return null;
 }

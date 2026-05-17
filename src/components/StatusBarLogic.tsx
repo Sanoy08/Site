@@ -1,4 +1,4 @@
-// src/components/StatusBarLogic.tsx
+// src/Components/StatusBarLogic.tsx
 
 'use client';
 
@@ -11,14 +11,14 @@ export default function StatusBarLogic() {
     if (Capacitor.isNativePlatform()) {
       const initStatusBar = async () => {
         try {
-          // ১. ওভারলে TRUE করতে হবে (যাতে নেটিভ Edge-to-Edge বাধা না পায়)
-          await StatusBar.setOverlaysWebView({ overlay: true });
+          // ১. প্রথমে ওভারলে বন্ধ করা (সেফটি)
+          await StatusBar.setOverlaysWebView({ overlay: false });
 
-          // ২. রঙ পরিবর্তন: সাদা -> ট্রান্সপারেন্ট (স্বচ্ছ)
-          // #00000000 মানে হলো পুরোপুরি স্বচ্ছ, যার ফলে পেছনের অ্যাপ কন্টেন্ট দেখা যাবে
-          await StatusBar.setBackgroundColor({ color: '#00000000' });
+          // ২. রঙ পরিবর্তন: সবুজ -> সাদা
+          await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
 
-          // ৩. আইকন পরিবর্তন: ডার্ক (কালো)
+          // ৩. আইকন পরিবর্তন: সাদা -> কালো
+          // Style.Light মানে হলো "ব্যাকগ্রাউন্ড লাইট", তাই আইকন হবে ডার্ক (কালো)
           await StatusBar.setStyle({ style: Style.Light });
           
         } catch (e) {
@@ -26,6 +26,7 @@ export default function StatusBarLogic() {
         }
       };
 
+      // অ্যাপ লোড হওয়ার সাথে সাথে কল হবে
       initStatusBar();
     }
   }, []);

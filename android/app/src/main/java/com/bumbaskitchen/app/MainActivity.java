@@ -2,8 +2,6 @@ package com.bumbaskitchen.app;
 
 import android.os.Bundle;
 import android.webkit.WebView;
-import androidx.activity.EdgeToEdge; // ★ ১. এই ইম্পোর্টটা অ্যাড করতে হবে
-
 import com.getcapacitor.BridgeActivity;
 
 // Plugins
@@ -14,18 +12,14 @@ import com.getcapacitor.community.fcm.FCMPlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        
-        // ★ ২. super.onCreate কল হওয়ার আগেই অ্যাপকে Edge-to-Edge ফোর্স করা
-        EdgeToEdge.enable(this);
-
-        // Register Plugins
+        // ১. Register Plugins
         registerPlugin(AppPlugin.class);
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
 
         super.onCreate(savedInstanceState);
 
-        // Android Native WebView থেকে স্ক্রলবার বন্ধ করা এবং ওভারস্ক্রোল গ্লিচ অফ করা
+        // ২. Android Native WebView থেকে স্ক্রলবার বন্ধ করা এবং ওভারস্ক্রোল গ্লিচ অফ করা
         WebView webView = this.bridge.getWebView();
         if (webView != null) {
             webView.setVerticalScrollBarEnabled(false);

@@ -8,7 +8,6 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://www.bumbaskitchen.app',
     cleartext: true,
-    errorPath: 'offline.html', // ★ ম্যাজিক: ইন্টারনেট না থাকলে এই ফাইলটা লোড হবে ★
     allowNavigation: [
       'www.bumbaskitchen.app',
       'bumbaskitchen.app',
@@ -27,10 +26,6 @@ const config: CapacitorConfig = {
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
-    },
-    FirebaseAuthentication: {
-      skipNativeAuth: false,
-      providers: ["google.com"],
     },
     SplashScreen: {
       launchShowDuration: 0, // ★ 0 করা হলো

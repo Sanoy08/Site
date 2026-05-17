@@ -35,13 +35,10 @@ const config: CapacitorConfig = {
       providers: ["google.com"],
     },
     SplashScreen: {
-      launchShowDuration: 1000, // ২ সেকেন্ড পর হাইড হবে
-      launchAutoHide: true,     // ★ true করা হলো
+      launchShowDuration: 0, // ★ 0 করা হলো
+      launchAutoHide: true,
       backgroundColor: "#F8F9FA",
-      androidSplashResourceName: "splash",
-      androidScaleType: "CENTER_CROP",
       showSpinner: false
-      // ★ splashFullScreen এবং splashImmersive বাদ দেওয়া হয়েছে (অ্যাডমিনের মতো)
     }
   }
 };

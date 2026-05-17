@@ -1,93 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>No Internet</title>
-    <style>
-        body {
-            background-color: #F8F9FA;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333;
-            text-align: center;
-            user-select: none;
-        }
-        .icon {
-            width: 120px;
-            height: 120px;
-            background-color: #e2e8f0;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 24px;
-            animation: pulse 2s infinite ease-in-out;
-        }
-        .icon svg {
-            width: 60px;
-            height: 60px;
-            fill: #64748b;
-        }
-        h1 {
-            font-size: 24px;
-            margin: 0 0 10px 0;
-            color: #1e293b;
-        }
-        p {
-            font-size: 15px;
-            color: #64748b;
-            margin: 0 0 30px 0;
-            max-width: 80%;
-            line-height: 1.5;
-        }
-        button {
-            background-color: #6a9c27; /* Bumba's Kitchen Primary Color */
-            color: white;
-            border: none;
-            padding: 14px 36px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(106, 156, 39, 0.3);
-            transition: transform 0.1s;
-            -webkit-tap-highlight-color: transparent;
-        }
-        button:active {
-            transform: scale(0.95);
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(226, 232, 240, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <title>You're Offline</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(
+        180deg,
+        #f8fafc 0%,
+        #eef2f7 60%,
+        #ffffff 100%
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #334155;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 36px 24px 32px;
+      box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.08),
+        0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .logo-wrapper {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 22px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .logo-wrapper img {
+      width: 64px;
+      height: auto;
+      object-fit: contain;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #64748b;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    .divider {
+      width: 60px;
+      height: 3px;
+      border-radius: 2px;
+      background: #7D9A4D; /* Brand color */
+      margin: 18px auto;
+      opacity: 0.8;
+    }
+
+    .footer-text {
+      margin-top: 18px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+  </style>
 </head>
+
 <body>
-
-    <div class="icon">
-        <svg viewBox="0 0 24 24">
-            <path d="M24 13.616v-2.022c-5.289-4.821-12.28-5.321-17.766-3.805l1.636 2.051c4.542-1.393 10.428-.775 14.869 3.093l-1.261 1.581zm-9.283 5.384h-4.32l2.16 2.709 2.16-2.709zm6.757-4.382c-4.499-4.1-11.458-4.735-16.744-2.839l1.621 2.032c4.426-1.579 10.224-1.077 13.882 2.37l1.241-1.563zM2.871 1.258l-1.38 1.157 20.871 20.327 1.38-1.157-20.871-20.327z"/>
-        </svg>
+  <div class="card">
+    <div class="logo-wrapper">
+      <img src="logo.png" alt="Bumba's Kitchen Logo" />
     </div>
-    
-    <h1>No Internet Connection</h1>
-    <p>Please check your wifi or mobile data connection and try again.</p>
-    
-    <button onclick="window.location.reload()">Try Again</button>
 
-    <script>
-        // ★ স্মার্ট ট্রিক: ইন্টারনেট কানেকশন ফিরে এলেই নিজে নিজে অ্যাপ রিলোড হয়ে মেইন ওয়েবসাইটে ঢুকে যাবে!
-        window.addEventListener('online', () => {
-            window.location.reload();
-        });
-    </script>
+    <h1>You’re Offline</h1>
+
+    <div class="divider"></div>
+
+    <p>
+      Looks like there’s no internet connection right now.  
+      Please reconnect to continue enjoying
+      <strong>Bumba’s Kitchen</strong>.
+    </p>
+
+    <div class="footer-text">
+      Fresh food, right when you’re back online.
+    </div>
+  </div>
 </body>
 </html>

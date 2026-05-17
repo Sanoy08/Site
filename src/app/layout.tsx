@@ -110,7 +110,7 @@ export default function RootLayout({
           atma.variable,
           galada.variable
       )}>
-          <AppUrlListener /
+          <AppUrlListener />
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />

@@ -176,9 +176,8 @@ export function Header() {
   return (
     <>
       <header 
-          // ★ pt-[env(safe-area-inset-top)] যোগ করা হলো যাতে স্ট্যাটাস বারের নিচে কন্টেন্ট না ঢোকে
           className={cn(
-              "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b pt-[env(safe-area-inset-top)]",
+              "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
               isScrolled ? "bg-white border-gray-200 py-1" : "bg-transparent border-transparent py-3"
           )}
       >

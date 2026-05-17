@@ -1,4 +1,3 @@
-// capacitor.config.ts
 import type { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 
@@ -9,6 +8,7 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://www.bumbaskitchen.app',
     cleartext: true,
+    errorPath: 'offline.html', // ★ ম্যাজিক: ইন্টারনেট না থাকলে এই ফাইলটা লোড হবে ★
     allowNavigation: [
       'www.bumbaskitchen.app',
       'bumbaskitchen.app',
@@ -16,8 +16,6 @@ const config: CapacitorConfig = {
     ],
   },
   android: {
-    // @ts-ignore
-    // adjustMarginsForEdgeToEdge: 'disable',  <--- এই লাইনটা মুছে ফেলো বা কমেন্ট করে দাও
     zoomEnabled: false,
     backgroundColor: "#F8F9FA"
   },

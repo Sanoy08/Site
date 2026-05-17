@@ -17,7 +17,7 @@ import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
 import AppUrlListener from '@/components/AppUrlListener';
 import { AppUpdater } from '@/components/AppUpdater'; 
-import StatusBarLogic from '@/components/StatusBarLogic'; 
+import DynamicSafePadding from '@/components/DynamicSafePadding';
 
 const poppins = Poppins({ subsets: ['latin'], display: 'swap', variable: '--font-sans', weight: ['400', '500', '600', '700'] });
 const amarante = Amarante({ subsets: ['latin'], display: 'swap', variable: '--font-headline', weight: '400' });
@@ -112,7 +112,7 @@ export default function RootLayout({
           galada.variable
       )}>
           <AppUrlListener />
-          <StatusBarLogic /> 
+          <DynamicSafePadding />
           <CartProvider>
             <RealtimeMenuUpdater />
             <AppInitializer />

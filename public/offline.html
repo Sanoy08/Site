@@ -1,9 +1,14 @@
+<!-- public/offline.html -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>No Internet</title>
+    
+    <script type="module" src="dotlottie-player.mjs"></script>
+    
     <style>
         body {
             background-color: #F8F9FA;
@@ -15,25 +20,13 @@
             justify-content: center;
             height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333;
             text-align: center;
             user-select: none;
         }
-        .icon {
-            width: 120px;
-            height: 120px;
-            background-color: #e2e8f0;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 24px;
-            animation: pulse 2s infinite ease-in-out;
-        }
-        .icon svg {
-            width: 60px;
-            height: 60px;
-            fill: #64748b;
+        .anim-container {
+            width: 280px;
+            height: 280px;
+            margin-bottom: 10px;
         }
         h1 {
             font-size: 24px;
@@ -43,12 +36,12 @@
         p {
             font-size: 15px;
             color: #64748b;
-            margin: 0 0 30px 0;
+            margin: 0 0 35px 0;
             max-width: 80%;
             line-height: 1.5;
         }
         button {
-            background-color: #6a9c27; /* Bumba's Kitchen Primary Color */
+            background-color: #6a9c27; /* তোমার ব্র্যান্ড কালার */
             color: white;
             border: none;
             padding: 14px 36px;
@@ -63,19 +56,19 @@
         button:active {
             transform: scale(0.95);
         }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(226, 232, 240, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0); }
-        }
     </style>
 </head>
 <body>
 
-    <div class="icon">
-        <svg viewBox="0 0 24 24">
-            <path d="M24 13.616v-2.022c-5.289-4.821-12.28-5.321-17.766-3.805l1.636 2.051c4.542-1.393 10.428-.775 14.869 3.093l-1.261 1.581zm-9.283 5.384h-4.32l2.16 2.709 2.16-2.709zm6.757-4.382c-4.499-4.1-11.458-4.735-16.744-2.839l1.621 2.032c4.426-1.579 10.224-1.077 13.882 2.37l1.241-1.563zM2.871 1.258l-1.38 1.157 20.871 20.327 1.38-1.157-20.871-20.327z"/>
-        </svg>
+    <div class="anim-container">
+        <dotlottie-player 
+            src="No_Internet.lottie" 
+            background="transparent" 
+            speed="1" 
+            style="width: 100%; height: 100%;" 
+            loop 
+            autoplay>
+        </dotlottie-player>
     </div>
     
     <h1>No Internet Connection</h1>
@@ -84,7 +77,7 @@
     <button onclick="window.location.reload()">Try Again</button>
 
     <script>
-        // ★ স্মার্ট ট্রিক: ইন্টারনেট কানেকশন ফিরে এলেই নিজে নিজে অ্যাপ রিলোড হয়ে মেইন ওয়েবসাইটে ঢুকে যাবে!
+        // নেট কানেকশন ফিরে এলেই নিজে নিজে রিলোড হয়ে যাবে!
         window.addEventListener('online', () => {
             window.location.reload();
         });

@@ -7,10 +7,9 @@ import android.widget.RelativeLayout;
 import android.os.Handler;
 import android.os.Looper;
 
-// ★ Lottie ও Animator ইম্পোর্ট
+// ★ Lottie ইম্পোর্ট
 import com.airbnb.lottie.LottieAnimationView;
-import com.airbnb.lottie.LottieDrawable;
-import android.animation.Animator; // ★ অ্যানিমেশন সাইকেল ট্র্যাক করার জন্য
+import com.airbnb.lottie.LottieDrawable; // ★ লুপ করার জন্য এই নতুন ইম্পোর্টটি লাগবে
 
 import com.getcapacitor.BridgeActivity;
 
@@ -31,86 +30,65 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         // ==========================================
-        // ★ স্মার্ট স্প্ল্যাশ স্ক্রিন (Perfect Animation Cycle Sync)
+        // ★ স্মার্ট স্প্ল্যাশ স্ক্রিন (Dynamic Webview Loading)
         // ==========================================
         
+        // ১. একটা লেআউট (পর্দা) বানালাম
         RelativeLayout splashLayout = new RelativeLayout(this);
         splashLayout.setBackgroundColor(android.graphics.Color.parseColor("#F8F9FA"));
         splashLayout.setElevation(100f); 
         
+        // ২. Lottie অ্যানিমেশন সেটআপ
         LottieAnimationView lottieView = new LottieAnimationView(this);
         lottieView.setAnimation(R.raw.splash_anim);
-        lottieView.setRepeatCount(LottieDrawable.INFINITE);  
         lottieView.playAnimation();    
+        
+        // ★ ম্যাজিক ১: অ্যানিমেশন ইনফিনিট (Infinite) লুপে চলতে থাকবে
+        lottieView.setRepeatCount(LottieDrawable.INFINITE);  
 
+        // অ্যানিমেশনের সাইজ (350dp)
         int size = (int) (350 * getResources().getDisplayMetrics().density);
         RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(size, size);
         params.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
         splashLayout.addView(lottieView, params);
 
+        // ৩. এই পর্দাটাকে মেইন অ্যাপের ঠিক ওপরে বসিয়ে দিলাম
         addContentView(splashLayout, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        // ভেরিয়েবল: ওয়েবসাইট লোডিং এবং স্প্ল্যাশ রিমুভ ট্র্যাক করার জন্য
-        final boolean[] isWebLoaded = {false};
-        final boolean[] isSplashRemoved = {false};
-
-        // স্প্ল্যাশ স্ক্রিন সরানোর ফাংশন
-        Runnable removeSplash = () -> {
-            if (isSplashRemoved[0]) return; // ডাবল রিমুভ ঠেকানোর জন্য
-            isSplashRemoved[0] = true;
-            
-            lottieView.cancelAnimation(); // অ্যানিমেশন স্টপ করা
-            splashLayout.animate()
-                    .alpha(0f)
-                    .setDuration(500)
-                    .withEndAction(() -> {
-                        if (splashLayout.getParent() != null) {
-                            ((ViewGroup) splashLayout.getParent()).removeView(splashLayout);
-                        }
-                    })
-                    .start();
-        };
-
-        // ★ ম্যাজিক ১: Lottie Animation সাইকেল ট্র্যাকার
-        lottieView.addAnimatorListener(new Animator.AnimatorListener() {
-            @Override
-            public void onAnimationStart(Animator animation) {}
-
-            @Override
-            public void onAnimationEnd(Animator animation) {}
-
-            @Override
-            public void onAnimationCancel(Animator animation) {}
-
-            @Override
-            public void onAnimationRepeat(Animator animation) {
-                // যখনই একবার অ্যানিমেশন লুপ শেষ হয়ে আবার শুরু হতে যাবে, তখন চেক করবে ওয়েবসাইট রেডি কিনা
-                if (isWebLoaded[0]) {
-                    removeSplash.run(); // রেডি থাকলে স্প্ল্যাশ সরিয়ে দাও
-                }
-            }
-        });
-
-        // ★ ম্যাজিক ২: ডাইনামিক লোডিং চেকার
+        // ★ ম্যাজিক ২: ডাইনামিক লোডিং চেকার (Dynamic Polling)
         Handler handler = new Handler(Looper.getMainLooper());
         Runnable checkLoading = new Runnable() {
             @Override
             public void run() {
                 WebView webView = bridge.getWebView();
                 
-                // ওয়েবভিউ ১০০% লোড হয়েছে কিনা চেক
+                // ওয়েবভিউ ১০০% লোড হয়েছে কিনা চেক করা হচ্ছে
                 if (webView != null && webView.getProgress() == 100) {
-                    isWebLoaded[0] = true; 
-                    // এখানে আমরা ডাইরেক্ট removeSplash কল করছি না। 
-                    // ওয়েবসাইট লোড হলেও অ্যানিমেশন সাইকেল শেষ হওয়া অব্দি অপেক্ষা করবে!
+                    
+                    // ১০০% লোড হওয়ার পর React/Next.js-কে UI রেন্ডার করার জন্য এক্সট্রা ১ সেকেন্ড সময় দেওয়া হলো
+                    handler.postDelayed(() -> {
+                        if (splashLayout.getParent() != null) {
+                            splashLayout.animate()
+                                    .alpha(0f)
+                                    .setDuration(500)
+                                    .withEndAction(() -> {
+                                        ((ViewGroup) splashLayout.getParent()).removeView(splashLayout);
+                                    })
+                                    .start();
+                        }
+                    }, 1000); 
+
                 } else {
+                    // এখনো লোড হয়নি, তাই ৩০০ মিলি-সেকেন্ড পর আবার চেক করবে
                     handler.postDelayed(this, 300);
                 }
             }
         };
+
+        // অ্যাপ ওপেন হওয়ার ৫০০ মিলি-সেকেন্ড পর থেকে লোডিং চেক করা শুরু হবে
         handler.postDelayed(checkLoading, 500);
         // ==========================================
 

@@ -40,6 +40,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: "#ffffff",
+  viewportFit: "cover", // ★ এই লাইনটা অ্যাড করতে হবে
 };
 
 export default function RootLayout({

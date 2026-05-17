@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
   },
   android: {
     // @ts-ignore
-    adjustMarginsForEdgeToEdge: 'disable',
+    // adjustMarginsForEdgeToEdge: 'disable',  <--- এই লাইনটা মুছে ফেলো বা কমেন্ট করে দাও
     zoomEnabled: false,
     backgroundColor: "#F8F9FA"
   },

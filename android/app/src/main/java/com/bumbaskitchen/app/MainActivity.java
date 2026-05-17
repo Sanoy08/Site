@@ -14,7 +14,7 @@ import android.animation.Animator;
 
 // ★ নেটওয়ার্ক ও অন্যান্য UI
 import android.content.Context;
-import android.content.SharedPreferences; // ★ First Run ট্র‍্যাক করার জন্য
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -26,6 +26,7 @@ import android.widget.TextView;
 import android.widget.Button;
 import android.view.Gravity;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable; // ★ স্মুথ বাটনের জন্য
 
 import com.getcapacitor.BridgeActivity;
 
@@ -49,7 +50,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         // ==========================================
-        // ★ ০. NATIVE ONBOARDING SCREEN (First Time Only)
+        // ★ ০. NATIVE ONBOARDING SCREEN (Premium UI)
         // ==========================================
         SharedPreferences prefs = getSharedPreferences("BumbasPrefs", MODE_PRIVATE);
         boolean isFirstRun = prefs.getBoolean("isFirstRun", true);
@@ -57,20 +58,21 @@ public class MainActivity extends BridgeActivity {
         if (isFirstRun) {
             RelativeLayout onboardLayout = new RelativeLayout(this);
             onboardLayout.setBackgroundColor(Color.parseColor("#FFFFFF"));
-            onboardLayout.setElevation(150f); // সবার উপরে থাকবে
+            onboardLayout.setElevation(150f); 
 
             // Skip Button
             TextView skipBtn = new TextView(this);
             skipBtn.setText("Skip");
-            skipBtn.setTextColor(Color.parseColor("#64748b"));
+            skipBtn.setTextColor(Color.parseColor("#94a3b8"));
             skipBtn.setTextSize(16f);
-            skipBtn.setPadding(40, 60, 40, 40);
+            skipBtn.setTypeface(null, Typeface.BOLD);
+            skipBtn.setPadding(40, 60, 60, 40);
             RelativeLayout.LayoutParams skipParams = new RelativeLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             skipParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
             onboardLayout.addView(skipBtn, skipParams);
 
-            // Center Content (Lottie + Text)
+            // Center Content Box (Lottie + Text)
             LinearLayout centerBox = new LinearLayout(this);
             centerBox.setOrientation(LinearLayout.VERTICAL);
             centerBox.setGravity(Gravity.CENTER);
@@ -81,50 +83,59 @@ public class MainActivity extends BridgeActivity {
 
             LottieAnimationView onboardLottie = new LottieAnimationView(this);
             onboardLottie.setRepeatCount(LottieDrawable.INFINITE);
-            int lSize = (int) (300 * getResources().getDisplayMetrics().density);
+            int lSize = (int) (320 * getResources().getDisplayMetrics().density);
             centerBox.addView(onboardLottie, new LinearLayout.LayoutParams(lSize, lSize));
 
             TextView titleText = new TextView(this);
-            titleText.setTextSize(24f);
-            titleText.setTextColor(Color.parseColor("#1e293b"));
+            titleText.setTextSize(26f);
+            titleText.setTextColor(Color.parseColor("#0f172a"));
             titleText.setTypeface(null, Typeface.BOLD);
             titleText.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams tParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            tParams.setMargins(50, 40, 50, 10);
+            tParams.setMargins(50, 20, 50, 10);
             centerBox.addView(titleText, tParams);
 
             TextView descText = new TextView(this);
-            descText.setTextSize(15f);
+            descText.setTextSize(16f);
             descText.setTextColor(Color.parseColor("#64748b"));
             descText.setGravity(Gravity.CENTER);
+            descText.setLineSpacing(0, 1.2f);
             LinearLayout.LayoutParams dParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            dParams.setMargins(80, 0, 80, 80);
+            dParams.setMargins(80, 10, 80, 80);
             centerBox.addView(descText, dParams);
 
-            // Next / Login Button
+            // ★ Smooth Rounded Button (Pill Shape)
             Button nextBtn = new Button(this);
-            nextBtn.setBackgroundColor(Color.parseColor("#6a9c27"));
+            GradientDrawable btnShape = new GradientDrawable();
+            btnShape.setShape(GradientDrawable.RECTANGLE);
+            btnShape.setColor(Color.parseColor("#6a9c27"));
+            btnShape.setCornerRadius(100f); // একদম স্মুথ গোল ধার
+            nextBtn.setBackground(btnShape);
+            
             nextBtn.setTextColor(Color.WHITE);
-            nextBtn.setTextSize(16f);
+            nextBtn.setTextSize(17f);
             nextBtn.setTypeface(null, Typeface.BOLD);
+            nextBtn.setElevation(10f); // হালকা শ্যাডো
+            nextBtn.setAllCaps(false); // টেক্সট ক্যাপিটাল হওয়া বন্ধ করা
+            
             RelativeLayout.LayoutParams btnParams = new RelativeLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, (int)(55 * getResources().getDisplayMetrics().density));
+                    ViewGroup.LayoutParams.MATCH_PARENT, (int)(60 * getResources().getDisplayMetrics().density));
             btnParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-            btnParams.setMargins(60, 0, 60, 100);
+            btnParams.setMargins(70, 0, 70, 100);
             onboardLayout.addView(nextBtn, btnParams);
 
             addContentView(onboardLayout, new ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-            // Data Update Method
-            Runnable updateUI = () -> {
+            // Content Update Method
+            Runnable updateContent = () -> {
                 if (currentStep == 0) {
                     onboardLottie.setAnimation(R.raw.onboard_order);
                     titleText.setText("Order Your Favorites");
                     descText.setText("Choose from a wide variety of authentic Bengali dishes right from your phone.");
-                    nextBtn.setText("Next");
+                    nextBtn.setText("Continue");
                 } else if (currentStep == 1) {
                     onboardLottie.setAnimation(R.raw.onboard_rider);
                     titleText.setText("Fast & Trackable");
@@ -134,13 +145,13 @@ public class MainActivity extends BridgeActivity {
                     onboardLottie.setAnimation(R.raw.onboard_delivery);
                     titleText.setText("Delivered to Doorstep");
                     descText.setText("Hot and fresh food delivered safely to you. Enjoy your meal!");
-                    nextBtn.setText("Login to Continue");
+                    nextBtn.setText("Get Started");
                 }
                 onboardLottie.playAnimation();
             };
 
-            // Initial Load
-            updateUI.run();
+            // Initial Load (No animation needed)
+            updateContent.run();
 
             // Action: Finish Onboarding
             Runnable finishOnboarding = () -> {
@@ -149,7 +160,6 @@ public class MainActivity extends BridgeActivity {
                     if (onboardLayout.getParent() != null) {
                         ((ViewGroup) onboardLayout.getParent()).removeView(onboardLayout);
                     }
-                    // ★ সরাসরি Login পেজে রিডাইরেক্ট করে দেওয়া হলো
                     if (bridge.getWebView() != null) {
                         bridge.getWebView().loadUrl("https://www.bumbaskitchen.app/login");
                     }
@@ -157,19 +167,29 @@ public class MainActivity extends BridgeActivity {
             };
 
             nextBtn.setOnClickListener(v -> {
-                if (currentStep < 2) {
-                    currentStep++;
-                    updateUI.run();
-                } else {
-                    finishOnboarding.run();
-                }
+                // বাটনে চাপ দিলে ছোট্ট একটা বাউন্স (Bounce) অ্যানিমেশন হবে
+                nextBtn.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction(() -> {
+                    nextBtn.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
+                    
+                    if (currentStep < 2) {
+                        currentStep++;
+                        // ★ পেজ চেঞ্জ হওয়ার স্মুথ ফেড (Fade) অ্যানিমেশন
+                        centerBox.animate().alpha(0f).translationY(-20f).setDuration(200).withEndAction(() -> {
+                            updateContent.run();
+                            centerBox.setTranslationY(20f);
+                            centerBox.animate().alpha(1f).translationY(0f).setDuration(250).start();
+                        }).start();
+                    } else {
+                        finishOnboarding.run();
+                    }
+                }).start();
             });
 
             skipBtn.setOnClickListener(v -> finishOnboarding.run());
         }
 
         // ==========================================
-        // ★ ১. স্মার্ট স্প্ল্যাশ স্ক্রিন (আগের কোড)
+        // ★ ১. স্মার্ট স্প্ল্যাশ স্ক্রিন
         // ==========================================
         RelativeLayout splashLayout = new RelativeLayout(this);
         splashLayout.setBackgroundColor(Color.parseColor("#F8F9FA"));
@@ -256,26 +276,36 @@ public class MainActivity extends BridgeActivity {
         int lSize = (int) (250 * getResources().getDisplayMetrics().density);
         centerBox.addView(offlineLottie, new LinearLayout.LayoutParams(lSize, lSize));
 
-        TextView titleText = new TextView(this);
-        titleText.setText("No Internet Connection");
-        titleText.setTextSize(22f);
-        titleText.setTextColor(Color.parseColor("#1e293b"));
-        titleText.setTypeface(null, Typeface.BOLD);
-        titleText.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams tParams = new LinearLayout.LayoutParams(
+        TextView offlineTitleText = new TextView(this);
+        offlineTitleText.setText("No Internet Connection");
+        offlineTitleText.setTextSize(22f);
+        offlineTitleText.setTextColor(Color.parseColor("#1e293b"));
+        offlineTitleText.setTypeface(null, Typeface.BOLD);
+        offlineTitleText.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams tParamsOffline = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        tParams.setMargins(0, 20, 0, 50);
-        centerBox.addView(titleText, tParams);
+        tParamsOffline.setMargins(0, 20, 0, 50);
+        centerBox.addView(offlineTitleText, tParamsOffline);
 
+        // ★ Smooth Rounded Button for Offline Screen
         Button retryBtn = new Button(this);
+        GradientDrawable retryShape = new GradientDrawable();
+        retryShape.setShape(GradientDrawable.RECTANGLE);
+        retryShape.setColor(Color.parseColor("#6a9c27"));
+        retryShape.setCornerRadius(100f); 
+        retryBtn.setBackground(retryShape);
+        
         retryBtn.setText("Try Again");
-        retryBtn.setBackgroundColor(Color.parseColor("#6a9c27"));
         retryBtn.setTextColor(Color.WHITE);
-        retryBtn.setPadding(60, 20, 60, 20);
+        retryBtn.setAllCaps(false);
+        retryBtn.setPadding(80, 20, 80, 20);
         retryBtn.setOnClickListener(v -> {
-            if (bridge.getWebView() != null) {
-                bridge.getWebView().loadUrl("https://www.bumbaskitchen.app");
-            }
+            retryBtn.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction(() -> {
+                retryBtn.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
+                if (bridge.getWebView() != null) {
+                    bridge.getWebView().loadUrl("https://www.bumbaskitchen.app");
+                }
+            }).start();
         });
         centerBox.addView(retryBtn, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));

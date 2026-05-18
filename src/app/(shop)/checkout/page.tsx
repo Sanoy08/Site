@@ -30,6 +30,10 @@ import { Haptics, NotificationType } from '@capacitor/haptics';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
+// ★ Capacitor Plugin Import
+import { Capacitor, registerPlugin } from '@capacitor/core';
+const NativeSuccess = registerPlugin<any>('NativeSuccess');
+
 const checkoutSchema = z.object({
   preferredDate: z.string().min(1, 'Please select a preferred date.'),
   mealTime: z.enum(['lunch', 'dinner']),
@@ -93,13 +97,15 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Address States
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewDate, setViewDate] = useState<Date>(new Date());
   const [timeValidationError, setTimeValidationError] = useState({ show: false, title: '', message: '' });
+
+  // ★ Wallet Earn Rate Fetching for Native Plugin
+  const [earnRate, setEarnRate] = useState(2);
 
   useEffect(() => {
     if (!isLoading && !isInitialized) return;
@@ -108,19 +114,30 @@ export default function CheckoutPage() {
   }, [itemCount, user, isLoading, isInitialized, router, isSuccess]);
 
   useEffect(() => {
-    const fetchAddresses = async () => {
+    const fetchAddressesAndWallet = async () => {
         if (!user) return;
         try {
-            const res = await fetch('/api/user/addresses');
-            const data = await res.json();
-            if (data.success && data.addresses) {
-                setAddresses(data.addresses);
-                const defaultAddr = data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
+            // Fetch Addresses
+            const resAddr = await fetch('/api/user/addresses');
+            const dataAddr = await resAddr.json();
+            if (dataAddr.success && dataAddr.addresses) {
+                setAddresses(dataAddr.addresses);
+                const defaultAddr = dataAddr.addresses.find((a: any) => a.isDefault) || dataAddr.addresses[0];
                 if (defaultAddr) setSelectedAddressId(defaultAddr.id);
+            }
+            
+            // Fetch Wallet info for Earn Rate
+            const resWallet = await fetch('/api/wallet');
+            const dataWallet = await resWallet.json();
+            if (dataWallet.success && dataWallet.wallet) {
+                const totalSpent = dataWallet.wallet.totalSpent || 0;
+                if (totalSpent >= 15000) setEarnRate(6);
+                else if (totalSpent >= 5000) setEarnRate(4);
+                else setEarnRate(2);
             }
         } catch (error) {}
     };
-    fetchAddresses();
+    fetchAddressesAndWallet();
   }, [user]);
 
   const form = useForm<z.infer<typeof checkoutSchema>>({
@@ -190,13 +207,27 @@ export default function CheckoutPage() {
         clearCart();
         
         const orderNum = data.orderId || '0000'; 
-        const params = new URLSearchParams({ orderNumber: orderNum, name: user?.name || 'Customer', amount: finalTotal.toString() });
+        const earnedCoins = Math.floor((finalTotal * earnRate) / 100);
+
+        // ★ DIRECT NATIVE TRIGGER (0 Delay)
+        if (Capacitor.isNativePlatform()) {
+            NativeSuccess.show({
+                orderId: orderNum,
+                name: user?.name?.split(' ')[0] || 'Customer',
+                amount: formatPrice(finalTotal),
+                coins: earnedCoins > 0 ? earnedCoins : 1
+            });
+            // ব্যাকগ্রাউন্ডে নীরবে orders পেজে পাঠিয়ে দেওয়া হলো 
+            router.push('/account/orders');
+        } else {
+            // ওয়েব ইউজারদের জন্য
+            const params = new URLSearchParams({ orderNumber: orderNum, name: user?.name || 'Customer', amount: finalTotal.toString() });
+            router.push(`/checkout/success?${params.toString()}`);
+        }
         
-        router.push(`/checkout/success?${params.toString()}`);
     } catch (error: any) {
         toast.error(error.message || "Failed to place order.");
-    } finally {
-        setIsSubmitting(false);
+        setIsSubmitting(false); // Error হলে সাবমিট বাটন আবার চালু হবে
     }
   }
 

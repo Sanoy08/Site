@@ -16,6 +16,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.animation.DecelerateInterpolator;
 
+// ★ ফন্ট লোড করার জন্য ইম্পোর্ট
+import androidx.core.content.res.ResourcesCompat;
+
 import com.airbnb.lottie.LottieAnimationView;
 import com.airbnb.lottie.LottieDrawable;
 import android.animation.Animator;
@@ -39,6 +42,10 @@ public class NativeSuccessPlugin extends Plugin {
 
         getActivity().runOnUiThread(() -> {
             float density = getContext().getResources().getDisplayMetrics().density;
+
+            // ★ Poppins ফন্ট লোড করা হচ্ছে
+            Typeface poppinsBold = ResourcesCompat.getFont(getContext(), R.font.poppins_bold);
+            Typeface poppinsMedium = ResourcesCompat.getFont(getContext(), R.font.poppins_medium);
 
             // সাউন্ড প্লে করা
             try {
@@ -65,14 +72,13 @@ public class NativeSuccessPlugin extends Plugin {
             overlayLayout.addView(wrapperBox, boxParams);
 
             // =====================================
-            // STAGE 0: Lottie Animation (প্রথমে বিশাল বড় থাকবে)
+            // STAGE 0: Lottie Animation
             // =====================================
             LottieAnimationView successLottie = new LottieAnimationView(getContext());
             successLottie.setAnimation(R.raw.success_anim);
             successLottie.setRepeatCount(0); 
             successLottie.playAnimation();
             
-            // ★ ৯৫ ফ্রেম থেকে লুপ হওয়ার লজিক
             successLottie.addAnimatorListener(new Animator.AnimatorListener() {
                 @Override public void onAnimationStart(Animator animation) {}
                 @Override public void onAnimationCancel(Animator animation) {}
@@ -80,23 +86,21 @@ public class NativeSuccessPlugin extends Plugin {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     successLottie.removeAllAnimatorListeners(); 
-                    successLottie.setMinFrame(95); // ★ 95 ফ্রেম থেকে শুরু
+                    successLottie.setMinFrame(95); 
                     successLottie.setRepeatCount(LottieDrawable.INFINITE); 
                     successLottie.playAnimation();
                 }
             });
 
-            // ★ যখন একা থাকবে, তখনকার বিশাল সাইজ (300dp)
             int initialSize = (int) (300 * density); 
-            // ★ যখন ডিটেইলস আসবে, তখনকার সাইজ (150dp)
             int finalSize = (int) (150 * density);   
 
             LinearLayout.LayoutParams lottieParams = new LinearLayout.LayoutParams(initialSize, initialSize);
-            lottieParams.bottomMargin = 0; // প্রথমে মার্জিন জিরো
+            lottieParams.bottomMargin = 0; 
             wrapperBox.addView(successLottie, lottieParams);
 
             // =====================================
-            // STAGE 1: Content Box (প্রথমে হাইড করা থাকবে)
+            // STAGE 1: Content Box 
             // =====================================
             LinearLayout contentBox = new LinearLayout(getContext());
             contentBox.setOrientation(LinearLayout.VERTICAL);
@@ -108,7 +112,7 @@ public class NativeSuccessPlugin extends Plugin {
             title.setText("Order Placed!");
             title.setTextSize(26f);
             title.setTextColor(Color.parseColor("#111827"));
-            title.setTypeface(null, Typeface.BOLD);
+            title.setTypeface(poppinsBold); // ★ Poppins Bold
             contentBox.addView(title);
 
             // Subtitle
@@ -117,6 +121,7 @@ public class NativeSuccessPlugin extends Plugin {
             subtitle.setTextSize(14f);
             subtitle.setTextColor(Color.parseColor("#6B7280"));
             subtitle.setGravity(Gravity.CENTER);
+            subtitle.setTypeface(poppinsMedium); // ★ Poppins Medium
             LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             subParams.setMargins(0, (int)(8*density), 0, (int)(25*density));
@@ -135,14 +140,14 @@ public class NativeSuccessPlugin extends Plugin {
             TextView idText = new TextView(getContext());
             idText.setText("ORDER ID: #" + orderId);
             idText.setTextColor(Color.parseColor("#9CA3AF"));
-            idText.setTypeface(null, Typeface.BOLD);
+            idText.setTypeface(poppinsMedium); // ★ Poppins Medium
             idText.setTextSize(11f);
             detailsCard.addView(idText);
 
             TextView amtText = new TextView(getContext());
             amtText.setText("Amount: " + amount);
             amtText.setTextColor(Color.parseColor("#6a9c27"));
-            amtText.setTypeface(null, Typeface.BOLD);
+            amtText.setTypeface(poppinsBold); // ★ Poppins Bold
             amtText.setTextSize(16f);
             amtText.setPadding(0, (int)(5*density), 0, 0);
             detailsCard.addView(amtText);
@@ -165,14 +170,14 @@ public class NativeSuccessPlugin extends Plugin {
             TextView coinsTitle = new TextView(getContext());
             coinsTitle.setText("Coins on the way!");
             coinsTitle.setTextColor(Color.parseColor("#92400E"));
-            coinsTitle.setTypeface(null, Typeface.BOLD);
+            coinsTitle.setTypeface(poppinsBold); // ★ Poppins Bold
             coinsCard.addView(coinsTitle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
             TextView coinsAmt = new TextView(getContext());
             coinsAmt.setText("+" + coins);
             coinsAmt.setTextColor(Color.parseColor("#D97706"));
             coinsAmt.setTextSize(16f);
-            coinsAmt.setTypeface(null, Typeface.BOLD);
+            coinsAmt.setTypeface(poppinsBold); // ★ Poppins Bold
             coinsCard.addView(coinsAmt);
             contentBox.addView(coinsCard, cParams);
 
@@ -186,6 +191,7 @@ public class NativeSuccessPlugin extends Plugin {
             viewBtn.setTextColor(Color.WHITE);
             viewBtn.setAllCaps(false);
             viewBtn.setElevation(8f);
+            viewBtn.setTypeface(poppinsBold); // ★ Poppins Bold
             LinearLayout.LayoutParams vParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, (int)(55 * density));
             vParams.setMargins(0, 0, 0, (int)(10*density));
@@ -196,6 +202,7 @@ public class NativeSuccessPlugin extends Plugin {
             homeBtn.setText("Back to Home");
             homeBtn.setTextColor(Color.parseColor("#6B7280"));
             homeBtn.setAllCaps(false);
+            homeBtn.setTypeface(poppinsMedium); // ★ Poppins Medium
             contentBox.addView(homeBtn, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -206,15 +213,12 @@ public class NativeSuccessPlugin extends Plugin {
             // =====================================
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 
-                // ১. Lottie কে স্মুথলি ছোট করে ওপরে পাঠানো
                 ValueAnimator sizeAnimator = ValueAnimator.ofFloat(0f, 1f);
                 sizeAnimator.addUpdateListener(animation -> {
                     float fraction = animation.getAnimatedFraction();
-                    // 300dp থেকে 150dp তে আসবে
                     int currentSize = (int) (initialSize - ((initialSize - finalSize) * fraction));
                     lottieParams.width = currentSize;
                     lottieParams.height = currentSize;
-                    // মার্জিন 0 থেকে 15dp তে বাড়বে
                     lottieParams.bottomMargin = (int) (15 * density * fraction); 
                     successLottie.requestLayout();
                 });
@@ -222,7 +226,6 @@ public class NativeSuccessPlugin extends Plugin {
                 sizeAnimator.setInterpolator(new DecelerateInterpolator());
                 sizeAnimator.start();
 
-                // ২. Content Box কে নিচ থেকে তুলে আনা
                 contentBox.setVisibility(View.VISIBLE);
                 contentBox.setAlpha(0f);
                 contentBox.setTranslationY(100f); 

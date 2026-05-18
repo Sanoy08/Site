@@ -12,7 +12,7 @@ import com.airbnb.lottie.LottieAnimationView;
 import com.airbnb.lottie.LottieDrawable;
 import android.animation.Animator;
 
-// ★ নেটওয়ার্ক ও অন্যান্য UI
+// ★ নেটওয়ার্ক ও অন্যান্য UI
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
@@ -26,7 +26,10 @@ import android.widget.TextView;
 import android.widget.Button;
 import android.view.Gravity;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable; // ★ স্মুথ বাটনের জন্য
+import android.graphics.drawable.GradientDrawable; 
+
+// ★ ফন্ট লোড করার জন্য
+import androidx.core.content.res.ResourcesCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -50,8 +53,16 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
+        // ★ Poppins ফন্ট লোড (যদি ফন্ট ফোল্ডারে থাকে)
+        Typeface poppinsBold = null;
+        Typeface poppinsMedium = null;
+        try {
+            poppinsBold = ResourcesCompat.getFont(this, R.font.poppins_bold);
+            poppinsMedium = ResourcesCompat.getFont(this, R.font.poppins_medium);
+        } catch (Exception e) {}
+
         // ==========================================
-        // ★ ০. NATIVE ONBOARDING SCREEN (Premium UI)
+        // ★ ০. NATIVE ONBOARDING SCREEN 
         // ==========================================
         SharedPreferences prefs = getSharedPreferences("BumbasPrefs", MODE_PRIVATE);
         boolean isFirstRun = prefs.getBoolean("isFirstRun", true);
@@ -60,13 +71,19 @@ public class MainActivity extends BridgeActivity {
             RelativeLayout onboardLayout = new RelativeLayout(this);
             onboardLayout.setBackgroundColor(Color.parseColor("#FFFFFF"));
             onboardLayout.setElevation(150f); 
+            
+            // ★ MAGIC FIX: পেছনের স্ক্রিনে টাচ যাওয়া বন্ধ করা হলো
+            onboardLayout.setClickable(true);
+            onboardLayout.setFocusable(true);
 
             // Skip Button
             TextView skipBtn = new TextView(this);
             skipBtn.setText("Skip");
             skipBtn.setTextColor(Color.parseColor("#94a3b8"));
             skipBtn.setTextSize(16f);
-            skipBtn.setTypeface(null, Typeface.BOLD);
+            if (poppinsBold != null) skipBtn.setTypeface(poppinsBold);
+            else skipBtn.setTypeface(null, Typeface.BOLD);
+            
             skipBtn.setPadding(40, 60, 60, 40);
             RelativeLayout.LayoutParams skipParams = new RelativeLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -90,7 +107,9 @@ public class MainActivity extends BridgeActivity {
             TextView titleText = new TextView(this);
             titleText.setTextSize(26f);
             titleText.setTextColor(Color.parseColor("#0f172a"));
-            titleText.setTypeface(null, Typeface.BOLD);
+            if (poppinsBold != null) titleText.setTypeface(poppinsBold);
+            else titleText.setTypeface(null, Typeface.BOLD);
+            
             titleText.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams tParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -102,24 +121,28 @@ public class MainActivity extends BridgeActivity {
             descText.setTextColor(Color.parseColor("#64748b"));
             descText.setGravity(Gravity.CENTER);
             descText.setLineSpacing(0, 1.2f);
+            if (poppinsMedium != null) descText.setTypeface(poppinsMedium);
+            
             LinearLayout.LayoutParams dParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             dParams.setMargins(80, 10, 80, 80);
             centerBox.addView(descText, dParams);
 
-            // ★ Smooth Rounded Button (Pill Shape)
+            // Smooth Rounded Button (Pill Shape)
             Button nextBtn = new Button(this);
             GradientDrawable btnShape = new GradientDrawable();
             btnShape.setShape(GradientDrawable.RECTANGLE);
             btnShape.setColor(Color.parseColor("#6a9c27"));
-            btnShape.setCornerRadius(100f); // একদম স্মুথ গোল ধার
+            btnShape.setCornerRadius(100f); 
             nextBtn.setBackground(btnShape);
             
             nextBtn.setTextColor(Color.WHITE);
             nextBtn.setTextSize(17f);
-            nextBtn.setTypeface(null, Typeface.BOLD);
-            nextBtn.setElevation(10f); // হালকা শ্যাডো
-            nextBtn.setAllCaps(false); // টেক্সট ক্যাপিটাল হওয়া বন্ধ করা
+            if (poppinsBold != null) nextBtn.setTypeface(poppinsBold);
+            else nextBtn.setTypeface(null, Typeface.BOLD);
+            
+            nextBtn.setElevation(10f); 
+            nextBtn.setAllCaps(false); 
             
             RelativeLayout.LayoutParams btnParams = new RelativeLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, (int)(60 * getResources().getDisplayMetrics().density));
@@ -151,7 +174,6 @@ public class MainActivity extends BridgeActivity {
                 onboardLottie.playAnimation();
             };
 
-            // Initial Load (No animation needed)
             updateContent.run();
 
             // Action: Finish Onboarding
@@ -168,13 +190,11 @@ public class MainActivity extends BridgeActivity {
             };
 
             nextBtn.setOnClickListener(v -> {
-                // বাটনে চাপ দিলে ছোট্ট একটা বাউন্স (Bounce) অ্যানিমেশন হবে
                 nextBtn.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction(() -> {
                     nextBtn.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
                     
                     if (currentStep < 2) {
                         currentStep++;
-                        // ★ পেজ চেঞ্জ হওয়ার স্মুথ ফেড (Fade) অ্যানিমেশন
                         centerBox.animate().alpha(0f).translationY(-20f).setDuration(200).withEndAction(() -> {
                             updateContent.run();
                             centerBox.setTranslationY(20f);
@@ -195,6 +215,10 @@ public class MainActivity extends BridgeActivity {
         RelativeLayout splashLayout = new RelativeLayout(this);
         splashLayout.setBackgroundColor(Color.parseColor("#F8F9FA"));
         splashLayout.setElevation(100f); 
+        
+        // ★ MAGIC FIX: স্প্ল্যাশ স্ক্রিনেও টাচ ব্লক করা হলো
+        splashLayout.setClickable(true);
+        splashLayout.setFocusable(true);
         
         LottieAnimationView splashLottie = new LottieAnimationView(this);
         splashLottie.setAnimation(R.raw.splash_anim);
@@ -253,7 +277,6 @@ public class MainActivity extends BridgeActivity {
         };
         handler.postDelayed(checkLoading, 500);
 
-
         // ==========================================
         // ★ ২. NATIVE OFFLINE SCREEN 
         // ==========================================
@@ -261,6 +284,10 @@ public class MainActivity extends BridgeActivity {
         offlineLayout.setBackgroundColor(Color.parseColor("#F8F9FA"));
         offlineLayout.setElevation(110f);
         offlineLayout.setVisibility(View.GONE);
+        
+        // ★ MAGIC FIX: অফলাইন স্ক্রিনেও টাচ ব্লক করা হলো
+        offlineLayout.setClickable(true);
+        offlineLayout.setFocusable(true);
 
         LinearLayout centerBox = new LinearLayout(this);
         centerBox.setOrientation(LinearLayout.VERTICAL);
@@ -281,14 +308,15 @@ public class MainActivity extends BridgeActivity {
         offlineTitleText.setText("No Internet Connection");
         offlineTitleText.setTextSize(22f);
         offlineTitleText.setTextColor(Color.parseColor("#1e293b"));
-        offlineTitleText.setTypeface(null, Typeface.BOLD);
+        if (poppinsBold != null) offlineTitleText.setTypeface(poppinsBold);
+        else offlineTitleText.setTypeface(null, Typeface.BOLD);
+        
         offlineTitleText.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams tParamsOffline = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tParamsOffline.setMargins(0, 20, 0, 50);
         centerBox.addView(offlineTitleText, tParamsOffline);
 
-        // ★ Smooth Rounded Button for Offline Screen
         Button retryBtn = new Button(this);
         GradientDrawable retryShape = new GradientDrawable();
         retryShape.setShape(GradientDrawable.RECTANGLE);
@@ -299,6 +327,9 @@ public class MainActivity extends BridgeActivity {
         retryBtn.setText("Try Again");
         retryBtn.setTextColor(Color.WHITE);
         retryBtn.setAllCaps(false);
+        if (poppinsBold != null) retryBtn.setTypeface(poppinsBold);
+        else retryBtn.setTypeface(null, Typeface.BOLD);
+        
         retryBtn.setPadding(80, 20, 80, 20);
         retryBtn.setOnClickListener(v -> {
             retryBtn.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction(() -> {

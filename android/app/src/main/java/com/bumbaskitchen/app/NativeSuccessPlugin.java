@@ -11,7 +11,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.media.MediaPlayer;
 import android.view.View;
-import android.animation.ValueAnimator; // ★ সাইজ ছোট-বড় করার অ্যানিমেশনের জন্য
+import android.animation.ValueAnimator; 
 import android.os.Handler;
 import android.os.Looper;
 import android.view.animation.DecelerateInterpolator;
@@ -65,14 +65,14 @@ public class NativeSuccessPlugin extends Plugin {
             overlayLayout.addView(wrapperBox, boxParams);
 
             // =====================================
-            // STAGE 0: Lottie Animation (প্রথমে বিশাল বড় থাকবে)
+            // STAGE 0: Lottie Animation (প্রথমে বিশাল বড় থাকবে)
             // =====================================
             LottieAnimationView successLottie = new LottieAnimationView(getContext());
             successLottie.setAnimation(R.raw.success_anim);
             successLottie.setRepeatCount(0); 
             successLottie.playAnimation();
             
-            // ৮৮ ফ্রেম থেকে লুপ হওয়ার লজিক
+            // ★ ৯৫ ফ্রেম থেকে লুপ হওয়ার লজিক
             successLottie.addAnimatorListener(new Animator.AnimatorListener() {
                 @Override public void onAnimationStart(Animator animation) {}
                 @Override public void onAnimationCancel(Animator animation) {}
@@ -80,16 +80,16 @@ public class NativeSuccessPlugin extends Plugin {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     successLottie.removeAllAnimatorListeners(); 
-                    successLottie.setMinFrame(88); 
+                    successLottie.setMinFrame(95); // ★ 95 ফ্রেম থেকে শুরু
                     successLottie.setRepeatCount(LottieDrawable.INFINITE); 
                     successLottie.playAnimation();
                 }
             });
 
-            // ★ যখন একা থাকবে, তখনকার বিশাল সাইজ (240dp)
-            int initialSize = (int) (240 * density); 
-            // ★ যখন ডিটেইলস আসবে, তখনকার সাইজ (135dp - আগের 110dp এর থেকে বড়)
-            int finalSize = (int) (135 * density);   
+            // ★ যখন একা থাকবে, তখনকার বিশাল সাইজ (300dp)
+            int initialSize = (int) (300 * density); 
+            // ★ যখন ডিটেইলস আসবে, তখনকার সাইজ (150dp)
+            int finalSize = (int) (150 * density);   
 
             LinearLayout.LayoutParams lottieParams = new LinearLayout.LayoutParams(initialSize, initialSize);
             lottieParams.bottomMargin = 0; // প্রথমে মার্জিন জিরো
@@ -210,11 +210,11 @@ public class NativeSuccessPlugin extends Plugin {
                 ValueAnimator sizeAnimator = ValueAnimator.ofFloat(0f, 1f);
                 sizeAnimator.addUpdateListener(animation -> {
                     float fraction = animation.getAnimatedFraction();
-                    // 240dp থেকে 135dp তে আসবে
+                    // 300dp থেকে 150dp তে আসবে
                     int currentSize = (int) (initialSize - ((initialSize - finalSize) * fraction));
                     lottieParams.width = currentSize;
                     lottieParams.height = currentSize;
-                    // মার্জিন 0 থেকে 15dp তে বাড়বে
+                    // মার্জিন 0 থেকে 15dp তে বাড়বে
                     lottieParams.bottomMargin = (int) (15 * density * fraction); 
                     successLottie.requestLayout();
                 });

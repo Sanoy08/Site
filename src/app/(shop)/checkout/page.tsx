@@ -207,7 +207,9 @@ export default function CheckoutPage() {
         clearCart();
         
         const orderNum = data.orderId || '0000'; 
-        const earnedCoins = Math.floor((finalTotal * earnRate) / 100);
+        // ডেলিভারি ফি বাদ দিয়ে শুধু খাবারের দামের ওপর কয়েন হিসাব হবে
+const eligibleAmountForCoins = Math.max(0, totalPrice - couponDiscount);
+const earnedCoins = Math.floor((eligibleAmountForCoins * earnRate) / 100);
 
         // ★ DIRECT NATIVE TRIGGER (0 Delay)
         if (Capacitor.isNativePlatform()) {

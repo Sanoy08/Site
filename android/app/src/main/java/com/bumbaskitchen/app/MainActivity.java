@@ -46,6 +46,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppPlugin.class);
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
+        registerPlugin(NativeSuccessPlugin.class);
 
         super.onCreate(savedInstanceState);
 

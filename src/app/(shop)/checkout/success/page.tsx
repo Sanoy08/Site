@@ -16,6 +16,10 @@ import {
 import { useEffect, useState, Suspense } from 'react';
 import { formatPrice } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+// ★ Capacitor Plugin Register
+const NativeSuccess = registerPlugin<any>('NativeSuccess');
 
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
@@ -26,12 +30,10 @@ function OrderSuccessContent() {
   const amount = searchParams.get('amount') || '0';
 
   const [animationStage, setAnimationStage] = useState(0);
-  
-  // Wallet states
-  const [earnRate, setEarnRate] = useState(2); // Default Bronze Rate
-  const [isWalletLoading, setIsWalletLoading] = useState(true); // ★ নতুন লোডিং স্টেট
+  const [earnRate, setEarnRate] = useState(2); 
+  const [isWalletLoading, setIsWalletLoading] = useState(true); 
+  const [isNativeShowing, setIsNativeShowing] = useState(false); // ★ Native UI স্টেট
 
-  // ★★★ SECURE WALLET FETCHING LOGIC ★★★
   useEffect(() => {
       const getWalletData = async () => {
           try {
@@ -39,59 +41,79 @@ function OrderSuccessContent() {
               const data = await res.json();
               if (data.success && data.wallet) {
                   const totalSpent = data.wallet.totalSpent || 0;
-                  
                   if (totalSpent >= 15000) {
-                      setEarnRate(6); // Gold Tier
+                      setEarnRate(6);
                   } else if (totalSpent >= 5000) {
-                      setEarnRate(4); // Silver Tier
+                      setEarnRate(4);
                   } else {
-                      setEarnRate(2); // Bronze Tier
+                      setEarnRate(2);
                   }
               }
           } catch (e) {
               console.error("Failed to fetch wallet info");
           } finally {
-              setIsWalletLoading(false); // ★ ফেচিং শেষ হলে লোডিং ফলস
+              setIsWalletLoading(false); 
           }
       };
       
       getWalletData();
   }, []);
 
-  // Strict Scroll Lock Logic
+  // ★★★ NATIVE OR WEB TRIGGER ★★★
   useEffect(() => {
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.height = '100%';
-      document.body.style.touchAction = 'none';
-      document.documentElement.style.overflow = 'hidden';
+      if (!isWalletLoading) {
+          const parsedAmount = parseFloat(amount) || 0;
+          const earnedCoins = Math.floor((parsedAmount * earnRate) / 100);
 
-      const audio = new Audio("/Elements/success.mp3");
-      audio.volume = 0.5;
-      audio.play().catch((e) => console.log("Audio autoplay blocked", e));
+          if (Capacitor.isNativePlatform()) {
+              // অ্যাপ হলে নেটিভ UI কল করবে
+              setIsNativeShowing(true);
+              NativeSuccess.show({
+                  orderId: orderNumber,
+                  name: name.split(' ')[0],
+                  amount: formatPrice(parsedAmount),
+                  coins: earnedCoins > 0 ? earnedCoins : 1
+              });
+          } else {
+              // ওয়েবসাইট হলে React UI ও সাউন্ড চলবে
+              document.body.style.overflow = 'hidden';
+              document.body.style.position = 'fixed';
+              document.body.style.width = '100%';
+              document.body.style.height = '100%';
+              document.body.style.touchAction = 'none';
+              document.documentElement.style.overflow = 'hidden';
 
-      const timer = setTimeout(() => {
-          setAnimationStage(1);
-      }, 1500);
+              const audio = new Audio("/Elements/success.mp3");
+              audio.volume = 0.5;
+              audio.play().catch((e) => console.log("Audio autoplay blocked", e));
 
-      return () => {
-          document.body.style.overflow = '';
-          document.body.style.position = '';
-          document.body.style.width = '';
-          document.body.style.height = '';
-          document.body.style.touchAction = '';
-          document.documentElement.style.overflow = '';
-          clearTimeout(timer);
-      };
-  }, []);
+              const timer = setTimeout(() => {
+                  setAnimationStage(1);
+              }, 1500);
+
+              return () => {
+                  document.body.style.overflow = '';
+                  document.body.style.position = '';
+                  document.body.style.width = '';
+                  document.body.style.height = '';
+                  document.body.style.touchAction = '';
+                  document.documentElement.style.overflow = '';
+                  clearTimeout(timer);
+              };
+          }
+      }
+  }, [isWalletLoading, amount, earnRate, name, orderNumber]);
 
   const parsedAmount = parseFloat(amount) || 0;
   const earnedCoins = Math.floor((parsedAmount * earnRate) / 100);
 
+  // অ্যাপের ক্ষেত্রে পেছনের রিয়্যাক্ট কোড হাইড রাখার জন্য সাদা স্ক্রিন
+  if (isNativeShowing) {
+      return <div className="fixed inset-0 z-[100] bg-white"></div>;
+  }
+
   return (
     <div className="fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden touch-none overscroll-none bg-white flex flex-col items-center justify-center p-6 font-sans">
-      
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
       <motion.div 
@@ -99,7 +121,6 @@ function OrderSuccessContent() {
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
         className="w-full max-w-[380px] relative z-10 flex flex-col pointer-events-auto"
       >
-          {/* Animated Success Tick */}
           <motion.div 
               layout
               className="relative w-24 h-24 mx-auto flex items-center justify-center shrink-0 z-20"
@@ -126,7 +147,6 @@ function OrderSuccessContent() {
               </AnimatePresence>
           </motion.div>
 
-          {/* Expanding Content */}
           <AnimatePresence mode="popLayout">
               {animationStage === 1 && (
                   <motion.div
@@ -135,7 +155,6 @@ function OrderSuccessContent() {
                       transition={{ duration: 0.5, delay: 0.2, staggerChildren: 0.1 }}
                       className="flex flex-col gap-6 shrink-0"
                   >
-                      {/* Text Header */}
                       <div className="text-center">
                           <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-1.5">
                               Order Placed!
@@ -145,7 +164,6 @@ function OrderSuccessContent() {
                           </p>
                       </div>
 
-                      {/* Receipt & Order ID */}
                       <div className="bg-gray-50/80 rounded-2xl p-4.5 border border-gray-200/60 border-dashed relative">
                           <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full border-r border-gray-200/60 border-dashed"></div>
                           <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full border-l border-gray-200/60 border-dashed"></div>
@@ -164,8 +182,6 @@ function OrderSuccessContent() {
                           </div>
                       </div>
 
-                      {/* Coins Earned Section */}
-                      {/* ★ এখানে isWalletLoading চেক করা হয়েছে */}
                       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 p-3.5 shadow-sm">
                           <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-400/20 rounded-full blur-2xl"></div>
                           <div className="flex items-center justify-between relative z-10">
@@ -194,7 +210,6 @@ function OrderSuccessContent() {
                           </div>
                       </div>
 
-                      {/* Tracker Alert */}
                       <div className="bg-blue-50/60 border border-blue-100/80 rounded-2xl p-3.5 flex items-center gap-3.5">
                           <div className="bg-white p-2 rounded-full shadow-sm text-blue-500 shrink-0">
                               <Bell className="h-4 w-4 animate-bounce" />
@@ -204,7 +219,6 @@ function OrderSuccessContent() {
                           </p>
                       </div>
 
-                      {/* Buttons */}
                       <div className="flex flex-col gap-2.5 mt-2">
                           <Button 
                               onClick={() => router.push('/account/orders')}

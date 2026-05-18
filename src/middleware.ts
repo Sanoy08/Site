@@ -8,7 +8,7 @@ const secretStr = process.env.JWT_SECRET;
 if (!secretStr) throw new Error('JWT_SECRET is missing!');
 const JWT_SECRET = new TextEncoder().encode(secretStr);
 
-// 🌟 যেসব পেজে লগইন ছাড়াই ঢোকা যাবে (Public Routes)
+// 🌟 যেসব পেজে লগইন ছাড়াই ঢোকা যাবে (Public Routes)
 const publicPaths = ['/login', '/register', '/signup', '/web'];
 
 export async function middleware(request: NextRequest) {
@@ -35,6 +35,23 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAdminDomain = hostname.startsWith('admin.');
+
+  // ==========================================
+  // ★ NATIVE APP GUARD: ব্রাউজার ব্লক লজিক ★
+  // ==========================================
+  const userAgent = request.headers.get('user-agent') || '';
+  const isNativeApp = userAgent.includes('BumbasKitchenApp-Native');
+
+  // যদি অ্যাডমিন ডোমেইন না হয়, এবং অ্যাপ থেকে না ঢোকে, এবং সে যদি অলরেডি /web পেজে না থাকে
+  if (!isAdminDomain && !isNativeApp && path !== '/web') {
+      // সোজা /web (ডাউনলোড পেজে) রিডাইরেক্ট করে দাও
+      const webUrl = new URL('/web', request.url);
+      return NextResponse.redirect(webUrl);
+  }
+
+  // ==========================================
+  // ★ AUTHENTICATION LOGIC
+  // ==========================================
   const token = request.cookies.get('auth_token')?.value;
   let userRole = '';
   
@@ -43,7 +60,7 @@ export async function middleware(request: NextRequest) {
       const { payload } = await jwtVerify(token, JWT_SECRET);
       userRole = (payload.role as string) || 'customer';
     } catch (e) {
-      // টোকেন এক্সপায়ার হলে কুকি ক্লিয়ার করে দাও
+      // টোকেন এক্সপায়ার হলে কুকি ক্লিয়ার করে দাও
       const response = NextResponse.next();
       response.cookies.delete('auth_token');
       return response;
@@ -99,6 +116,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // ★ matcher থেকে 'api' বাদ দেওয়া হয়েছে, যাতে API রুটেও মিডলওয়্যার রান করে
+  // ★ matcher থেকে 'api' বাদ দেওয়া হয়েছে, যাতে API রুটেও মিডলওয়্যার রান করে
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

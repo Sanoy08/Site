@@ -16,13 +16,14 @@ const config: CapacitorConfig = {
   },
   android: {
     zoomEnabled: false,
-    backgroundColor: "#F8F9FA"
+    backgroundColor: "#F8F9FA",
+    appendUserAgent: "BumbasKitchenApp-Native" // ★ ম্যাজিক: এই সিক্রেট সিগন্যালটা অ্যাড করা হলো
   },
   plugins: {
     Keyboard: {
       resize: KeyboardResize.Body,
       style: KeyboardStyle.Dark,
-      resizeOnFullScreen: false, // ★ false করা হলো যাতে লাফিয়ে না ওঠে
+      resizeOnFullScreen: false, // ★ false করা হলো যাতে লাফিয়ে না ওঠে
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]

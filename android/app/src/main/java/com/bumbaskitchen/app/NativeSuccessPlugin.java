@@ -11,7 +11,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.media.MediaPlayer;
 import android.view.View;
-import android.animation.LayoutTransition; // ★ ফ্রেমার মোশনের মতো লেআউট অ্যানিমেশনের জন্য
+import android.animation.ValueAnimator; // ★ সাইজ ছোট-বড় করার অ্যানিমেশনের জন্য
 import android.os.Handler;
 import android.os.Looper;
 import android.view.animation.DecelerateInterpolator;
@@ -53,24 +53,19 @@ public class NativeSuccessPlugin extends Plugin {
             overlayLayout.setBackgroundColor(Color.WHITE);
             overlayLayout.setElevation(200f);
 
-            // ★ Wrapper: Framer Motion-এর 'layout' প্রপের কাজ করবে
+            // Wrapper Box
             LinearLayout wrapperBox = new LinearLayout(getContext());
             wrapperBox.setOrientation(LinearLayout.VERTICAL);
             wrapperBox.setGravity(Gravity.CENTER_HORIZONTAL);
             wrapperBox.setPadding((int)(30*density), 0, (int)(30*density), 0);
             
-            // LayoutTransition চালু করা হলো (যাতে আইটেম ভিজিবল হলে স্মুথলি জায়গা করে নেয়)
-            LayoutTransition transition = new LayoutTransition();
-            transition.enableTransitionType(LayoutTransition.CHANGING);
-            wrapperBox.setLayoutTransition(transition);
-
             RelativeLayout.LayoutParams boxParams = new RelativeLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             boxParams.addRule(RelativeLayout.CENTER_IN_PARENT);
             overlayLayout.addView(wrapperBox, boxParams);
 
             // =====================================
-            // STAGE 0: শুধুমাত্র Lottie Animation
+            // STAGE 0: Lottie Animation (প্রথমে বিশাল বড় থাকবে)
             // =====================================
             LottieAnimationView successLottie = new LottieAnimationView(getContext());
             successLottie.setAnimation(R.raw.success_anim);
@@ -91,9 +86,13 @@ public class NativeSuccessPlugin extends Plugin {
                 }
             });
 
-            int lSize = (int) (110 * density);
-            LinearLayout.LayoutParams lottieParams = new LinearLayout.LayoutParams(lSize, lSize);
-            lottieParams.bottomMargin = (int) (40 * density); // প্রথমে একটু বেশি মার্জিন
+            // ★ যখন একা থাকবে, তখনকার বিশাল সাইজ (240dp)
+            int initialSize = (int) (240 * density); 
+            // ★ যখন ডিটেইলস আসবে, তখনকার সাইজ (135dp - আগের 110dp এর থেকে বড়)
+            int finalSize = (int) (135 * density);   
+
+            LinearLayout.LayoutParams lottieParams = new LinearLayout.LayoutParams(initialSize, initialSize);
+            lottieParams.bottomMargin = 0; // প্রথমে মার্জিন জিরো
             wrapperBox.addView(successLottie, lottieParams);
 
             // =====================================
@@ -102,7 +101,7 @@ public class NativeSuccessPlugin extends Plugin {
             LinearLayout contentBox = new LinearLayout(getContext());
             contentBox.setOrientation(LinearLayout.VERTICAL);
             contentBox.setGravity(Gravity.CENTER_HORIZONTAL);
-            contentBox.setVisibility(View.GONE); // ★ প্রথমে লুকানো
+            contentBox.setVisibility(View.GONE); 
 
             // Title
             TextView title = new TextView(getContext());
@@ -129,7 +128,7 @@ public class NativeSuccessPlugin extends Plugin {
             GradientDrawable detailsBg = new GradientDrawable();
             detailsBg.setColor(Color.parseColor("#F9FAFB"));
             detailsBg.setCornerRadius(40f);
-            detailsBg.setStroke(3, Color.parseColor("#F3F4F6")); // Dashed এর বদলে লাইট বর্ডার
+            detailsBg.setStroke(3, Color.parseColor("#F3F4F6"));
             detailsCard.setBackground(detailsBg);
             detailsCard.setPadding((int)(20*density), (int)(15*density), (int)(20*density), (int)(15*density));
 
@@ -200,23 +199,34 @@ public class NativeSuccessPlugin extends Plugin {
             contentBox.addView(homeBtn, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            // Wrapper-এ Content Box যোগ করা
             wrapperBox.addView(contentBox);
 
             // =====================================
-            // ★ MAGIC ANIMATION TRIGGER (1.5s Delay)
+            // ★ MAGIC SHRINK & REVEAL ANIMATION 
             // =====================================
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                // ১. Lottie-এর মার্জিন কমানো (যাতে ওপরে উঠে যায়)
-                lottieParams.bottomMargin = (int) (10 * density);
-                successLottie.setLayoutParams(lottieParams);
+                
+                // ১. Lottie কে স্মুথলি ছোট করে ওপরে পাঠানো
+                ValueAnimator sizeAnimator = ValueAnimator.ofFloat(0f, 1f);
+                sizeAnimator.addUpdateListener(animation -> {
+                    float fraction = animation.getAnimatedFraction();
+                    // 240dp থেকে 135dp তে আসবে
+                    int currentSize = (int) (initialSize - ((initialSize - finalSize) * fraction));
+                    lottieParams.width = currentSize;
+                    lottieParams.height = currentSize;
+                    // মার্জিন 0 থেকে 15dp তে বাড়বে
+                    lottieParams.bottomMargin = (int) (15 * density * fraction); 
+                    successLottie.requestLayout();
+                });
+                sizeAnimator.setDuration(600);
+                sizeAnimator.setInterpolator(new DecelerateInterpolator());
+                sizeAnimator.start();
 
-                // ২. Content Box-কে ভিজিবল করা এবং নিচে নামিয়ে রাখা
+                // ২. Content Box কে নিচ থেকে তুলে আনা
                 contentBox.setVisibility(View.VISIBLE);
                 contentBox.setAlpha(0f);
-                contentBox.setTranslationY(80f); // নিচ থেকে ওঠার জন্য
+                contentBox.setTranslationY(100f); 
 
-                // ৩. ফেড-ইন এবং স্লাইড-আপ অ্যানিমেশন
                 contentBox.animate()
                         .alpha(1f)
                         .translationY(0f)
@@ -224,7 +234,7 @@ public class NativeSuccessPlugin extends Plugin {
                         .setInterpolator(new DecelerateInterpolator())
                         .start();
 
-            }, 1500); // ঠিক ১.৫ সেকেন্ড পর ট্রিগার হবে
+            }, 1500); 
 
             // =====================================
             // BUTTON ACTIONS

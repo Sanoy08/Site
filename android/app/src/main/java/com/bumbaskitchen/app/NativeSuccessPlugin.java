@@ -10,10 +10,15 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.media.MediaPlayer;
+import android.view.View;
+import android.animation.LayoutTransition; // ★ ফ্রেমার মোশনের মতো লেআউট অ্যানিমেশনের জন্য
+import android.os.Handler;
+import android.os.Looper;
+import android.view.animation.DecelerateInterpolator;
 
 import com.airbnb.lottie.LottieAnimationView;
 import com.airbnb.lottie.LottieDrawable;
-import android.animation.Animator; // ★ অ্যানিমেশন লিসেনারের জন্য
+import android.animation.Animator;
 
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -33,6 +38,8 @@ public class NativeSuccessPlugin extends Plugin {
         int coins = call.getInt("coins", 0);
 
         getActivity().runOnUiThread(() -> {
+            float density = getContext().getResources().getDisplayMetrics().density;
+
             // সাউন্ড প্লে করা
             try {
                 mediaPlayer = MediaPlayer.create(getContext(), R.raw.success_sound);
@@ -45,98 +52,116 @@ public class NativeSuccessPlugin extends Plugin {
             overlayLayout = new RelativeLayout(getContext());
             overlayLayout.setBackgroundColor(Color.WHITE);
             overlayLayout.setElevation(200f);
-            overlayLayout.setAlpha(0f); // ফেড-ইন অ্যানিমেশনের জন্য
 
-            LinearLayout centerBox = new LinearLayout(getContext());
-            centerBox.setOrientation(LinearLayout.VERTICAL);
-            centerBox.setGravity(Gravity.CENTER_HORIZONTAL);
-            centerBox.setPadding(60, 0, 60, 0);
+            // ★ Wrapper: Framer Motion-এর 'layout' প্রপের কাজ করবে
+            LinearLayout wrapperBox = new LinearLayout(getContext());
+            wrapperBox.setOrientation(LinearLayout.VERTICAL);
+            wrapperBox.setGravity(Gravity.CENTER_HORIZONTAL);
+            wrapperBox.setPadding((int)(30*density), 0, (int)(30*density), 0);
+            
+            // LayoutTransition চালু করা হলো (যাতে আইটেম ভিজিবল হলে স্মুথলি জায়গা করে নেয়)
+            LayoutTransition transition = new LayoutTransition();
+            transition.enableTransitionType(LayoutTransition.CHANGING);
+            wrapperBox.setLayoutTransition(transition);
+
             RelativeLayout.LayoutParams boxParams = new RelativeLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             boxParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-            overlayLayout.addView(centerBox, boxParams);
+            overlayLayout.addView(wrapperBox, boxParams);
 
-            // ১. Lottie Tick Animation (With Custom Loop Logic)
+            // =====================================
+            // STAGE 0: শুধুমাত্র Lottie Animation
+            // =====================================
             LottieAnimationView successLottie = new LottieAnimationView(getContext());
             successLottie.setAnimation(R.raw.success_anim);
-            successLottie.setRepeatCount(0); // প্রথমে শুধু একবার জিরো থেকে প্লে হবে
+            successLottie.setRepeatCount(0); 
             successLottie.playAnimation();
             
-            // ★ লুপ লজিক: প্রথমবার শেষ হলে ৮৮ ফ্রেম থেকে ইনফিনিট লুপ শুরু হবে
+            // ৮৮ ফ্রেম থেকে লুপ হওয়ার লজিক
             successLottie.addAnimatorListener(new Animator.AnimatorListener() {
                 @Override public void onAnimationStart(Animator animation) {}
                 @Override public void onAnimationCancel(Animator animation) {}
                 @Override public void onAnimationRepeat(Animator animation) {}
-                
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    successLottie.removeAllAnimatorListeners(); // লিসেনার রিমুভ যাতে বারবার ট্রিগার না হয়
-                    successLottie.setMinFrame(88); // ৮৮ ফ্রেম থেকে শুরু হবে
-                    successLottie.setRepeatCount(LottieDrawable.INFINITE); // ইনফিনিট লুপ
+                    successLottie.removeAllAnimatorListeners(); 
+                    successLottie.setMinFrame(88); 
+                    successLottie.setRepeatCount(LottieDrawable.INFINITE); 
                     successLottie.playAnimation();
                 }
             });
 
-            int lSize = (int) (140 * getContext().getResources().getDisplayMetrics().density);
-            centerBox.addView(successLottie, new LinearLayout.LayoutParams(lSize, lSize));
+            int lSize = (int) (110 * density);
+            LinearLayout.LayoutParams lottieParams = new LinearLayout.LayoutParams(lSize, lSize);
+            lottieParams.bottomMargin = (int) (40 * density); // প্রথমে একটু বেশি মার্জিন
+            wrapperBox.addView(successLottie, lottieParams);
 
-            // ২. Title Text
+            // =====================================
+            // STAGE 1: Content Box (প্রথমে হাইড করা থাকবে)
+            // =====================================
+            LinearLayout contentBox = new LinearLayout(getContext());
+            contentBox.setOrientation(LinearLayout.VERTICAL);
+            contentBox.setGravity(Gravity.CENTER_HORIZONTAL);
+            contentBox.setVisibility(View.GONE); // ★ প্রথমে লুকানো
+
+            // Title
             TextView title = new TextView(getContext());
             title.setText("Order Placed!");
-            title.setTextSize(28f);
+            title.setTextSize(26f);
             title.setTextColor(Color.parseColor("#111827"));
             title.setTypeface(null, Typeface.BOLD);
-            centerBox.addView(title);
+            contentBox.addView(title);
 
+            // Subtitle
             TextView subtitle = new TextView(getContext());
             subtitle.setText("Awesome, " + name + "! Your food is getting ready.");
-            subtitle.setTextSize(15f);
+            subtitle.setTextSize(14f);
             subtitle.setTextColor(Color.parseColor("#6B7280"));
             subtitle.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            subParams.setMargins(0, 10, 0, 60);
-            centerBox.addView(subtitle, subParams);
+            subParams.setMargins(0, (int)(8*density), 0, (int)(25*density));
+            contentBox.addView(subtitle, subParams);
 
-            // ৩. Order Details Card (Gray)
+            // Order Details Card
             LinearLayout detailsCard = new LinearLayout(getContext());
             detailsCard.setOrientation(LinearLayout.VERTICAL);
             GradientDrawable detailsBg = new GradientDrawable();
             detailsBg.setColor(Color.parseColor("#F9FAFB"));
-            detailsBg.setCornerRadius(30f);
-            detailsBg.setStroke(2, Color.parseColor("#E5E7EB"));
+            detailsBg.setCornerRadius(40f);
+            detailsBg.setStroke(3, Color.parseColor("#F3F4F6")); // Dashed এর বদলে লাইট বর্ডার
             detailsCard.setBackground(detailsBg);
-            detailsCard.setPadding(40, 40, 40, 40);
+            detailsCard.setPadding((int)(20*density), (int)(15*density), (int)(20*density), (int)(15*density));
 
             TextView idText = new TextView(getContext());
             idText.setText("ORDER ID: #" + orderId);
-            idText.setTextColor(Color.parseColor("#6B7280"));
+            idText.setTextColor(Color.parseColor("#9CA3AF"));
             idText.setTypeface(null, Typeface.BOLD);
-            idText.setTextSize(12f);
+            idText.setTextSize(11f);
             detailsCard.addView(idText);
 
             TextView amtText = new TextView(getContext());
-            amtText.setText("AMOUNT PAID: " + amount);
+            amtText.setText("Amount: " + amount);
             amtText.setTextColor(Color.parseColor("#6a9c27"));
             amtText.setTypeface(null, Typeface.BOLD);
-            amtText.setTextSize(18f);
-            amtText.setPadding(0, 10, 0, 0);
+            amtText.setTextSize(16f);
+            amtText.setPadding(0, (int)(5*density), 0, 0);
             detailsCard.addView(amtText);
 
-            centerBox.addView(detailsCard, new LinearLayout.LayoutParams(
+            contentBox.addView(detailsCard, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            // ৪. Coins Earned Card (Yellow)
+            // Coins Earned Card
             LinearLayout coinsCard = new LinearLayout(getContext());
             GradientDrawable coinsBg = new GradientDrawable();
             coinsBg.setColor(Color.parseColor("#FFFBEB"));
-            coinsBg.setCornerRadius(30f);
-            coinsBg.setStroke(2, Color.parseColor("#FEF3C7"));
+            coinsBg.setCornerRadius(40f);
+            coinsBg.setStroke(3, Color.parseColor("#FEF3C7"));
             coinsCard.setBackground(coinsBg);
-            coinsCard.setPadding(40, 30, 40, 30);
+            coinsCard.setPadding((int)(20*density), (int)(15*density), (int)(20*density), (int)(15*density));
             LinearLayout.LayoutParams cParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            cParams.setMargins(0, 20, 0, 20);
+            cParams.setMargins(0, (int)(15*density), 0, (int)(25*density));
             
             TextView coinsTitle = new TextView(getContext());
             coinsTitle.setText("Coins on the way!");
@@ -147,36 +172,62 @@ public class NativeSuccessPlugin extends Plugin {
             TextView coinsAmt = new TextView(getContext());
             coinsAmt.setText("+" + coins);
             coinsAmt.setTextColor(Color.parseColor("#D97706"));
-            coinsAmt.setTextSize(18f);
+            coinsAmt.setTextSize(16f);
             coinsAmt.setTypeface(null, Typeface.BOLD);
             coinsCard.addView(coinsAmt);
-            centerBox.addView(coinsCard, cParams);
+            contentBox.addView(coinsCard, cParams);
 
-            // ৫. Buttons
+            // Buttons
             Button viewBtn = new Button(getContext());
             GradientDrawable btnBg = new GradientDrawable();
             btnBg.setColor(Color.parseColor("#6a9c27"));
-            btnBg.setCornerRadius(30f);
+            btnBg.setCornerRadius(40f);
             viewBtn.setBackground(btnBg);
             viewBtn.setText("View Order");
             viewBtn.setTextColor(Color.WHITE);
             viewBtn.setAllCaps(false);
-            viewBtn.setElevation(10f);
+            viewBtn.setElevation(8f);
             LinearLayout.LayoutParams vParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, (int)(55 * getContext().getResources().getDisplayMetrics().density));
-            vParams.setMargins(0, 30, 0, 15);
-            centerBox.addView(viewBtn, vParams);
+                    ViewGroup.LayoutParams.MATCH_PARENT, (int)(55 * density));
+            vParams.setMargins(0, 0, 0, (int)(10*density));
+            contentBox.addView(viewBtn, vParams);
 
             Button homeBtn = new Button(getContext());
             homeBtn.setBackgroundColor(Color.TRANSPARENT);
             homeBtn.setText("Back to Home");
             homeBtn.setTextColor(Color.parseColor("#6B7280"));
             homeBtn.setAllCaps(false);
-            centerBox.addView(homeBtn, new LinearLayout.LayoutParams(
+            contentBox.addView(homeBtn, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+            // Wrapper-এ Content Box যোগ করা
+            wrapperBox.addView(contentBox);
+
             // =====================================
-            // ★ BUTTON ACTIONS (Route Webview)
+            // ★ MAGIC ANIMATION TRIGGER (1.5s Delay)
+            // =====================================
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                // ১. Lottie-এর মার্জিন কমানো (যাতে ওপরে উঠে যায়)
+                lottieParams.bottomMargin = (int) (10 * density);
+                successLottie.setLayoutParams(lottieParams);
+
+                // ২. Content Box-কে ভিজিবল করা এবং নিচে নামিয়ে রাখা
+                contentBox.setVisibility(View.VISIBLE);
+                contentBox.setAlpha(0f);
+                contentBox.setTranslationY(80f); // নিচ থেকে ওঠার জন্য
+
+                // ৩. ফেড-ইন এবং স্লাইড-আপ অ্যানিমেশন
+                contentBox.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(600)
+                        .setInterpolator(new DecelerateInterpolator())
+                        .start();
+
+            }, 1500); // ঠিক ১.৫ সেকেন্ড পর ট্রিগার হবে
+
+            // =====================================
+            // BUTTON ACTIONS
             // =====================================
             viewBtn.setOnClickListener(v -> {
                 getBridge().getWebView().evaluateJavascript("window.location.href='/account/orders';", null);
@@ -188,10 +239,8 @@ public class NativeSuccessPlugin extends Plugin {
                 hideOverlay();
             });
 
-            // 화면ે যোগ করা এবং অ্যানিমেশন
             getActivity().addContentView(overlayLayout, new ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            overlayLayout.animate().alpha(1f).setDuration(400).start();
         });
 
         call.resolve();

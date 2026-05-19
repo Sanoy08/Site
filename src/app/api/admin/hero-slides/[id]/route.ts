@@ -5,7 +5,8 @@ import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { v2 as cloudinary } from 'cloudinary';
 import { revalidatePath } from 'next/cache';
-import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { verifyAdmin } from '@/lib/auth-utils'; 
+import { bumpHomeVersion } from '@/lib/version'; // ★ ইম্পোর্ট করা হলো
 
 cloudinary.config({
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -26,22 +27,18 @@ function extractPublicId(imageUrl: string) {
     }
 }
 
-// ★★★ ফিক্স: params এখন একটি Promise, তাই টাইপ এবং await ব্যবহার করা হয়েছে ★★★
 export async function DELETE(
     request: NextRequest, 
     props: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ২. params await করা (Next.js 15 Fix)
     const params = await props.params;
     const { id } = params;
 
-    // ৩. আইডি ভ্যালিড কি না চেক করা
     if (!ObjectId.isValid(id)) {
         return NextResponse.json({ success: false, error: 'Invalid ID format' }, { status: 400 });
     }
@@ -50,14 +47,12 @@ export async function DELETE(
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
 
-    // ৪. ডিলিট করার আগে ডেটা খুঁজে বের করা (ইমেজ ডিলিট করার জন্য)
     const slideToDelete = await collection.findOne({ _id: new ObjectId(id) });
     
     if (!slideToDelete) {
         return NextResponse.json({ success: false, error: 'Slide not found' }, { status: 404 });
     }
 
-    // ৫. Cloudinary থেকে ইমেজ ডিলিট করা
     if (slideToDelete.imageUrl) {
         const publicId = extractPublicId(slideToDelete.imageUrl);
         if (publicId) {
@@ -69,10 +64,11 @@ export async function DELETE(
         }
     }
 
-    // ৬. ডাটাবেস থেকে ডিলিট করা
     await collection.deleteOne({ _id: new ObjectId(id) });
 
-    // ৭. ক্যাশ রিভ্যালিডেট
+    // ★ ভার্সন আপডেট 
+    await bumpHomeVersion();
+
     revalidatePath('/');
 
     return NextResponse.json({ success: true, message: 'Slide deleted successfully' });

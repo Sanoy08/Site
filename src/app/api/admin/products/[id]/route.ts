@@ -6,7 +6,8 @@ import { ObjectId } from 'mongodb';
 import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher';
 import { sendNotificationToAllUsers } from '@/lib/notification';
-import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { verifyAdmin } from '@/lib/auth-utils'; 
+import { bumpHomeVersion } from '@/lib/version'; // ★ ইম্পোর্ট করা হলো
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
@@ -16,17 +17,14 @@ export async function PUT(
     props: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ২. params await করা (Next.js 15 Fix)
     const params = await props.params;
     const { id } = params;
     const body = await request.json();
     
-    // ইমেজ অ্যারে ঠিক করা
     const finalImages = Array.isArray(body.imageUrls) ? body.imageUrls : (body.imageUrls ? [body.imageUrls] : []);
 
     const updateData = {
@@ -47,26 +45,25 @@ export async function PUT(
       { $set: updateData }
     );
 
-    // ৩. ক্যাশ রিফ্রেশ
+    // ★ ডেটা আপডেট হলো, তাই ভার্সন বাড়ানো হলো
+    await bumpHomeVersion();
+
     revalidatePath('/menus');
     revalidatePath('/');
 
-    // ৪. রিয়েল-টাইম আপডেট (লাইভ ইউজারদের জন্য)
     await pusherServer.trigger('menu-updates', 'product-changed', {
         message: 'Menu updated',
         type: 'update'
     });
 
-    // ★ ৫. "Juicy" পুশ নোটিফিকেশন পাঠানো (সবার কাছে) ★
     try {
         const notificationImage = finalImages.length > 0 ? finalImages[0] : "";
-        
         await sendNotificationToAllUsers(
             client,
-            "✨ Taste Update! 👨‍🍳", // Juicy Title
-            `${body.name} just got refreshed! Check out the new details in our menu. 🍛`, // Juicy Body
+            "✨ Taste Update! 👨‍🍳", 
+            `${body.name} just got refreshed! Check out the new details in our menu. 🍛`, 
             notificationImage,
-            '/menus' // ক্লিক করলে মেনু পেজে যাবে
+            '/menus' 
         );
     } catch (notifError) {
         console.error("Failed to send update notification:", notifError);
@@ -83,12 +80,10 @@ export async function DELETE(
     props: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ২. params await করা
     const params = await props.params;
     const { id } = params;
 
@@ -97,10 +92,12 @@ export async function DELETE(
 
     await db.collection(COLLECTION_NAME).deleteOne({ _id: new ObjectId(id) });
 
+    // ★ ডেটা ডিলিট হলো, তাই ভার্সন বাড়ানো হলো
+    await bumpHomeVersion();
+
     revalidatePath('/menus');
     revalidatePath('/');
 
-    // রিয়েল-টাইম ডিলিট নোটিফিকেশন
     await pusherServer.trigger('menu-updates', 'product-changed', {
         message: 'Product removed from menu',
         type: 'delete'

@@ -14,46 +14,79 @@ export type User = {
   phone?: string;
   address?: string;
   picture?: string;
+  wallet?: any;
 };
+
+const CACHE_KEY = 'bumbas_user_cache';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
 
-  // 1. Check Session on Mount
+  // 1. Check Session and Hydrate Cache
   useEffect(() => {
+    let isMounted = true;
+
     const checkSession = async () => {
+      // ★ ম্যাজিক ১: লোকাল ক্যাশ থেকে ইনস্ট্যান্ট লোড (Zero Delay)
+      const cachedData = localStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        try {
+          setUser(JSON.parse(cachedData));
+          setIsLoading(false); // সাথে সাথে লোডিং বন্ধ!
+        } catch (e) {
+          localStorage.removeItem(CACHE_KEY);
+        }
+      }
+
       try {
-        // ★★★ FIX: caching বন্ধ করা হলো
+        // ★ ম্যাজিক ২: ব্যাকগ্রাউন্ডে ফ্রেশ ডেটা আনা (Silent Revalidation)
         const res = await fetch('/api/auth/me', {
-            cache: 'no-store', // সার্ভার থেকে ফ্রেশ ডাটা আনবে
+            cache: 'no-store', 
             headers: {
                 'Pragma': 'no-cache',
                 'Cache-Control': 'no-cache'
             }
         });
+        
         const data = await res.json();
         
         if (data.success && data.user) {
-          setUser(data.user);
+          if (isMounted) {
+            setUser(data.user);
+            // ক্যাশ আপডেট করে দেওয়া হলো
+            localStorage.setItem(CACHE_KEY, JSON.stringify(data.user));
+          }
         } else {
-          setUser(null);
+          // সেশন এক্সপায়ার হয়ে গেলে বা সার্ভার ব্লক করলে
+          if (isMounted) {
+            setUser(null);
+            localStorage.removeItem(CACHE_KEY);
+          }
         }
       } catch (error) {
-        setUser(null);
+        // ★ ম্যাজিক ৩: অফলাইন সাপোর্ট
+        // নেটওয়ার্ক না থাকলে ক্যাশ ডেটাই থেকে যাবে, ইউজার লগ-আউট হবে না!
+        if (!cachedData && isMounted) {
+            setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     checkSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, []); 
 
   // 2. Login Action
-  const login = useCallback((userData: User) => {
+  // login পেজ থেকে data.user এবং data.token দুটোই পাঠানো হয়, তাই প্যারামিটার আপডেট করা হলো
+  const login = useCallback((userData: User, token?: string) => {
     setUser(userData);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(userData)); // লগইন করার সাথে সাথে ক্যাশ সেভ
   }, []);
 
   // 3. Logout Action
@@ -65,12 +98,12 @@ export function useAuth() {
           cache: 'no-store' 
       });
 
-      // Clear local state
+      // Clear local state and cache
       setUser(null);
+      localStorage.removeItem(CACHE_KEY);
       toast.success("Logged out successfully");
       
-      // Force Hard Reload to clear any JS memory
-      // router.push দিয়ে অনেক সময় স্টেট থেকে যায়
+      // Force Hard Reload
       window.location.href = '/login'; 
       
     } catch (e) {

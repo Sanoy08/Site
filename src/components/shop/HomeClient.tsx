@@ -206,18 +206,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
               }
           }
 
-          // ২. ব্যাকগ্রাউন্ডে সাইলেন্টলি চেক করা (Timestamp + no-store diye cache block kora holo)
+          // ২. ব্যাকগ্রাউন্ডে সাইলেন্টলি চেক করা ভার্সন আপডেট হয়েছে কি না
           try {
-              const res = await fetch(`/api/home-data?v=${cachedVersion}&t=${Date.now()}`, {
-                  cache: 'no-store',
-                  headers: {
-                      'Pragma': 'no-cache',
-                      'Cache-Control': 'no-cache'
-                  }
-              });
+              const res = await fetch(`/api/home-data?v=${cachedVersion}`);
               const data = await res.json();
 
-              // ৩. যদি ভার্সন আলাদা হয়, তাহলে UI ও Cache আপডেট করা
+              // ৩. যদি ভার্সন আলাদা হয় (upToDate: false), তাহলে UI ও Cache আপডেট করা
               if (data && !data.upToDate && data.data) {
                   setHomeData(data.data);
                   localStorage.setItem('bumbas_home_data', JSON.stringify(data.data));

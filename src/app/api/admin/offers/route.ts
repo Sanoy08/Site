@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { revalidatePath } from 'next/cache';
 import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { bumpHomeVersion } from '@/lib/version';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'offers';
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
     if (result.acknowledged) {
       // ★ ক্যাশ ক্লিয়ার
       revalidatePath('/');
+      await bumpHomeVersion();
 
       return NextResponse.json({ success: true, message: 'Offer created', offerId: result.insertedId }, { status: 201 });
     } else {

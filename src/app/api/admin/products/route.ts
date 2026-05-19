@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher'; 
 import { sendNotificationToAllUsers } from '@/lib/notification'; 
 import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { bumpHomeVersion } from '@/lib/version';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
       // ১. সার্ভার সাইড ক্যাশ রিফ্রেশ
       revalidatePath('/menus');
       revalidatePath('/');
+      await bumpHomeVersion();
 
       // ২. ক্লায়েন্ট সাইড রিয়েল-টাইম আপডেট (Pusher)
       await pusherServer.trigger('menu-updates', 'product-changed', {

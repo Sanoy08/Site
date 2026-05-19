@@ -31,9 +31,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 
-export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; };
+export type HeroSlide = { id: string; imageUrl: string; clickUrl: string; order?: number; };
 export type Offer = { id: string; title: string; description: string; price: number; imageUrl: string; };
-export type SliderImage = { id: string; imageUrl: string; clickUrl: string; }; 
+export type SliderImage = { id: string; imageUrl: string; clickUrl: string; order?: number; }; 
 
 type HomeClientProps = { 
   heroSlides: HeroSlide[]; 
@@ -181,6 +181,50 @@ function SwipeableCalendar({
 
 export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
   const { user, login } = useAuth();
+  
+  // ★★★ ZERO-LAG CACHE STATE ★★★
+  const [homeData, setHomeData] = useState({
+      heroSlides,
+      sliderImages,
+      offers,
+      bestsellers,
+      allProducts
+  });
+
+  // ★★★ VERSION-BASED SYNC LOGIC ★★★
+  useEffect(() => {
+      const syncHomeData = async () => {
+          // ১. প্রথমে লোকাল স্টোরেজ থেকে ইনস্ট্যান্ট লোড করা
+          const cachedData = localStorage.getItem('bumbas_home_data');
+          const cachedVersion = localStorage.getItem('bumbas_home_version') || '0';
+          
+          if (cachedData) {
+              try {
+                  setHomeData(JSON.parse(cachedData));
+              } catch (e) {
+                  localStorage.removeItem('bumbas_home_data');
+              }
+          }
+
+          // ২. ব্যাকগ্রাউন্ডে সাইলেন্টলি চেক করা ভার্সন আপডেট হয়েছে কি না
+          try {
+              const res = await fetch(`/api/home-data?v=${cachedVersion}`);
+              const data = await res.json();
+
+              // ৩. যদি ভার্সন আলাদা হয় (upToDate: false), তাহলে UI ও Cache আপডেট করা
+              if (data && !data.upToDate && data.data) {
+                  setHomeData(data.data);
+                  localStorage.setItem('bumbas_home_data', JSON.stringify(data.data));
+                  localStorage.setItem('bumbas_home_version', data.version.toString());
+              }
+          } catch (e) {
+              console.error("Home sync failed", e);
+          }
+      };
+
+      syncHomeData();
+  }, []);
+
   const [showDatePopup, setShowDatePopup] = useState(false);
   const [dob, setDob] = useState("");
   const [anniversary, setAnniversary] = useState("");
@@ -208,7 +252,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
   const [bestsellersCurrent, setBestsellersCurrent] = useState(0)
   const [bestsellersCount, setBestsellersCount] = useState(0)
   
-  const dailySpecial = allProducts.find(p => p.isDailySpecial);
+  // ★ Updated to use homeData
+  const dailySpecial = homeData.allProducts?.find((p: any) => p.isDailySpecial);
 
   const useCarouselEffect = (api: CarouselApi | undefined, setCount: (c: number) => void, setCurrent: (c: number) => void) => {
     useEffect(() => {
@@ -285,11 +330,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       
       {/* 1. Hero Section */}
       <section className="relative -mt-20 md:-mt-24 w-full">
-        {heroSlides.length > 0 ? (
+        {homeData.heroSlides.length > 0 ? (
           <>
             <Carousel setApi={setHeroApi} opts={{ loop: true }} plugins={[Autoplay({ delay: 5000 })]}>
               <CarouselContent>
-                {heroSlides.map((slide) => (
+                {/* ★ Updated to use homeData */}
+                {homeData.heroSlides.map((slide: any) => (
                   <CarouselItem key={slide.id}>
                     <Link href={slide.clickUrl} className="block w-full relative">
                       <Image 
@@ -361,12 +407,13 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       </section>
 
       {/* 4. Middle Image Slider Section */}
-      {sliderImages && sliderImages.length > 0 && (
+      {homeData.sliderImages && homeData.sliderImages.length > 0 && (
         <section className="py-8 bg-background">
           <div className="container">
             <Carousel setApi={setMiddleApi} opts={{ align: "start", loop: true }} plugins={[Autoplay({ delay: 3500 })]} className="w-full">
                 <CarouselContent>
-                    {sliderImages.map((slide) => (
+                    {/* ★ Updated to use homeData */}
+                    {homeData.sliderImages.map((slide: any) => (
                     <CarouselItem key={slide.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
                         <div className="p-1">
                         <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
@@ -419,7 +466,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       )}
 
       {/* 6. Upcoming Offers */}
-      {offers.length > 0 && (
+      {homeData.offers.length > 0 && (
         <section className="py-16 bg-background">
           <div className="container">
             <div className="text-center mb-12">
@@ -428,7 +475,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             </div>
             <Carousel setApi={setOffersApi} opts={{ align: "start", loop: true }} className="w-full">
                 <CarouselContent>
-                    {offers.map((offer) => (
+                    {/* ★ Updated to use homeData */}
+                    {homeData.offers.map((offer: any) => (
                     <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
                         <div className="p-1 h-full">
                         <Card className="overflow-hidden group h-full border-none shadow-md rounded-2xl bg-card hover:shadow-xl transition-shadow">
@@ -459,11 +507,12 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
              <h2 className="text-3xl font-bold font-headline mb-2">Customer Favorites ❤️</h2>
              <p className="text-muted-foreground">The most loved dishes from our kitchen.</p>
           </div>
-          {bestsellers.length > 0 ? (
+          {homeData.bestsellers.length > 0 ? (
             <div className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
                 <Carousel setApi={setBestsellersApi} opts={{ align: "start", loop: true }} className="w-full">
                 <CarouselContent>
-                    {bestsellers.map((product) => (
+                    {/* ★ Updated to use homeData */}
+                    {homeData.bestsellers.map((product: any) => (
                     <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
                         <div className="p-1 h-full">
                             <ProductCard product={product} />

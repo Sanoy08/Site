@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { revalidatePath } from 'next/cache';
 import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { bumpHomeVersion } from '@/lib/version';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'homeSliderImages'; // নতুন কালেকশন
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
 
     if (result.acknowledged) {
       revalidatePath('/'); // হোমপেজ রিফ্রেশ হবে
+      await bumpHomeVersion();
       return NextResponse.json({ success: true, message: 'Image added successfully', slideId: result.insertedId }, { status: 201 });
     } else {
       throw new Error('Failed to add image');

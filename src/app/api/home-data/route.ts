@@ -3,6 +3,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 
+// ★ MAGIC FIX: Next.js ke cache korte nishedh kora holo
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const DB_NAME = 'BumbasKitchenDB';
 
 export async function GET(request: NextRequest) {
@@ -21,7 +25,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ upToDate: true, version: currentDbVersion });
     }
 
-    // ৩. ভার্সন না মিললে প্যারালাল ফেচিং (একসাথে সব ডেটা আনবে)
+    // ৩. ভার্সন না মিললে প্যারালাল ফেচিং
     const [heroSlides, sliderImages, offers, products] = await Promise.all([
         db.collection('heroSlides').find({}).sort({ order: 1 }).toArray(),
         db.collection('homeSliderImages').find({}).sort({ order: 1 }).toArray(),

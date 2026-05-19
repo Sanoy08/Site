@@ -40,7 +40,6 @@ import com.getcapacitor.community.fcm.FCMPlugin;
 
 public class MainActivity extends BridgeActivity {
     
-    // Onboarding Trackers
     private int currentStep = 0;
     
     @Override
@@ -53,7 +52,6 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
-        // ★ Poppins ফন্ট লোড (যদি ফন্ট ফোল্ডারে থাকে)
         Typeface poppinsBold = null;
         Typeface poppinsMedium = null;
         try {
@@ -71,12 +69,9 @@ public class MainActivity extends BridgeActivity {
             RelativeLayout onboardLayout = new RelativeLayout(this);
             onboardLayout.setBackgroundColor(Color.parseColor("#FFFFFF"));
             onboardLayout.setElevation(150f); 
-            
-            // ★ MAGIC FIX: পেছনের স্ক্রিনে টাচ যাওয়া বন্ধ করা হলো
             onboardLayout.setClickable(true);
             onboardLayout.setFocusable(true);
 
-            // Skip Button
             TextView skipBtn = new TextView(this);
             skipBtn.setText("Skip");
             skipBtn.setTextColor(Color.parseColor("#94a3b8"));
@@ -85,17 +80,14 @@ public class MainActivity extends BridgeActivity {
             else skipBtn.setTypeface(null, Typeface.BOLD);
             
             skipBtn.setPadding(40, 60, 60, 40);
-            RelativeLayout.LayoutParams skipParams = new RelativeLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            RelativeLayout.LayoutParams skipParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             skipParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
             onboardLayout.addView(skipBtn, skipParams);
 
-            // Center Content Box (Lottie + Text)
             LinearLayout centerBox = new LinearLayout(this);
             centerBox.setOrientation(LinearLayout.VERTICAL);
             centerBox.setGravity(Gravity.CENTER);
-            RelativeLayout.LayoutParams boxParams = new RelativeLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            RelativeLayout.LayoutParams boxParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             boxParams.addRule(RelativeLayout.CENTER_IN_PARENT);
             onboardLayout.addView(centerBox, boxParams);
 
@@ -111,8 +103,7 @@ public class MainActivity extends BridgeActivity {
             else titleText.setTypeface(null, Typeface.BOLD);
             
             titleText.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams tParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            LinearLayout.LayoutParams tParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             tParams.setMargins(50, 20, 50, 10);
             centerBox.addView(titleText, tParams);
 
@@ -123,37 +114,31 @@ public class MainActivity extends BridgeActivity {
             descText.setLineSpacing(0, 1.2f);
             if (poppinsMedium != null) descText.setTypeface(poppinsMedium);
             
-            LinearLayout.LayoutParams dParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            LinearLayout.LayoutParams dParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             dParams.setMargins(80, 10, 80, 80);
             centerBox.addView(descText, dParams);
 
-            // Smooth Rounded Button (Pill Shape)
             Button nextBtn = new Button(this);
             GradientDrawable btnShape = new GradientDrawable();
             btnShape.setShape(GradientDrawable.RECTANGLE);
             btnShape.setColor(Color.parseColor("#6a9c27"));
-            btnShape.setCornerRadius(100f); 
+            btnShape.setCornerRadius(100f);
             nextBtn.setBackground(btnShape);
             
             nextBtn.setTextColor(Color.WHITE);
             nextBtn.setTextSize(17f);
             if (poppinsBold != null) nextBtn.setTypeface(poppinsBold);
             else nextBtn.setTypeface(null, Typeface.BOLD);
-            
             nextBtn.setElevation(10f); 
             nextBtn.setAllCaps(false); 
             
-            RelativeLayout.LayoutParams btnParams = new RelativeLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, (int)(60 * getResources().getDisplayMetrics().density));
+            RelativeLayout.LayoutParams btnParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int)(60 * getResources().getDisplayMetrics().density));
             btnParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
             btnParams.setMargins(70, 0, 70, 100);
             onboardLayout.addView(nextBtn, btnParams);
 
-            addContentView(onboardLayout, new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            addContentView(onboardLayout, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-            // Content Update Method
             Runnable updateContent = () -> {
                 if (currentStep == 0) {
                     onboardLottie.setAnimation(R.raw.onboard_order);
@@ -176,23 +161,17 @@ public class MainActivity extends BridgeActivity {
 
             updateContent.run();
 
-            // Action: Finish Onboarding
             Runnable finishOnboarding = () -> {
                 prefs.edit().putBoolean("isFirstRun", false).apply();
                 onboardLayout.animate().alpha(0f).setDuration(400).withEndAction(() -> {
-                    if (onboardLayout.getParent() != null) {
-                        ((ViewGroup) onboardLayout.getParent()).removeView(onboardLayout);
-                    }
-                    if (bridge.getWebView() != null) {
-                        bridge.getWebView().loadUrl("https://www.bumbaskitchen.app/login");
-                    }
+                    if (onboardLayout.getParent() != null) ((ViewGroup) onboardLayout.getParent()).removeView(onboardLayout);
+                    if (bridge.getWebView() != null) bridge.getWebView().loadUrl("https://www.bumbaskitchen.app/login");
                 }).start();
             };
 
             nextBtn.setOnClickListener(v -> {
                 nextBtn.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction(() -> {
                     nextBtn.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
-                    
                     if (currentStep < 2) {
                         currentStep++;
                         centerBox.animate().alpha(0f).translationY(-20f).setDuration(200).withEndAction(() -> {
@@ -200,9 +179,7 @@ public class MainActivity extends BridgeActivity {
                             centerBox.setTranslationY(20f);
                             centerBox.animate().alpha(1f).translationY(0f).setDuration(250).start();
                         }).start();
-                    } else {
-                        finishOnboarding.run();
-                    }
+                    } else finishOnboarding.run();
                 }).start();
             });
 
@@ -215,8 +192,6 @@ public class MainActivity extends BridgeActivity {
         RelativeLayout splashLayout = new RelativeLayout(this);
         splashLayout.setBackgroundColor(Color.parseColor("#F8F9FA"));
         splashLayout.setElevation(100f); 
-        
-        // ★ MAGIC FIX: স্প্ল্যাশ স্ক্রিনেও টাচ ব্লক করা হলো
         splashLayout.setClickable(true);
         splashLayout.setFocusable(true);
         
@@ -230,8 +205,7 @@ public class MainActivity extends BridgeActivity {
         params.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
         splashLayout.addView(splashLottie, params);
 
-        addContentView(splashLayout, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        addContentView(splashLayout, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         final boolean[] isWebLoaded = {false};
         final boolean[] isSplashRemoved = {false};
@@ -240,26 +214,15 @@ public class MainActivity extends BridgeActivity {
             if (isSplashRemoved[0]) return;
             isSplashRemoved[0] = true;
             splashLottie.cancelAnimation();
-            splashLayout.animate()
-                    .alpha(0f)
-                    .setDuration(500)
-                    .withEndAction(() -> {
-                        if (splashLayout.getParent() != null) {
-                            ((ViewGroup) splashLayout.getParent()).removeView(splashLayout);
-                        }
-                    })
-                    .start();
+            splashLayout.animate().alpha(0f).setDuration(500).withEndAction(() -> {
+                if (splashLayout.getParent() != null) ((ViewGroup) splashLayout.getParent()).removeView(splashLayout);
+            }).start();
         };
 
-        splashLottie.addAnimatorListener(new Animator.AnimatorListener() {
-            @Override public void onAnimationStart(Animator animation) {}
-            @Override public void onAnimationEnd(Animator animation) {}
-            @Override public void onAnimationCancel(Animator animation) {}
-            @Override
-            public void onAnimationRepeat(Animator animation) {
-                if (isWebLoaded[0]) {
-                    removeSplash.run();
-                }
+        // ★ MAGIC FRAME CALLBACK (৯০ নম্বর ফ্রেমে চেক করবে)
+        splashLottie.addAnimatorUpdateListener(animation -> {
+            if (isWebLoaded[0] && splashLottie.getFrame() >= 90) {
+                removeSplash.run();
             }
         });
 
@@ -284,16 +247,13 @@ public class MainActivity extends BridgeActivity {
         offlineLayout.setBackgroundColor(Color.parseColor("#F8F9FA"));
         offlineLayout.setElevation(110f);
         offlineLayout.setVisibility(View.GONE);
-        
-        // ★ MAGIC FIX: অফলাইন স্ক্রিনেও টাচ ব্লক করা হলো
         offlineLayout.setClickable(true);
         offlineLayout.setFocusable(true);
 
         LinearLayout centerBox = new LinearLayout(this);
         centerBox.setOrientation(LinearLayout.VERTICAL);
         centerBox.setGravity(Gravity.CENTER);
-        RelativeLayout.LayoutParams boxParams = new RelativeLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        RelativeLayout.LayoutParams boxParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         boxParams.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
         offlineLayout.addView(centerBox, boxParams);
 
@@ -310,10 +270,8 @@ public class MainActivity extends BridgeActivity {
         offlineTitleText.setTextColor(Color.parseColor("#1e293b"));
         if (poppinsBold != null) offlineTitleText.setTypeface(poppinsBold);
         else offlineTitleText.setTypeface(null, Typeface.BOLD);
-        
         offlineTitleText.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams tParamsOffline = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams tParamsOffline = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tParamsOffline.setMargins(0, 20, 0, 50);
         centerBox.addView(offlineTitleText, tParamsOffline);
 
@@ -323,62 +281,42 @@ public class MainActivity extends BridgeActivity {
         retryShape.setColor(Color.parseColor("#6a9c27"));
         retryShape.setCornerRadius(100f); 
         retryBtn.setBackground(retryShape);
-        
         retryBtn.setText("Try Again");
         retryBtn.setTextColor(Color.WHITE);
         retryBtn.setAllCaps(false);
         if (poppinsBold != null) retryBtn.setTypeface(poppinsBold);
         else retryBtn.setTypeface(null, Typeface.BOLD);
-        
         retryBtn.setPadding(80, 20, 80, 20);
         retryBtn.setOnClickListener(v -> {
             retryBtn.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction(() -> {
                 retryBtn.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
-                if (bridge.getWebView() != null) {
-                    bridge.getWebView().loadUrl("https://www.bumbaskitchen.app");
-                }
+                if (bridge.getWebView() != null) bridge.getWebView().loadUrl("https://www.bumbaskitchen.app");
             }).start();
         });
-        centerBox.addView(retryBtn, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        centerBox.addView(retryBtn, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        addContentView(offlineLayout, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        addContentView(offlineLayout, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkRequest networkRequest = new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build();
+        NetworkRequest networkRequest = new NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build();
 
         connectivityManager.registerNetworkCallback(networkRequest, new ConnectivityManager.NetworkCallback() {
-            @Override
-            public void onAvailable(Network network) {
+            @Override public void onAvailable(Network network) {
                 runOnUiThread(() -> {
                     offlineLayout.setVisibility(View.GONE);
-                    if (bridge.getWebView() != null) {
-                        bridge.getWebView().loadUrl("https://www.bumbaskitchen.app");
-                    }
+                    if (bridge.getWebView() != null) bridge.getWebView().loadUrl("https://www.bumbaskitchen.app");
                 });
             }
-
-            @Override
-            public void onLost(Network network) {
-                runOnUiThread(() -> {
-                    offlineLayout.setVisibility(View.VISIBLE);
-                });
+            @Override public void onLost(Network network) {
+                runOnUiThread(() -> offlineLayout.setVisibility(View.VISIBLE));
             }
         });
 
         try {
             android.net.NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
-            if (activeNetwork == null || !activeNetwork.isConnectedOrConnecting()) {
-                offlineLayout.setVisibility(View.VISIBLE);
-            }
+            if (activeNetwork == null || !activeNetwork.isConnectedOrConnecting()) offlineLayout.setVisibility(View.VISIBLE);
         } catch (Exception e) {}
 
-        // ==========================================
-        // WebView Scroll Issue Fix
-        // ==========================================
         WebView webView = this.bridge.getWebView();
         if (webView != null) {
             webView.setVerticalScrollBarEnabled(false);

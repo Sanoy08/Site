@@ -17,6 +17,7 @@ import Image from 'next/image';
 import NotificationPrompt from '@/components/NotificationPrompt';
 import AppUrlListener from '@/components/AppUrlListener';
 import { AppUpdater } from '@/components/AppUpdater';
+import { AuthProvider } from '@/context/AuthProvider';
 
 const poppins = Poppins({ subsets: ['latin'], display: 'swap', variable: '--font-sans', weight: ['400', '500', '600', '700'] });
 const amarante = Amarante({ subsets: ['latin'], display: 'swap', variable: '--font-headline', weight: '400' });
@@ -111,22 +112,28 @@ export default function RootLayout({
           galada.variable
       )}>
           <AppUrlListener />
-          <CartProvider>
-            <RealtimeMenuUpdater />
-            <AppInitializer />
-            <DeviceEnforcer />
-            <Suspense fallback={null}>
-              <GlobalLoader />
-            </Suspense>
+          
+          {/* ★ AuthProvider সবার ওপরে থাকতে হবে ★ */}
+          <AuthProvider>
+            <CartProvider>
+              <RealtimeMenuUpdater />
+              <AppInitializer />
+              <DeviceEnforcer />
+              <Suspense fallback={null}>
+                <GlobalLoader />
+              </Suspense>
 
-            <NotificationPrompt />
-            
-            <StoreStatusProvider>
-                {children}
-            </StoreStatusProvider>
-            <AppUpdater />
-            <Toaster />
-          </CartProvider>
+              <NotificationPrompt />
+              
+              <StoreStatusProvider>
+                  {children}
+              </StoreStatusProvider>
+              
+              <AppUpdater />
+              <Toaster />
+            </CartProvider>
+          </AuthProvider>
+          
           <MobileNav />
       </body>
     </html>

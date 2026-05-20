@@ -41,9 +41,12 @@ export async function middleware(request: NextRequest) {
   // ==========================================
   const userAgent = request.headers.get('user-agent') || '';
   const isNativeApp = userAgent.includes('BumbasKitchenApp-Native');
+  
+  // ★ Localhost Check: ডেভেলপমেন্টের সময় ব্রাউজারে কাজ করার জন্য
+  const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
 
-  // যদি অ্যাডমিন ডোমেইন না হয়, এবং অ্যাপ থেকে না ঢোকে, এবং সে যদি অলরেডি /web পেজে না থাকে
-  if (!isAdminDomain && !isNativeApp && path !== '/web') {
+  // যদি অ্যাডমিন ডোমেইন না হয়, অ্যাপ থেকে না ঢোকে, লোকালহোস্ট না হয়, এবং সে যদি অলরেডি /web পেজে না থাকে
+  if (!isAdminDomain && !isNativeApp && !isLocalhost && path !== '/web') {
       // সোজা /web (ডাউনলোড পেজে) রিডাইরেক্ট করে দাও
       const webUrl = new URL('/web', request.url);
       return NextResponse.redirect(webUrl);

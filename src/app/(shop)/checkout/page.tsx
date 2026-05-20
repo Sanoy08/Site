@@ -219,12 +219,11 @@ const earnedCoins = Math.floor((eligibleAmountForCoins * earnRate) / 100);
                 amount: formatPrice(finalTotal),
                 coins: earnedCoins > 0 ? earnedCoins : 1
             });
-            // ব্যাকগ্রাউন্ডে নীরবে orders পেজে পাঠিয়ে দেওয়া হলো 
             router.push('/account/orders');
         } else {
-            // ওয়েব ইউজারদের জন্য
-            const params = new URLSearchParams({ orderNumber: orderNum, name: user?.name || 'Customer', amount: finalTotal.toString() });
-            router.push(`/checkout/success?${params.toString()}`);
+            // ওয়েব ইউজারদের জন্যও সরাসরি Orders পেজেই পাঠিয়ে দাও (কারণ success page নেই)
+            toast.success("Order Placed Successfully!");
+            router.push('/account/orders');
         }
         
     } catch (error: any) {

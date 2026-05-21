@@ -12,11 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// ★ Capacitor Plugins
-import { Capacitor, registerPlugin } from '@capacitor/core';
-const NativeAuth = registerPlugin<any>('NativeAuth');
-
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -31,11 +27,6 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
-
-  // ★ Native Phone Hint States
-  const hasRequestedPhoneHint = useRef(false);
-  const [suggestedPhone, setSuggestedPhone] = useState('');
-  const [showPhoneConfirm, setShowPhoneConfirm] = useState(false);
 
   // ★ Rate Limit States
   const [limitData, setLimitData] = useState({ ipLeft: 5, phoneLeft: 3, isBlocked: false, resetTime: '', reason: '' });
@@ -66,51 +57,6 @@ export default function RegisterPage() {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) + ' on ' + d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-  };
-
-  // ==========================================
-  // ★ NATIVE: Request Phone Hint (Google Play)
-  // ==========================================
-  const requestNativePhoneHint = async () => {
-      if (!Capacitor.isNativePlatform() || hasRequestedPhoneHint.current) return;
-      
-      hasRequestedPhoneHint.current = true;
-      try {
-          const result = await NativeAuth.requestPhoneHint();
-          if (result && result.phone) {
-              let cleanPhone = result.phone.replace(/\D/g, '');
-              if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10);
-              
-              if (cleanPhone.length === 10) {
-                  setSuggestedPhone(cleanPhone);
-                  setShowPhoneConfirm(true); 
-              }
-          }
-      } catch (e) {
-          console.log("Native phone hint failed or cancelled.");
-      }
-  };
-
-  // ==========================================
-  // ★ NATIVE: Auto Read OTP (SMS Retriever)
-  // ==========================================
-  const listenForNativeOTP = async () => {
-      if (!Capacitor.isNativePlatform()) return;
-      try {
-          const result = await NativeAuth.startSmsRetriever();
-          if (result && result.otp) {
-              const otpStr = String(result.otp).slice(0, 6);
-              
-              const newOtp = [...otp];
-              otpStr.split('').forEach((char, index) => { if (index < 6) newOtp[index] = char; });
-              setOtp(newOtp);
-              
-              toast.success("OTP Auto-filled!");
-              verifyRegisterLogic(otpStr);
-          }
-      } catch (e) {
-          console.log("OTP Retriever failed.");
-      }
   };
 
   const verifyRegisterLogic = async (otpValue: string) => {
@@ -191,10 +137,6 @@ export default function RegisterPage() {
         setOtp(['', '', '', '', '', '']);
         toast.success(`OTP sent to +91 ${phone}`);
         fetchLimit(phone);
-
-        // ★ SMS Retriever চালু করা
-        listenForNativeOTP();
-
       } else {
         toast.error(data.error || 'Failed to send OTP');
         if (data.isBlocked || res.status === 429) {
@@ -211,6 +153,7 @@ export default function RegisterPage() {
 
   return (
     <>
+    {/* ★ FIX: z-[100] থেকে z-[10] করা হয়েছে যাতে পপআপ সামনে আসে ★ */}
     <div className="fixed inset-0 z-[10] grid h-screen w-full grid-cols-1 overflow-hidden bg-white lg:grid-cols-2">
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm space-y-8 py-8">
@@ -245,7 +188,6 @@ export default function RegisterPage() {
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                     <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 border-r pr-2 h-5 flex items-center">+91</span>
                     <Input id="phone" type="tel" inputMode="numeric" maxLength={10} placeholder="9876543210" value={phone}
-                        onClick={requestNativePhoneHint} // ★ ক্লিক করলে নেটিভ পপআপ আসবে
                         onChange={(e) => {
                             const val = e.target.value.replace(/\D/g, ''); 
                             if(val.length <= 10) setPhone(val);
@@ -253,6 +195,7 @@ export default function RegisterPage() {
                         disabled={isLoading} required className="h-12 pl-[4.5rem] border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl" 
                     />
                   </div>
+                  {/* ★ Attempts Indicator ★ */}
                   {phone.length === 10 && !limitData.isBlocked && (
                         <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-medium animate-in fade-in text-gray-500">
                             <ShieldAlert className="h-3.5 w-3.5" />
@@ -271,9 +214,8 @@ export default function RegisterPage() {
               <form onSubmit={(e) => { e.preventDefault(); verifyRegisterLogic(otp.join('')); }} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                  <div className="space-y-4">
                     <div className="flex justify-center gap-2 sm:gap-3">
-                        {/* ★ autoComplete রিমুভ করা হয়েছে ★ */}
                         {otp.map((digit, index) => (
-                            <input key={index} ref={(el) => { inputRefs.current[index] = el }} type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={1} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} onPaste={handlePaste} disabled={isLoading} className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary" />
+                            <input key={index} ref={(el) => { inputRefs.current[index] = el }} type="tel" inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={1} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} onPaste={handlePaste} disabled={isLoading} className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary" />
                         ))}
                     </div>
                     
@@ -308,36 +250,6 @@ export default function RegisterPage() {
         <div className="relative z-10 mt-auto max-w-md"><blockquote className="space-y-2 border-l-2 border-primary pl-6"><p className="text-lg font-medium leading-relaxed text-white">&ldquo;Join our community of food lovers. Quality ingredients, authentic recipes, and unforgettable tastes await you.&rdquo;</p></blockquote></div>
       </div>
     </div>
-
-    {/* ★ PHONE CONFIRMATION POPUP ★ */}
-    <AlertDialog open={showPhoneConfirm} onOpenChange={setShowPhoneConfirm}>
-        <AlertDialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[400px]">
-            <div className="flex flex-col items-center text-center space-y-4 pt-4">
-                <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Phone className="h-8 w-8 text-primary" />
-                </div>
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl font-bold text-gray-900">Use this number?</AlertDialogTitle>
-                    <AlertDialogDescription className="text-gray-600">
-                        Do you want to proceed with the selected phone number?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                
-                <div className="bg-gray-50 border border-gray-200 w-full rounded-xl p-4 flex items-center justify-center gap-2">
-                    <span className="text-gray-500 font-medium">+91</span>
-                    <span className="text-2xl font-bold tracking-widest text-gray-900">{suggestedPhone}</span>
-                </div>
-            </div>
-            <AlertDialogFooter className="mt-6 flex gap-3 sm:justify-center">
-                <AlertDialogCancel onClick={() => { setShowPhoneConfirm(false); setSuggestedPhone(''); }} className="flex-1 rounded-xl h-12">
-                    No, type manually
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={() => { setPhone(suggestedPhone); setShowPhoneConfirm(false); }} className="flex-1 rounded-xl h-12 bg-primary text-white shadow-md">
-                    Yes, Continue
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
 
     {/* ★ LIMIT REACHED POPUP ★ */}
     <AlertDialog open={showBlockPopup} onOpenChange={setShowBlockPopup}>

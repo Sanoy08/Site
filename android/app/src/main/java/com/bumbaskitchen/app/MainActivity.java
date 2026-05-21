@@ -49,6 +49,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
         registerPlugin(NativeSuccessPlugin.class);
+        // ★ নতুন Auth প্লাগিন অ্যাড করা হলো
+        registerPlugin(NativeAuthPlugin.class);
 
         super.onCreate(savedInstanceState);
 
@@ -219,7 +221,6 @@ public class MainActivity extends BridgeActivity {
             }).start();
         };
 
-        // ★ MAGIC FRAME CALLBACK (৯০ নম্বর ফ্রেমে চেক করবে)
         splashLottie.addAnimatorUpdateListener(animation -> {
             if (isWebLoaded[0] && splashLottie.getFrame() >= 90) {
                 removeSplash.run();

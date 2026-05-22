@@ -55,12 +55,6 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
-        // ★ NOTUN ADD KORA HOYECHE: 11-digit Hash generate kore Logcat a print korar code
-        // (Play Store a app othar por hash change hobe, tokhon release key diye generate korte hobe)
-        AppSignatureHelper appSignatureHelper = new AppSignatureHelper(this);
-        appSignatureHelper.getAppSignatures();
-
-
         Typeface poppinsBold = null;
         Typeface poppinsMedium = null;
         try {

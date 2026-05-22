@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 
 import com.getcapacitor.JSObject;
@@ -80,8 +81,12 @@ public class AndroidAuthPlugin extends Plugin {
 
         task.addOnSuccessListener(aVoid -> {
             IntentFilter intentFilter = new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION);
-            // ★ FIX: SEND_PERMISSION er jaygay null pathao
-            getContext().registerReceiver(smsReceiver, intentFilter, null, null);
+            // ★ FIX: Android 13+ এর জন্য RECEIVER_NOT_EXPORTED flag যোগ করা হয়েছে ★
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                getContext().registerReceiver(smsReceiver, intentFilter, SmsRetriever.SEND_PERMISSION, null, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                getContext().registerReceiver(smsReceiver, intentFilter, SmsRetriever.SEND_PERMISSION, null);
+            }
         });
 
         task.addOnFailureListener(e -> {
@@ -96,6 +101,7 @@ public class AndroidAuthPlugin extends Plugin {
                 Bundle extras = intent.getExtras();
                 if (extras != null) {
                     Status smsRetrieverStatus = (Status) extras.get(SmsRetriever.EXTRA_STATUS);
+
                     if (smsRetrieverStatus != null) {
                         switch (smsRetrieverStatus.getStatusCode()) {
                             case CommonStatusCodes.SUCCESS:
@@ -117,7 +123,7 @@ public class AndroidAuthPlugin extends Plugin {
                     }
                 }
                 try {
-                    context.unregisterReceiver(this);
+                    getContext().unregisterReceiver(this);
                 } catch (Exception ignored) {}
             }
         }

@@ -15,14 +15,6 @@ import { Label } from '@/components/ui/label';
 // ★ Dialog Component Imports
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-// ★ Native Capacitor Plugin Registration
-import { Capacitor, registerPlugin } from '@capacitor/core';
-export interface AndroidAuthPlugin {
-  requestPhoneNumber(): Promise<{ phoneNumber: string }>;
-  startSmsRetriever(): Promise<{ message: string }>;
-}
-const AndroidAuth = registerPlugin<AndroidAuthPlugin>('AndroidAuth');
-
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -40,10 +32,6 @@ export default function LoginPage() {
   const [limitData, setLimitData] = useState({ ipLeft: 5, phoneLeft: 3, isBlocked: false, resetTime: '', reason: '' });
   const [showBlockPopup, setShowBlockPopup] = useState(false);
 
-  // ★ Native Phone Suggestion States
-  const [showPhoneConfirmDialog, setShowPhoneConfirmDialog] = useState(false);
-  const [suggestedPhone, setSuggestedPhone] = useState('');
-
   // Fetch Remaining Limits
   const fetchLimit = async (phoneVal: string = '') => {
     try {
@@ -56,54 +44,8 @@ export default function LoginPage() {
     } catch (e) {}
   };
 
-  useEffect(() => { fetchLimit(); }, []); 
-  useEffect(() => { if (phone.length === 10) fetchLimit(phone); }, [phone]); 
-
-  // ★ NATIVE: Trigger Phone Hint when component mounts
-  useEffect(() => {
-    const getNativePhoneSuggestion = async () => {
-      if (Capacitor.getPlatform() === 'android' && step === 'phone') {
-        try {
-          const res = await AndroidAuth.requestPhoneNumber();
-          if (res && res.phoneNumber) {
-            // Format to 10 digits
-            let num = res.phoneNumber.replace('+91', '').replace(/\D/g, '');
-            if (num.length >= 10) {
-              num = num.substring(num.length - 10);
-              setSuggestedPhone(num);
-              setShowPhoneConfirmDialog(true);
-            }
-          }
-        } catch (error) {
-          console.log("Native phone hint dismissed or failed", error);
-        }
-      }
-    };
-    getNativePhoneSuggestion();
-  }, [step]);
-
-  // ★ NATIVE: Start SMS Retriever when stepping into OTP
-  useEffect(() => {
-    const listenForOtp = async () => {
-      if (Capacitor.getPlatform() === 'android' && step === 'otp') {
-        try {
-          const res = await AndroidAuth.startSmsRetriever();
-          if (res && res.message) {
-            const match = res.message.match(/\b\d{6}\b/);
-            if (match) {
-              const otpString = match[0];
-              setOtp(otpString.split(''));
-              toast.success("OTP detected automatically!");
-              verifyOtpLogic(otpString);
-            }
-          }
-        } catch (error) {
-          console.log("Native SMS retriever failed", error);
-        }
-      }
-    };
-    listenForOtp();
-  }, [step]);
+  useEffect(() => { fetchLimit(); }, []); // Check IP on load
+  useEffect(() => { if (phone.length === 10) fetchLimit(phone); }, [phone]); // Check Phone on type
 
   useEffect(() => {
     if (step === 'otp' && timeLeft > 0) {
@@ -203,7 +145,7 @@ export default function LoginPage() {
         setTimeLeft(30);
         setOtp(['', '', '', '', '', '']);
         toast.success('OTP Sent!');
-        fetchLimit(phone); 
+        fetchLimit(phone); // Update count automatically
       } else {
         toast.error(data.error || 'Failed to send OTP');
         if (data.isBlocked || res.status === 429) {
@@ -249,6 +191,7 @@ export default function LoginPage() {
                             className="h-12 border-gray-200 bg-white pl-10 text-base focus:border-primary focus:ring-1 focus:ring-primary rounded-xl"
                         />
                     </div>
+                    {/* ★ Attempts Indicator ★ */}
                     {phone.length === 10 && !limitData.isBlocked && (
                         <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-medium animate-in fade-in text-gray-500">
                             <ShieldAlert className="h-3.5 w-3.5" />
@@ -268,7 +211,7 @@ export default function LoginPage() {
                     <div className="space-y-4">
                         <div className="flex justify-center gap-2 sm:gap-3">
                             {otp.map((digit, index) => (
-                                <input key={index} ref={(el) => { inputRefs.current[index] = el }} type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={1} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} onPaste={handlePaste} disabled={isLoading} className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary" />
+                                <input key={index} ref={(el) => { inputRefs.current[index] = el }} type="tel" inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={1} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} onPaste={handlePaste} disabled={isLoading} className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white text-gray-900 disabled:opacity-50 caret-primary" />
                             ))}
                         </div>
                         <div className="flex items-center justify-between text-sm">
@@ -304,35 +247,6 @@ export default function LoginPage() {
         <div className="relative z-10 mt-auto max-w-md"><blockquote className="space-y-2 border-l-2 border-primary pl-6"><p className="text-lg font-medium leading-relaxed text-white">&ldquo;Experience the finest culinary delights delivered right to your doorstep.&rdquo;</p></blockquote></div>
       </div>
     </div>
-
-    {/* ★ NATIVE PHONE CONFIRMATION POPUP ★ */}
-    <AlertDialog open={showPhoneConfirmDialog} onOpenChange={setShowPhoneConfirmDialog}>
-        <AlertDialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[400px]">
-            <AlertDialogHeader className="space-y-3">
-                <div className="mx-auto h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Phone className="h-6 w-6 text-primary" />
-                </div>
-                <AlertDialogTitle className="text-center text-xl font-bold">Use this phone number?</AlertDialogTitle>
-                <AlertDialogDescription className="text-center text-gray-600">
-                    We found a phone number linked to your device. Do you want to continue with this number?
-                </AlertDialogDescription>
-                <div className="bg-gray-50 rounded-xl p-3 border text-center mt-2">
-                    <span className="text-lg font-bold text-gray-900 tracking-wide">+91 {suggestedPhone}</span>
-                </div>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="mt-6 flex-row gap-3 sm:justify-center">
-                <Button variant="outline" className="w-1/2 rounded-xl h-12" onClick={() => setShowPhoneConfirmDialog(false)}>
-                    Cancel
-                </Button>
-                <Button className="w-1/2 rounded-xl h-12 bg-primary hover:bg-primary/90" onClick={() => {
-                    setPhone(suggestedPhone);
-                    setShowPhoneConfirmDialog(false);
-                }}>
-                    Yes, Use This
-                </Button>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
 
     {/* ★ LIMIT REACHED POPUP ★ */}
     <AlertDialog open={showBlockPopup} onOpenChange={setShowBlockPopup}>

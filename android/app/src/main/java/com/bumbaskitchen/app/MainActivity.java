@@ -49,9 +49,6 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
         registerPlugin(NativeSuccessPlugin.class);
-        
-        // ★ NOTUN ADD KORA HOYECHE: Phone Hint o SMS Retriever Plugin
-        registerPlugin(AndroidAuthPlugin.class); 
 
         super.onCreate(savedInstanceState);
 

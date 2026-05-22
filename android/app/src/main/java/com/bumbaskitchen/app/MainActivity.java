@@ -49,8 +49,17 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PushNotificationsPlugin.class);
         registerPlugin(FCMPlugin.class);
         registerPlugin(NativeSuccessPlugin.class);
+        
+        // ★ NOTUN ADD KORA HOYECHE: Phone Hint o SMS Retriever Plugin
+        registerPlugin(AndroidAuthPlugin.class); 
 
         super.onCreate(savedInstanceState);
+
+        // ★ NOTUN ADD KORA HOYECHE: 11-digit Hash generate kore Logcat a print korar code
+        // (Play Store a app othar por hash change hobe, tokhon release key diye generate korte hobe)
+        AppSignatureHelper appSignatureHelper = new AppSignatureHelper(this);
+        appSignatureHelper.getAppSignatures();
+
 
         Typeface poppinsBold = null;
         Typeface poppinsMedium = null;

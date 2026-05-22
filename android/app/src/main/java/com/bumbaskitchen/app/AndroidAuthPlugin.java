@@ -1,7 +1,6 @@
 package com.bumbaskitchen.app;
 
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -36,7 +35,6 @@ public class AndroidAuthPlugin extends Plugin {
                 .getPhoneNumberHintIntent(request)
                 .addOnSuccessListener(result -> {
                     try {
-                        // ★ ekhane change kora hoyeche ★
                         getActivity().startIntentSenderForResult(
                                 result.getIntentSender(),
                                 1001,
@@ -82,7 +80,8 @@ public class AndroidAuthPlugin extends Plugin {
 
         task.addOnSuccessListener(aVoid -> {
             IntentFilter intentFilter = new IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION);
-            getContext().registerReceiver(smsReceiver, intentFilter, SmsRetriever.SEND_PERMISSION, null);
+            // ★ FIX: SEND_PERMISSION er jaygay null pathao
+            getContext().registerReceiver(smsReceiver, intentFilter, null, null);
         });
 
         task.addOnFailureListener(e -> {
@@ -95,28 +94,30 @@ public class AndroidAuthPlugin extends Plugin {
         public void onReceive(Context context, Intent intent) {
             if (SmsRetriever.SMS_RETRIEVED_ACTION.equals(intent.getAction())) {
                 Bundle extras = intent.getExtras();
-                Status smsRetrieverStatus = (Status) extras.get(SmsRetriever.EXTRA_STATUS);
-
-                switch (smsRetrieverStatus.getStatusCode()) {
-                    case CommonStatusCodes.SUCCESS:
-                        String message = (String) extras.get(SmsRetriever.EXTRA_SMS_MESSAGE);
-                        if (smsCall != null) {
-                            JSObject ret = new JSObject();
-                            ret.put("message", message);
-                            smsCall.resolve(ret);
-                            smsCall = null;
+                if (extras != null) {
+                    Status smsRetrieverStatus = (Status) extras.get(SmsRetriever.EXTRA_STATUS);
+                    if (smsRetrieverStatus != null) {
+                        switch (smsRetrieverStatus.getStatusCode()) {
+                            case CommonStatusCodes.SUCCESS:
+                                String message = (String) extras.get(SmsRetriever.EXTRA_SMS_MESSAGE);
+                                if (smsCall != null) {
+                                    JSObject ret = new JSObject();
+                                    ret.put("message", message);
+                                    smsCall.resolve(ret);
+                                    smsCall = null;
+                                }
+                                break;
+                            case CommonStatusCodes.TIMEOUT:
+                                if (smsCall != null) {
+                                    smsCall.reject("SMS Retrieval Timeout");
+                                    smsCall = null;
+                                }
+                                break;
                         }
-                        break;
-                    case CommonStatusCodes.TIMEOUT:
-                        if (smsCall != null) {
-                            smsCall.reject("SMS Retrieval Timeout");
-                            smsCall = null;
-                        }
-                        break;
+                    }
                 }
-                // Unregister after receive
                 try {
-                    getContext().unregisterReceiver(this);
+                    context.unregisterReceiver(this);
                 } catch (Exception ignored) {}
             }
         }

@@ -8,24 +8,24 @@ android {
         applicationId "com.bumbaskitchen.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 126
-        versionName "1.0.126"
+        versionCode 127
+        versionName "1.0.127"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
 
-    signingConfigs {
-        release {
-            storeFile file("my-release-key.keystore")
-            storePassword "#bokachoda12"
-            keyAlias "my-key-alias"
-            keyPassword "#bokachoda12"
+signingConfigs {
+    release {
+        storeFile file("my-release-key.keystore")
+        storePassword MY_RELEASE_STORE_PASSWORD
+        keyAlias "my-key-alias"
+        keyPassword MY_RELEASE_KEY_PASSWORD
             v1SigningEnabled true
             v2SigningEnabled true
-        }
     }
+}
 
     buildTypes {
         release {

@@ -63,7 +63,11 @@ export async function POST(request: NextRequest) {
 
     await otpLogsCollection.insertOne({ ip, phone, createdAt: new Date() });
 
-    const message = `Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins. /kcc8QKYFrD`;
+    // Ekhane tomara actual Hash ta boshao jeta Logcat e peyechhile
+const APP_HASH = "kcc8QKYFrD"; 
+
+// Message ta erokom hoye jabe
+const message = `<#> Your Bumba's Kitchen OTP is: ${otp}. Valid for 10 mins. ${APP_HASH}`;
     try {
         await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
             method: 'POST', body: message, headers: { 'Title': phone, 'Priority': 'high', 'Tags': 'sms' }

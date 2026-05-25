@@ -6,9 +6,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { LocateFixed } from 'lucide-react';
-
-// ★ ম্যাজিক: Capacitor-এর নেটিভ প্লাগিন ইম্পোর্ট করা হলো
+import { LocateFixed, Loader2 } from 'lucide-react';
 import { Geolocation } from '@capacitor/geolocation';
 
 const DefaultIcon = L.icon({
@@ -19,6 +17,9 @@ const DefaultIcon = L.icon({
   iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// ★ ডিফল্ট লোকেশন (Janai) যাতে ম্যাপ ইনস্ট্যান্ট লোড হয়
+const DEFAULT_LOC = new L.LatLng(22.717958, 88.260207);
 
 // ১. ইউজারের ক্লিক ও ড্র্যাগ হ্যান্ডেল করার জন্য
 function LocationMarker({ position, setPosition, onDragEnd }: any) {
@@ -41,7 +42,7 @@ function LocationMarker({ position, setPosition, onDragEnd }: any) {
           const marker = e.target;
           const pos = marker.getLatLng();
           setPosition(pos);
-          onDragEnd(pos.lat, pos.lng); // ম্যাপ ড্র্যাগ করলে CheckoutPage কে জানাবে
+          onDragEnd(pos.lat, pos.lng); 
           map.flyTo(pos, map.getZoom());
         },
       }}
@@ -57,7 +58,7 @@ function MapController({ center, setPosition }: any) {
       if (center && center.lat && center.lng) {
          const newPos = new L.LatLng(center.lat, center.lng);
          setPosition(newPos);
-         map.flyTo(newPos, 16, { animate: true, duration: 1.5 }); // Smooth animation
+         map.flyTo(newPos, 16, { animate: true, duration: 1.5 }); 
       }
    }, [center, map, setPosition]);
 
@@ -65,17 +66,20 @@ function MapController({ center, setPosition }: any) {
 }
 
 export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
-   const [position, setPosition] = useState<L.LatLng | null>(null);
-   const [isLocating, setIsLocating] = useState(true);
+   // যদি আগে থেকে সিলেক্ট করা থাকে সেটা নেবে, না হলে null থাকবে (পরে আপডেট হবে)
+   const [position, setPosition] = useState<L.LatLng | null>(
+       selectedLocation ? new L.LatLng(selectedLocation.lat, selectedLocation.lng) : null
+   );
+   const [isLocating, setIsLocating] = useState(false);
 
-   // ★ আপডেট: Current GPS Location বের করার নেটিভ ফাংশন
    const locateUser = async () => {
        setIsLocating(true);
        try {
-           // নেটিভ ডায়ালগ কল করবে এবং লোকেশন আনবে
+           // ★ ফাস্ট লোকেশন পাওয়ার জন্য কনফিগারেশন চেঞ্জ করা হয়েছে
            const pos = await Geolocation.getCurrentPosition({
-               enableHighAccuracy: true,
-               timeout: 10000 // ★ ১০ সেকেন্ডের টাইমআউট (অত্যন্ত জরুরি, নাহলে আটকে থাকবে)
+               enableHighAccuracy: false, // Network/Wifi বেসড ফাস্ট লোকেশন
+               timeout: 5000,             // ৫ সেকেন্ড টাইমআউট
+               maximumAge: 300000         // ৫ মিনিটের পুরনো ক্যাশ লোকেশনও নিয়ে নেবে
            });
            
            const newPos = new L.LatLng(pos.coords.latitude, pos.coords.longitude);
@@ -84,32 +88,27 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
            setIsLocating(false);
        } catch (err) {
            console.log("Geolocation error:", err);
-           // ★ Error হলে বা Timeout হলে ডিফল্ট Janai লোকেশন সেট হবে (ইনফিনিট লোডিং আটকে দেবে)
-           const defaultPos = new L.LatLng(22.717958, 88.260207);
-           setPosition(defaultPos);
-           onLocationSelect(defaultPos.lat, defaultPos.lng);
+           // যদি কোনো কারণে লোকেশন না পায়, তবে ম্যাপে Janai-তে পিন বসিয়ে দেবে
+           if (!position) {
+               setPosition(DEFAULT_LOC);
+               onLocationSelect(DEFAULT_LOC.lat, DEFAULT_LOC.lng);
+           }
            setIsLocating(false);
        }
    };
 
-   // পেজ লোড হলে একবার GPS লোকেশন নেবে, যদি আগে থেকে সিলেক্ট করা না থাকে
    useEffect(() => {
       if (!selectedLocation) {
          locateUser();
-      } else {
-         setPosition(new L.LatLng(selectedLocation.lat, selectedLocation.lng));
-         setIsLocating(false);
       }
    }, []);
 
-   if (!position && !selectedLocation) {
-       return <div className="h-[250px] w-full bg-muted animate-pulse rounded-xl flex items-center justify-center text-sm font-medium text-muted-foreground">Loading Map...</div>;
-   }
-
    return (
       <div className="relative h-[250px] w-full rounded-xl overflow-hidden border-2 border-primary/20 shadow-sm z-10 group">
+         
+         {/* ★ ম্যাজিক: ম্যাপ লোডিং ব্লকটা সরিয়ে দেওয়া হয়েছে। এখন ম্যাপ ইনস্ট্যান্ট আসবে! */}
          <MapContainer 
-            center={selectedLocation || position || [22.717958, 88.260207]} 
+            center={selectedLocation ? [selectedLocation.lat, selectedLocation.lng] : DEFAULT_LOC} 
             zoom={15} 
             style={{ height: '100%', width: '100%' }} 
             attributionControl={false}
@@ -119,7 +118,6 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
                 maxZoom={20}
             />
             
-            {/* Markers & Controllers */}
             <LocationMarker position={position} setPosition={setPosition} onDragEnd={onLocationSelect} />
             <MapController center={selectedLocation} setPosition={setPosition} />
          </MapContainer>
@@ -130,11 +128,11 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
              disabled={isLocating} 
              className="absolute bottom-4 right-4 z-[400] bg-white text-primary p-2.5 rounded-full shadow-lg border border-gray-100 hover:bg-gray-50 transition-colors"
          >
-             <LocateFixed className={`w-5 h-5 ${isLocating ? 'animate-pulse opacity-50' : ''}`} />
+             {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <LocateFixed className="w-5 h-5" />}
          </button>
          
          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[400] bg-black/70 text-white text-[10px] px-3 py-1 rounded-full font-medium pointer-events-none shadow-md backdrop-blur-sm">
-             Drag the pin to your exact location
+             {isLocating ? "Detecting location..." : "Drag the pin to your exact location"}
          </div>
       </div>
    );

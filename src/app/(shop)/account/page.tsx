@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Loader2, Cake, Heart, User, Phone, Sparkles, LogOut, 
-  ChevronRight, ShoppingBag, MapPin, Wallet, TicketPercent, Lock // Lock icon kept for calendar usage
+  ChevronRight, ShoppingBag, MapPin, Wallet, TicketPercent, Lock
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -295,10 +295,22 @@ export default function AccountPage() {
   const onProfileSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
     try {
+        // Name can never be changed – always send original user name
+        const originalParts = user.name?.split(' ') || ['', ''];
+        const firstName = originalParts[0];
+        const lastName = originalParts.slice(1).join(' ');
+        
+        const payload = {
+            firstName,
+            lastName,
+            dob: data.dob,
+            anniversary: data.anniversary,
+        };
+        
         const res = await fetch('/api/auth/update-profile', { 
             method: 'PUT', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(data) 
+            body: JSON.stringify(payload) 
         });
         const resData = await res.json();
         if (!res.ok) throw new Error(resData.error);
@@ -354,8 +366,24 @@ export default function AccountPage() {
                         <Form {...profileForm}>
                             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6 px-1">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={profileForm.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={profileForm.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={profileForm.control} name="firstName" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>First Name</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} disabled className="rounded-xl bg-gray-50" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={profileForm.control} name="lastName" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Last Name</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} disabled className="rounded-xl bg-gray-50" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
                                 </div>
                                 
                                 <div className="space-y-4 pt-2 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
@@ -469,8 +497,6 @@ export default function AccountPage() {
             <MenuItem icon={MapPin} title="Addresses" subtitle="Save addresses for hassle-free checkout" href="/account/addresses" />
             <MenuItem icon={Wallet} title="My Wallet & Coins" subtitle="Check balance and transaction history" href="/account/wallet" />
             <MenuItem icon={TicketPercent} title="My Coupons" subtitle="View available coupons for you" href="/account/coupons" />
-
-            {/* Login & Security Removed */}
 
             <AlertDialog>
                 <AlertDialogTrigger asChild>

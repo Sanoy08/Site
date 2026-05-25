@@ -21,7 +21,6 @@ L.Marker.prototype.options.icon = DefaultIcon;
 // ★ ডিফল্ট লোকেশন (Janai) যাতে ম্যাপ ইনস্ট্যান্ট লোড হয়
 const DEFAULT_LOC = new L.LatLng(22.717958, 88.260207);
 
-// ১. ইউজারের ক্লিক ও ড্র্যাগ হ্যান্ডেল করার জন্য
 function LocationMarker({ position, setPosition, onDragEnd }: any) {
   const map = useMap();
 
@@ -50,7 +49,6 @@ function LocationMarker({ position, setPosition, onDragEnd }: any) {
   );
 }
 
-// ২. টেক্সট সার্চ থেকে লোকেশন আসলে ম্যাপকে সেখানে নিয়ে যাওয়ার জন্য
 function MapController({ center, setPosition }: any) {
    const map = useMap();
    
@@ -66,7 +64,6 @@ function MapController({ center, setPosition }: any) {
 }
 
 export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
-   // যদি আগে থেকে সিলেক্ট করা থাকে সেটা নেবে, না হলে null থাকবে (পরে আপডেট হবে)
    const [position, setPosition] = useState<L.LatLng | null>(
        selectedLocation ? new L.LatLng(selectedLocation.lat, selectedLocation.lng) : null
    );
@@ -75,11 +72,11 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
    const locateUser = async () => {
        setIsLocating(true);
        try {
-           // ★ ফাস্ট লোকেশন পাওয়ার জন্য কনফিগারেশন চেঞ্জ করা হয়েছে
+           // ★ Delivery-r jonne EXACT location chai, tai high accuracy ON ar cache OFF
            const pos = await Geolocation.getCurrentPosition({
-               enableHighAccuracy: false, // Network/Wifi বেসড ফাস্ট লোকেশন
-               timeout: 5000,             // ৫ সেকেন্ড টাইমআউট
-               maximumAge: 300000         // ৫ মিনিটের পুরনো ক্যাশ লোকেশনও নিয়ে নেবে
+               enableHighAccuracy: true,  // GPS chip use korbe perfect location er jonne
+               timeout: 10000,            // 10 second wait korbe max
+               maximumAge: 0              // Kono purono cache location nebe na, ekdom fresh nebe
            });
            
            const newPos = new L.LatLng(pos.coords.latitude, pos.coords.longitude);
@@ -88,7 +85,6 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
            setIsLocating(false);
        } catch (err) {
            console.log("Geolocation error:", err);
-           // যদি কোনো কারণে লোকেশন না পায়, তবে ম্যাপে Janai-তে পিন বসিয়ে দেবে
            if (!position) {
                setPosition(DEFAULT_LOC);
                onLocationSelect(DEFAULT_LOC.lat, DEFAULT_LOC.lng);
@@ -106,7 +102,6 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
    return (
       <div className="relative h-[250px] w-full rounded-xl overflow-hidden border-2 border-primary/20 shadow-sm z-10 group">
          
-         {/* ★ ম্যাজিক: ম্যাপ লোডিং ব্লকটা সরিয়ে দেওয়া হয়েছে। এখন ম্যাপ ইনস্ট্যান্ট আসবে! */}
          <MapContainer 
             center={selectedLocation ? [selectedLocation.lat, selectedLocation.lng] : DEFAULT_LOC} 
             zoom={15} 
@@ -132,7 +127,7 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
          </button>
          
          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[400] bg-black/70 text-white text-[10px] px-3 py-1 rounded-full font-medium pointer-events-none shadow-md backdrop-blur-sm">
-             {isLocating ? "Detecting location..." : "Drag the pin to your exact location"}
+             {isLocating ? "Fetching exact GPS location..." : "Drag the pin to your exact location"}
          </div>
       </div>
    );

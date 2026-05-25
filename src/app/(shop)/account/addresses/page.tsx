@@ -258,7 +258,8 @@ export default function AccountAddressesPage() {
             </Card>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="w-[90%] md:w-full rounded-2xl sm:max-w-md p-0 gap-0 overflow-y-auto max-h-[90vh] custom-scrollbar">
+                {/* ★ MAGIC FIX: onOpenAutoFocus যোগ করা হলো ★ */}
+                <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[90%] md:w-full rounded-2xl sm:max-w-md p-0 gap-0 overflow-y-auto max-h-[90vh] custom-scrollbar">
                     <DialogHeader className="p-6 border-b bg-muted/10"><DialogTitle>{editingId ? 'Edit Address' : 'Add New Address'}</DialogTitle></DialogHeader>
                     <div className="p-6 space-y-5">
                         <div className="space-y-3">

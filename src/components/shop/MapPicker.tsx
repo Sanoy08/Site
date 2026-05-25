@@ -8,6 +8,9 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { LocateFixed } from 'lucide-react';
 
+// ★ ম্যাজিক: Capacitor-এর নেটিভ প্লাগিন ইম্পোর্ট করা হলো
+import { Geolocation } from '@capacitor/geolocation';
+
 const DefaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -46,7 +49,7 @@ function LocationMarker({ position, setPosition, onDragEnd }: any) {
   );
 }
 
-// ২. টেক্সট সার্চ থেকে লোকেশন আসলে ম্যাপকে সেখানে নিয়ে যাওয়ার জন্য
+// ২. টেক্সট সার্চ থেকে লোকেশন আসলে ম্যাপকে সেখানে নিয়ে যাওয়ার জন্য
 function MapController({ center, setPosition }: any) {
    const map = useMap();
    
@@ -65,25 +68,28 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
    const [position, setPosition] = useState<L.LatLng | null>(null);
    const [isLocating, setIsLocating] = useState(true);
 
-   // Current GPS Location বের করার ফাংশন
-   const locateUser = () => {
+   // ★ আপডেট: Current GPS Location বের করার নেটিভ ফাংশন
+   const locateUser = async () => {
        setIsLocating(true);
-       if (navigator.geolocation) {
-         navigator.geolocation.getCurrentPosition((pos) => {
-             const { latitude, longitude } = pos.coords;
-             const newPos = new L.LatLng(latitude, longitude);
-             setPosition(newPos);
-             onLocationSelect(latitude, longitude); // CheckoutPage কে জানাবে
-             setIsLocating(false);
-         }, (err) => {
-             console.log("Geolocation error:", err);
-             // GPS না পেলে Janai এর লোকেশন ডিফল্ট করে দেবে
-             const defaultPos = new L.LatLng(22.717958, 88.260207);
-             setPosition(defaultPos);
-             onLocationSelect(defaultPos.lat, defaultPos.lng);
-             setIsLocating(false);
-         }, { enableHighAccuracy: true });
-      }
+       try {
+           // নেটিভ ডায়ালগ কল করবে এবং লোকেশন আনবে
+           const pos = await Geolocation.getCurrentPosition({
+               enableHighAccuracy: true,
+               timeout: 10000 // ★ ১০ সেকেন্ডের টাইমআউট (অত্যন্ত জরুরি, নাহলে আটকে থাকবে)
+           });
+           
+           const newPos = new L.LatLng(pos.coords.latitude, pos.coords.longitude);
+           setPosition(newPos);
+           onLocationSelect(pos.coords.latitude, pos.coords.longitude);
+           setIsLocating(false);
+       } catch (err) {
+           console.log("Geolocation error:", err);
+           // ★ Error হলে বা Timeout হলে ডিফল্ট Janai লোকেশন সেট হবে (ইনফিনিট লোডিং আটকে দেবে)
+           const defaultPos = new L.LatLng(22.717958, 88.260207);
+           setPosition(defaultPos);
+           onLocationSelect(defaultPos.lat, defaultPos.lng);
+           setIsLocating(false);
+       }
    };
 
    // পেজ লোড হলে একবার GPS লোকেশন নেবে, যদি আগে থেকে সিলেক্ট করা না থাকে
@@ -109,9 +115,9 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
             attributionControl={false}
          >
             <TileLayer 
-    url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
-    maxZoom={20}
-/>
+                url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
+                maxZoom={20}
+            />
             
             {/* Markers & Controllers */}
             <LocationMarker position={position} setPosition={setPosition} onDragEnd={onLocationSelect} />
@@ -128,7 +134,7 @@ export default function MapPicker({ onLocationSelect, selectedLocation }: any) {
          </button>
          
          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[400] bg-black/70 text-white text-[10px] px-3 py-1 rounded-full font-medium pointer-events-none shadow-md backdrop-blur-sm">
-            Drag the pin to your exact location
+             Drag the pin to your exact location
          </div>
       </div>
    );

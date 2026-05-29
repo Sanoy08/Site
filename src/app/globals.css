@@ -167,28 +167,3 @@ html, body {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
-
-
-
-
-/* ========================================================= */
-/* ★ NATIVE EDGE-TO-EDGE FIX (BOTTOM NAVIGATION BAR) ★       */
-/* ========================================================= */
-
-/* ১. MobileNav বা যেসব বার স্ক্রিনের একদম নিচে (bottom-0) লেগে থাকে */
-.fixed.bottom-0 {
-    padding-bottom: env(safe-area-inset-bottom) !important;
-}
-
-/* ২. Floating Button (যেমন Add Address, Cart icon) যেগুলোর নিচে একটু গ্যাপ থাকে */
-.fixed.bottom-4, 
-.fixed.bottom-6, 
-.fixed.bottom-8, 
-.fixed.bottom-24 {
-    margin-bottom: env(safe-area-inset-bottom) !important;
-}
-
-/* ৩. বডির নিচে গ্যাপ রাখা যাতে স্ক্রল করলে কন্টেন্ট MobileNav এর নিচে না ঢোকে */
-body {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 80px) !important;
-}

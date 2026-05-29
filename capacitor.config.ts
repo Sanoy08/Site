@@ -17,22 +17,26 @@ const config: CapacitorConfig = {
   android: {
     zoomEnabled: false,
     backgroundColor: "#F8F9FA",
-    appendUserAgent: "BumbasKitchenApp-Native" // ★ ম্যাজিক: এই সিক্রেট সিগন্যালটা অ্যাড করা হলো
+    appendUserAgent: "BumbasKitchenApp-Native"
   },
   plugins: {
     Keyboard: {
       resize: KeyboardResize.Body,
       style: KeyboardStyle.Dark,
-      resizeOnFullScreen: false, // ★ false করা হলো যাতে লাফিয়ে না ওঠে
+      resizeOnFullScreen: false,
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
     SplashScreen: {
-      launchShowDuration: 0, // ★ 0 করা হলো
+      launchShowDuration: 0,
       launchAutoHide: true,
       backgroundColor: "#F8F9FA",
       showSpinner: false
+    },
+    // ★ MAGIC FIX: শুধু ওপরের বার ওভারল্যাপ হবে
+    StatusBar: {
+      overlaysWebView: true,
     }
   }
 };

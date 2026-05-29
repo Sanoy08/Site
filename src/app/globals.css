@@ -108,7 +108,7 @@
     overflow-x: hidden;
     width: 100%;
     
-    /* ★ নিচের নেভিগেশন বার থেকে কন্টেন্ট বাঁচাতে এই লাইনটা লাগবেই */
+    /* ★ এই লাইনটি যোগ করো: ফোনের নেভিগেশন বারের জায়গাটা বডি থেকে ছেড়ে দেবে ★ */
     padding-bottom: env(safe-area-inset-bottom);
     
     -webkit-font-smoothing: antialiased;

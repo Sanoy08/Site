@@ -50,8 +50,11 @@ export function MobileNav() {
   if (shouldHide) return null;
 
 return (
-    // ★ fixed এর সাথে bottom-4 অ্যাড করে দাও এবং style ট্যাগটা ডিলিট করে দাও
-    <div className="md:hidden fixed left-0 right-0 bottom-4 z-50 flex justify-center">
+    // ★ calc এর ভেতর env(safe-area-inset-bottom) দিলে আর সাদা বারের নিচে ঢুকবে না
+    <div 
+      className="md:hidden fixed left-0 right-0 z-50 flex justify-center"
+      style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))' }} 
+    >
       <div className="w-[92%] max-w-md rounded-2xl bg-card/95 backdrop-blur-md border border-border shadow-xl px-1 py-1.5 animate-in slide-in-from-bottom-4 duration-300">
         <nav className="flex justify-between items-center">
           {navLinks.map((link) => {

@@ -9,7 +9,8 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen">
+    // bg-white এবং pb-[env(safe-area-inset-bottom)] যোগ করা হয়েছে
+    <div className="flex flex-col min-h-screen bg-white pb-[env(safe-area-inset-bottom)]">
       <Header />
       <main className="flex-grow">{children}</main>
       <Footer />

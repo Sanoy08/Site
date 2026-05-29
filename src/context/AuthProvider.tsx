@@ -1,4 +1,6 @@
 // src/context/AuthProvider.tsx
+
+
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
@@ -13,6 +15,8 @@ export type User = {
   address?: string;
   picture?: string;
   wallet?: any;
+  dob?: string;         // ★ Added
+  anniversary?: string; // ★ Added
 };
 
 type AuthContextType = {

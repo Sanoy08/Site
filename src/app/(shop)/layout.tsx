@@ -9,7 +9,10 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div 
+      className="flex flex-col min-h-screen"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} /* ★ Safe area প্যাডিং অ্যাড করা হলো ★ */
+    >
       <Header />
       <main className="flex-grow">{children}</main>
       <Footer />

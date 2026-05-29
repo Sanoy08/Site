@@ -9,9 +9,14 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen">
+    // min-h-[100dvh] মোবাইলের স্ক্রিন সাইজ পারফেক্টলি ডিটেক্ট করে
+    // pb-[env(safe-area-inset-bottom)] নিচের নেভিগেশন বারের জায়গাটা ছেড়ে দেবে
+    <div className="flex flex-col min-h-[100dvh] pb-[env(safe-area-inset-bottom)]">
       <Header />
-      <main className="flex-grow">{children}</main>
+      
+      {/* mb-20 বা mb-24 অ্যাড করা হলো যাতে ফুটার বা শেষের কনটেন্ট আপনার Mobile Nav-এর নিচে লুকিয়ে না যায় */}
+      <main className="flex-grow mb-24">{children}</main>
+      
       <Footer />
     </div>
   );

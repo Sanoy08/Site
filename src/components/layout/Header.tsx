@@ -47,6 +47,9 @@ import { SearchSheet } from '@/components/shop/SearchSheet';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 
+// ★ ম্যাজিক: StatusBar ইম্পোর্ট করা হলো
+import { StatusBar, Style } from '@capacitor/status-bar';
+
 const navLinks = [
   { href: '/', label: 'Home', icon: Sparkles },
   { href: '/menus', label: 'Menu', icon: UtensilsCrossed },
@@ -70,6 +73,25 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+
+  // ==========================================
+  // ★ NATIVE: Status Bar White Color Setup
+  // ==========================================
+  useEffect(() => {
+    const setupStatusBar = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // স্ট্যাটাস বারের ব্যাকগ্রাউন্ড একদম সাদা (#FFFFFF) করে দেওয়া হলো
+          await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+          // লেখা/আইকনগুলো কালচে (Dark) করা হলো যাতে সাদার ওপর দেখা যায়
+          await StatusBar.setStyle({ style: Style.Light });
+        } catch (e) {
+          console.log('Status bar setup failed', e);
+        }
+      }
+    };
+    setupStatusBar();
+  }, []);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -134,7 +156,7 @@ export function Header() {
     const onUpdate = () => checkNotifications();
     window.addEventListener('notification-updated', onUpdate);
     
-    // ★ Listen for the Fly-to-Cart bump event
+    // Listen for the Fly-to-Cart bump event
     const handleCartBump = () => {
         setCartBump(true);
         setTimeout(() => setCartBump(false), 300);

@@ -49,11 +49,11 @@ export function MobileNav() {
   // যদি এডমিন বা হাইড করার পেজ হয়, তাহলে কিছুই দেখাবে না
   if (shouldHide) return null;
 
-return (
-    // ★ calc এর ভেতর env(safe-area-inset-bottom) দিলে আর সাদা বারের নিচে ঢুকবে না
+  return (
+    // ★ নিচে fixed ক্লাসের সাথে স্টাইল অ্যাড করা হলো যাতে ফোনের নেভিগেশন বারের ওপরে থাকে
     <div 
       className="md:hidden fixed left-0 right-0 z-50 flex justify-center"
-      style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))' }} 
+      style={{ bottom: 'calc(8px + env(safe-area-inset-bottom))' }}
     >
       <div className="w-[92%] max-w-md rounded-2xl bg-card/95 backdrop-blur-md border border-border shadow-xl px-1 py-1.5 animate-in slide-in-from-bottom-4 duration-300">
         <nav className="flex justify-between items-center">

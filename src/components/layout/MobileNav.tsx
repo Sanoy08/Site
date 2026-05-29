@@ -49,12 +49,9 @@ export function MobileNav() {
   // যদি এডমিন বা হাইড করার পেজ হয়, তাহলে কিছুই দেখাবে না
   if (shouldHide) return null;
 
-  return (
-    // ★ নিচে fixed ক্লাসের সাথে স্টাইল অ্যাড করা হলো যাতে ফোনের নেভিগেশন বারের ওপরে থাকে
-    <div 
-      className="md:hidden fixed left-0 right-0 z-50 flex justify-center"
-      style={{ bottom: 'calc(8px + env(safe-area-inset-bottom))' }}
-    >
+return (
+    // ★ fixed এর সাথে bottom-4 অ্যাড করে দাও এবং style ট্যাগটা ডিলিট করে দাও
+    <div className="md:hidden fixed left-0 right-0 bottom-4 z-50 flex justify-center">
       <div className="w-[92%] max-w-md rounded-2xl bg-card/95 backdrop-blur-md border border-border shadow-xl px-1 py-1.5 animate-in slide-in-from-bottom-4 duration-300">
         <nav className="flex justify-between items-center">
           {navLinks.map((link) => {

@@ -9,7 +9,8 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen">
+    // min-h-screen এর বদলে min-h-[100dvh] ব্যবহার করা হলো
+    <div className="flex flex-col min-h-[100dvh] bg-white">
       <Header />
       <main className="flex-grow">{children}</main>
       <Footer />

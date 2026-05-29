@@ -107,10 +107,6 @@
     overscroll-behavior: none;
     overflow-x: hidden;
     width: 100%;
-    
-    /* ★ এই লাইনটি যোগ করো: ফোনের নেভিগেশন বারের জায়গাটা বডি থেকে ছেড়ে দেবে ★ */
-    padding-bottom: env(safe-area-inset-bottom);
-    
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

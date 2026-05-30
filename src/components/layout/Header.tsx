@@ -174,19 +174,13 @@ export function Header() {
   };
 
   return (
-  <>
-    <header 
-        className={cn(
-            "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
-            // Note: I changed py-3 to pb-3, because we control padding-top dynamically now
-            isScrolled ? "bg-white border-gray-200 pb-1" : "bg-transparent border-transparent pb-3"
-        )}
-        style={{
-            paddingTop: isScrolled 
-                ? 'calc(env(safe-area-inset-top) + 0.25rem)' 
-                : 'calc(env(safe-area-inset-top) + 0.75rem)'
-        }}
-    >
+    <>
+      <header 
+          className={cn(
+              "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out border-b",
+              isScrolled ? "bg-white border-gray-200 py-1" : "bg-transparent border-transparent py-3"
+          )}
+      >
       <div className="container flex h-14 sm:h-16 items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">

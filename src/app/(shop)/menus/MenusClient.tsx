@@ -23,8 +23,6 @@ import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 import { motion } from 'framer-motion';
 import Fuse from 'fuse.js';
-
-// Import DotLottie Player
 import { DotLottiePlayer } from '@dotlottie/react-player';
 
 const CATEGORIES = [
@@ -63,9 +61,30 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   const [tempSortBy, setTempSortBy] = useState('recommended');
   const [tempShowVegOnly, setTempShowVegOnly] = useState(false);
 
-  // Load All Products for Client-side Search
   useEffect(() => {
-    const fetchAll = async () => {
+    const fetchAll = async (forceApi = false) => {
+      // 1. Try LocalStorage if not forced
+      if (!forceApi) {
+          const cachedData = localStorage.getItem('bumbas_home_data');
+          if (cachedData) {
+              try {
+                  const parsed = JSON.parse(cachedData);
+                  if (parsed.allProducts && parsed.allProducts.length > 0) {
+                      // ★ FIX: Safeguard - Ensure all cached products have proper text slugs instead of IDs
+                      const fixedProducts = parsed.allProducts.map((p: any) => ({
+                          ...p,
+                          slug: (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '')
+                      }));
+                      setAllProducts(fixedProducts);
+                      return; // Data found, stop here! Instant UI!
+                  }
+              } catch (e) {
+                  console.error("Cache parse error", e);
+              }
+          }
+      }
+
+      // 2. Fallback to API if cache is empty or forced
       setIsLoading(true);
       try {
         const res = await fetch(`/api/products?limit=1000`);
@@ -80,24 +99,17 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       }
     };
     
-    // Prothom bar load hobe
-    fetchAll();
+    fetchAll(false);
 
-    // Pusher theke update asle automatic abar load hobe
     const handleRealtimeUpdate = () => {
       console.log("Syncing new menu data...");
-      fetchAll();
+      fetchAll(true);
     };
 
     window.addEventListener('menu-updated', handleRealtimeUpdate);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('menu-updated', handleRealtimeUpdate);
-    };
+    return () => window.removeEventListener('menu-updated', handleRealtimeUpdate);
   }, []);
 
-  // Fuse.js Fuzzy Filtering Logic
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...allProducts];
 
@@ -122,11 +134,20 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
       result = fuse.search(searchQuery).map(r => r.item);
     }
 
+    // ★ FIX: Added original sorting logic to 'recommended' default sort
     switch (sortBy) {
       case 'price-low': result.sort((a, b) => a.price - b.price); break;
       case 'price-high': result.sort((a, b) => b.price - a.price); break;
       case 'rating': result.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
-      default: break; 
+      default: 
+        result.sort((a, b) => {
+            if (a.stock !== b.stock) return b.stock - a.stock;
+            const aSpecial = a.isDailySpecial ? 1 : 0;
+            const bSpecial = b.isDailySpecial ? 1 : 0;
+            if (aSpecial !== bSpecial) return bSpecial - aSpecial;
+            return a.name.localeCompare(b.name);
+        });
+        break; 
     }
 
     return result;
@@ -164,19 +185,13 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
   };
 
   const handleCategoryChange = (category: string) => {
-      // ১. ক্লিক করা মাত্রই ইনস্ট্যান্ট UI আপডেট
       setActiveCategory(category);
-      
-      // ২. সাইলেন্টলি URL আপডেট
       const newUrl = category === 'All' ? '/menus' : `/menus?category=${category.toLowerCase()}`;
       window.history.pushState(null, '', newUrl);
   };
 
-
   return (
     <div className="min-h-screen bg-gray-50/50">
-      
-      {/* HEADER & FILTERS */}
       <div className={cn("sticky top-[60px] z-30 bg-background transition-all duration-300 border-b", isScrolled ? "shadow-md py-2" : "pt-3 pb-0")}>
           <div className="container space-y-2"> 
               <div className="flex gap-3 items-center">
@@ -197,7 +212,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                       </div>
                   </div>
                   
-                  {/* Mobile Filter */}
                   <div className="md:hidden">
                       <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                         <SheetTrigger asChild>
@@ -240,7 +254,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                       </Sheet>
                   </div>
 
-                  {/* Desktop Filters */}
                   <div className="hidden md:flex gap-3 items-center">
                       <div 
                         className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer transition-all select-none", showVegOnly ? "bg-green-50 border-green-200 text-green-700" : "bg-background border-border hover:bg-muted")}
@@ -267,7 +280,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                   </div>
               </div>
 
-              {/* Category Slider */}
               <div ref={categoryContainerRef} className="flex gap-2 md:gap-4 overflow-x-auto pb-1 pt-1 scrollbar-hide mask-fade-right">
                   {CATEGORIES.map((cat, idx) => {
                       const isActive = activeCategory === cat.name;
@@ -304,7 +316,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
           </div>
       </div>
 
-      {/* --- PRODUCTS GRID --- */}
       <div className="container pt-2 pb-8 min-h-[60vh] flex flex-col">
         {isLoading && allProducts.length === 0 ? (
              <div className="flex justify-center py-20 flex-grow">
@@ -325,7 +336,6 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
                 ))}
             </div>
         ) : (
-            // No items state with Lottie (Fade in, Centered vertically without -mt-12)
             <div className="flex flex-col items-center justify-center flex-grow animate-in fade-in duration-500">
                 <div className="w-80 h-80 sm:w-[400px] sm:h-[400px] md:w-[450px] md:h-[450px] relative mb-2">
                     <DotLottiePlayer

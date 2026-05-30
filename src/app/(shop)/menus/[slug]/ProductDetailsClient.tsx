@@ -156,6 +156,26 @@ export function ProductDetailsClient({ product, relatedProducts }: { product: Pr
 
   useEffect(() => {
       const fetchRandomProducts = async () => {
+          // 1. Try LocalStorage
+          const cachedData = localStorage.getItem('bumbas_home_data');
+          if (cachedData) {
+              try {
+                  const parsed = JSON.parse(cachedData);
+                  if (parsed.allProducts && parsed.allProducts.length > 0) {
+                      const allOtherProducts = parsed.allProducts.filter((p: Product) => p.id !== product.id);
+                      // ★ FIX: Safeguard old cache for valid URLs
+                      const fixedProducts = allOtherProducts.map((p: any) => ({
+                          ...p,
+                          slug: (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '')
+                      }));
+                      const shuffled = fixedProducts.sort(() => 0.5 - Math.random());
+                      setRandomItems(shuffled.slice(0, 8));
+                      return; // Instant load, no API!
+                  }
+              } catch (e) { console.error(e); }
+          }
+
+          // 2. Fallback API
           try {
               const res = await fetch('/api/products');
               const data = await res.json();

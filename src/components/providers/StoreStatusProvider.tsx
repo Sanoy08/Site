@@ -16,7 +16,7 @@ export function StoreStatusProvider({ children }: { children: React.ReactNode })
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
 
-  // ১. API Call: Shudhu mount hole ebong route change hole status check korbe
+  // ★ FIX: Removed [pathname] dependency. It will only check once on initial load.
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -25,13 +25,13 @@ export function StoreStatusProvider({ children }: { children: React.ReactNode })
         setIsStoreOpen(data.isStoreOpen);
       } catch (error) {
         console.error("Failed to check store status", error);
-        setIsStoreOpen(true);
+        setIsStoreOpen(true); // Fallback
       }
     };
     checkStatus();
-  }, [pathname]);
+  }, []); // <--- Empty dependency array is the magic fix here!
 
-  // 🌟 ২. REALTIME PUSHER: Eita alada kora holo jate bar bar disconnect na hoy
+  // 🌟 REALTIME PUSHER
   useEffect(() => {
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
@@ -71,7 +71,7 @@ export function StoreStatusProvider({ children }: { children: React.ReactNode })
   if (user && user.role === 'admin') {
       return (
         <>
-            <div className="bg-red-500 text-white text-xs font-bold text-center py-1 px-4 fixed top-0 left-0 right-0 z-[100]">
+            <div className="bg-red-500 text-white text-xs font-bold text-center py-1 px-4 fixed top-0 left-0 right-0 z-">
                 STORE IS CURRENTLY CLOSED FOR CUSTOMERS (Admin Mode)
             </div>
             {children}

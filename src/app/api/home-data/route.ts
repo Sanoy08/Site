@@ -22,24 +22,26 @@ export async function GET(request: NextRequest) {
     }
 
     // ৩. ভার্সন না মিললে প্যারালাল ফেচিং (একসাথে সব ডেটা আনবে)
+    // ★ FIX: Added sorting to menuItems just like the original products API
     const [heroSlides, sliderImages, offers, products] = await Promise.all([
         db.collection('heroSlides').find({}).sort({ order: 1 }).toArray(),
         db.collection('homeSliderImages').find({}).sort({ order: 1 }).toArray(),
         db.collection('offers').find({ active: true }).sort({ createdAt: -1 }).toArray(),
-        db.collection('menuItems').find({}).toArray()
+        db.collection('menuItems').find({}).sort({ InStock: -1, isDailySpecial: -1, Name: 1 }).toArray() 
     ]);
 
+    // ★ FIX: Correctly generate SLUG from Name instead of using ID
     const formatProduct = (item: any) => ({
         id: item._id.toString(),
-        name: item.Name,
-        description: item.Description,
-        price: item.Price,
-        category: { name: item.Category },
-        images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url })) || [],
+        name: item.Name || 'Unknown Dish',
+        description: item.Description || '',
+        price: item.Price || 0,
+        category: { id: (item.Category || '').toLowerCase(), name: item.Category || 'Other' },
+        images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: item.Name })) || [],
         stock: item.InStock ? 100 : 0,
         featured: item.Bestseller === "true" || item.Bestseller === true,
-        isDailySpecial: item.isDailySpecial || false,
-        slug: item.slug || item._id.toString()
+        isDailySpecial: item.isDailySpecial === true,
+        slug: (item.Name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '') 
     });
 
     const formattedProducts = products.map(formatProduct);

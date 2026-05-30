@@ -23,13 +23,18 @@ const config: CapacitorConfig = {
     Keyboard: {
       resize: KeyboardResize.Body,
       style: KeyboardStyle.Dark,
-      resizeOnFullScreen: false, // ★ false করা হলো যাতে লাফিয়ে না ওঠে
+      resizeOnFullScreen: false,
+    },
+    // ★ MAGIC 3: Force the webview to overlay the top status bar natively
+    StatusBar: {
+      overlaysWebView: true,
+      style: 'DARK', // Uses dark text/icons for time & battery. Use 'LIGHT' if your top banner is dark.
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
     SplashScreen: {
-      launchShowDuration: 0, // ★ 0 করা হলো
+      launchShowDuration: 0,
       launchAutoHide: true,
       backgroundColor: "#F8F9FA",
       showSpinner: false

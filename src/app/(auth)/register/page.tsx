@@ -28,7 +28,6 @@ export default function RegisterPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
-  // ★ Rate Limit States
   const [limitData, setLimitData] = useState({ ipLeft: 5, phoneLeft: 3, isBlocked: false, resetTime: '', reason: '' });
   const [showBlockPopup, setShowBlockPopup] = useState(false);
 
@@ -71,7 +70,9 @@ export default function RegisterPage() {
       if (data.success) {
         login(data.user, data.token);
         toast.success('Account created successfully!');
-        router.push('/');
+        
+        // ★ FIX: Hard navigation to ensure cookies are sent to middleware
+        window.location.href = '/';
       } else {
         toast.error(data.error || 'Verification failed');
         setIsLoading(false);
@@ -153,7 +154,6 @@ export default function RegisterPage() {
 
   return (
     <>
-    {/* ★ FIX: z-[100] থেকে z-[10] করা হয়েছে যাতে পপআপ সামনে আসে ★ */}
     <div className="fixed inset-0 z-[10] grid h-screen w-full grid-cols-1 overflow-hidden bg-white lg:grid-cols-2">
       <div className="flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 xl:px-28 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm space-y-8 py-8">
@@ -195,7 +195,6 @@ export default function RegisterPage() {
                         disabled={isLoading} required className="h-12 pl-[4.5rem] border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl" 
                     />
                   </div>
-                  {/* ★ Attempts Indicator ★ */}
                   {phone.length === 10 && !limitData.isBlocked && (
                         <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-medium animate-in fade-in text-gray-500">
                             <ShieldAlert className="h-3.5 w-3.5" />
@@ -251,7 +250,6 @@ export default function RegisterPage() {
       </div>
     </div>
 
-    {/* ★ LIMIT REACHED POPUP ★ */}
     <AlertDialog open={showBlockPopup} onOpenChange={setShowBlockPopup}>
         <AlertDialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[400px]">
           <div className="flex flex-col items-center text-center space-y-4 pt-4">

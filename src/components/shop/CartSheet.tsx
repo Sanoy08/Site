@@ -12,14 +12,8 @@ import Image from 'next/image';
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
-
-// ★ ব্যাক বাটন হ্যান্ডলার
 import { registerBackHandler } from '@/hooks/use-back-button';
-
-// ✅ আমাদের ইমেজ অপটিমাইজার ইমপোর্ট
 import { optimizeImageUrl } from '@/lib/imageUtils';
-
-// ★ Import DotLottie Player
 import { DotLottiePlayer } from '@dotlottie/react-player';
 
 export function CartSheet() {
@@ -31,7 +25,6 @@ export function CartSheet() {
     setIsOpen(false);
   }, [pathname]);
 
-  // ★★★ BACK BUTTON CONTROL ★★★
   useEffect(() => {
     if (isOpen) {
       registerBackHandler(() => setIsOpen(false));
@@ -67,27 +60,27 @@ export function CartSheet() {
             <div className="flex-grow overflow-y-auto pr-2 -mr-2">
               <div className="flex flex-col gap-6 py-6">
                 {state.items.map(item => {
-                  // ✅ ইমেজের সোর্স বের করার লজিক আপডেট করা হয়েছে
                   const rawUrl = (item.image && item.image.url && item.image.url.trim() !== '') 
                     ? item.image.url 
                     : PLACEHOLDER_IMAGE_URL;
 
                   return (
                     <div key={item.id} className="flex gap-4 group">
-                      <Link href={`/menus/${item.slug}`} className="flex-shrink-0 relative h-24 w-24 overflow-hidden rounded-xl border bg-muted">
-                          {/* ✅ অপটিমাইজড ইমেজ ব্যবহার এবং sizes সেট করা হয়েছে */}
+                      {/* ★ FIX: Added prefetch={false} */}
+                      <Link href={`/menus/${item.slug}`} prefetch={false} className="flex-shrink-0 relative h-24 w-24 overflow-hidden rounded-xl border bg-muted">
                          <Image 
                             src={optimizeImageUrl(rawUrl)} 
                             alt={item.name} 
                             fill 
-                            sizes="100px" // থাম্বনেইলের জন্য সাইজ বলে দেওয়া হলো (Performance Boost)
+                            sizes="100px" 
                             className="object-cover transition-transform group-hover:scale-105"
                          />
                       </Link>
                       
                       <div className="flex-grow flex flex-col justify-between">
                         <div>
-                            <Link href={`/menus/${item.slug}`}>
+                            {/* ★ FIX: Added prefetch={false} */}
+                            <Link href={`/menus/${item.slug}`} prefetch={false}>
                                 <h4 className="font-semibold text-base hover:text-primary transition-colors line-clamp-1">{item.name}</h4>
                             </Link>
                             <p className="text-sm text-muted-foreground font-medium mt-1">{formatPrice(item.price)}</p>
@@ -144,11 +137,12 @@ export function CartSheet() {
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3 pt-2">
+                        {/* ★ FIX: Added prefetch={false} */}
                         <Button asChild size="lg" variant="outline" className="w-full rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary">
-                            <Link href="/cart">View Cart</Link>
+                            <Link href="/cart" prefetch={false}>View Cart</Link>
                         </Button>
                         <Button asChild size="lg" className="w-full rounded-xl shadow-lg shadow-primary/20">
-                            <Link href="/checkout/summary">Proceed</Link>
+                            <Link href="/checkout/summary" prefetch={false}>Proceed</Link>
                         </Button>
                     </div>
                 </div>
@@ -156,7 +150,6 @@ export function CartSheet() {
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center pb-12 animate-in fade-in duration-500">
-            {/* ★ Large Lottie Animation for Empty Cart */}
             <div className="w-72 h-72 sm:w-80 sm:h-80 relative -mt-8 mb-4">
                 <DotLottiePlayer
                     src="/Empty Cart - Bag.lottie"
@@ -166,11 +159,11 @@ export function CartSheet() {
             </div>
             <div>
                 <p className="text-xl font-bold text-foreground">Your cart is empty</p>
-                {/* Text removed as requested */}
             </div>
             <SheetTrigger asChild>
+                {/* ★ FIX: Added prefetch={false} */}
                 <Button asChild className="mt-6 rounded-full px-8 shadow-md shadow-primary/20">
-                    <Link href="/menus">Start Shopping</Link>
+                    <Link href="/menus" prefetch={false}>Start Shopping</Link>
                 </Button>
             </SheetTrigger>
           </div>

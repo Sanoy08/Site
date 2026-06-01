@@ -1,11 +1,11 @@
 // src/hooks/use-push-notification.ts
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { PushNotifications, ActionPerformed } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { FCM } from '@capacitor-community/fcm';
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app'; // ★ Notun Import
+import { App } from '@capacitor/app'; 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
@@ -16,15 +16,18 @@ export const usePushNotification = () => {
   
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // ★ FIX: Prevent duplicate API calls for the same token
+  const syncedTokenRef = useRef<string | null>(null);
 
-  const handleNavigation = (url: string) => {
+  const handleNavigation = useCallback((url: string) => {
     if (!url) return;
     if (url.startsWith('http') || url.startsWith('https')) {
         window.location.href = url;
     } else {
         router.push(url);
     }
-  };
+  }, [router]);
 
   const checkPermission = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) return;
@@ -72,7 +75,6 @@ export const usePushNotification = () => {
       }
 
       if (Capacitor.getPlatform() === 'android') {
-        // ১. অ্যাডমিন চ্যানেল
         await PushNotifications.createChannel({
           id: 'admin_order_alert', 
           name: 'Admin Order Alerts',
@@ -84,7 +86,6 @@ export const usePushNotification = () => {
           sound: 'my_alert'
         });
 
-        // ২. ইউজারদের জন্য চ্যানেল
         await PushNotifications.createChannel({
           id: 'user_notifications', 
           name: 'User Alerts', 
@@ -97,7 +98,6 @@ export const usePushNotification = () => {
         });
       }
 
-      // Action Types
       try {
         await (PushNotifications as any).registerActionTypes({
             types: [{
@@ -120,12 +120,17 @@ export const usePushNotification = () => {
     const registrationListener = PushNotifications.addListener('registration', async (fcmToken) => {
       console.log('FCM Token Registered:', fcmToken.value);
       setIsSubscribed(true);
+
+      // ★ FIX: Prevent spamming backend with the exact same token over and over
+      if (syncedTokenRef.current === fcmToken.value) {
+          return; 
+      }
       
-      let currentAppId = 'com.bumbaskitchen.app'; // ডিফল্ট
+      let currentAppId = 'com.bumbaskitchen.app'; 
 
       try {
           const appInfo = await App.getInfo();
-          currentAppId = appInfo.id; // ★ App ID বের করে নিলাম
+          currentAppId = appInfo.id; 
           const isAdminApp = currentAppId === 'com.bumbaskitchen.admin';
 
           if (isAdminApp) {
@@ -139,16 +144,18 @@ export const usePushNotification = () => {
           console.error('Topic sub failed', e); 
       }
 
-      // Server Sync Fix
       try {
         await fetch('/api/notifications/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               token: fcmToken.value,
-              appId: currentAppId // ★ API তে appId পাঠাচ্ছি
+              appId: currentAppId 
             }), 
         });
+        
+        // ★ FIX: Save token in ref so we don't send it again in this session
+        syncedTokenRef.current = fcmToken.value;
         console.log("FCM Token synced with server");
       } catch (e) { 
         console.error("Token sync failed", e); 
@@ -163,20 +170,15 @@ export const usePushNotification = () => {
       }
 
       const imageUrl = notification.data?.image || notification.data?.imageUrl || notification.data?.picture;
-      
       const channelId = notification.data?.android_channel_id || 'user_notifications'; 
-      let soundName = 'user_alert'; 
-
-      if (channelId === 'admin_order_alert') {
-          soundName = 'my_alert'; 
-      }
+      let soundName = channelId === 'admin_order_alert' ? 'my_alert' : 'user_alert';
 
       await LocalNotifications.schedule({
         notifications: [
           {
             title: notification.title || "New Notification",
             body: notification.body || "",
-            id: Math.floor(Math.random() * 2147483647), // ★ Fixed ID issue
+            id: Math.floor(Math.random() * 2147483647),
             schedule: { at: new Date(Date.now() + 100) },
             sound: soundName,
             attachments: imageUrl ? [{ id: 'image', url: imageUrl }] : [],
@@ -209,7 +211,9 @@ export const usePushNotification = () => {
       actionListener.then(l => l.remove());
       localActionListener.then(l => l.remove());
     };
-  }, [user, router, checkPermission]); 
+  // ★ FIX: Removed 'router' from dependencies. It was causing the useEffect to re-run on EVERY page change!
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, checkPermission, handleNavigation]); 
 
   return { 
     isSubscribed, 

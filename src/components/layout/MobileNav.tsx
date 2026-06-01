@@ -15,16 +15,13 @@ const navLinks = [
   { href: '/account', label: 'Account', icon: User },
 ];
 
-// যেসব পাথ-এ ন্যাভবার হাইড করতে চান
 const HIDE_PATHS = [
     '/admin', 
     '/login', 
     '/register', 
     '/verify-otp', 
-    '/reset-password', 
-    '/forgot-password',
-    '/menus', // ★★★ FIX: প্রোডাক্ট ডিটেইলস পেজে ফুটার হাইড করা হলো
-    '/checkout',  // (Optional: চেকআউট পেজেও হাইড রাখা ভালো)
+    '/menus/', // ★ FIX: Adjusted to hide on product details page properly
+    '/checkout', 
     '/web'
 ];
 
@@ -33,11 +30,13 @@ export function MobileNav() {
   const [shouldHide, setShouldHide] = useState(false);
 
   useEffect(() => {
-    // ১. এডমিন সাবডোমেইন চেক
     const isAdminDomain = typeof window !== 'undefined' && window.location.hostname.includes('admin');
     
-    // ২. নির্দিষ্ট পাথ চেক (Login, Register, Admin, Products ইত্যাদি)
-    const isHiddenPath = HIDE_PATHS.some(path => pathname.startsWith(path));
+    // Check if current path matches exactly or starts with hidden paths (excluding exact '/menus' so nav shows on menu list)
+    const isHiddenPath = HIDE_PATHS.some(path => {
+        if (path === '/menus/') return pathname.startsWith('/menus/') && pathname !== '/menus';
+        return pathname.startsWith(path);
+    });
 
     if (isAdminDomain || isHiddenPath) {
       setShouldHide(true);
@@ -46,11 +45,9 @@ export function MobileNav() {
     }
   }, [pathname]);
 
-  // যদি এডমিন বা হাইড করার পেজ হয়, তাহলে কিছুই দেখাবে না
   if (shouldHide) return null;
 
   return (
-    // ★ নিচে fixed ক্লাসের সাথে স্টাইল অ্যাড করা হলো যাতে ফোনের নেভিগেশন বারের ওপরে থাকে
     <div 
       className="md:hidden fixed left-0 right-0 z-50 flex justify-center"
       style={{ bottom: 'calc(8px + env(safe-area-inset-bottom))' }}
@@ -65,7 +62,8 @@ export function MobileNav() {
             const Icon = link.icon;
 
             return (
-              <Link key={link.href} href={link.href} className="flex-1 flex justify-center">
+              // ★ FIX: Added prefetch={false} to stop aggressive background API calls
+              <Link key={link.href} href={link.href} prefetch={false} className="flex-1 flex justify-center">
                 <div
                   className={cn(
                     'flex flex-col items-center justify-center px-3 py-1.5 rounded-xl transition-all duration-300',

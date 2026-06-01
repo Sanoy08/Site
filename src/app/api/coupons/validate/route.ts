@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import { getUser } from '@/lib/auth-utils'; // ★ 1. Import getUser
+import { getUser } from '@/lib/auth-utils'; 
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'coupons';
@@ -11,7 +11,6 @@ export async function POST(request: NextRequest) {
   try {
     const { code, cartTotal } = await request.json();
 
-    // ★ 2. Get User from Cookie
     const currentUser = await getUser(request);
     const currentUserId = currentUser ? (currentUser._id || currentUser.id) : null;
 
@@ -22,8 +21,10 @@ export async function POST(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
+    // ★ FIX: Case-Insensitive & Space-proof search
+    const cleanCode = code.trim();
     const coupon = await db.collection(COLLECTION_NAME).findOne({ 
-        code: code.toUpperCase() 
+        code: { $regex: new RegExp(`^${cleanCode}$`, 'i') } 
     });
 
     if (!coupon) {
@@ -34,8 +35,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'This coupon is inactive' }, { status: 400 });
     }
 
-    // ★ 3. Ownership Check (Fix)
-    // যদি কুপনটি কোনো নির্দিষ্ট ইউজারের জন্য হয়, তবে চেক করুন যে রিকোয়েস্টটি সেই ইউজারই করছে কি না
     if (coupon.userId) {
         if (!currentUserId) {
             return NextResponse.json({ success: false, error: 'You must be logged in to use this coupon.' }, { status: 401 });
@@ -45,7 +44,6 @@ export async function POST(request: NextRequest) {
         }
     }
 
-    // Expiry Check
     if (coupon.expiryDate) {
         const now = new Date();
         const expiryDate = new Date(coupon.expiryDate);
@@ -56,7 +54,6 @@ export async function POST(request: NextRequest) {
         }
     }
 
-    // Usage Limit Check
     if (coupon.usageLimit && coupon.usageLimit > 0) {
         if ((coupon.timesUsed || 0) >= coupon.usageLimit) {
             return NextResponse.json({ success: false, error: 'Coupon usage limit reached' }, { status: 400 });

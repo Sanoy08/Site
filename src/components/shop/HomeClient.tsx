@@ -18,13 +18,11 @@ import { Truck, ShieldCheck, Leaf, Gift, Cake, Heart, Sparkles, Percent, Chevron
 import { SpecialDishCard } from './SpecialDishCard';
 import { optimizeImageUrl } from '@/lib/imageUtils';
 
-// ★★★ AUTH & DIALOG IMPORTS ★★★
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-// ★★★ CALENDAR IMPORTS ★★★
 import { Calendar } from "@/components/ui/calendar";
 import { format, setMonth, setYear, getMonth, getYear, addMonths, subMonths } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,7 +66,6 @@ const testimonials = [
     { name: 'Ankit B.', location: 'Konnagar', rating: 4, quote: "Ordered the veg thali and it was wholesome and delicious. Highly recommended!" }
 ];
 
-// --- CALENDAR CONSTANTS & VARIANTS ---
 const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -82,7 +79,6 @@ const slideVariants = {
     exit: (direction: number) => ({ x: direction < 0 ? 50 : -50, opacity: 0 }),
 };
 
-// --- REUSABLE SWIPEABLE CALENDAR COMPONENT ---
 function SwipeableCalendar({ 
     selected, onSelect, viewDate, setViewDate, onClose 
 }: { 
@@ -182,7 +178,6 @@ function SwipeableCalendar({
 export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allProducts = [] }: HomeClientProps) {
   const { user, login } = useAuth();
   
-  // ★★★ ZERO-LAG CACHE STATE ★★★
   const [homeData, setHomeData] = useState({
       heroSlides,
       sliderImages,
@@ -191,10 +186,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       allProducts
   });
 
-  // ★★★ VERSION-BASED SYNC LOGIC ★★★
   useEffect(() => {
       const syncHomeData = async () => {
-          // ১. প্রথমে লোকাল স্টোরেজ থেকে ইনস্ট্যান্ট লোড করা
           const cachedData = localStorage.getItem('bumbas_home_data');
           const cachedVersion = localStorage.getItem('bumbas_home_version') || '0';
           
@@ -206,12 +199,10 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
               }
           }
 
-          // ২. ব্যাকগ্রাউন্ডে সাইলেন্টলি চেক করা ভার্সন আপডেট হয়েছে কি না
           try {
               const res = await fetch(`/api/home-data?v=${cachedVersion}`);
               const data = await res.json();
 
-              // ৩. যদি ভার্সন আলাদা হয় (upToDate: false), তাহলে UI ও Cache আপডেট করা
               if (data && !data.upToDate && data.data) {
                   setHomeData(data.data);
                   localStorage.setItem('bumbas_home_data', JSON.stringify(data.data));
@@ -230,12 +221,10 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
   const [anniversary, setAnniversary] = useState("");
   const [isSavingDates, setIsSavingDates] = useState(false);
 
-  // View States for the inner dialog
   const [activeView, setActiveView] = useState<'main' | 'dob' | 'anniversary'>('main');
   const [dobViewDate, setDobViewDate] = useState<Date>(new Date("2000-01-01"));
   const [anniversaryViewDate, setAnniversaryViewDate] = useState<Date>(new Date());
 
-  // Carousel States
   const [heroApi, setHeroApi] = useState<CarouselApi>()
   const [heroCurrent, setHeroCurrent] = useState(0)
   const [heroCount, setHeroCount] = useState(0)
@@ -252,7 +241,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
   const [bestsellersCurrent, setBestsellersCurrent] = useState(0)
   const [bestsellersCount, setBestsellersCount] = useState(0)
   
-  // ★ Updated to use homeData
   const dailySpecial = homeData.allProducts?.find((p: any) => p.isDailySpecial);
 
   const useCarouselEffect = (api: CarouselApi | undefined, setCount: (c: number) => void, setCurrent: (c: number) => void) => {
@@ -290,7 +278,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
       try {
           setIsSavingDates(true);
           const nameParts = user?.name ? user.name.trim().split(' ') : ['User', ''];
-          const firstName = nameParts[0] || 'User';
+          const firstName = nameParts || 'User';
           const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '.'; 
 
           const res = await fetch('/api/auth/update-profile', {
@@ -334,10 +322,10 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           <>
             <Carousel setApi={setHeroApi} opts={{ loop: true }} plugins={[Autoplay({ delay: 5000 })]}>
               <CarouselContent>
-                {/* ★ Updated to use homeData */}
                 {homeData.heroSlides.map((slide: any) => (
                   <CarouselItem key={slide.id}>
-                    <Link href={slide.clickUrl} className="block w-full relative">
+                    {/* ★ FIX: prefetch={false} */}
+                    <Link href={slide.clickUrl} prefetch={false} className="block w-full relative">
                       <Image 
                         src={optimizeImageUrl(slide.imageUrl)} alt="Hero Slide" width={0} height={0} sizes="100vw"
                         style={{ width: '100%', height: 'auto' }} className="object-contain" priority 
@@ -361,7 +349,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
            <div className="relative h-[50vh] md:h-screen overflow-hidden bg-gray-100 flex items-center justify-center">
               <div className="text-center">
                   <h1 className="text-4xl font-bold text-primary mb-4 font-headline">Bumba's Kitchen</h1>
-                  <Button asChild size="lg" className="rounded-full"><Link href="/menus">Order Now</Link></Button>
+                  {/* ★ FIX: prefetch={false} */}
+                  <Button asChild size="lg" className="rounded-full"><Link href="/menus" prefetch={false}>Order Now</Link></Button>
               </div>
            </div>
         )}
@@ -376,7 +365,8 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
               </div>
               <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 pt-2 px-1 scrollbar-hide md:justify-center">
                   {CATEGORIES.map((cat, idx) => (
-                      <Link key={idx} href={cat.link} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
+                      // ★ FIX: prefetch={false}
+                      <Link key={idx} href={cat.link} prefetch={false} className="flex flex-col items-center gap-2 min-w-[70px] group cursor-pointer">
                           <div className={`relative h-14 w-14 md:h-20 md:w-20 rounded-full border-[3px] ${cat.borderColor} p-0.5 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 bg-white`}>
                               <div className="relative h-full w-full rounded-full overflow-hidden bg-white">
                                   <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 20vw, 10vw" className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized={true} />
@@ -412,11 +402,11 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
           <div className="container">
             <Carousel setApi={setMiddleApi} opts={{ align: "start", loop: true }} plugins={[Autoplay({ delay: 3500 })]} className="w-full">
                 <CarouselContent>
-                    {/* ★ Updated to use homeData */}
                     {homeData.sliderImages.map((slide: any) => (
                     <CarouselItem key={slide.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
                         <div className="p-1">
-                        <Link href={slide.clickUrl || '#'} className="block cursor-pointer hover:opacity-95 transition-opacity">
+                        {/* ★ FIX: prefetch={false} */}
+                        <Link href={slide.clickUrl || '#'} prefetch={false} className="block cursor-pointer hover:opacity-95 transition-opacity">
                             <Card className="overflow-hidden border-none shadow-md rounded-2xl bg-card">
                                 <CardContent className="p-0">
                                 <Image src={optimizeImageUrl(slide.imageUrl)} alt="Slider Image" width={0} height={0} sizes="(max-width: 768px) 90vw, 33vw" style={{ width: '100%', height: 'auto' }} className="object-contain" />
@@ -449,15 +439,16 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                 </div>
                 <div className="max-w-md mx-auto bg-white p-4 rounded-3xl shadow-xl border border-amber-100 hover:shadow-2xl transition-shadow duration-300">
                     <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-sm bg-muted">
-                         {dailySpecial.images && dailySpecial.images.length > 0 && dailySpecial.images[0].url ? (
-                            <Image src={optimizeImageUrl(dailySpecial.images[0].url)} alt={dailySpecial.name} fill sizes="(max-width: 768px) 90vw, 50vw" className="object-cover" />
+                         {dailySpecial.images && dailySpecial.images.length > 0 && dailySpecial.images.url ? (
+                            <Image src={optimizeImageUrl(dailySpecial.images.url)} alt={dailySpecial.name} fill sizes="(max-width: 768px) 90vw, 50vw" className="object-cover" />
                          ) : (
                              <SpecialDishCard name={dailySpecial.name} description={dailySpecial.description} price={dailySpecial.price} />
                          )}
                     </div>
                     <div className="mt-6 px-2 pb-2">
+                        {/* ★ FIX: prefetch={false} */}
                         <Button asChild size="lg" className="w-full rounded-xl text-lg font-bold h-14 shadow-md shadow-primary/20 hover:scale-[1.02] transition-transform">
-                            <Link href={`/menus/${dailySpecial.slug}`}>Order Now - {formatPrice(dailySpecial.price)}</Link>
+                            <Link href={`/menus/${dailySpecial.slug}`} prefetch={false}>Order Now - {formatPrice(dailySpecial.price)}</Link>
                         </Button>
                     </div>
                 </div>
@@ -475,7 +466,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             </div>
             <Carousel setApi={setOffersApi} opts={{ align: "start", loop: true }} className="w-full">
                 <CarouselContent>
-                    {/* ★ Updated to use homeData */}
                     {homeData.offers.map((offer: any) => (
                     <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
                         <div className="p-1 h-full">
@@ -511,7 +501,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             <div className="w-full max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto">
                 <Carousel setApi={setBestsellersApi} opts={{ align: "start", loop: true }} className="w-full">
                 <CarouselContent>
-                    {/* ★ Updated to use homeData */}
                     {homeData.bestsellers.map((product: any) => (
                     <CarouselItem key={product.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
                         <div className="p-1 h-full">
@@ -535,8 +524,9 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
             <p className="text-center text-muted-foreground">No products found.</p>
           )}
           <div className="text-center mt-12">
+              {/* ★ FIX: prefetch={false} */}
               <Button asChild variant="outline" className="rounded-full px-8 border-primary/50 text-primary hover:bg-primary/5">
-                  <Link href="/menus">View Full Menu</Link>
+                  <Link href="/menus" prefetch={false}>View Full Menu</Link>
               </Button>
           </div>
         </div>
@@ -559,7 +549,7 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                                     <p className="text-gray-600 italic flex-grow">"{testimonial.quote}"</p>
                                     <div className="mt-6 flex items-center gap-3">
                                         <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center font-bold text-primary">
-                                            {testimonial.name[0]}
+                                            {testimonial.name}
                                         </div>
                                         <div>
                                             <p className="font-bold text-sm text-gray-900">{testimonial.name}</p>
@@ -587,7 +577,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
               
               {activeView === 'main' && (
                   <>
-                    {/* Header Banner */}
                     <div className="relative bg-gradient-to-br from-amber-100 via-orange-50 to-rose-100 p-8 pb-10 text-center overflow-hidden">
                         <div className="absolute -top-6 -left-6 w-24 h-24 bg-pink-300/40 rounded-full blur-2xl"></div>
                         <div className="absolute bottom-0 -right-6 w-32 h-32 bg-amber-300/40 rounded-full blur-2xl"></div>
@@ -605,7 +594,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                         </DialogDescription>
                     </div>
 
-                    {/* Form Body */}
                     <div className="relative z-20 bg-white rounded-t-[2rem] -mt-6 p-6 pt-8 space-y-5">
                         {/* @ts-ignore */}
                         {!user?.dob && (
@@ -672,7 +660,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                   </>
               )}
 
-              {/* DOB Calendar View */}
               {activeView === 'dob' && (
                   <div className="flex flex-col h-full bg-white animate-in slide-in-from-right-8 duration-300">
                       <div className="flex items-center p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
@@ -694,7 +681,6 @@ export function HomeClient({ heroSlides, sliderImages, offers, bestsellers, allP
                   </div>
               )}
 
-              {/* Anniversary Calendar View */}
               {activeView === 'anniversary' && (
                   <div className="flex flex-col h-full bg-white animate-in slide-in-from-right-8 duration-300">
                       <div className="flex items-center p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">

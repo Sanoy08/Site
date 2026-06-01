@@ -64,7 +64,6 @@ export function Header() {
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
   const [pendingAdminState, setPendingAdminState] = useState(false);
   
-  // ★ Cart Bump Animation State
   const [cartBump, setCartBump] = useState(false);
 
   const pathname = usePathname();
@@ -134,7 +133,6 @@ export function Header() {
     const onUpdate = () => checkNotifications();
     window.addEventListener('notification-updated', onUpdate);
     
-    // ★ Listen for the Fly-to-Cart bump event
     const handleCartBump = () => {
         setCartBump(true);
         setTimeout(() => setCartBump(false), 300);
@@ -222,7 +220,7 @@ export function Header() {
                           {navLinks.map((link) => {
                               const Icon = link.icon;
                               return (
-                              <Link key={link.href} href={link.href} className={cn(
+                              <Link key={link.href} href={link.href} prefetch={false} className={cn(
                                   "flex items-center justify-between py-3.5 px-4 rounded-xl text-sm font-medium transition-all duration-200 group border border-transparent",
                                   pathname === link.href ? "bg-primary/5 text-primary border-primary/10 shadow-sm" : "hover:bg-muted text-muted-foreground hover:text-foreground"
                               )}>
@@ -241,7 +239,7 @@ export function Header() {
                               <a href="https://facebook.com" className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-background rounded-lg border hover:border-blue-500/30 hover:bg-blue-50/50 transition-all text-xs font-medium text-muted-foreground hover:text-blue-600"><Facebook className="h-4 w-4" /> Facebook</a>
                           </div>
                           {!user ? (
-                              <Button asChild className="w-full rounded-xl shadow-lg shadow-primary/20 h-12 text-base font-semibold" size="lg"><Link href="/login">Login / Sign Up</Link></Button>
+                              <Button asChild className="w-full rounded-xl shadow-lg shadow-primary/20 h-12 text-base font-semibold" size="lg"><Link href="/login" prefetch={false}>Login / Sign Up</Link></Button>
                           ) : (
                               <Button onClick={handleLogout} variant="destructive" className="w-full rounded-xl h-11 bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 shadow-none"><LogOut className="mr-2 h-4 w-4" /> Log Out</Button>
                           )}
@@ -260,7 +258,7 @@ export function Header() {
                   {navLinks.map(link => {
                       const isActive = pathname === link.href;
                       return (
-                          <Link key={link.href} href={link.href} className={cn("px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 relative group", isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                          <Link key={link.href} href={link.href} prefetch={false} className={cn("px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 relative group", isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
                               {isActive && <span className="absolute inset-0 bg-primary rounded-full shadow-md -z-10 animate-in zoom-in-95 duration-200" />}
                               <span className="relative z-10">{link.label}</span>
                           </Link>
@@ -285,7 +283,6 @@ export function Header() {
               {hasNewNotification && <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-600 border-2 border-background animate-pulse shadow-sm" />}
           </Button>
 
-          {/* ★ TARGET FOR FLYING ANIMATION */}
           <div id="global-cart-target" className={cn("relative transition-all duration-300", cartBump && "scale-125 -translate-y-1 drop-shadow-lg")}>
               <CartSheet />
           </div>
@@ -320,7 +317,7 @@ export function Header() {
               </DropdownMenu>
           ) : (
               <Button asChild size="sm" className="hidden md:flex rounded-full px-6 ml-2 font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 h-10 bg-gradient-to-r from-primary to-primary/90">
-                  <Link href="/login">Login</Link>
+                  <Link href="/login" prefetch={false}>Login</Link>
               </Button>
           )}
           </div>

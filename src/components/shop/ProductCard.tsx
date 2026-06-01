@@ -80,7 +80,8 @@ export function ProductCard({ product }: ProductCardProps) {
   if (product.isDailySpecial && !hasValidImage) {
       return (
           <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow cursor-pointer group border-amber-200 shadow-md bg-amber-50/30">
-              <Link href={`/menus/${product.slug}`} className="block h-full flex flex-col">
+              {/* ★ FIX: Added prefetch={false} to stop background network spam */}
+              <Link href={`/menus/${product.slug}`} prefetch={false} className="block h-full flex flex-col">
                   <div className="aspect-square relative w-full">
                       <SpecialDishCard 
                           name={product.name} 
@@ -102,7 +103,8 @@ export function ProductCard({ product }: ProductCardProps) {
   // নরমাল কার্ড রেন্ডারিং
   return (
     <Card className={`flex flex-col overflow-hidden h-full transition-shadow hover:shadow-lg bg-card group border-muted/60 ${isOutOfStock ? 'opacity-75 grayscale-[0.5]' : ''}`}>
-      <Link href={`/menus/${product.slug}`} className="block aspect-square relative overflow-hidden">
+      {/* ★ FIX: Added prefetch={false} here as well */}
+      <Link href={`/menus/${product.slug}`} prefetch={false} className="block aspect-square relative overflow-hidden">
         {isOutOfStock ? (
             <Badge className="absolute top-2 right-2 bg-destructive text-destructive-foreground z-10 shadow-sm pointer-events-none">Out of Stock</Badge>
         ) : isNew && (

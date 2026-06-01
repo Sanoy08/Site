@@ -50,7 +50,8 @@ export default function CartPage() {
                     return (
                       <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex items-center gap-4">
-                          <Link href={`/menus/${item.slug}`}>
+                          {/* ★ FIX: Added prefetch={false} */}
+                          <Link href={`/menus/${item.slug}`} prefetch={false}>
                             <div className="relative h-20 w-20 rounded-md overflow-hidden border bg-muted">
                               {/* ✅ অপটিমাইজড ইমেজ এবং sizes সেট করা হয়েছে */}
                               <Image
@@ -63,7 +64,8 @@ export default function CartPage() {
                             </div>
                           </Link>
                           <div>
-                            <Link href={`/menus/${item.slug}`}>
+                            {/* ★ FIX: Added prefetch={false} */}
+                            <Link href={`/menus/${item.slug}`} prefetch={false}>
                               <p className="font-semibold hover:text-primary">{item.name}</p>
                             </Link>
                             <p className="text-sm text-muted-foreground">
@@ -136,11 +138,10 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                {/* ★★★ পরিবর্তন: বাটন টেক্সট এবং অনক্লিক ফাংশন ★★★ */}
                 <Button
                     size="lg"
                     className="w-full"
-                    onClick={() => router.push('/checkout/summary')} // নতুন পেজে যাবে
+                    onClick={() => router.push('/checkout/summary')}
                 >
                     Proceed to Summary
                 </Button>
@@ -150,7 +151,6 @@ export default function CartPage() {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center pt-4 pb-16 text-center animate-in fade-in duration-500">
-          {/* ★ Negative margin (-mt-16) দিয়ে লটি অ্যানিমেশনটাকে উপরে তোলা হয়েছে */}
           <div className="w-72 h-72 sm:w-96 sm:h-96 relative -mt-16 mb-2">
               <DotLottiePlayer
                   src="/Empty Cart - Bag.lottie"
@@ -160,7 +160,8 @@ export default function CartPage() {
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-foreground">Your cart is empty</h2>
           <Button asChild className="mt-8 rounded-full px-10 shadow-md shadow-primary/20" size="lg">
-            <Link href="/menus">Continue Shopping</Link>
+            {/* ★ FIX: Added prefetch={false} */}
+            <Link href="/menus" prefetch={false}>Continue Shopping</Link>
           </Button>
         </div>
       )}

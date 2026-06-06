@@ -12,7 +12,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. কুকি থেকে ইউজার ডেটা (Payload) আনা
     const payload = await getUser(request);
 
     if (!payload) {
@@ -33,7 +32,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, user: null }, { status: 404 });
     }
 
-    // ৩. রেসপন্স পাঠানো (★ এখানেই dob আর anniversary অ্যাড করা হলো)
     return NextResponse.json({ 
         success: true, 
         user: {
@@ -45,8 +43,9 @@ export async function GET(request: NextRequest) {
             phone: user.phone,
             address: user.address,
             wallet: user.wallet,
-            dob: user.dob,               // ★ Added
-            anniversary: user.anniversary // ★ Added
+            dob: user.dob,               
+            anniversary: user.anniversary,
+            savedAddresses: user.savedAddresses || [] // ★ Added
         } 
     });
 

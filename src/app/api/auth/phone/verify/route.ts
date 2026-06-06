@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
     }
 
-    // ২. মেয়াদ এবং OTP চেক
+    // ২. মেয়াদ এবং OTP চেক
     if (new Date() > new Date(user.otpExpires)) {
         return NextResponse.json({ success: false, error: 'OTP expired' }, { status: 400 });
     }
@@ -50,12 +50,20 @@ export async function POST(request: NextRequest) {
         { expiresIn: '30d' }
     );
 
+    // ★★★ FIX: এখানে সমস্ত প্রয়োজনীয় ডেটা পাঠানো হলো
     const userData = {
         id: user._id.toString(),
         name: user.name,
+        email: user.email,
         phone: user.phone,
         role: user.role,
-        isNewUser: user.name === 'New User' // ফ্রন্টএন্ড বুঝবে নাম সেট করতে হবে কিনা
+        picture: user.picture,
+        address: user.address,
+        wallet: user.wallet,
+        dob: user.dob,                                  // ★ Added
+        anniversary: user.anniversary,                  // ★ Added
+        savedAddresses: user.savedAddresses || [],      // ★ Added
+        isNewUser: user.name === 'New User' 
     };
 
     return responseWithCookie(

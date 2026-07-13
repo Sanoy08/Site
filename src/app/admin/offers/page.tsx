@@ -200,12 +200,12 @@ export default function AdminOffersPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-            <DialogHeader className="p-6 border-b bg-muted/20">
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+            <DialogHeader className="p-6 border-b bg-muted/20 shrink-0">
                 <DialogTitle className="text-xl">{editingOffer ? 'Edit Offer' : 'Add New Offer'}</DialogTitle>
             </DialogHeader>
             
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
                 <div className="space-y-3">
                     <Label className="text-base font-medium">Offer Poster / Banner</Label>
                     <ImageUpload 
@@ -307,7 +307,7 @@ export default function AdminOffersPage() {
                 )}
             </div>
 
-            <DialogFooter className="p-6 border-t bg-muted/20">
+            <DialogFooter className="p-6 border-t bg-muted/20 shrink-0">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleSubmit} className="gap-2">{editingOffer ? 'Update Offer' : 'Save Offer'}</Button>
             </DialogFooter>

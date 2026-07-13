@@ -28,6 +28,7 @@ type Offer = {
   isSpecialOffer?: boolean;
   deliveryDate?: string;
   orderCutoffTime?: string;
+  mealType?: string;
 };
 
 export default function AdminOffersPage() {
@@ -47,7 +48,8 @@ export default function AdminOffersPage() {
     active: true,
     isSpecialOffer: false,
     deliveryDate: '',
-    orderCutoffTime: ''
+    orderCutoffTime: '',
+    mealType: 'lunch'
   });
 
   const fetchOffers = async () => {
@@ -76,7 +78,8 @@ export default function AdminOffersPage() {
             active: offer.active,
             isSpecialOffer: offer.isSpecialOffer || false,
             deliveryDate: offer.deliveryDate || '',
-            orderCutoffTime: offer.orderCutoffTime || ''
+            orderCutoffTime: offer.orderCutoffTime || '',
+            mealType: offer.mealType || 'lunch'
         });
     } else {
         setEditingOffer(null);
@@ -88,7 +91,8 @@ export default function AdminOffersPage() {
             active: true,
             isSpecialOffer: false,
             deliveryDate: '',
-            orderCutoffTime: ''
+            orderCutoffTime: '',
+            mealType: 'lunch'
         });
     }
     setIsDialogOpen(true);
@@ -177,7 +181,7 @@ export default function AdminOffersPage() {
                         </div>
                         {offer.isSpecialOffer && (
                             <div className="bg-amber-100 px-2 py-1 rounded text-xs font-bold text-amber-700 shadow-sm border border-amber-200">
-                                Special Order
+                                Special Order ({offer.mealType === 'lunch' ? 'Lunch' : offer.mealType === 'dinner' ? 'Dinner' : 'Any'})
                             </div>
                         )}
                     </div>
@@ -238,11 +242,35 @@ export default function AdminOffersPage() {
                     <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-slate-50/50">
                         <div className="space-y-2">
                             <Label>Delivery Date</Label>
-                            <input type="date" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.deliveryDate} onChange={e => setFormData({...formData, deliveryDate: e.target.value})} />
+                            <input type="date" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" value={formData.deliveryDate} onChange={e => setFormData({...formData, deliveryDate: e.target.value})} />
                         </div>
                         <div className="space-y-2">
                             <Label>Order Cutoff (Deadline)</Label>
-                            <input type="datetime-local" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.orderCutoffTime} onChange={e => setFormData({...formData, orderCutoffTime: e.target.value})} />
+                            <div className="flex gap-2">
+                                <input type="date" className="flex h-10 w-[55%] rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" 
+                                    value={formData.orderCutoffTime ? formData.orderCutoffTime.split('T')[0] : ''} 
+                                    onChange={e => {
+                                        const date = e.target.value;
+                                        const time = formData.orderCutoffTime && formData.orderCutoffTime.includes('T') ? formData.orderCutoffTime.split('T')[1] : '00:00';
+                                        setFormData({...formData, orderCutoffTime: date ? `${date}T${time}` : ''})
+                                    }} 
+                                />
+                                <input type="time" className="flex h-10 w-[45%] rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" 
+                                    value={formData.orderCutoffTime && formData.orderCutoffTime.includes('T') ? formData.orderCutoffTime.split('T')[1] : ''} 
+                                    onChange={e => {
+                                        const time = e.target.value;
+                                        const date = formData.orderCutoffTime ? formData.orderCutoffTime.split('T')[0] : '';
+                                        if (date) setFormData({...formData, orderCutoffTime: `${date}T${time}`})
+                                    }} 
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                            <Label>Applicable Meal Time</Label>
+                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" value={formData.mealType} onChange={e => setFormData({...formData, mealType: e.target.value})}>
+                                <option value="lunch">Lunch Only</option>
+                                <option value="dinner">Dinner Only</option>
+                            </select>
                         </div>
                     </div>
                 )}

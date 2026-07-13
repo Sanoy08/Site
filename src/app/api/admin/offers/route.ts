@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       isSpecialOffer: offer.isSpecialOffer || false,
       deliveryDate: offer.deliveryDate || '',
       orderCutoffTime: offer.orderCutoffTime || '',
+      mealType: offer.mealType || 'both',
       createdAt: offer.createdAt
     }));
 
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       isSpecialOffer: body.isSpecialOffer || false,
       deliveryDate: body.deliveryDate || '',
       orderCutoffTime: body.orderCutoffTime || '',
+      mealType: body.mealType || 'both',
       createdAt: new Date()
     };
 

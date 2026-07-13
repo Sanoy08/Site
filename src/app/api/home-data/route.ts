@@ -61,7 +61,8 @@ export async function GET(request: NextRequest) {
                 imageUrl: o.imageUrl,
                 isSpecialOffer: o.isSpecialOffer || false,
                 deliveryDate: o.deliveryDate || '',
-                orderCutoffTime: o.orderCutoffTime || ''
+                orderCutoffTime: o.orderCutoffTime || '',
+                mealType: o.mealType || 'both'
             })), 
             bestsellers,
             allProducts: formattedProducts

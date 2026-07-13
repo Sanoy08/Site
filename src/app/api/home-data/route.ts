@@ -30,6 +30,22 @@ export async function GET(request: NextRequest) {
         db.collection('menuItems').find({}).sort({ InStock: -1, isDailySpecial: -1, Name: 1 }).toArray() 
     ]);
 
+    // ★ Auto-delete expired special offers (Lazy Deletion)
+    const todayDate = new Date();
+    todayDate.setHours(todayDate.getHours() + 5);
+    todayDate.setMinutes(todayDate.getMinutes() + 30);
+    const todayStr = todayDate.toISOString().split('T')[0];
+
+    const expiredOfferIds = offers
+        .filter(o => o.deliveryDate && todayStr > o.deliveryDate)
+        .map(o => o._id);
+
+    let validOffers = offers;
+    if (expiredOfferIds.length > 0) {
+        await db.collection('offers').deleteMany({ _id: { $in: expiredOfferIds } });
+        validOffers = offers.filter(o => !expiredOfferIds.includes(o._id));
+    }
+
     // ★ FIX: Correctly generate SLUG from Name instead of using ID
     const formatProduct = (item: any) => ({
         id: item._id.toString(),
@@ -53,7 +69,7 @@ export async function GET(request: NextRequest) {
         data: { 
             heroSlides: heroSlides.map(s => ({ id: s._id.toString(), imageUrl: s.imageUrl, clickUrl: s.clickUrl, order: s.order })), 
             sliderImages: sliderImages.map(s => ({ id: s._id.toString(), imageUrl: s.imageUrl, clickUrl: s.clickUrl, order: s.order })), 
-            offers: offers.map(o => ({ 
+            offers: validOffers.map(o => ({ 
                 id: o._id.toString(), 
                 title: o.title, 
                 description: o.description, 
@@ -62,7 +78,7 @@ export async function GET(request: NextRequest) {
                 isSpecialOffer: o.isSpecialOffer || false,
                 deliveryDate: o.deliveryDate || '',
                 orderCutoffTime: o.orderCutoffTime || '',
-                mealType: o.mealType || 'both'
+                mealType: o.mealType || 'lunch'
             })), 
             bestsellers,
             allProducts: formattedProducts

@@ -36,6 +36,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Order must contain items.' }, { status: 400 });
     }
 
+    console.log("=== CHECKOUT DEBUG: Incoming Items ===");
+    console.log(JSON.stringify(items, null, 2));
+    console.log("======================================");
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const session = client.startSession();

@@ -8,6 +8,9 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus, Trash2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -197,57 +200,75 @@ export default function AdminOffersPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="w-[90%] rounded-2xl sm:max-w-[450px] p-0 gap-0 overflow-hidden">
-            <DialogHeader className="p-6 border-b bg-muted/10">
-                <DialogTitle>{editingOffer ? 'Edit Offer Image' : 'Add New Offer'}</DialogTitle>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+            <DialogHeader className="p-6 border-b bg-muted/20">
+                <DialogTitle className="text-xl">{editingOffer ? 'Edit Offer' : 'Add New Offer'}</DialogTitle>
             </DialogHeader>
             
             <div className="p-6 space-y-6">
                 <div className="space-y-3">
                     <Label className="text-base font-medium">Offer Poster / Banner</Label>
-                    <div className="bg-muted/20 p-2 rounded-xl border border-dashed">
-                        <ImageUpload 
-                            value={formData.imageUrl ? [formData.imageUrl] : []}
-                            onChange={(urls) => setFormData({...formData, imageUrl: urls[0] || ''})}
-                            maxFiles={1}
-                        />
-                    </div>
+                    <ImageUpload 
+                        value={formData.imageUrl ? [formData.imageUrl] : []}
+                        onChange={(urls) => setFormData({...formData, imageUrl: urls[0] || ''})}
+                        maxFiles={1}
+                        folder="offers"
+                    />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <Label>Title</Label>
-                        <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="Offer Title" />
+                        <Label>Offer Title</Label>
+                        <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. Weekend Special Thali" />
                     </div>
+                    
                     <div className="space-y-2">
-                        <Label>Price (if orderable)</Label>
-                        <input type="number" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="e.g. 199" />
+                        <Label>Price (₹)</Label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                            <Input type="number" className="pl-7" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="0.00" />
+                        </div>
                     </div>
                 </div>
 
                 <div className="space-y-2">
                     <Label>Description</Label>
-                    <textarea className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Offer Description..." />
+                    <Textarea 
+                        value={formData.description} 
+                        onChange={e => setFormData({...formData, description: e.target.value})} 
+                        placeholder="Describe the offer..." 
+                        className="min-h-[100px]"
+                    />
                 </div>
 
-                <div className="flex items-center justify-between bg-amber-50/50 p-4 rounded-xl border border-amber-100">
-                    <div className="space-y-0.5">
-                        <Label className="text-base text-amber-900">Make Orderable (Special Item)</Label>
-                        <p className="text-xs text-amber-700">Allow users to order this directly from the banner.</p>
+                <div className="flex flex-col sm:flex-row gap-6 p-4 bg-muted/30 rounded-lg border">
+                    <div className="flex items-center justify-between flex-1">
+                        <div className="space-y-0.5">
+                            <Label>Make Orderable (Special Item)</Label>
+                            <p className="text-xs text-muted-foreground">Allow users to order this directly</p>
+                        </div>
+                        <Switch checked={formData.isSpecialOffer} onCheckedChange={(c) => setFormData({...formData, isSpecialOffer: c})} />
                     </div>
-                    <Switch checked={formData.isSpecialOffer} onCheckedChange={(c) => setFormData({...formData, isSpecialOffer: c})} />
+                    <div className="h-px sm:h-auto sm:w-px bg-border"></div>
+                    <div className="flex items-center justify-between flex-1">
+                        <div className="space-y-0.5">
+                            <Label>Active Status</Label>
+                            <p className="text-xs text-muted-foreground">Show this offer on homepage</p>
+                        </div>
+                        <Switch checked={formData.active} onCheckedChange={(c) => setFormData({...formData, active: c})} />
+                    </div>
                 </div>
 
                 {formData.isSpecialOffer && (
-                    <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-slate-50/50">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 border rounded-xl bg-slate-50/50">
                         <div className="space-y-2">
                             <Label>Delivery Date</Label>
-                            <input type="date" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" value={formData.deliveryDate} onChange={e => setFormData({...formData, deliveryDate: e.target.value})} />
+                            <Input type="date" value={formData.deliveryDate} onChange={e => setFormData({...formData, deliveryDate: e.target.value})} />
                         </div>
                         <div className="space-y-2">
                             <Label>Order Cutoff (Deadline)</Label>
                             <div className="flex gap-2">
-                                <input type="date" className="flex h-10 w-[55%] rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" 
+                                <Input type="date" className="flex-1"
                                     value={formData.orderCutoffTime ? formData.orderCutoffTime.split('T')[0] : ''} 
                                     onChange={e => {
                                         const date = e.target.value;
@@ -255,38 +276,40 @@ export default function AdminOffersPage() {
                                         setFormData({...formData, orderCutoffTime: date ? `${date}T${time}` : ''})
                                     }} 
                                 />
-                                <input type="time" className="flex h-10 w-[45%] rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" 
+                                <Input type="time" className="flex-1"
                                     value={formData.orderCutoffTime && formData.orderCutoffTime.includes('T') ? formData.orderCutoffTime.split('T')[1] : ''} 
                                     onChange={e => {
                                         const time = e.target.value;
                                         const date = formData.orderCutoffTime ? formData.orderCutoffTime.split('T')[0] : '';
-                                        if (date) setFormData({...formData, orderCutoffTime: `${date}T${time}`})
+                                        if (date) {
+                                            setFormData({...formData, orderCutoffTime: `${date}T${time}`});
+                                        }
                                     }} 
                                 />
                             </div>
                         </div>
-                        <div className="space-y-2 col-span-2">
+                        <div className="space-y-2 sm:col-span-2">
                             <Label>Applicable Meal Time</Label>
-                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary" value={formData.mealType} onChange={e => setFormData({...formData, mealType: e.target.value})}>
-                                <option value="lunch">Lunch Only</option>
-                                <option value="dinner">Dinner Only</option>
-                            </select>
+                            <Select 
+                                value={formData.mealType} 
+                                onValueChange={(value) => setFormData({...formData, mealType: value})}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Meal Time" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="lunch">Lunch Only</SelectItem>
+                                    <SelectItem value="dinner">Dinner Only</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                 )}
-
-                <div className="flex items-center justify-between bg-muted/30 p-4 rounded-xl border">
-                    <div className="space-y-0.5">
-                        <Label className="text-base">Active Status</Label>
-                        <p className="text-xs text-muted-foreground">Show this offer on homepage</p>
-                    </div>
-                    <Switch checked={formData.active} onCheckedChange={(c) => setFormData({...formData, active: c})} />
-                </div>
             </div>
 
-            <DialogFooter className="p-6 border-t bg-muted/10">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl h-11">Cancel</Button>
-                <Button onClick={handleSubmit} className="rounded-xl h-11 px-8">Save Offer</Button>
+            <DialogFooter className="p-6 border-t bg-muted/20">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSubmit} className="gap-2">{editingOffer ? 'Update Offer' : 'Save Offer'}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

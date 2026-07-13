@@ -27,6 +27,9 @@ export async function GET(request: NextRequest) {
       price: offer.price,
       imageUrl: offer.imageUrl,
       active: offer.active,
+      isSpecialOffer: offer.isSpecialOffer || false,
+      deliveryDate: offer.deliveryDate || '',
+      orderCutoffTime: offer.orderCutoffTime || '',
       createdAt: offer.createdAt
     }));
 
@@ -51,6 +54,9 @@ export async function POST(request: NextRequest) {
       price: parseFloat(body.price),
       imageUrl: body.imageUrl,
       active: body.active ?? true,
+      isSpecialOffer: body.isSpecialOffer || false,
+      deliveryDate: body.deliveryDate || '',
+      orderCutoffTime: body.orderCutoffTime || '',
       createdAt: new Date()
     };
 
@@ -66,6 +72,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Offer created', offerId: result.insertedId }, { status: 201 });
     } else {
       throw new Error('Failed to create offer');
+    }
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    if (!await verifyAdmin(request)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { id, ...updateData } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Offer ID is required' }, { status: 400 });
+    }
+    
+    // Convert string ID to ObjectId for MongoDB
+    const { ObjectId } = require('mongodb');
+    
+    if (updateData.price) {
+      updateData.price = parseFloat(updateData.price);
+    }
+
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const result = await db.collection(COLLECTION_NAME).updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount > 0) {
+      revalidatePath('/');
+      await bumpHomeVersion();
+      return NextResponse.json({ success: true, message: 'Offer updated' }, { status: 200 });
+    } else {
+      return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 });
     }
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

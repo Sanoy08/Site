@@ -25,6 +25,9 @@ type Offer = {
   price: number;
   imageUrl: string;
   active: boolean;
+  isSpecialOffer?: boolean;
+  deliveryDate?: string;
+  orderCutoffTime?: string;
 };
 
 export default function AdminOffersPage() {
@@ -42,6 +45,9 @@ export default function AdminOffersPage() {
     price: '',
     imageUrl: '',
     active: true,
+    isSpecialOffer: false,
+    deliveryDate: '',
+    orderCutoffTime: ''
   });
 
   const fetchOffers = async () => {
@@ -67,7 +73,10 @@ export default function AdminOffersPage() {
             description: offer.description || '',
             price: offer.price ? offer.price.toString() : '0',
             imageUrl: offer.imageUrl,
-            active: offer.active
+            active: offer.active,
+            isSpecialOffer: offer.isSpecialOffer || false,
+            deliveryDate: offer.deliveryDate || '',
+            orderCutoffTime: offer.orderCutoffTime || ''
         });
     } else {
         setEditingOffer(null);
@@ -76,7 +85,10 @@ export default function AdminOffersPage() {
             description: '', 
             price: '0', 
             imageUrl: '', 
-            active: true 
+            active: true,
+            isSpecialOffer: false,
+            deliveryDate: '',
+            orderCutoffTime: ''
         });
     }
     setIsDialogOpen(true);
@@ -159,8 +171,15 @@ export default function AdminOffersPage() {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover transition-transform duration-500 group-hover:scale-105" 
                     />
-                    <div className="absolute top-3 right-3 bg-background/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
-                        {offer.active ? <span className="text-green-600">Active</span> : <span className="text-red-500">Inactive</span>}
+                    <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                        <div className="bg-background/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow-sm">
+                            {offer.active ? <span className="text-green-600">Active</span> : <span className="text-red-500">Inactive</span>}
+                        </div>
+                        {offer.isSpecialOffer && (
+                            <div className="bg-amber-100 px-2 py-1 rounded text-xs font-bold text-amber-700 shadow-sm border border-amber-200">
+                                Special Order
+                            </div>
+                        )}
                     </div>
                     
                     <div className="absolute bottom-3 right-3">
@@ -190,6 +209,43 @@ export default function AdminOffersPage() {
                         />
                     </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Title</Label>
+                        <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="Offer Title" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Price (if orderable)</Label>
+                        <input type="number" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="e.g. 199" />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Description</Label>
+                    <textarea className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Offer Description..." />
+                </div>
+
+                <div className="flex items-center justify-between bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                    <div className="space-y-0.5">
+                        <Label className="text-base text-amber-900">Make Orderable (Special Item)</Label>
+                        <p className="text-xs text-amber-700">Allow users to order this directly from the banner.</p>
+                    </div>
+                    <Switch checked={formData.isSpecialOffer} onCheckedChange={(c) => setFormData({...formData, isSpecialOffer: c})} />
+                </div>
+
+                {formData.isSpecialOffer && (
+                    <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-slate-50/50">
+                        <div className="space-y-2">
+                            <Label>Delivery Date</Label>
+                            <input type="date" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.deliveryDate} onChange={e => setFormData({...formData, deliveryDate: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Order Cutoff (Deadline)</Label>
+                            <input type="datetime-local" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.orderCutoffTime} onChange={e => setFormData({...formData, orderCutoffTime: e.target.value})} />
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex items-center justify-between bg-muted/30 p-4 rounded-xl border">
                     <div className="space-y-0.5">

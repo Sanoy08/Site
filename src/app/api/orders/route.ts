@@ -11,6 +11,7 @@ const ORDERS_COLLECTION = 'orders';
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'coinTransactions';
 const MENU_COLLECTION = 'menuItems';
+const OFFERS_COLLECTION = 'offers';
 const COUPONS_COLLECTION = 'coupons';
 const COIN_VALUE = 1; 
 
@@ -44,26 +45,58 @@ export async function POST(request: NextRequest) {
 
     try {
         await session.withTransaction(async () => {
-            const productIds = items.map((item: any) => new ObjectId(item.id));
+            const regularItems = items.filter((item: any) => !item.isSpecialOffer);
+            const specialOfferItems = items.filter((item: any) => item.isSpecialOffer);
+
+            const regularProductIds = regularItems.map((item: any) => new ObjectId(item.id));
+            const specialOfferIds = specialOfferItems.map((item: any) => new ObjectId(item.id));
+
             const dbProducts = await db.collection(MENU_COLLECTION)
-                .find({ _id: { $in: productIds } }, { session })
+                .find({ _id: { $in: regularProductIds } }, { session })
+                .toArray();
+
+            const dbOffers = await db.collection(OFFERS_COLLECTION)
+                .find({ _id: { $in: specialOfferIds } }, { session })
                 .toArray();
 
             let calculatedSubtotal = 0;
             const validatedItems = [];
 
-            for (const item of items) {
+            // Validate regular items
+            for (const item of regularItems) {
                 const dbProduct = dbProducts.find(p => p._id.toString() === item.id);
-                if (!dbProduct) throw new Error(`Product not found`);
+                if (!dbProduct) throw new Error(`Product not found: ${item.name || item.id}`);
 
                 const itemTotal = (dbProduct.Price || 0) * item.quantity;
                 calculatedSubtotal += itemTotal;
 
-                // ★ FIX: Using item from cart request instead of dbProduct.Image
                 validatedItems.push({
-                    ...item, // This already contains the correct image object from the frontend cart
+                    ...item,
                     price: dbProduct.Price || 0,
                     name: dbProduct.Name,
+                });
+            }
+
+            // Validate special offers
+            for (const item of specialOfferItems) {
+                const dbOffer = dbOffers.find(o => o._id.toString() === item.id);
+                if (!dbOffer) throw new Error(`Special Offer not found: ${item.name || item.id}`);
+
+                // Check cutoff time
+                if (dbOffer.orderCutoffTime) {
+                    const cutoffDate = new Date(dbOffer.orderCutoffTime);
+                    if (new Date() > cutoffDate) {
+                        throw new Error(`The order deadline for ${dbOffer.title || 'this special offer'} has passed.`);
+                    }
+                }
+
+                const itemTotal = (dbOffer.price || 0) * item.quantity;
+                calculatedSubtotal += itemTotal;
+
+                validatedItems.push({
+                    ...item,
+                    price: dbOffer.price || 0,
+                    name: dbOffer.title,
                 });
             }
 

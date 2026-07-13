@@ -53,7 +53,16 @@ export async function GET(request: NextRequest) {
         data: { 
             heroSlides: heroSlides.map(s => ({ id: s._id.toString(), imageUrl: s.imageUrl, clickUrl: s.clickUrl, order: s.order })), 
             sliderImages: sliderImages.map(s => ({ id: s._id.toString(), imageUrl: s.imageUrl, clickUrl: s.clickUrl, order: s.order })), 
-            offers: offers.map(o => ({ id: o._id.toString(), title: o.title, description: o.description, price: o.price, imageUrl: o.imageUrl })), 
+            offers: offers.map(o => ({ 
+                id: o._id.toString(), 
+                title: o.title, 
+                description: o.description, 
+                price: o.price, 
+                imageUrl: o.imageUrl,
+                isSpecialOffer: o.isSpecialOffer || false,
+                deliveryDate: o.deliveryDate || '',
+                orderCutoffTime: o.orderCutoffTime || ''
+            })), 
             bestsellers,
             allProducts: formattedProducts
         } 

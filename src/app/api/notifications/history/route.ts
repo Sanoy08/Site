@@ -30,14 +30,7 @@ export async function GET(request: NextRequest) {
         ]
     }).sort({ createdAt: -1 }).toArray();
 
-    // ৩. আনরিড নোটিফিকেশন মার্ক করা
-    const unreadIds = notifications.filter((n: any) => !n.isRead).map((n: any) => n._id);
-    if (unreadIds.length > 0) {
-        await notificationsCollection.updateMany(
-            { _id: { $in: unreadIds } },
-            { $set: { isRead: true } }
-        );
-    }
+    // Removed automatic isRead marking to support explicit mark-read API
 
     return NextResponse.json({ success: true, notifications }, { status: 200 });
 

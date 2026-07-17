@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     };
 
     return responseWithCookie(
-        { success: true, message: 'Login successful!', user: userData },
+        { success: true, message: 'Login successful!', user: userData, token },
         token
     );
 

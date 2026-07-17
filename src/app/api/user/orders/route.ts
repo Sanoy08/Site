@@ -19,12 +19,20 @@ export async function GET(request: NextRequest) {
 
     const userId = currentUser._id || currentUser.id;
 
+    // Pagination Parameters
+    const searchParams = request.nextUrl.searchParams;
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const skip = (page - 1) * limit;
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
     const orders = await db.collection(ORDERS_COLLECTION)
       .find({ userId: new ObjectId(userId) })
       .sort({ Timestamp: -1 })
+      .skip(skip) // Skip the previous pages' items
+      .limit(limit) // Limit the items per page
       .toArray();
 
     return NextResponse.json({ success: true, orders }, { status: 200 });

@@ -1,6 +1,6 @@
 // src/app/api/settings/route.ts
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { pusherServer } from '@/lib/pusher'; // 🌟 Pusher import kora holo
 
@@ -27,8 +27,14 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+import { verifyAdmin } from '@/lib/auth-utils'; // 🌟 Added Admin Verify
+
+export async function POST(req: NextRequest) {
   try {
+    if (!await verifyAdmin(req)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: Admin access required.' }, { status: 401 });
+    }
+
     const body = await req.json(); // Body theke shob field newa hocche
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');

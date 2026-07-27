@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   try {
     if (!NTFY_TOPIC) return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
 
-    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const ip = request.ip || request.headers.get('x-forwarded-for') || '127.0.0.1';
     const body = await request.json();
     const validation = sendOtpSchema.safeParse(body);
     if (!validation.success) return NextResponse.json({ success: false, error: validation.error.errors[0].message }, { status: 400 });

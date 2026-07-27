@@ -26,11 +26,12 @@ export async function POST(request: NextRequest) {
     } = orderData;
 
     const currentUser = await getUser(request);
-    let userIdToSave: ObjectId | null = null;
     
-    if (currentUser) {
-        userIdToSave = new ObjectId(currentUser._id || currentUser.id);
+    if (!currentUser) {
+        return NextResponse.json({ success: false, error: 'You must be logged in to place an order.' }, { status: 401 });
     }
+
+    const userIdToSave = new ObjectId(currentUser._id || currentUser.id);
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return NextResponse.json({ success: false, error: 'Order must contain items.' }, { status: 400 });
@@ -68,6 +69,10 @@ export async function POST(request: NextRequest) {
 
             // Validate regular items
             for (const item of regularItems) {
+                if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
+                    throw new Error(`Invalid quantity for item: ${item.name || item.id}`);
+                }
+
                 const dbProduct = dbProducts.find(p => p._id.toString() === item.id);
                 if (!dbProduct) throw new Error(`Product not found: ${item.name || item.id}`);
 
@@ -83,6 +88,10 @@ export async function POST(request: NextRequest) {
 
             // Validate special offers
             for (const item of specialOfferItems) {
+                if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
+                    throw new Error(`Invalid quantity for special offer: ${item.name || item.id}`);
+                }
+
                 const dbOffer = dbOffers.find(o => o._id.toString() === item.id);
                 if (!dbOffer) throw new Error(`Special Offer not found: ${item.name || item.id}`);
 
@@ -106,15 +115,65 @@ export async function POST(request: NextRequest) {
 
             let couponDiscount = 0;
             let appliedCouponCode = null;
+            let isCouponTracked = false;
 
             if (couponCode) {
-                const coupon = await db.collection(COUPONS_COLLECTION).findOne({ code: couponCode.toUpperCase() }, { session });
-                if (coupon) {
-                   couponDiscount = coupon.discountType === 'percentage' ? (calculatedSubtotal * coupon.value) / 100 : coupon.value;
-                   couponDiscount = Math.min(couponDiscount, calculatedSubtotal);
-                   appliedCouponCode = coupon.code;
-                   await db.collection(COUPONS_COLLECTION).updateOne({ _id: coupon._id }, { $inc: { timesUsed: 1 } }, { session });
+                const cleanCode = couponCode.trim();
+                const coupon = await db.collection(COUPONS_COLLECTION).findOne({ 
+                    code: { $regex: new RegExp(`^${cleanCode}$`, 'i') } 
+                }, { session });
+                
+                if (!coupon) {
+                    throw new Error('Invalid coupon code.');
                 }
+
+                if (!coupon.isActive) {
+                    throw new Error('This coupon is inactive.');
+                }
+
+                if (coupon.userId) {
+                    if (coupon.userId.toString() !== userIdToSave?.toString()) {
+                        throw new Error('This coupon belongs to another user.');
+                    }
+                }
+
+                if (coupon.expiryDate) {
+                    const now = new Date();
+                    const expiryDate = new Date(coupon.expiryDate);
+                    expiryDate.setHours(23, 59, 59, 999);
+                    if (expiryDate < now) {
+                        throw new Error('This coupon has expired.');
+                    }
+                }
+
+                if (coupon.usageLimit && coupon.usageLimit > 0) {
+                    if ((coupon.timesUsed || 0) >= coupon.usageLimit) {
+                        throw new Error('Coupon usage limit reached.');
+                    }
+                }
+
+                if (calculatedSubtotal < (coupon.minOrder || 0)) {
+                    throw new Error(`Minimum order of ₹${coupon.minOrder} required for this coupon.`);
+                }
+
+                couponDiscount = coupon.discountType === 'percentage' ? (calculatedSubtotal * coupon.value) / 100 : coupon.value;
+                couponDiscount = Math.min(couponDiscount, calculatedSubtotal);
+                appliedCouponCode = coupon.code;
+                
+                let updateFilter: any = { _id: coupon._id };
+                if (coupon.usageLimit && coupon.usageLimit > 0) {
+                    updateFilter = { 
+                        _id: coupon._id, 
+                        $expr: { $lt: [{ $ifNull: ["$timesUsed", 0] }, coupon.usageLimit] } 
+                    };
+                }
+                const couponUpdate = await db.collection(COUPONS_COLLECTION).updateOne(updateFilter, { $inc: { timesUsed: 1 } }, { session });
+                
+                if (couponUpdate.modifiedCount === 0 && coupon.usageLimit && coupon.usageLimit > 0) {
+                    throw new Error('Coupon usage limit reached due to concurrent traffic.');
+                }
+                
+                isCouponTracked = true;
             }
 
             let coinsRedeemed = 0;
@@ -126,7 +185,16 @@ export async function POST(request: NextRequest) {
                 coinsRedeemed = Math.min(userBalance, Math.floor((calculatedSubtotal * 0.5) / COIN_VALUE));
                 coinDiscount = coinsRedeemed * COIN_VALUE;
                 if (coinsRedeemed > 0) {
-                    await db.collection(USERS_COLLECTION).updateOne({ _id: userIdToSave }, { $inc: { "wallet.currentBalance": -coinsRedeemed } }, { session });
+                    const walletUpdate = await db.collection(USERS_COLLECTION).updateOne(
+                        { _id: userIdToSave, "wallet.currentBalance": { $gte: coinsRedeemed } }, 
+                        { $inc: { "wallet.currentBalance": -coinsRedeemed } }, 
+                        { session }
+                    );
+                    
+                    if (walletUpdate.modifiedCount === 0) {
+                         throw new Error('Insufficient wallet balance due to concurrent transaction.');
+                    }
+                    
                     orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
                     await db.collection(TRANSACTIONS_COLLECTION).insertOne({ userId: userIdToSave, type: 'redeem', amount: coinsRedeemed, description: `Redeemed for Order #${orderId}`, createdAt: new Date() }, { session });
                 }
@@ -135,7 +203,7 @@ export async function POST(request: NextRequest) {
             if (!orderId) orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
             const totalDiscount = couponDiscount + coinDiscount;
-            const finalDeliveryCharge = orderType === 'delivery' ? (Number(deliveryFee) || 0) : 0;
+            const finalDeliveryCharge = orderType === 'delivery' ? Math.max(0, Number(deliveryFee) || 0) : 0;
             const finalPrice = Math.max(0, calculatedSubtotal + finalDeliveryCharge - totalDiscount);
             
             finalAmountForLog = finalPrice; 
@@ -160,6 +228,7 @@ export async function POST(request: NextRequest) {
                 Discount: totalDiscount,
                 CouponCode: appliedCouponCode,
                 CouponDiscount: couponDiscount,
+                couponUsageTracked: isCouponTracked, // ★ FIX: Prevents Double-Increment
                 CoinsRedeemed: coinsRedeemed,
                 CoinDiscount: coinDiscount,
                 FinalPrice: finalPrice, 

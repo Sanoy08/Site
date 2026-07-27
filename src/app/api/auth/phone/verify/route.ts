@@ -31,7 +31,21 @@ export async function POST(request: NextRequest) {
 
     const isMatch = await bcrypt.compare(otp, user.otp);
     if (!isMatch) {
-        return NextResponse.json({ success: false, error: 'Wrong OTP' }, { status: 400 });
+        const attempts = (user.otpAttempts || 0) + 1;
+        
+        if (attempts >= 5) {
+            await db.collection(USERS_COLLECTION).updateOne(
+                { _id: user._id },
+                { $unset: { otp: "", otpExpires: "", otpAttempts: "" } }
+            );
+            return NextResponse.json({ success: false, error: 'Too many failed attempts. Please request a new OTP.' }, { status: 429 });
+        } else {
+            await db.collection(USERS_COLLECTION).updateOne(
+                { _id: user._id },
+                { $set: { otpAttempts: attempts } }
+            );
+            return NextResponse.json({ success: false, error: `Wrong OTP. ${5 - attempts} attempts remaining.` }, { status: 400 });
+        }
     }
 
     // ৩. ভেরিফাইড মার্ক করা এবং OTP মুছে ফেলা
@@ -39,7 +53,7 @@ export async function POST(request: NextRequest) {
         { _id: user._id },
         { 
             $set: { isVerified: true },
-            $unset: { otp: "", otpExpires: "" }
+            $unset: { otp: "", otpExpires: "", otpAttempts: "" }
         }
     );
 

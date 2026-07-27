@@ -50,22 +50,16 @@ export async function POST(request: NextRequest) {
     try {
         await session.withTransaction(async () => {
             
-            // ইউজারের ব্যালেন্স চেক
-            const user = await db.collection(USERS_COLLECTION).findOne(
-                { _id: new ObjectId(userId) },
-                { session }
-            );
-
-            if (!user || (user.wallet?.currentBalance || 0) < redeemAmount) {
-                throw new Error('Insufficient coin balance.');
-            }
-
-            // ব্যালেন্স কমানো
-            await db.collection(USERS_COLLECTION).updateOne(
-                { _id: new ObjectId(userId) },
+            // Atomic ব্যালেন্স চেক এবং কমানো (TOCTOU Race Condition Prevention)
+            const walletUpdate = await db.collection(USERS_COLLECTION).updateOne(
+                { _id: new ObjectId(userId), "wallet.currentBalance": { $gte: redeemAmount } },
                 { $inc: { "wallet.currentBalance": -redeemAmount } },
                 { session }
             );
+
+            if (walletUpdate.modifiedCount === 0) {
+                throw new Error('Insufficient coin balance or concurrent transaction error.');
+            }
 
             const couponCode = `REDEEM-${Date.now().toString().slice(-6)}`;
             const discountValue = redeemAmount * COIN_VALUE_MULTIPLIER;

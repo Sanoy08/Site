@@ -5,6 +5,15 @@ import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { getUser } from '@/lib/auth-utils'; 
 
+import { z } from 'zod';
+
+const updateProfileSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(50, 'First name is too long'),
+  lastName: z.string().min(1, 'Last name is required').max(50, 'Last name is too long'),
+  dob: z.string().optional(),
+  anniversary: z.string().optional()
+});
+
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
 
@@ -16,12 +25,14 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { firstName, lastName, dob, anniversary } = body;
-
-    if (!firstName || !lastName) {
-      return NextResponse.json({ success: false, error: 'First and Last name are required.' }, { status: 400 });
+    const validation = updateProfileSchema.safeParse(body);
+    
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: validation.error.errors[0].message }, { status: 400 });
     }
 
+    const { firstName, lastName, dob, anniversary } = validation.data;
+    
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
     const client = await clientPromise;

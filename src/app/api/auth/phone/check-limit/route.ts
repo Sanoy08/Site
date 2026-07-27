@@ -5,7 +5,7 @@ import { clientPromise } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const ip = request.ip || request.headers.get('x-forwarded-for') || '127.0.0.1';
     const { searchParams } = new URL(request.url);
     const phone = searchParams.get('phone');
 

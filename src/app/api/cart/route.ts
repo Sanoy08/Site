@@ -6,8 +6,27 @@ import { ObjectId } from 'mongodb';
 import { pusherServer } from '@/lib/pusher';
 import { getUser } from '@/lib/auth-utils'; // ★★★ কুকি চেকার
 
+import { z } from 'zod';
+
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
+
+const cartItemSchema = z.object({
+  id: z.string(),
+  slug: z.string().optional(),
+  name: z.string(),
+  price: z.number().min(0),
+  quantity: z.number().min(1).max(100),
+  isSpecialOffer: z.boolean().optional(),
+  deliveryDate: z.string().optional(),
+  orderCutoffTime: z.string().optional(),
+  mealType: z.string().optional(),
+  image: z.any().optional()
+});
+
+const cartSchema = z.object({
+  items: z.array(cartItemSchema).max(100, "Too many items in cart")
+});
 
 export async function GET(request: NextRequest) {
   // ১. ★★★ কুকি থেকে ইউজার আইডি
@@ -41,7 +60,14 @@ export async function POST(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { items } = await request.json();
+    const body = await request.json();
+    const validation = cartSchema.safeParse(body);
+    
+    if (!validation.success) {
+        return NextResponse.json({ error: 'Invalid cart payload' }, { status: 400 });
+    }
+
+    const { items } = validation.data;
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);

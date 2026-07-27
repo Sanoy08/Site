@@ -1,12 +1,18 @@
 // src/app/api/delivery/todays-feed/route.ts
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
+import { getUser } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const currentUser = await getUser(req);
+    if (!currentUser) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const client = await clientPromise;
     const db = client.db('BumbasKitchenDB');
 

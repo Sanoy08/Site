@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         isDefault: isDefault || false,
         coordinates,
         distanceText: distanceText || '',
-        deliveryFee: deliveryFee || 0
+        deliveryFee: Math.max(0, Number(deliveryFee) || 0)
     };
 
     const client = await clientPromise;
@@ -110,7 +110,7 @@ export async function PUT(request: NextRequest) {
                     "savedAddresses.$.isDefault": isDefault,
                     "savedAddresses.$.coordinates": coordinates,
                     "savedAddresses.$.distanceText": distanceText || '',
-                    "savedAddresses.$.deliveryFee": deliveryFee || 0
+                    "savedAddresses.$.deliveryFee": Math.max(0, Number(deliveryFee) || 0)
                 } 
             }
         );

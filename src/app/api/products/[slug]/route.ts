@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
       price: productDoc.Price,
       category: { id: productDoc.Category?.toLowerCase(), name: productDoc.Category },
       images: productDoc.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: productDoc.Name })) || [],
-      rating: 4.5, // ডিফল্ট রেটিং (পরে রিভিউ সিস্টেম যোগ করা যাবে)
+      rating: productDoc.rating || productDoc.Rating || 4.5, // ডেটাবেস থেকে রেটিং (না থাকলে 4.5)
       reviewCount: 10,
       stock: productDoc.InStock ? 100 : 0,
       featured: productDoc.Bestseller === true,
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
         price: item.Price,
         category: { id: item.Category?.toLowerCase(), name: item.Category },
         images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: item.Name })) || [],
-        rating: 4.5,
+        rating: item.rating || item.Rating || 4.5,
         reviewCount: 0,
         stock: item.InStock ? 100 : 0,
         featured: item.Bestseller === true,

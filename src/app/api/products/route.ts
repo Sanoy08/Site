@@ -103,7 +103,7 @@ export async function GET(request: Request) {
         url: url,
         alt: doc.Name,
       })) || [],
-      rating: 4.5,
+      rating: doc.rating || doc.Rating || 4.5,
       reviewCount: 0,
       stock: doc.InStock ? 100 : 0,
       featured: doc.Bestseller === true || doc.Bestseller === "true",

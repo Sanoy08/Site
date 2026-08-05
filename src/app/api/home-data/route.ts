@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
         stock: item.InStock ? 100 : 0,
         featured: item.Bestseller === "true" || item.Bestseller === true,
         isDailySpecial: item.isDailySpecial === true,
-        slug: (item.Name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '') 
+        slug: (item.Name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, ''),
+        rating: item.rating || item.Rating || 4.5
     });
 
     const formattedProducts = products.map(formatProduct);

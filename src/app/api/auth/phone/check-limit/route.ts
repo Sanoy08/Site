@@ -5,7 +5,11 @@ import { clientPromise } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
-    const ip = request.ip || request.headers.get('x-forwarded-for') || '127.0.0.1';
+    // Fix: Prevent IP Spoofing
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    let extractedIp = realIp || (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || request.ip || '127.0.0.1';
+    const ip = typeof extractedIp === 'string' && extractedIp.length < 50 ? extractedIp : '127.0.0.1';
     const { searchParams } = new URL(request.url);
     const phone = searchParams.get('phone');
 

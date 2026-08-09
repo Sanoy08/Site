@@ -117,10 +117,13 @@ export async function POST(request: NextRequest) {
             let appliedCouponCode = null;
             let isCouponTracked = false;
 
-            if (couponCode) {
-                const cleanCode = couponCode.trim();
+            if (couponCode && typeof couponCode === 'string') {
+                // Fix: Escape regex characters to prevent ReDoS
+                const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const cleanCode = escapeRegExp(couponCode.trim());
+
                 const coupon = await db.collection(COUPONS_COLLECTION).findOne({ 
-                    code: { $regex: new RegExp(`^${cleanCode}$`, 'i') } 
+                    code: { $regex: `^${cleanCode}$`, $options: 'i' } 
                 }, { session });
                 
                 if (!coupon) {

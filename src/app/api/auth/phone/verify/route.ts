@@ -12,8 +12,16 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, otp } = await request.json();
+    const body = await request.json();
+    const { phone, otp } = body;
 
+    // Fix: NoSQL Injection Prevention & Strict Type Validation
+    if (!phone || typeof phone !== 'string' || !/^\d{10}$/.test(phone)) {
+        return NextResponse.json({ success: false, error: 'Invalid phone number format.' }, { status: 400 });
+    }
+    if (!otp || typeof otp !== 'string') {
+        return NextResponse.json({ success: false, error: 'Invalid OTP format.' }, { status: 400 });
+    }
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     

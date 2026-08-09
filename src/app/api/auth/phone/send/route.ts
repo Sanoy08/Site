@@ -17,7 +17,14 @@ export async function POST(request: NextRequest) {
   try {
     if (!NTFY_TOPIC) return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
 
-    const ip = request.ip || request.headers.get('x-forwarded-for') || '127.0.0.1';
+    // Fix: Prevent IP Spoofing
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    // On Vercel, x-real-ip is usually reliable, fallback to the first IP in x-forwarded-for
+    let extractedIp = realIp || (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || request.ip || '127.0.0.1';
+    
+    // Safety check against bizarre formats
+    const ip = typeof extractedIp === 'string' && extractedIp.length < 50 ? extractedIp : '127.0.0.1';
     const body = await request.json();
     const validation = sendOtpSchema.safeParse(body);
     if (!validation.success) return NextResponse.json({ success: false, error: validation.error.errors[0].message }, { status: 400 });

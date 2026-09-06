@@ -1,4 +1,3 @@
-// src/app/api/location/autocomplete/route.ts
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {

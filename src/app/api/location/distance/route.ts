@@ -1,4 +1,3 @@
-// src/app/api/location/distance/route.ts
 import { NextResponse } from 'next/server';
 
 // Your Store Location (Janai)
@@ -14,7 +13,7 @@ export async function GET(request: Request) {
 
     try {
         const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
-        const url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${STORE_LAT},${STORE_LNG}&destinations=${lat},${lng}&key=${apiKey}";
+        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${STORE_LAT},${STORE_LNG}&destinations=${lat},${lng}&key=${apiKey}`;
         
         const res = await fetch(url);
         const data = await res.json();

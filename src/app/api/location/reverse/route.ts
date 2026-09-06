@@ -7,7 +7,7 @@ export async function GET(request: Request) {
 
     try {
         const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
-        const url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${apiKey}";
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${apiKey}`;
         const res = await fetch(url);
         const data = await res.json();
         

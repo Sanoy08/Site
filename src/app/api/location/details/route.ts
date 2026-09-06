@@ -1,5 +1,3 @@
-// src/app/api/location/details/route.ts
-
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -13,8 +11,7 @@ export async function GET(request: Request) {
 
     try {
         const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
-        // Include sessionToken in URL for GET request
-        const url = "https://places.googleapis.com/v1/places/${placeId}?fields=location&sessionToken=${sessionToken}";
+        const url = `https://places.googleapis.com/v1/places/${placeId}?fields=location&sessionToken=${sessionToken}`;
         
         const response = await fetch(url, {
             method: 'GET',

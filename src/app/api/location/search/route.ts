@@ -2,27 +2,41 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const q = searchParams.get('q');
-    if (!q) return NextResponse.json({ suggestions: [] });
+    const query = searchParams.get('q');
+    const sessionToken = searchParams.get('sessionToken');
+
+    if (!query) {
+        return NextResponse.json({ suggestions: [] });
+    }
 
     try {
-        // Hooghly area ke priority dewar jonno viewbox add kora hoyeche
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&countrycodes=in&viewbox=88.0,23.0,88.5,22.5&bounded=1`, {
-            headers: { 'User-Agent': 'BumbasKitchenApp/1.0' }
-        });
-        const data = await res.json();
+        const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+        const url = "https://places.googleapis.com/v1/places:autocomplete";
         
-        const suggestions = data.map((item: any) => ({
-            place_id: item.place_id,
-            description: item.display_name,
-            lat: item.lat,
-            lon: item.lon,
-            main_text: item.name || item.display_name.split(',')[0],
-            secondary_text: item.display_name
-        }));
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': apiKey || '',
+            },
+            body: JSON.stringify({
+                input: query,
+                sessionToken: sessionToken || undefined
+            })
+        });
+        
+        const data = await response.json();
+
+        const suggestions = data.suggestions?.map((item: any) => ({
+            place_id: item.placePrediction.placeId,
+            description: item.placePrediction.text.text,
+            main_text: item.placePrediction.structuredFormat?.mainText?.text || item.placePrediction.text.text,
+            secondary_text: item.placePrediction.structuredFormat?.secondaryText?.text || ''
+        })) || [];
 
         return NextResponse.json({ suggestions });
     } catch (error) {
+        console.error("Google Places API (New) Autocomplete Error:", error);
         return NextResponse.json({ suggestions: [] }, { status: 500 });
     }
 }

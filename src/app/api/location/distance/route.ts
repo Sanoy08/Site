@@ -13,18 +13,21 @@ export async function GET(request: Request) {
     if (!lat || !lng) return NextResponse.json({ success: false });
 
     try {
-        // OSRM format is lon,lat
-        const url = `https://router.project-osrm.org/route/v1/driving/${STORE_LNG},${STORE_LAT};${lng},${lat}?overview=false`;
+        const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+        const url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${STORE_LAT},${STORE_LNG}&destinations=${lat},${lng}&key=${apiKey}";
+        
         const res = await fetch(url);
         const data = await res.json();
 
-        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-            const distMeters = data.routes[0].distance;
-            const distKm = (distMeters / 1000).toFixed(1);
+        if (data.status === "OK" && data.rows[0].elements[0].status === "OK") {
+            const element = data.rows[0].elements[0];
+            const distMeters = element.distance.value;
+            const distText = element.distance.text;
+            
             return NextResponse.json({ 
                 success: true, 
                 distanceValue: distMeters, 
-                distanceText: `${distKm} km` 
+                distanceText: distText
             });
         }
         return NextResponse.json({ success: false });

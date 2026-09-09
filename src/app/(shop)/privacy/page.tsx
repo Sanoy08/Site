@@ -1,5 +1,5 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -139,7 +139,7 @@ export default function PrivacyPolicyPage() {
                 <h3 className="text-xl font-semibold text-foreground pt-2">5.1 Access and Correction</h3>
                 <p>You can request access to the personal data we hold about you and ask that we correct any inaccuracies. If you have an account with us, you may also update your information directly by logging in.</p>
                 <h3 className="text-xl font-semibold text-foreground pt-2">5.2 Deletion</h3>
-                <p>You can request that we delete your personal information, subject to certain legal obligations (e.g., retention for tax or regulatory purposes).</p>
+                <p>You can request that we delete your personal information, including your account and associated data, subject to certain legal obligations (e.g., retention for tax or regulatory purposes). <Link href="/delete-account" className="text-primary hover:underline font-medium">Click here to request account deletion</Link>.</p>
                 <h3 className="text-xl font-semibold text-foreground pt-2">5.3 Opt-Out of Marketing Communications</h3>
                 <p>You can opt out of receiving promotional communications (such as SMS) at any time by contacting us directly.</p>
                 <h3 className="text-xl font-semibold text-foreground pt-2">5.4 Data Portability</h3>
@@ -164,7 +164,7 @@ export default function PrivacyPolicyPage() {
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold text-foreground pt-4">8. Children's Privacy</h2>
               <p>
-                Bumba's Kitchen does not knowingly collect or store personal information from children under the age of 13. If you believe that a child under 13 has provided us with personal information, please contact us, and we will take appropriate steps to remove such information.
+                Bumba's Kitchen does not knowingly collect or store personal information from children under the age of 16. If you believe that a child under 16 has provided us with personal information, please contact us, and we will take appropriate steps to remove such information.
               </p>
             </div>
 

@@ -13,6 +13,13 @@ export default function DeviceEnforcer() {
         // 1. Jodi already /web page-e thake tahole kichu korar dorkar nei
         if (pathname?.startsWith('/web')) return;
 
+        // Public pages gulo phone theke dekhar jonno exception
+        if (
+            pathname?.startsWith('/privacy') || 
+            pathname?.startsWith('/terms') || 
+            pathname?.startsWith('/delete-account')
+        ) return;
+
         // 2. EXCEPTIONS: Jodi link-e '.apk' thake tahole redirect bondho thakbe
         // Jate download link ta thikmoto kaj kore
         if (pathname?.endsWith('.apk')) return;

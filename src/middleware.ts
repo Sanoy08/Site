@@ -9,7 +9,7 @@ if (!secretStr) throw new Error('JWT_SECRET is missing!');
 const JWT_SECRET = new TextEncoder().encode(secretStr);
 
 // 🌟 যেসব পেজে লগইন ছাড়াই ঢোকা যাবে (Public Routes) – মূল ডোমেইনের জন্য
-const publicPaths = ['/login', '/register', '/signup', '/web', '/privacy', '/terms'];
+const publicPaths = ['/login', '/register', '/signup', '/web', '/privacy', '/terms', '/delete-account'];
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl;
@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
   const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
 
   // শুধুমাত্র মেইন ডোমেইনে এই গার্ড কাজ করবে (অ্যাডমিন ডোমেইন বাদ)
-  if (!isAdminDomain && !isNativeApp && !isLocalhost && path !== '/web' && !path.startsWith('/privacy') && !path.startsWith('/terms')) {
+  if (!isAdminDomain && !isNativeApp && !isLocalhost && path !== '/web' && !path.startsWith('/privacy') && !path.startsWith('/terms') && !path.startsWith('/delete-account')) {
       const webUrl = new URL('/web', request.url);
       return NextResponse.redirect(webUrl);
   }

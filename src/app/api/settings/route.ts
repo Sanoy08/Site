@@ -3,6 +3,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { pusherServer } from '@/lib/pusher'; // 🌟 Pusher import kora holo
+import { verifyAdmin } from '@/lib/auth-utils'; // 🌟 Added Admin Verify
 
 export async function GET() {
   try {
@@ -27,7 +28,7 @@ export async function GET() {
   }
 }
 
-import { verifyAdmin } from '@/lib/auth-utils'; // 🌟 Added Admin Verify
+
 
 export async function POST(req: NextRequest) {
   try {

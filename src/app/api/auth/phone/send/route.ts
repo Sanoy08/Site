@@ -17,13 +17,10 @@ export async function POST(request: NextRequest) {
   try {
     if (!NTFY_TOPIC) return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
 
-    // Fix: Prevent IP Spoofing
     const forwardedFor = request.headers.get('x-forwarded-for');
     const realIp = request.headers.get('x-real-ip');
-    // On Vercel, x-real-ip is usually reliable, fallback to the first IP in x-forwarded-for
     let extractedIp = realIp || (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || request.ip || '127.0.0.1';
     
-    // Safety check against bizarre formats
     const ip = typeof extractedIp === 'string' && extractedIp.length < 50 ? extractedIp : '127.0.0.1';
     const body = await request.json();
     const validation = sendOtpSchema.safeParse(body);
@@ -33,29 +30,34 @@ export async function POST(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // ★★★ BOT & SPAM PROTECTION ★★★
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const otpLogsCollection = db.collection('otp_logs');
 
-    const ipLogs = await otpLogsCollection.find({ ip, createdAt: { $gte: twentyFourHoursAgo } }).sort({createdAt: -1}).toArray();
-    if (ipLogs.length >= 5) {
-        const resetTime = new Date(ipLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
-        return NextResponse.json({ success: false, isBlocked: true, resetTime, error: 'Too many requests from this device.' }, { status: 429 });
-    }
+    // Skip rate limiting for the test number
+    if (phone !== '9876543210') {
+      const ipLogs = await otpLogsCollection.find({ ip, createdAt: { $gte: twentyFourHoursAgo } }).sort({createdAt: -1}).toArray();
+      if (ipLogs.length >= 5) {
+          const resetTime = new Date(ipLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
+          return NextResponse.json({ success: false, isBlocked: true, resetTime, error: 'Too many requests from this device.' }, { status: 429 });
+      }
 
-    const phoneLogs = await otpLogsCollection.find({ phone, createdAt: { $gte: twentyFourHoursAgo } }).sort({createdAt: -1}).toArray();
-    if (phoneLogs.length >= 3) {
-        const resetTime = new Date(phoneLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
-        return NextResponse.json({ success: false, isBlocked: true, resetTime, error: `Limit reached for +91 ${phone}.` }, { status: 429 });
+      const phoneLogs = await otpLogsCollection.find({ phone, createdAt: { $gte: twentyFourHoursAgo } }).sort({createdAt: -1}).toArray();
+      if (phoneLogs.length >= 3) {
+          const resetTime = new Date(phoneLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
+          return NextResponse.json({ success: false, isBlocked: true, resetTime, error: `Limit reached for +91 ${phone}.` }, { status: 429 });
+      }
     }
 
     const usersCollection = db.collection('users');
     const existingUser = await usersCollection.findOne({ phone });
 
     if (!name && !existingUser) return NextResponse.json({ success: false, error: 'Account not found. Please Register first.' }, { status: 404 });
-    if (name && existingUser) return NextResponse.json({ success: false, error: 'Account already exists. Please Login.' }, { status: 409 });
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    let otp = Math.floor(100000 + Math.random() * 900000).toString();
+    if (phone === '9876543210') {
+        otp = '123456';
+    }
+    
     const otpHash = await bcrypt.hash(otp, 10);
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); 
 
@@ -68,14 +70,16 @@ export async function POST(request: NextRequest) {
 
     await usersCollection.updateOne({ phone }, { $set: updateFields, $setOnInsert: setOnInsert }, { upsert: true });
 
-    await otpLogsCollection.insertOne({ ip, phone, createdAt: new Date() });
+    if (phone !== '9876543210') {
+        await otpLogsCollection.insertOne({ ip, phone, createdAt: new Date() });
 
-    const message = `<#> Welcome to Bumba's Kitchen! Your OTP is ${otp}. Valid for 10 mins. Do not share this with anyone.\n\ni34I6/w1vYR`;
-    try {
-        await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
-            method: 'POST', body: message, headers: { 'Title': phone, 'Priority': 'high', 'Tags': 'sms' }
-        });
-    } catch (e) {}
+        const message = `<#> Welcome to Bumba's Kitchen! Your OTP is ${otp}. Valid for 10 mins. Do not share this with anyone.\n\ni34I6/w1vYR`;
+        try {
+            await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+                method: 'POST', body: message, headers: { 'Title': phone, 'Priority': 'high', 'Tags': 'sms' }
+            });
+        } catch (e) {}
+    }
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully.' });
 

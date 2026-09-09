@@ -30,8 +30,8 @@ export default function PrivacyPolicyPage() {
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>Name:</strong> Used to identify you as a customer.</li>
-                <li><strong>Contact Details:</strong> Email address, phone number, and delivery address are used for order confirmation, communication, and delivery purposes.</li>
-                <li><strong>Payment Information:</strong> Credit/debit card information, transaction history, and billing address are collected to process payments securely. We use trusted third-party payment processors to handle transactions and do not store your full payment details.</li>
+                <li><strong>Contact Details:</strong> Phone number and delivery address are used for order confirmation, communication, and delivery purposes. We do not collect or save your email address.</li>
+                <li><strong>Payment Information:</strong> We only accept Cash on Delivery (COD) for all orders. Therefore, we do not collect, process, or store any payment information, such as credit/debit card details or billing addresses.</li>
               </ul>
 
               <h3 className="text-xl font-semibold text-foreground pt-2">1.2 Order Information</h3>
@@ -80,7 +80,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <h3 className="text-xl font-semibold text-foreground pt-2">2.1 Order Fulfillment and Service Delivery</h3>
               <ul className="list-disc pl-6 space-y-2">
-                  <li><strong>Processing Orders:</strong> We use your personal and payment information to process and complete orders.</li>
+                  <li><strong>Processing Orders:</strong> We use your personal information to process and complete orders.</li>
                   <li><strong>Home Delivery and Pickup:</strong> We rely on your location data and address to deliver your orders in a timely and efficient manner.</li>
                   <li><strong>Communications:</strong> We send confirmations, order updates, and alerts regarding the status of your delivery or pickup.</li>
               </ul>
@@ -113,10 +113,7 @@ export default function PrivacyPolicyPage() {
               <p>We respect your privacy and only share your data in the following circumstances:</p>
                 <h3 className="text-xl font-semibold text-foreground pt-2">3.1 Service Providers and Partners</h3>
                 <ul className="list-disc pl-6 space-y-2">
-                    <li>We work with trusted third-party service providers that perform functions such as:</li>
-                    <li>Payment processing (e.g., Stripe, PayPal).</li>
-                    <li>Delivery services (e.g., third-party delivery drivers or logistics companies).</li>
-                    <li>Website hosting, data analytics, and email communications.</li>
+                    <li>We work with trusted third-party service providers that perform functions such as website hosting and data analytics.</li>
                 </ul>
                 <p>These service providers have access to your personal data only to perform specific tasks on our behalf and are obligated to maintain the confidentiality and security of your information.</p>
                 <h3 className="text-xl font-semibold text-foreground pt-2">3.2 Legal Obligations</h3>
@@ -129,7 +126,7 @@ export default function PrivacyPolicyPage() {
                 <h2 className="text-2xl font-semibold text-foreground pt-4">4. Data Security</h2>
                 <p>We take the security of your information seriously and implement a range of technical and organizational measures to protect your personal data from unauthorized access, loss, or misuse. These measures include:</p>
                 <ul className="list-disc pl-6 space-y-2">
-                    <li><strong>Encryption:</strong> We use SSL encryption for all payment transactions and sensitive data transmissions.</li>
+                    <li><strong>Encryption:</strong> We use SSL encryption for sensitive data transmissions.</li>
                     <li><strong>Access Controls:</strong> Only authorized personnel have access to your personal data, and they are bound by confidentiality agreements.</li>
                     <li><strong>Data Minimization:</strong> We collect only the information needed for the specific purposes outlined in this policy.</li>
                 </ul>
@@ -144,7 +141,7 @@ export default function PrivacyPolicyPage() {
                 <h3 className="text-xl font-semibold text-foreground pt-2">5.2 Deletion</h3>
                 <p>You can request that we delete your personal information, subject to certain legal obligations (e.g., retention for tax or regulatory purposes).</p>
                 <h3 className="text-xl font-semibold text-foreground pt-2">5.3 Opt-Out of Marketing Communications</h3>
-                <p>You can opt out of receiving promotional communications at any time by following the unsubscribe instructions in our emails or contacting us directly. Please note that we may still send transactional emails related to your orders.</p>
+                <p>You can opt out of receiving promotional communications (such as SMS) at any time by contacting us directly.</p>
                 <h3 className="text-xl font-semibold text-foreground pt-2">5.4 Data Portability</h3>
                 <p>Where applicable, you can request a copy of your personal data in a machine-readable format to transfer it to another service.</p>
             </div>

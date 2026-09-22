@@ -135,7 +135,7 @@ export default function ComingSoonPage() {
         <footer className="w-full bg-white border-t border-red-900/10 py-6 px-6 text-center mt-auto">
           <div className="flex justify-center items-center gap-2 mb-2">
             <div className="relative h-6 w-6">
-              <Image src="/logo.png" alt="Logo" fill className="object-contain" />
+              <Image src="/LOGO.png" alt="Logo" fill className="object-contain" />
             </div>
             <span className="font-bold text-slate-800 text-xs">Bumba's Kitchen</span>
           </div>

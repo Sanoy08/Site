@@ -22,7 +22,7 @@ const getOptimizedNotificationImage = (url: string) => {
   return url;
 };
 
-const CONSTANT_THALI_IMAGE = "https://res.cloudinary.com/dk1acdtja/image/upload/v1777168123/IMG_20260426_071347_fltctm.jpg";
+const CONSTANT_THALI_IMAGE = "https://i.pinimg.com/736x/76/96/65/7696658ed553e92a6c53dad671fd61a4.jpg";
 
 export default function DailyMenuPage() {
   const [isLoading, setIsLoading] = useState(true);

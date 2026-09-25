@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         description: item.Description || '',
         price: item.Price || 0,
         category: { id: (item.Category || '').toLowerCase(), name: item.Category || 'Other' },
+          type: item.type || 'veg',
         images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: item.Name })) || [],
         stock: item.InStock ? 100 : 0,
         featured: item.Bestseller === "true" || item.Bestseller === true,
@@ -90,3 +91,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

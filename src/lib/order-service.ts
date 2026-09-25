@@ -38,7 +38,10 @@ export async function finalizeDelivery(
             else if (currentTotalSpent >= 5000) { newTier = "Silver"; earnRate = 4; }
 
             // Coin Calculate
-            const coinsEarned = Math.floor((orderTotal * earnRate) / 100);
+            const subtotal = parseFloat(order.Subtotal) || 0;
+              const couponDiscount = parseFloat(order.CouponDiscount) || 0;
+              const eligibleCoinAmount = Math.max(0, subtotal - couponDiscount);
+              const coinsEarned = Math.floor((eligibleCoinAmount * earnRate) / 100);
 
             if (coinsEarned > 0) {
                 // User Update

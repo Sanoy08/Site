@@ -11,6 +11,7 @@ const NTFY_TOPIC = process.env.NTFY_TOPIC;
 const sendOtpSchema = z.object({
   phone: z.string().min(10, "Invalid phone number").regex(/^\d+$/, "Phone must contain only numbers"),
   name: z.string().optional(),
+  checkOnly: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -51,6 +52,10 @@ export async function POST(request: NextRequest) {
     const usersCollection = db.collection('users');
     const existingUser = await usersCollection.findOne({ phone });
 
+    if (validation.data.checkOnly) {
+      return NextResponse.json({ success: true, exists: !!existingUser });
+    }
+
     if (!name && !existingUser) return NextResponse.json({ success: false, error: 'Account not found. Please Register first.' }, { status: 404 });
     
     let otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -87,3 +92,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

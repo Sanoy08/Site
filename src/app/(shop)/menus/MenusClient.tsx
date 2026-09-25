@@ -118,11 +118,7 @@ export function MenusClient({ initialProducts }: MenusClientProps) {
     }
 
     if (showVegOnly) {
-      result = result.filter(p => 
-        p.name.toLowerCase().includes('veg') || 
-        p.category.name.toLowerCase() === 'veg' || 
-        p.category.name.toLowerCase() === 'paneer'
-      );
+      result = result.filter(p => p.type === 'veg');
     }
 
     if (searchQuery.trim().length > 0) {

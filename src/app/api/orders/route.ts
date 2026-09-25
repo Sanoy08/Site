@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
                 }
 
                 couponDiscount = coupon.discountType === 'percentage' ? (calculatedSubtotal * coupon.value) / 100 : coupon.value;
-                couponDiscount = Math.min(couponDiscount, calculatedSubtotal);
+                couponDiscount = Math.floor(Math.min(couponDiscount, calculatedSubtotal));
                 appliedCouponCode = coupon.code;
                 
                 let updateFilter: any = { _id: coupon._id };
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
 
             const totalDiscount = couponDiscount + coinDiscount;
             const finalDeliveryCharge = orderType === 'delivery' ? Math.max(0, Number(deliveryFee) || 0) : 0;
-            const finalPrice = Math.max(0, calculatedSubtotal + finalDeliveryCharge - totalDiscount);
+            const finalPrice = Math.floor(Math.max(0, calculatedSubtotal + finalDeliveryCharge - totalDiscount));
             
             finalAmountForLog = finalPrice; 
 

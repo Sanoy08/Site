@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: item.Name })) || [],
         stock: item.InStock ? 100 : 0,
         featured: item.Bestseller === "true" || item.Bestseller === true,
-        isDailySpecial: item.isDailySpecial === true,
+        isDailySpecial: item.isDailySpecial === "true" || item.isDailySpecial === true,
         slug: (item.Name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, ''),
         rating: item.rating || item.Rating || 4.5
     });

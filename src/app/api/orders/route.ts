@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
             let coinsRedeemed = 0;
             let coinDiscount = 0;
 
-            if (userIdToSave && useCoins) {
+            if (userIdToSave && useCoins) { if (couponDiscount > 0) throw new Error('You cannot use a coupon and coins at the same time.'); 
                 const user = await db.collection(USERS_COLLECTION).findOne({ _id: userIdToSave }, { session });
                 const userBalance = user?.wallet?.currentBalance || 0;
                 coinsRedeemed = Math.min(userBalance, Math.floor((calculatedSubtotal * 0.5) / COIN_VALUE));
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            if (!orderId) orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+            } if (!orderId) orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
             const totalDiscount = couponDiscount + coinDiscount;
             const finalDeliveryCharge = orderType === 'delivery' ? Math.max(0, Number(deliveryFee) || 0) : 0;

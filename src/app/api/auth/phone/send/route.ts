@@ -10,7 +10,7 @@ const NTFY_TOPIC = process.env.NTFY_TOPIC;
 
 const sendOtpSchema = z.object({
   phone: z.string().min(10, "Invalid phone number").regex(/^\d+$/, "Phone must contain only numbers"),
-  name: z.string().optional(),
+  name: z.string().regex(/^[a-zA-Z\s]+$/, "Only alphabets are allowed").optional(),
   checkOnly: z.boolean().optional(),
 });
 

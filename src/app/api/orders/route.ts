@@ -203,10 +203,10 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            } if (!orderId) orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+            if (!orderId) orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
             const totalDiscount = couponDiscount + coinDiscount;
-            const finalDeliveryCharge = orderType === 'delivery' ? Math.max(0, Number(deliveryFee) || 0) : 0;
+            const finalDeliveryCharge = 0; // Delivery fee is always 0 — charged separately by admin
             const finalPrice = Math.floor(Math.max(0, calculatedSubtotal + finalDeliveryCharge - totalDiscount));
             
             finalAmountForLog = finalPrice; 
@@ -264,3 +264,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Server error processing order.' }, { status: 500 });
   }
 }
+
+

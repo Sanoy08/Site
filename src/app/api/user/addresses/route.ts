@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, address, isDefault, coordinates, distanceText, deliveryFee } = body;
+    const { name, address, isDefault, coordinates, distanceText, distanceKm } = body;
 
     if (!name || !address || !coordinates) {
         return NextResponse.json({ error: 'Label, Address and Map Location required' }, { status: 400 });
@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
         isDefault: isDefault || false,
         coordinates,
         distanceText: distanceText || '',
-        deliveryFee: Math.max(0, Number(deliveryFee) || 0)
+        distanceKm: typeof distanceKm === 'number' ? distanceKm : (distanceKm ? parseFloat(distanceKm) : 0),
+        deliveryFee: 0
     };
 
     const client = await clientPromise;
@@ -84,7 +85,7 @@ export async function PUT(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { id, name, address, isDefault, coordinates, distanceText, deliveryFee } = body;
+        const { id, name, address, isDefault, coordinates, distanceText, distanceKm } = body;
 
         if (!id || !name || !address || !coordinates) {
             return NextResponse.json({ error: 'ID, Label, Address and Location required' }, { status: 400 });
@@ -110,7 +111,8 @@ export async function PUT(request: NextRequest) {
                     "savedAddresses.$.isDefault": isDefault,
                     "savedAddresses.$.coordinates": coordinates,
                     "savedAddresses.$.distanceText": distanceText || '',
-                    "savedAddresses.$.deliveryFee": Math.max(0, Number(deliveryFee) || 0)
+                    "savedAddresses.$.distanceKm": typeof distanceKm === 'number' ? distanceKm : (distanceKm ? parseFloat(distanceKm) : 0),
+                    "savedAddresses.$.deliveryFee": 0
                 } 
             }
         );

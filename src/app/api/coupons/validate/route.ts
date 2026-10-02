@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       discountAmount = coupon.value;
     }
 
-    discountAmount = Math.min(discountAmount, cartTotal);
+    discountAmount = Math.floor(Math.min(discountAmount, cartTotal));
 
     return NextResponse.json({
       success: true,

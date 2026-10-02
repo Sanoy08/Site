@@ -21,7 +21,7 @@ import { formatPrice } from '@/lib/utils';
 
 const MapPicker = dynamic(() => import('@/components/shop/MapPicker'), { 
     ssr: false, 
-    loading: () => <div className="h-[250px] w-full bg-muted animate-pulse rounded-xl flex items-center justify-center text-muted-foreground">Loading Map...</div> 
+    loading: () => <div className="h-[250px] w-full bg-muted animate-pulse rounded-xl flex items-center justify-center text-muted-foreground">Loading Map....</div> 
 });
 
 const PRESET_LABELS = ["Home", "Work", "Office", "Mom's Place", "Other"];

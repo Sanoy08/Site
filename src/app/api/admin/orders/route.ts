@@ -1,32 +1,46 @@
-// src/app/api/admin/orders/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
-import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { verifyAdmin } from '@/lib/auth-utils'; 
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
 
-// ১. সব অর্ডার লোড করা (GET)
 export async function GET(request: NextRequest) {
   try {
-    // ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // লেটেস্ট অর্ডার সবার আগে দেখাবে
+    const totalOrders = await db.collection(ORDERS_COLLECTION).countDocuments();
+
     const orders = await db.collection(ORDERS_COLLECTION)
       .find({})
       .sort({ Timestamp: -1 }) 
+      .skip(skip)
+      .limit(limit)
       .toArray();
 
-    return NextResponse.json({ success: true, orders }, { status: 200 });
+    return NextResponse.json({ 
+        success: true, 
+        orders,
+        pagination: {
+            page,
+            limit,
+            totalOrders,
+            totalPages: Math.ceil(totalOrders / limit),
+            hasMore: page < Math.ceil(totalOrders / limit)
+        }
+    }, { status: 200 });
 
   } catch (error: any) {
     console.error("Admin Orders API Error:", error);
@@ -34,10 +48,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ২. অর্ডার স্ট্যাটাস আপডেট করা (PATCH)
 export async function PATCH(request: NextRequest) {
   try {
-    // ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -51,23 +63,20 @@ export async function PATCH(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // অর্ডারটি প্রথমে খুঁজে বের করা (ইউজার আইডি পাওয়ার জন্য)
     const order = await db.collection(ORDERS_COLLECTION).findOne({ _id: new ObjectId(orderId) });
     
     if (!order) {
         return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
     }
 
-    // স্ট্যাটাস আপডেট করা
     await db.collection(ORDERS_COLLECTION).updateOne(
         { _id: new ObjectId(orderId) },
         { $set: { Status: status } }
     );
 
-    // ★★★ কাস্টমারকে নোটিফিকেশন পাঠানো ★★★
     if (order.userId) {
         let message = `Your order #${order.OrderNumber} status updated to: ${status}`;
-        let title = "Order Update 📦";
+        let title = "Order Update 🔔";
 
         if (status === 'Out for Delivery') {
              message = `Your food is on the way! 🛵 Order #${order.OrderNumber}`;
@@ -80,15 +89,13 @@ export async function PATCH(request: NextRequest) {
              title = "Cooking Started";
         }
 
-        // ব্যাকগ্রাউন্ডে নোটিফিকেশন পাঠানো
-        // Note: sendNotificationToUser(client, userId, title, message, image, link)
         await sendNotificationToUser(
             client,
             order.userId.toString(),
             title,
             message,
-            "", // Image URL (Empty)
-            '/account/orders' // Link
+            "", 
+            '/account/orders' 
         );
     }
 

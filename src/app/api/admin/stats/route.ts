@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
-import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
+import { verifyAdmin } from '@/lib/auth-utils';
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
@@ -10,7 +10,6 @@ const USERS_COLLECTION = 'users';
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. ★★★ সিকিউরিটি ফিক্স: কুকি থেকে অ্যাডমিন চেক
     if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -18,8 +17,8 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // ১. সাধারণ পরিসংখ্যান
     const orderStats = await db.collection(ORDERS_COLLECTION).aggregate([
+      { $match: { Status: 'Delivered' } },
       {
         $group: {
           _id: null,
@@ -38,26 +37,23 @@ export async function GET(request: NextRequest) {
       Status: { $in: ['Received', 'Cooking', 'Processing'] } 
     });
 
-    // ২. আজকের রেভিনিউ
     const startOfToday = new Date();
     startOfToday.setHours(0,0,0,0);
     
     const todayStats = await db.collection(ORDERS_COLLECTION).aggregate([
-        { $match: { Timestamp: { $gte: startOfToday } } },
+        { $match: { Timestamp: { $gte: startOfToday }, Status: 'Delivered' } },
         { $group: { _id: null, todayRevenue: { $sum: "$FinalPrice" } } }
     ]).toArray();
     const todayRevenue = todayStats[0]?.todayRevenue || 0;
 
-    // ৩. চার্টের ডেটা (Sales Trend)
     const allOrders = await db.collection(ORDERS_COLLECTION)
-        .find({})
+        .find({ Status: 'Delivered' })
         .project({ Timestamp: 1, FinalPrice: 1, Items: 1 })
         .toArray();
 
     const monthlySales: Record<string, number> = {};
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    // ৪. টপ সেলিং আইটেম বের করা
     const itemSales: Record<string, number> = {};
 
     allOrders.forEach((order: any) => {
@@ -68,50 +64,40 @@ export async function GET(request: NextRequest) {
         monthlySales[monthName] += order.FinalPrice;
 
         // Top Selling Logic
-        if (Array.isArray(order.Items)) {
+        if (order.Items && Array.isArray(order.Items)) {
             order.Items.forEach((item: any) => {
-                const name = item.name || item.Name;
-                const qty = parseInt(item.quantity || item.Quantity || 0);
-                if (name) {
-                    itemSales[name] = (itemSales[name] || 0) + qty;
+                if (item.name) {
+                    if (!itemSales[item.name]) itemSales[item.name] = 0;
+                    itemSales[item.name] += (item.quantity || 1);
                 }
             });
         }
     });
 
-    // চার্টের জন্য ফরম্যাট করা (বর্তমান মাস এবং আগের ৫ মাস)
-    const currentMonthIndex = new Date().getMonth();
-    const chartData = [];
-    for (let i = 5; i >= 0; i--) {
-        const mIndex = (currentMonthIndex - i + 12) % 12;
-        const mName = months[mIndex];
-        chartData.push({
-            month: mName,
-            sales: monthlySales[mName] || 0
-        });
-    }
-
-    // টপ ৫ আইটেম
-    const topSellingItems = Object.entries(itemSales)
-        .sort(([, a], [, b]) => b - a)
+    // Format Data for charts
+    const salesData = months.map(m => monthlySales[m] || 0);
+    const topItems = Object.entries(itemSales)
+        .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
-        .map(([name, value]) => ({ name, value }));
+        .map(([name, quantity]) => ({ name, sales: quantity }));
 
     return NextResponse.json({
       success: true,
       stats: {
         revenue,
-        todayRevenue,
         totalOrders,
         totalCustomers,
-        pendingOrders
+        pendingOrders,
+        todayRevenue
       },
-      chartData,
-      topSellingItems
+      charts: {
+        sales: salesData,
+        topItems
+      }
     });
 
-  } catch (error: any) {
-    console.error("Stats API Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Stats fetch error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to fetch stats' }, { status: 500 });
   }
 }

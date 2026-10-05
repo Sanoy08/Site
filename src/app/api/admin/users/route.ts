@@ -65,6 +65,17 @@ export async function GET(request: NextRequest) {
                 }
               }
             },
+                        {
+              $addFields: {
+                cancelledOrders: {
+                  $filter: {
+                    input: "$allOrders",
+                    as: "order",
+                    cond: { $eq: ["$order.Status", "Cancelled"] }
+                  }
+                }
+              }
+            },
             {
               $project: {
                 name: 1,
@@ -72,10 +83,13 @@ export async function GET(request: NextRequest) {
                 role: 1,
                 phone: 1,
                 createdAt: 1,
-                isVerified: 1, // ★ নতুন যোগ করা হলো
+                isVerified: 1,
+                savedAddresses: 1,
                 totalSpent: { $sum: "$deliveredOrders.FinalPrice" },
                 lastOrder: { $max: "$deliveredOrders.Timestamp" },
-                orderCount: { $size: "$deliveredOrders" }
+                orderCount: { $size: "$deliveredOrders" },
+                allOrdersCount: { $size: "$allOrders" },
+                cancelledCount: { $size: "$cancelledOrders" }
               }
             }
           ]
@@ -87,17 +101,19 @@ export async function GET(request: NextRequest) {
     const totalUsers = result.metadata[0] ? result.metadata[0].total : 0;
     const users = result.data;
 
-    // 4. Formatting
-    const formattedUsers = users.map((user: any) => ({
+    // 4. Formatting    const formattedUsers = users.map((user: any) => ({
       id: user._id.toString(),
       name: user.name || 'Unknown',
       email: user.email,
       role: user.role || 'customer',
       phone: user.phone || 'N/A',
-      isVerified: user.isVerified === true, // ★ ডেটা ফরম্যাট করা হলো
+      isVerified: user.isVerified === true,
       totalSpent: user.totalSpent || 0,
       lastOrder: user.lastOrder ? new Date(user.lastOrder).toISOString() : null,
       orderCount: user.orderCount || 0,
+      allOrdersCount: user.allOrdersCount || 0,
+      cancelledCount: user.cancelledCount || 0,
+      savedAddresses: user.savedAddresses || [],
       createdAt: user.createdAt
     }));
 
@@ -117,5 +133,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+
+
+
 
 

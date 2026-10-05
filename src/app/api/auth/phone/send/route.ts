@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     if (phone !== '9876543210') {
       await otpLogsCollection.insertOne({ ip, phone, createdAt: new Date() });
 
-      const message = `<#> Welcome to Bumba's Kitchen! Your OTP is ${otp}. Valid for 10 mins. Do not share this with anyone.\n\n0Wxls6yBVa/`;
+      const message = `<#> Welcome to Bumba's Kitchen! Your OTP ${otp}.\n\n0Wxls6yBVa/`;
       try {
         await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
           method: 'POST', body: message, headers: { 'Title': phone, 'Priority': 'high', 'Tags': 'sms' }

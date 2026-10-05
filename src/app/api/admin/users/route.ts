@@ -1,5 +1,3 @@
-// src/app/api/admin/users/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { verifyAdmin } from '@/lib/auth-utils';
@@ -45,7 +43,6 @@ export async function GET(request: NextRequest) {
             { $sort: { createdAt: -1 } }, 
             { $skip: skip },
             { $limit: limit },
-            
             {
               $lookup: {
                 from: ORDERS_COLLECTION,
@@ -62,16 +59,12 @@ export async function GET(request: NextRequest) {
                     as: "order",
                     cond: { $eq: ["$$order.Status", "Delivered"] }
                   }
-                }
-              }
-            },
-                        {
-              $addFields: {
+                },
                 cancelledOrders: {
                   $filter: {
                     input: "$allOrders",
                     as: "order",
-                    cond: { $eq: ["$order.Status", "Cancelled"] }
+                    cond: { $eq: ["$$order.Status", "Cancelled"] }
                   }
                 }
               }
@@ -101,7 +94,8 @@ export async function GET(request: NextRequest) {
     const totalUsers = result.metadata[0] ? result.metadata[0].total : 0;
     const users = result.data;
 
-    // 4. Formatting    const formattedUsers = users.map((user: any) => ({
+    // 4. Formatting
+    const formattedUsers = users.map((user: any) => ({
       id: user._id.toString(),
       name: user.name || 'Unknown',
       email: user.email,
@@ -126,16 +120,10 @@ export async function GET(request: NextRequest) {
         limit,
         totalPages: Math.ceil(totalUsers / limit)
       }
-    }, { status: 200 });
+    });
 
-  } catch (error: any) {
-    console.error("Admin Users API Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Fetch users error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to fetch users' }, { status: 500 });
   }
 }
-
-
-
-
-
-

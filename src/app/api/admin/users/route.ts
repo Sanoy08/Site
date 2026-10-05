@@ -51,7 +51,18 @@ export async function GET(request: NextRequest) {
                 from: ORDERS_COLLECTION,
                 localField: '_id',
                 foreignField: 'userId', 
-                as: 'orders'
+                as: 'allOrders'
+              }
+            },
+            {
+              $addFields: {
+                deliveredOrders: {
+                  $filter: {
+                    input: "$allOrders",
+                    as: "order",
+                    cond: { $eq: ["$$order.Status", "Delivered"] }
+                  }
+                }
               }
             },
             {
@@ -62,9 +73,9 @@ export async function GET(request: NextRequest) {
                 phone: 1,
                 createdAt: 1,
                 isVerified: 1, // ★ নতুন যোগ করা হলো
-                totalSpent: { $sum: "$orders.FinalPrice" },
-                lastOrder: { $max: "$orders.Timestamp" },
-                orderCount: { $size: "$orders" }
+                totalSpent: { $sum: "$deliveredOrders.FinalPrice" },
+                lastOrder: { $max: "$deliveredOrders.Timestamp" },
+                orderCount: { $size: "$deliveredOrders" }
               }
             }
           ]
@@ -106,3 +117,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+

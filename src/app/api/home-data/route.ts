@@ -23,11 +23,12 @@ export async function GET(request: NextRequest) {
 
     // ৩. ভার্সন না মিললে প্যারালাল ফেচিং (একসাথে সব ডেটা আনবে)
     // ★ FIX: Added sorting to menuItems just like the original products API
-    const [heroSlides, sliderImages, offers, products] = await Promise.all([
+    const [heroSlides, sliderImages, offers, products, megaCampaignDoc] = await Promise.all([
         db.collection('heroSlides').find({}).sort({ order: 1 }).toArray(),
         db.collection('homeSliderImages').find({}).sort({ order: 1 }).toArray(),
         db.collection('offers').find({ active: true }).sort({ createdAt: -1 }).toArray(),
-        db.collection('menuItems').find({}).sort({ InStock: -1, isDailySpecial: -1, Name: 1 }).toArray() 
+        db.collection('menuItems').find({}).sort({ InStock: -1, isDailySpecial: -1, Name: 1 }).toArray(),
+        db.collection('megacampaign').findOne({ _id: 'megacampaign' })
     ]);
 
     // ★ Auto-delete expired special offers (Lazy Deletion)
@@ -83,7 +84,8 @@ export async function GET(request: NextRequest) {
                 mealType: o.mealType || 'lunch'
             })), 
             bestsellers,
-            allProducts: formattedProducts
+            allProducts: formattedProducts,
+            megaCampaign: (megaCampaignDoc && megaCampaignDoc.isActive) ? megaCampaignDoc : null
         } 
     });
 

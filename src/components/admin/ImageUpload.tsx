@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { CloudUpload, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -19,6 +19,7 @@ interface ImageUploadProps {
 export function ImageUpload({ value, onChange, maxFiles = 1, folder = 'general' }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -109,11 +110,11 @@ if (folder && folder !== 'general') {
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
-        onClick={() => document.getElementById(`file-input-${folder}`)?.click()}
+        onClick={() => fileInputRef.current?.click()}
       >
         <input 
             type="file" 
-            id={`file-input-${folder}`} 
+            ref={fileInputRef} 
             className="hidden" 
             accept="image/*" 
             multiple={maxFiles > 1}

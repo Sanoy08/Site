@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const [user, transactions, orderStats] = await Promise.all([
         db.collection(USERS_COLLECTION).findOne(
             { _id: userId },
-            { projection: { wallet: 1 } }
+            { projection: { wallet: 1, totalSpent: 1 } }
         ),
         db.collection(TRANSACTIONS_COLLECTION)
             .find({ userId: userId }) // ObjectId হিসেবে সার্চ করা ভালো
@@ -70,3 +70,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+

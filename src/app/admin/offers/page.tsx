@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Plus, Trash2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import Link from 'next/link';
+import { Sparkles } from 'lucide-react';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/constants';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
@@ -161,6 +163,11 @@ export default function AdminOffersPage() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1">Manage combo offers and special promotions.</p>
         </div>
+        <Link href="/admin/mega-campaign">
+            <Button variant="secondary" className="gap-2 border-primary/20 shadow-md bg-amber-100 text-amber-900 hover:bg-amber-200">
+                <Sparkles className="h-4 w-4 text-amber-600" /> Mega Campaign Builder
+            </Button>
+        </Link>
         <Button onClick={() => handleOpenDialog()} className="gap-2 shadow-lg shadow-primary/20">
             <Plus className="h-4 w-4" /> Add Offer
         </Button>

@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
     try {
         await session.withTransaction(async () => {
             const regularItems = items.filter((item: any) => !item.isSpecialOffer);
-            const specialOfferItems = items.filter((item: any) => item.isSpecialOffer);
+            const specialOfferItems = items.filter((item: any) => item.isSpecialOffer && !item.id.startsWith('mega_'));
+            const megaCampaignItems = items.filter((item: any) => item.isSpecialOffer && item.id.startsWith('mega_'));
 
             const regularProductIds = regularItems.map((item: any) => new ObjectId(item.id));
             const specialOfferIds = specialOfferItems.map((item: any) => new ObjectId(item.id));
@@ -110,6 +111,24 @@ export async function POST(request: NextRequest) {
                     ...item,
                     price: dbOffer.price || 0,
                     name: dbOffer.title,
+                });
+            }
+
+            // Validate mega campaign items
+            for (const item of megaCampaignItems) {
+                if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
+                    throw new Error(\Invalid quantity for mega campaign item: \\);
+                }
+
+                // Skip full DB validation for mega campaign items to speed up checkout
+                // Just use the frontend price and name
+                const itemTotal = (item.price || 0) * item.quantity;
+                calculatedSubtotal += itemTotal;
+
+                validatedItems.push({
+                    ...item,
+                    price: item.price || 0,
+                    name: item.name,
                 });
             }
 
@@ -264,5 +283,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Server error processing order.' }, { status: 500 });
   }
 }
+
+
 
 

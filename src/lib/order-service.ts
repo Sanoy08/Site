@@ -34,7 +34,7 @@ export async function finalizeDelivery(
             let newTier = "Bronze";
             let earnRate = 2; // Default Bronze
 
-            if (currentTotalSpent >= 15000) { newTier = "Gold"; earnRate = 6; } 
+            if (currentTotalSpent >= 20000) { newTier = "Gold"; earnRate = 6; } 
             else if (currentTotalSpent >= 5000) { newTier = "Silver"; earnRate = 4; }
 
             // Coin Calculate
@@ -98,3 +98,4 @@ export async function finalizeDelivery(
         );
     }
 }
+

@@ -41,8 +41,13 @@ export default function AdminDashboardPage() {
         
         if (data.success) {
             setStats(data.stats);
-            setChartData(data.chartData);
-            setTopSellingData(data.topSellingItems);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const formattedChartData = (data.charts?.sales || []).map((salesAmt, i) => ({
+                month: months[i],
+                sales: salesAmt
+            }));
+            setChartData(formattedChartData);
+            setTopSellingData(data.charts?.topItems || []);
         } else {
             toast.error("Failed to load dashboard data");
         }
@@ -180,7 +185,7 @@ export default function AdminDashboardPage() {
                                 outerRadius={80}
                                 fill="#8884d8"
                                 paddingAngle={5}
-                                dataKey="value"
+                                dataKey="sales"
                             >
                                 {topSellingData.map((entry: any, index: number) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
                 Instructions: instructions,
                 
                 Subtotal: calculatedSubtotal,
-                DeliveryFee: finalDeliveryCharge,
+                DeliveryFee: deliveryFee === 'Applicable' ? 'Applicable' : finalDeliveryCharge,
                 Discount: totalDiscount,
                 CouponCode: appliedCouponCode,
                 CouponDiscount: couponDiscount,

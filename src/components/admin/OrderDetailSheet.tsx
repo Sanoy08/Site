@@ -234,7 +234,7 @@ export function OrderDetailSheet({ order, open, onClose, onStatusChange, onDownl
                                 <div className="flex justify-between text-gray-600">
                                     <span>Delivery Charge</span>
                                     <span className="font-medium tabular-nums text-green-600">
-                                        {order.DeliveryFee > 0 ? formatPrice(order.DeliveryFee) : 'FREE'}
+                                        {order.DeliveryFee === 'Applicable' ? 'Applicable' : (order.DeliveryFee > 0 ? formatPrice(order.DeliveryFee) : 'FREE')}
                                     </span>
                                 </div>
                                 {order.Discount > 0 && (

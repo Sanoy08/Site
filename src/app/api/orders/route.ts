@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
             // Validate mega campaign items
             for (const item of megaCampaignItems) {
                 if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
-                    throw new Error(\Invalid quantity for mega campaign item: \\);
+                    throw new Error(`Invalid quantity for mega campaign item: ${item.name || item.id}`);
                 }
 
                 // Skip full DB validation for mega campaign items to speed up checkout
@@ -283,6 +283,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Server error processing order.' }, { status: 500 });
   }
 }
+
 
 
 

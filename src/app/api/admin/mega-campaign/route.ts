@@ -21,8 +21,6 @@ export async function GET(request: NextRequest) {
         homeBannerImage: '',
         pageBgImage: '',
         headingImage: '',
-        orderLastTime: '',
-        deliveryDate: '',
         categories: []
       }
     });
@@ -48,8 +46,6 @@ export async function POST(request: NextRequest) {
         homeBannerImage: body.homeBannerImage || '',
         pageBgImage: body.pageBgImage || '',
         headingImage: body.headingImage || '',
-        orderLastTime: body.orderLastTime || '',
-        deliveryDate: body.deliveryDate || '',
         categories: body.categories || [],
         updatedAt: new Date()
       }

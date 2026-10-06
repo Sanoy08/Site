@@ -21,8 +21,6 @@ export default function MegaCampaignPage() {
     homeBannerImage: '',
     pageBgImage: '',
     headingImage: '',
-    orderLastTime: '',
-    deliveryDate: '',
     categories: []
   });
 
@@ -68,7 +66,7 @@ export default function MegaCampaignPage() {
   const addCategory = () => {
     setCampaign({
       ...campaign,
-      categories: [...campaign.categories, { name: 'New Category', items: [] }]
+      categories: [...campaign.categories, { name: 'New Category', image: '', items: [] }]
     });
   };
 
@@ -78,9 +76,9 @@ export default function MegaCampaignPage() {
     setCampaign({ ...campaign, categories: newCats });
   };
 
-  const updateCategoryName = (catIndex, name) => {
+  const updateCategory = (catIndex, field, value) => {
     const newCats = [...campaign.categories];
-    newCats[catIndex].name = name;
+    newCats[catIndex][field] = value;
     setCampaign({ ...campaign, categories: newCats });
   };
 
@@ -90,7 +88,9 @@ export default function MegaCampaignPage() {
       name: '',
       price: 0,
       description: '',
-      image: ''
+      image: '',
+      deliveryDate: '',
+      orderCutoffTime: ''
     });
     setCampaign({ ...campaign, categories: newCats });
   };
@@ -183,21 +183,7 @@ export default function MegaCampaignPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Delivery Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label>Delivery Date</Label>
-            <Input type="date" value={campaign.deliveryDate} onChange={e => setCampaign({...campaign, deliveryDate: e.target.value})} />
-          </div>
-          <div className="space-y-2">
-            <Label>Order Cutoff (Last Order Time)</Label>
-            <Input type="datetime-local" value={campaign.orderLastTime} onChange={e => setCampaign({...campaign, orderLastTime: e.target.value})} />
-          </div>
-        </CardContent>
-      </Card>
+
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -210,13 +196,24 @@ export default function MegaCampaignPage() {
         {campaign.categories.map((cat, catIndex) => (
           <Card key={catIndex} className="border-2 border-primary/20">
             <CardHeader className="bg-primary/5 pb-4">
-              <div className="flex items-center justify-between gap-4">
-                <Input 
-                  value={cat.name} 
-                  onChange={e => updateCategoryName(catIndex, e.target.value)}
-                  className="font-bold text-lg bg-white"
-                  placeholder="Category Name (e.g. Maha Thali)"
-                />
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-3">
+                  <Input 
+                    value={cat.name} 
+                    onChange={e => updateCategory(catIndex, 'name', e.target.value)}
+                    className="font-bold text-lg bg-white"
+                    placeholder="Category Name (Internal Use Only)"
+                  />
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Category Banner Image (Shown on App)</Label>
+                    <ImageUpload 
+                      value={cat.image ? [cat.image] : []}
+                      onChange={(urls) => updateCategory(catIndex, 'image', urls[0] || '')}
+                      maxFiles={1}
+                      folder="campaign"
+                    />
+                  </div>
+                </div>
                 <Button variant="destructive" size="icon" onClick={() => removeCategory(catIndex)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -247,6 +244,16 @@ export default function MegaCampaignPage() {
                     <div className="space-y-1">
                       <Label>Description</Label>
                       <Input value={item.description} onChange={e => updateItem(catIndex, itemIndex, 'description', e.target.value)} placeholder="Short description..." />
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex-1 space-y-1">
+                        <Label>Delivery Date</Label>
+                        <Input type="date" value={item.deliveryDate || ''} onChange={e => updateItem(catIndex, itemIndex, 'deliveryDate', e.target.value)} />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label>Order Cutoff Time</Label>
+                        <Input type="datetime-local" value={item.orderCutoffTime || ''} onChange={e => updateItem(catIndex, itemIndex, 'orderCutoffTime', e.target.value)} />
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center">

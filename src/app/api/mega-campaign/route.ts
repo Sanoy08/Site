@@ -6,7 +6,7 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db(process.env.DATABASE_NAME);
 
-    const doc = await db.collection('megacampaign').findOne({ _id: 'megacampaign' });
+    const doc = await db.collection('megacampaign').findOne({ _id: 'main' });
     
     // Only return campaign if it exists AND is active
     if (!doc || !doc.isActive) {

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         db.collection('homeSliderImages').find({}).sort({ order: 1 }).toArray(),
         db.collection('offers').find({ active: true }).sort({ createdAt: -1 }).toArray(),
         db.collection('menuItems').find({}).sort({ InStock: -1, isDailySpecial: -1, Name: 1 }).toArray(),
-        db.collection('megacampaign').findOne({ _id: 'megacampaign' })
+        db.collection('megacampaign').findOne({ _id: 'main' })
     ]);
 
     // ★ Auto-delete expired special offers (Lazy Deletion)

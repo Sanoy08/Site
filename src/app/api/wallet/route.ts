@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         wallet: {
             balance: user?.wallet?.currentBalance || 0,
             tier: user?.wallet?.tier || 'Bronze',
-            totalSpent: totalSpent, // নতুন যোগ করা হলো
+            totalSpent: user?.totalSpent || 0,
             transactions: transactions || []
         }
     });
@@ -70,5 +70,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
 
 

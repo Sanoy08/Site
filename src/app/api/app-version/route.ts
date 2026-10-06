@@ -15,7 +15,8 @@ export async function GET() {
       success: true,
       latestVersion: settings?.androidVersion || '1.0.0',
       apkUrl: settings?.apkUrl || '',
-      forceUpdate: settings?.forceUpdate || false
+      forceUpdate: settings?.forceUpdate || false,
+      isStoreOpen: settings?.isStoreOpen ?? true
     });
   } catch (error) {
     return NextResponse.json({ success: false }, { status: 500 });

@@ -64,47 +64,65 @@ export default function MegaCampaignPage() {
   };
 
   const addCategory = () => {
-    setCampaign({
-      ...campaign,
-      categories: [...campaign.categories, { name: 'New Category', image: '', items: [] }]
-    });
+    setCampaign(prev => ({
+      ...prev,
+      categories: [...prev.categories, { name: 'New Category', image: '', items: [] }]
+    }));
   };
 
   const removeCategory = (catIndex) => {
-    const newCats = [...campaign.categories];
-    newCats.splice(catIndex, 1);
-    setCampaign({ ...campaign, categories: newCats });
+    setCampaign(prev => {
+      const newCats = [...prev.categories];
+      newCats.splice(catIndex, 1);
+      return { ...prev, categories: newCats };
+    });
   };
 
   const updateCategory = (catIndex, field, value) => {
-    const newCats = [...campaign.categories];
-    newCats[catIndex][field] = value;
-    setCampaign({ ...campaign, categories: newCats });
+    setCampaign(prev => {
+      const newCats = [...prev.categories];
+      newCats[catIndex] = { ...newCats[catIndex], [field]: value };
+      return { ...prev, categories: newCats };
+    });
   };
 
   const addItemToCategory = (catIndex) => {
-    const newCats = [...campaign.categories];
-    newCats[catIndex].items.push({
-      name: '',
-      price: 0,
-      description: '',
-      image: '',
-      deliveryDate: '',
-      orderCutoffTime: ''
+    setCampaign(prev => {
+      const newCats = [...prev.categories];
+      newCats[catIndex] = {
+        ...newCats[catIndex],
+        items: [...newCats[catIndex].items, {
+          name: '',
+          price: 0,
+          description: '',
+          image: '',
+          deliveryDate: '',
+          orderCutoffTime: '',
+          mealType: 'Lunch'
+        }]
+      };
+      return { ...prev, categories: newCats };
     });
-    setCampaign({ ...campaign, categories: newCats });
   };
 
   const removeItemFromCategory = (catIndex, itemIndex) => {
-    const newCats = [...campaign.categories];
-    newCats[catIndex].items.splice(itemIndex, 1);
-    setCampaign({ ...campaign, categories: newCats });
+    setCampaign(prev => {
+      const newCats = [...prev.categories];
+      const newItems = [...newCats[catIndex].items];
+      newItems.splice(itemIndex, 1);
+      newCats[catIndex] = { ...newCats[catIndex], items: newItems };
+      return { ...prev, categories: newCats };
+    });
   };
 
   const updateItem = (catIndex, itemIndex, field, value) => {
-    const newCats = [...campaign.categories];
-    newCats[catIndex].items[itemIndex][field] = value;
-    setCampaign({ ...campaign, categories: newCats });
+    setCampaign(prev => {
+      const newCats = [...prev.categories];
+      const newItems = [...newCats[catIndex].items];
+      newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+      newCats[catIndex] = { ...newCats[catIndex], items: newItems };
+      return { ...prev, categories: newCats };
+    });
   };
 
   if (isLoading) {
@@ -126,7 +144,7 @@ export default function MegaCampaignPage() {
             <Label className="font-bold">Status: {campaign.isActive ? 'Live' : 'Hidden'}</Label>
             <Switch 
               checked={campaign.isActive} 
-              onCheckedChange={(c) => setCampaign({...campaign, isActive: c})} 
+              onCheckedChange={(c) => setCampaign(prev => ({...prev, isActive: c}))} 
             />
           </div>
           <Button onClick={saveCampaign} disabled={isSaving} className="gap-2">
@@ -145,7 +163,7 @@ export default function MegaCampaignPage() {
             <Label className="text-xs text-muted-foreground mb-2 block">Shown on the app homepage</Label>
             <ImageUpload 
               value={campaign.homeBannerImage ? [campaign.homeBannerImage] : []}
-              onChange={(urls) => setCampaign({...campaign, homeBannerImage: urls[0] || ''})}
+              onChange={(urls) => setCampaign(prev => ({...prev, homeBannerImage: urls[0] || ''}))}
               maxFiles={1}
               folder="campaign"
             />
@@ -160,7 +178,7 @@ export default function MegaCampaignPage() {
             <Label className="text-xs text-muted-foreground mb-2 block">Background for the new page</Label>
             <ImageUpload 
               value={campaign.pageBgImage ? [campaign.pageBgImage] : []}
-              onChange={(urls) => setCampaign({...campaign, pageBgImage: urls[0] || ''})}
+              onChange={(urls) => setCampaign(prev => ({...prev, pageBgImage: urls[0] || ''}))}
               maxFiles={1}
               folder="campaign"
             />
@@ -175,7 +193,7 @@ export default function MegaCampaignPage() {
             <Label className="text-xs text-muted-foreground mb-2 block">Title image at the top</Label>
             <ImageUpload 
               value={campaign.headingImage ? [campaign.headingImage] : []}
-              onChange={(urls) => setCampaign({...campaign, headingImage: urls[0] || ''})}
+              onChange={(urls) => setCampaign(prev => ({...prev, headingImage: urls[0] || ''}))}
               maxFiles={1}
               folder="campaign"
             />
@@ -253,6 +271,17 @@ export default function MegaCampaignPage() {
                       <div className="flex-1 space-y-1">
                         <Label>Order Cutoff Time</Label>
                         <Input type="datetime-local" value={item.orderCutoffTime || ''} onChange={e => updateItem(catIndex, itemIndex, 'orderCutoffTime', e.target.value)} />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label>Meal Type</Label>
+                        <select
+                          className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          value={item.mealType || 'Lunch'}
+                          onChange={e => updateItem(catIndex, itemIndex, 'mealType', e.target.value)}
+                        >
+                          <option value="Lunch">Lunch</option>
+                          <option value="Dinner">Dinner</option>
+                        </select>
                       </div>
                     </div>
                   </div>

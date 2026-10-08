@@ -8,7 +8,6 @@ const ORDERS_COLLECTION = 'orders';
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Security Check
     if (!await verifyAdmin(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -22,7 +21,6 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 2. Build Match Query (Search functionality)
     const matchQuery: any = {};
     if (search) {
       matchQuery.$or = [
@@ -32,7 +30,6 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // 3. Optimized Aggregation Pipeline
     const usersData = await db.collection(USERS_COLLECTION).aggregate([
       { $match: matchQuery },
       
@@ -78,7 +75,7 @@ export async function GET(request: NextRequest) {
                 createdAt: 1,
                 isVerified: 1,
                 savedAddresses: 1,
-                totalSpent: { $sum: "$deliveredOrders.FinalPrice" },
+                totalSpent: 1, // Use native totalSpent from db
                 lastOrder: { $max: "$deliveredOrders.Timestamp" },
                 orderCount: { $size: "$deliveredOrders" },
                 allOrdersCount: { $size: "$allOrders" },
@@ -94,7 +91,6 @@ export async function GET(request: NextRequest) {
     const totalUsers = result.metadata[0] ? result.metadata[0].total : 0;
     const users = result.data;
 
-    // 4. Formatting
     const formattedUsers = users.map((user: any) => ({
       id: user._id.toString(),
       name: user.name || 'Unknown',

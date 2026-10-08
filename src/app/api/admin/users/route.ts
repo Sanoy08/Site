@@ -75,6 +75,7 @@ export async function GET(request: NextRequest) {
                 createdAt: 1,
                 isVerified: 1,
                 savedAddresses: 1,
+                loginAddress: 1,
                 totalSpent: 1, // Use native totalSpent from db
                 lastOrder: { $max: "$deliveredOrders.Timestamp" },
                 orderCount: { $size: "$deliveredOrders" },
@@ -104,6 +105,7 @@ export async function GET(request: NextRequest) {
       allOrdersCount: user.allOrdersCount || 0,
       cancelledCount: user.cancelledCount || 0,
       savedAddresses: user.savedAddresses || [],
+      loginAddress: user.loginAddress || null,
       createdAt: user.createdAt
     }));
 
@@ -123,3 +125,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Failed to fetch users' }, { status: 500 });
   }
 }
+

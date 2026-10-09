@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
         const hasNonMegaItems = userDoc.cart.some((item: any) => !item.isSpecialOffer);
         if (hasNonMegaItems) {
-            return NextResponse.json({ success: false, error: 'This coupon is only valid for Mega Campaign items. Please remove regular items from your cart to apply this coupon.' }, { status: 400 });
+            return NextResponse.json({ success: false, error: 'This coupon is only valid for Durga Puja Menus.' }, { status: 400 });
         }
     }
     // ---------------------------------

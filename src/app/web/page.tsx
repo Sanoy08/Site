@@ -1,51 +1,16 @@
 // src/app/web/page.tsx
-
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Download, ArrowRight, Utensils } from 'lucide-react';
 
 // GSAP & Lenis Imports
 import gsap from 'gsap';
 import { ReactLenis } from '@studio-freight/react-lenis';
 
-export default function ComingSoonPage() {
+export default function AppLaunchedPage() {
   const containerRef = useRef(null);
-
-  // 🌟 Target Date set to 10th October 2026
-  const targetDate = new Date('2026-10-10T00:00:00').getTime();
-
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0
-  });
-
-  // Real Countdown Logic
-  useEffect(() => {
-    const updateCountdown = () => {
-      const now = new Date().getTime();
-      const difference = targetDate - now;
-
-      if (difference > 0) {
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-        setTimeLeft({ days, hours, minutes, seconds });
-      } else {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      }
-    };
-
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-
-    return () => clearInterval(timer);
-  }, [targetDate]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -84,48 +49,79 @@ export default function ComingSoonPage() {
               Bumba's <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-amber-600">Kitchen</span>
             </h1>
           </div>
-          <div className="bg-red-50 text-red-700 px-3.5 py-1 rounded-full text-xs font-bold border border-red-200 flex items-center gap-1.5 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
-            Sharodiya Special 🪷
+          <div className="bg-green-50 text-green-700 px-3.5 py-1 rounded-full text-xs font-bold border border-green-200 flex items-center gap-1.5 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span>
+            App is Live Now 🚀
           </div>
         </header>
 
         {/* Main Content (Centered) */}
         <main className="flex-1 flex flex-col items-center justify-center w-full z-10 px-5">
           
-          <section className="w-full max-w-lg flex flex-col items-center text-center relative py-12">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-tr from-red-600/15 to-amber-500/20 rounded-full blur-[100px] -z-10"></div>
+          <section className="w-full max-w-2xl flex flex-col items-center text-center relative py-12">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-tr from-red-600/15 to-amber-500/20 rounded-full blur-[100px] -z-10"></div>
             
             <div className="hero-anim opacity-0 translate-y-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-bold mb-6 tracking-wide uppercase shadow-sm">
-              <Sparkles className="h-3.5 w-3.5 text-amber-600 animate-spin" /> আসছে পুজোয় জমজমাট আয়োজন
+              <Sparkles className="h-3.5 w-3.5 text-amber-600 animate-spin" /> শুভ শারদীয়া - স্পেশাল অফার
             </div>
 
-            <h2 className="hero-anim opacity-0 translate-y-8 text-4xl sm:text-5xl font-black text-slate-900 leading-[1.15] tracking-tight mb-4">
-              Pujo Special App is <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-600 via-orange-600 to-amber-600">Launching Soon!</span>
+            <h2 className="hero-anim opacity-0 translate-y-8 text-4xl sm:text-6xl font-black text-slate-900 leading-[1.15] tracking-tight mb-4">
+              Bumba's Kitchen App is <br className="hidden sm:block" />
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-600 via-orange-600 to-amber-600">Now Live!</span>
             </h2>
             
-            <p className="hero-anim opacity-0 translate-y-8 text-sm sm:text-base text-slate-600 max-w-md leading-relaxed font-medium mb-10">
-              এই পুজোর আনন্দে ঘরে বসেই উপভোগ করুন স্পেশাল থালি ও ঐতিহ্যবাহী বাঙালি পদ। আমাদের নতুন অ্যাপ লঞ্চ হচ্ছে খুব শীঘ্রই, চোখ রাখুন!
+            <p className="hero-anim opacity-0 translate-y-8 text-sm sm:text-base text-slate-600 max-w-lg leading-relaxed font-medium mb-10">
+              অবশেষে অপেক্ষার অবসান! আমাদের নতুন অ্যাপ থেকে আপনার প্রিয় খাবার অর্ডার করুন আর উপভোগ করুন পূজোর স্পেশাল সব ডিসকাউন্ট।
             </p>
 
-            {/* 🌟 Live Countdown Timer Box */}
-            <div className="hero-anim opacity-0 translate-y-8 grid grid-cols-4 gap-2.5 w-full max-w-sm">
-              <div className="bg-white p-3.5 rounded-2xl border border-red-900/10 shadow-sm flex flex-col items-center">
-                <span className="text-xl sm:text-2xl font-black text-slate-900">{String(timeLeft.days).padStart(2, '0')}</span>
-                <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">Days</span>
+            {/* Promo Code Box */}
+            <div className="hero-anim opacity-0 translate-y-8 mb-10 w-full max-w-lg">
+              <p className="text-[15px] font-bold text-amber-700 mb-4 bg-amber-50 inline-block px-4 py-1.5 rounded-full border border-amber-200 shadow-sm">
+                দুর্গাপুজোর স্পেশাল মেনু অর্ডারে কুপনগুলো ব্যবহার করুন! 🎉
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+                <div className="bg-white border-2 border-dashed border-red-400 px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <span className="font-black text-xl text-red-600 tracking-wider">UMAA7</span>
+                </div>
+                <div className="bg-white border-2 border-dashed border-red-400 px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <span className="font-black text-xl text-red-600 tracking-wider">MAA4</span>
+                </div>
+                <div className="bg-white border-2 border-dashed border-red-400 px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <span className="font-black text-xl text-red-600 tracking-wider">SHAROD2</span>
+                </div>
               </div>
-              <div className="bg-white p-3.5 rounded-2xl border border-red-900/10 shadow-sm flex flex-col items-center">
-                <span className="text-xl sm:text-2xl font-black text-slate-900">{String(timeLeft.hours).padStart(2, '0')}</span>
-                <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">Hours</span>
+            </div>
+
+            {/* Action Buttons & QR Code */}
+            <div className="hero-anim opacity-0 translate-y-8 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 w-full mt-4">
+              
+              {/* Google Play Button */}
+              <div className="flex flex-col items-center">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 md:hidden">Tap to Download</p>
+                <a 
+                  href="https://play.google.com/store/apps/details?id=com.bumbaskitchen.app" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 rounded-lg inline-block"
+                >
+                  <img 
+                    src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" 
+                    alt="Get it on Google Play" 
+                    className="h-[100px] sm:h-[120px] w-auto object-contain drop-shadow-md"
+                  />
+                </a>
               </div>
-              <div className="bg-white p-3.5 rounded-2xl border border-red-900/10 shadow-sm flex flex-col items-center">
-                <span className="text-xl sm:text-2xl font-black text-slate-900">{String(timeLeft.minutes).padStart(2, '0')}</span>
-                <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">Mins</span>
+
+              {/* QR Code (Visible mainly on PC/Tablets) */}
+              <div className="hidden md:flex flex-col items-center p-4 bg-white/50 backdrop-blur-sm border-2 border-dashed border-red-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-black text-red-600 uppercase tracking-wider mb-3">Scan to Download 📱</p>
+                <img 
+                  src="https://i.pinimg.com/736x/b0/f3/84/b0f38445ce23a45b4bae6f2281a826aa.jpg" 
+                  alt="QR Code Placeholder" 
+                  className="h-80 w-80 object-contain rounded-lg shadow-sm" 
+                />
               </div>
-              <div className="bg-white p-3.5 rounded-2xl border border-red-900/10 shadow-sm flex flex-col items-center">
-                <span className="text-xl sm:text-2xl font-black text-amber-600">{String(timeLeft.seconds).padStart(2, '0')}</span>
-                <span className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Secs</span>
-              </div>
+
             </div>
           </section>
 
@@ -140,7 +136,7 @@ export default function ComingSoonPage() {
             <span className="font-bold text-slate-800 text-xs">Bumba's Kitchen</span>
           </div>
           <div className="text-[9px] text-slate-500 font-medium uppercase tracking-widest">
-            &copy; {new Date().getFullYear()} Shubh Sharodiya. All rights reserved.
+            &copy; {new Date().getFullYear()} Shubho Sharodiya. All rights reserved.
           </div>
         </footer>
 

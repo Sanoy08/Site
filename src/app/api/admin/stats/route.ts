@@ -22,14 +22,15 @@ export async function GET(request: NextRequest) {
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$FinalPrice" },
-          totalOrders: { $count: {} }
+          totalRevenue: { $sum: "$FinalPrice" }
         }
       }
     ]).toArray();
 
     const revenue = orderStats[0]?.totalRevenue || 0;
-    const totalOrders = orderStats[0]?.totalOrders || 0;
+    const totalOrders = await db.collection(ORDERS_COLLECTION).countDocuments({ 
+        Status: { $nin: ['Cancelled', 'Pending Verification'] } 
+    });
     const totalCustomers = await db.collection(USERS_COLLECTION).countDocuments({ role: 'customer' });
     
     // Pending Orders (Received or Processing)

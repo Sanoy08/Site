@@ -5,6 +5,7 @@ import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { sendNotificationToAdmins } from '@/lib/notification';
 import { getUser } from '@/lib/auth-utils';
+import { pusherServer } from '@/lib/pusher';
 
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
@@ -271,6 +272,7 @@ export async function POST(request: NextRequest) {
             `https://admin.bumbaskitchen.app/orders?id=${orderId}`
         ).catch(err => console.error("Notification Error:", err));
 
+        await pusherServer.trigger('admin-updates', 'new-order', { orderId: orderId }).catch(err => console.error('Pusher Error:', err));
         return NextResponse.json({ success: true, message: "Order placed successfully!", orderId: orderId, finalPrice: finalAmountForLog }, { status: 201 });
 
     } catch (error: any) {

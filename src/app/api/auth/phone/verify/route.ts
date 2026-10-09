@@ -5,6 +5,7 @@ import { clientPromise } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { responseWithCookie } from '@/lib/auth-utils';
+import { pusherServer } from '@/lib/pusher';
 
 const DB_NAME = 'BumbasKitchenDB';
 const USERS_COLLECTION = 'users';
@@ -57,13 +58,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ৩. ভেরিফাইড মার্ক করা এবং OTP মুছে ফেলা
-    await db.collection(USERS_COLLECTION).updateOne(
+    const updateResult = await db.collection(USERS_COLLECTION).updateOne(
         { _id: user._id },
         { 
             $set: { isVerified: true },
             $unset: { otp: "", otpExpires: "", otpAttempts: "" }
         }
     );
+
+    if (!user.isVerified) {
+        await pusherServer.trigger('admin-updates', 'new-user', { userId: user._id.toString() }).catch(err => console.error('Pusher Error:', err));
+    }
 
     // ৪. টোকেন জেনারেট
     const token = jwt.sign(

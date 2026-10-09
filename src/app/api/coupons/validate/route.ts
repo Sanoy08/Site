@@ -60,6 +60,33 @@ export async function POST(request: NextRequest) {
         }
     }
 
+        // --- MEGA CAMPAIGN RESTRICTION ---
+    const megaCampaignCoupons = ['UMAA7', 'MAA4', 'SHAROD2'];
+    if (megaCampaignCoupons.includes(coupon.code.toUpperCase())) {
+        if (!currentUserId) {
+            return NextResponse.json({ success: false, error: 'You must be logged in to use this special coupon.' }, { status: 401 });
+        }
+        
+        const { ObjectId } = require('mongodb');
+        let userQueryId;
+        try {
+            userQueryId = new ObjectId(currentUserId);
+        } catch(e) {
+            userQueryId = currentUserId;
+        }
+
+        const userDoc = await db.collection('users').findOne({ _id: userQueryId });
+        if (!userDoc || !userDoc.cart || userDoc.cart.length === 0) {
+            return NextResponse.json({ success: false, error: 'Your cart is empty or not synced.' }, { status: 400 });
+        }
+
+        const hasNonMegaItems = userDoc.cart.some((item: any) => !item.isSpecialOffer);
+        if (hasNonMegaItems) {
+            return NextResponse.json({ success: false, error: 'This coupon is only valid for Mega Campaign items. Please remove regular items from your cart to apply this coupon.' }, { status: 400 });
+        }
+    }
+    // ---------------------------------
+
     if (cartTotal < (coupon.minOrder || 0)) {
       return NextResponse.json({
         success: false,
@@ -91,3 +118,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

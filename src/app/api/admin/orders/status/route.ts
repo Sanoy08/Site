@@ -127,7 +127,7 @@ export async function PUT(request: NextRequest) {
                 let notifBody = `Order #${order.OrderNumber} is now ${status}.`;
                 
                 if (status === 'Received' && generatedOtp) {
-                    notifBody = `Your order is out for delivery! Share OTP: ${generatedOtp} with the delivery partner.`;
+                    notifBody = `Your order has been received! We will contact you soon. Please share OTP: ${generatedOtp} with the delivery partner.`;
                 }
 
                 await sendNotificationToUser(

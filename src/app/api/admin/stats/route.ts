@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
     });
     const totalCustomers = await db.collection(USERS_COLLECTION).countDocuments({ role: 'customer' });
     
-    // Pending Orders (Received or Processing)
+    // Pending Orders (New orders waiting to be verified)
     const pendingOrders = await db.collection(ORDERS_COLLECTION).countDocuments({ 
-      Status: { $in: ['Received', 'Cooking', 'Processing'] } 
+      Status: 'Pending Verification'
     });
 
     const startOfToday = new Date();

@@ -38,18 +38,42 @@ export async function GET(request: NextRequest) {
       Status: 'Pending Verification'
     });
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0,0,0,0);
+    // Calculate Today's Range in IST (UTC+5:30)
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const nowIst = new Date(now.getTime() + istOffset);
+    
+    const startOfTodayUtc = new Date(Date.UTC(nowIst.getUTCFullYear(), nowIst.getUTCMonth(), nowIst.getUTCDate(), 0, 0, 0, 0));
+    const startOfToday = new Date(startOfTodayUtc.getTime() - istOffset);
+    const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
     
     const todayStats = await db.collection(ORDERS_COLLECTION).aggregate([
-        { $match: { Timestamp: { $gte: startOfToday }, Status: 'Delivered' } },
+        { 
+          $match: { 
+            Status: 'Delivered',
+            $or: [
+              // 1. Explicitly delivered today (deliveredAt is today)
+              { deliveredAt: { $gte: startOfToday, $lte: endOfToday } },
+              // 2. Scheduled for delivery today (PreferredDate is today)
+              { PreferredDate: { $gte: startOfToday, $lte: endOfToday } },
+              // 3. Fallback: placed today and delivered
+              {
+                $and: [
+                  { deliveredAt: { $exists: false } },
+                  { PreferredDate: { $exists: false } },
+                  { Timestamp: { $gte: startOfToday, $lte: endOfToday } }
+                ]
+              }
+            ]
+          } 
+        },
         { $group: { _id: null, todayRevenue: { $sum: "$FinalPrice" } } }
     ]).toArray();
     const todayRevenue = todayStats[0]?.todayRevenue || 0;
 
     const allOrders = await db.collection(ORDERS_COLLECTION)
         .find({ Status: 'Delivered' })
-        .project({ Timestamp: 1, FinalPrice: 1, Items: 1 })
+        .project({ Timestamp: 1, FinalPrice: 1, Items: 1, deliveredAt: 1, PreferredDate: 1 })
         .toArray();
 
     const monthlySales: Record<string, number> = {};
@@ -58,8 +82,8 @@ export async function GET(request: NextRequest) {
     const itemSales: Record<string, number> = {};
 
     allOrders.forEach((order: any) => {
-        // Monthly Sales Logic
-        const date = new Date(order.Timestamp);
+        // Monthly Sales Logic (prefer delivered date)
+        const date = new Date(order.deliveredAt || order.PreferredDate || order.Timestamp);
         const monthName = months[date.getMonth()];
         if (!monthlySales[monthName]) monthlySales[monthName] = 0;
         monthlySales[monthName] += order.FinalPrice;

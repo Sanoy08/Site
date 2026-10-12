@@ -48,6 +48,8 @@ export async function PUT(request: NextRequest) {
             if (status === 'Received') {
                 generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
                 orderUpdate.deliveryOtp = generatedOtp;
+            } else if (status === 'Delivered') {
+                orderUpdate.deliveredAt = new Date();
             }
             
             const couponCode = order.CouponCode;

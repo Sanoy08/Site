@@ -30,9 +30,44 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .toArray();
 
+    const userIds = orders.map((o: any) => o.userId).filter(Boolean).map((id: any) => {
+        try { return new ObjectId(id); } catch(e) { return null; }
+    }).filter(Boolean);
+    
+    let userMap = new Map();
+    if (userIds.length > 0) {
+        const users = await db.collection('users').find({ _id: { $in: userIds } }).project({ totalSpent: 1, wallet: 1 }).toArray();
+        userMap = new Map(users.map((u: any) => [u._id.toString(), u]));
+    }
+
+    const enrichedOrders = orders.map((order: any) => {
+        let earned = order.coinsEarned;
+        let earnRate = 2;
+        if (order.userId) {
+            const user = userMap.get(order.userId.toString());
+            if (user) {
+                const spent = user.totalSpent || 0;
+                if (spent >= 20000) earnRate = 6;
+                else if (spent >= 5000) earnRate = 4;
+            }
+        }
+        if (earned === undefined || earned === null) {
+            const subtotal = parseFloat(order.Subtotal) || parseFloat(order.FinalPrice) || 0;
+            const couponDiscount = parseFloat(order.CouponDiscount) || 0;
+            const eligible = Math.max(0, subtotal - couponDiscount);
+            earned = Math.floor((eligible * earnRate) / 100);
+        }
+        return {
+            ...order,
+            earnRate,
+            coinsToEarn: earned,
+            coinsEarned: order.coinsAwarded ? (order.coinsEarned ?? earned) : undefined
+        };
+    });
+
     return NextResponse.json({ 
         success: true, 
-        orders,
+        orders: enrichedOrders,
         pagination: {
             page,
             limit,

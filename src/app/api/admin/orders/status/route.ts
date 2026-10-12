@@ -13,7 +13,7 @@ const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'coinTransactions';
 const COUPONS_COLLECTION = 'coupons'; 
 
-const SUCCESS_STATUSES = ['Received', 'Delivered']; 
+const SUCCESS_STATUSES = ['Received', 'Out for Delivery', 'Delivered']; 
 
 export async function PUT(request: NextRequest) {
   try {
@@ -125,15 +125,19 @@ export async function PUT(request: NextRequest) {
 
             if (userId && status !== 'Delivered') {
                 let notifBody = `Order #${order.OrderNumber} is now ${status}.`;
+                let notifTitle = `Order ${status} 📦`;
                 
                 if (status === 'Received' && generatedOtp) {
                     notifBody = `Your order has been received! We will contact you soon. Please share OTP: ${generatedOtp} with the delivery partner.`;
+                } else if (status === 'Out for Delivery') {
+                    notifTitle = `Order On The Way! 🛵`;
+                    notifBody = `Your order #${order.OrderNumber} is out for delivery! Our delivery partner is on the way.`;
                 }
 
                 await sendNotificationToUser(
                     client, 
                     userId.toString(), 
-                    `Order ${status} 📦`, 
+                    notifTitle, 
                     notifBody, 
                     "", 
                     "/account/orders" 

@@ -69,7 +69,7 @@ export async function finalizeDelivery(
                 // Mark Order as Coins Awarded
                 await db.collection(ORDERS_COLLECTION).updateOne(
                     { _id: new ObjectId(orderId) },
-                    { $set: { coinsAwarded: true } },
+                    { $set: { coinsAwarded: true, coinsEarned: coinsEarned } },
                     { session }
                 );
 

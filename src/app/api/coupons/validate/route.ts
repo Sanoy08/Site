@@ -80,7 +80,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Your cart is empty or not synced.' }, { status: 400 });
         }
 
-        const hasNonMegaItems = userDoc.cart.some((item: any) => !item.isSpecialOffer);
+        const hasNonMegaItems = userDoc.cart.some((item: any) => {
+  const isMegaCampaignItem =
+    typeof item.id === 'string' &&
+    item.id.startsWith('mega_');
+
+  return !isMegaCampaignItem;
+});
         if (hasNonMegaItems) {
             return NextResponse.json({ success: false, error: 'This coupon is only valid for Durga Puja Menus.' }, { status: 400 });
         }

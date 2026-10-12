@@ -29,6 +29,18 @@ export async function POST(request: NextRequest) {
         await sendNotificationToAllUsers(client, title, message, optimizedImage, link);
     }
 
+    // Save to notificationHistory so manual broadcasts also appear in Sent History
+    const db = client.db('BumbasKitchenDB');
+    await db.collection('notificationHistory').insertOne({
+        title,
+        message,
+        image: optimizedImage || image,
+        link: link || '/menus',
+        sentAt: new Date(),
+        type: 'MANUAL',
+        sentCount: userId ? 'SINGLE' : 'ALL'
+    });
+
     return NextResponse.json({ success: true, message: 'Notification queued' });
   } catch (error: any) {
     console.error("API Error:", error);

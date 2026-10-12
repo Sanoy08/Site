@@ -52,17 +52,12 @@ export async function GET(request: NextRequest) {
           $match: { 
             Status: 'Delivered',
             $or: [
-              // 1. Explicitly delivered today (deliveredAt is today)
-              { deliveredAt: { $gte: startOfToday, $lte: endOfToday } },
-              // 2. Scheduled for delivery today (PreferredDate is today)
+              // PreferredDate আজকের দিনের এবং স্ট্যাটাস Delivered
               { PreferredDate: { $gte: startOfToday, $lte: endOfToday } },
-              // 3. Fallback: placed today and delivered
+              // Fallback: যদি কোনো অর্ডারে PreferredDate না থাকে, তবে Timestamp দেখবে
               {
-                $and: [
-                  { deliveredAt: { $exists: false } },
-                  { PreferredDate: { $exists: false } },
-                  { Timestamp: { $gte: startOfToday, $lte: endOfToday } }
-                ]
+                PreferredDate: { $exists: false },
+                Timestamp: { $gte: startOfToday, $lte: endOfToday }
               }
             ]
           } 
@@ -82,8 +77,8 @@ export async function GET(request: NextRequest) {
     const itemSales: Record<string, number> = {};
 
     allOrders.forEach((order: any) => {
-        // Monthly Sales Logic (prefer delivered date)
-        const date = new Date(order.deliveredAt || order.PreferredDate || order.Timestamp);
+        // Monthly Sales Logic (prefer PreferredDate)
+        const date = new Date(order.PreferredDate || order.deliveredAt || order.Timestamp);
         const monthName = months[date.getMonth()];
         if (!monthlySales[monthName]) monthlySales[monthName] = 0;
         monthlySales[monthName] += order.FinalPrice;

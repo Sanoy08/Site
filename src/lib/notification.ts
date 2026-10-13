@@ -32,7 +32,7 @@ export async function sendNotificationToUser(
     // ★ এখানে শুধু User App-এর টোকেনগুলো আনবো, Admin App-কে বাদ দেবো
     const tokensDocs = await db.collection(SUBSCRIPTIONS_COLLECTION).find({ 
         userId: new ObjectId(userId),
-        appId: { $ne: 'com.bumbaskitchen.admin' } // ★ এই ফিল্টারটি অ্যাড করা হয়েছে
+        appId: { $nin: ['com.bumbaskitchen.admin', 'com.bumbaskitchenadmin.app'] }
     }).toArray();
 
     const tokens = tokensDocs.map(doc => doc.token);
@@ -160,10 +160,10 @@ export async function sendNotificationToAdmins(
     }));
     await db.collection(NOTIFICATIONS_COLLECTION).insertMany(notificationsToSave);
 
-    // ★ এখানে শুধু Admin App ('com.bumbaskitchen.admin') এর টোকেনগুলো খুঁজছি
+    // ★ এখানে Admin Apps এর টোকেনগুলো খুঁজছি
     const tokenDocs = await db.collection(SUBSCRIPTIONS_COLLECTION).find({ 
         userId: { $in: adminIds },
-        appId: 'com.bumbaskitchen.admin' // ★ এই ফিল্টারটি অ্যাড করা হয়েছে
+        appId: { $in: ['com.bumbaskitchen.admin', 'com.bumbaskitchenadmin.app'] }
     }).toArray();
     
     const tokens = tokenDocs.map(t => t.token);

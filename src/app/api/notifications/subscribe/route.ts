@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // ★ ২. TOPIC SUBSCRIPTION LOGIC (ব্যাকএন্ড থেকে ফায়ারবেসকে নির্দেশ দেওয়া)
     try {
-      if (appId === 'com.bumbaskitchen.admin') {
+      if (appId === 'com.bumbaskitchen.admin' || appId === 'com.bumbaskitchenadmin.app') {
         // যদি অ্যাডমিন অ্যাপ হয়, তবে admin_updates টপিকে অ্যাড করে all_users থেকে রিমুভ করবে
         await messaging.subscribeToTopic([token], 'admin_updates');
         await messaging.unsubscribeFromTopic([token], 'all_users');

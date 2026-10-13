@@ -131,7 +131,7 @@ export const usePushNotification = () => {
       try {
           const appInfo = await App.getInfo();
           currentAppId = appInfo.id; 
-          const isAdminApp = currentAppId === 'com.bumbaskitchen.admin';
+          const isAdminApp = currentAppId === 'com.bumbaskitchen.admin' || currentAppId === 'com.bumbaskitchenadmin.app';
 
           if (isAdminApp) {
               await FCM.subscribeTo({ topic: 'admin_updates' });

@@ -178,6 +178,7 @@ export async function sendNotificationToAdmins(
             notification: { title, body },
             data: { 
               url,
+              channelId: channelId,
               android_channel_id: channelId // ডাইনামিক চ্যানেল
             },
             android: {

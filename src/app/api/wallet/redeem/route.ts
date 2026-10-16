@@ -53,12 +53,34 @@ export async function POST(request: NextRequest) {
             // Atomic ব্যালেন্স চেক এবং কমানো (TOCTOU Race Condition Prevention)
             const walletUpdate = await db.collection(USERS_COLLECTION).updateOne(
                 { _id: new ObjectId(userId), "wallet.currentBalance": { $gte: redeemAmount } },
-                { $inc: { "wallet.currentBalance": -redeemAmount } },
+                { 
+                    $inc: { "wallet.currentBalance": -redeemAmount },
+                    $set: { "lastTransactionDate": new Date() }
+                },
                 { session }
             );
 
             if (walletUpdate.modifiedCount === 0) {
                 throw new Error('Insufficient coin balance or concurrent transaction error.');
+            }
+
+            // ★ FIFO Deduction from active earn/refund batches (oldest expiring first)
+            let remainingToDeduct = redeemAmount;
+            const activeBatches = await db.collection(TRANSACTIONS_COLLECTION).find({
+                userId: new ObjectId(userId),
+                type: { $in: ['earn', 'refund'] },
+                remainingAmount: { $gt: 0 }
+            }, { session }).sort({ expiresAt: 1, createdAt: 1 }).toArray();
+
+            for (const batch of activeBatches) {
+                if (remainingToDeduct <= 0) break;
+                const deductFromBatch = Math.min(batch.remainingAmount, remainingToDeduct);
+                await db.collection(TRANSACTIONS_COLLECTION).updateOne(
+                    { _id: batch._id },
+                    { $inc: { remainingAmount: -deductFromBatch } },
+                    { session }
+                );
+                remainingToDeduct -= deductFromBatch;
             }
 
             const couponCode = `REDEEM-${Date.now().toString().slice(-6)}`;

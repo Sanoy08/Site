@@ -210,12 +210,34 @@ export async function POST(request: NextRequest) {
                 if (coinsRedeemed > 0) {
                     const walletUpdate = await db.collection(USERS_COLLECTION).updateOne(
                         { _id: userIdToSave, "wallet.currentBalance": { $gte: coinsRedeemed } }, 
-                        { $inc: { "wallet.currentBalance": -coinsRedeemed } }, 
+                        { 
+                            $inc: { "wallet.currentBalance": -coinsRedeemed },
+                            $set: { "lastTransactionDate": new Date() }
+                        }, 
                         { session }
                     );
                     
                     if (walletUpdate.modifiedCount === 0) {
                          throw new Error('Insufficient wallet balance due to concurrent transaction.');
+                    }
+
+                    // ★ FIFO Deduction from active earn/refund batches (oldest expiring first)
+                    let remainingToDeduct = coinsRedeemed;
+                    const activeBatches = await db.collection(TRANSACTIONS_COLLECTION).find({
+                        userId: userIdToSave,
+                        type: { $in: ['earn', 'refund'] },
+                        remainingAmount: { $gt: 0 }
+                    }, { session }).sort({ expiresAt: 1, createdAt: 1 }).toArray();
+
+                    for (const batch of activeBatches) {
+                        if (remainingToDeduct <= 0) break;
+                        const deductFromBatch = Math.min(batch.remainingAmount, remainingToDeduct);
+                        await db.collection(TRANSACTIONS_COLLECTION).updateOne(
+                            { _id: batch._id },
+                            { $inc: { remainingAmount: -deductFromBatch } },
+                            { session }
+                        );
+                        remainingToDeduct -= deductFromBatch;
                     }
                     
                     orderId = `BK-${Date.now().toString().slice(-5)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;

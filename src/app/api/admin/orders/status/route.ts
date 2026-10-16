@@ -101,10 +101,13 @@ export async function PUT(request: NextRequest) {
                     { session }
                 );
 
+                const refundExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                 await db.collection(TRANSACTIONS_COLLECTION).insertOne({
                     userId: userId,
                     type: 'refund',
                     amount: order.CoinsRedeemed,
+                    remainingAmount: order.CoinsRedeemed,
+                    expiresAt: refundExpiresAt,
                     description: `Refund for Cancelled Order #${order.OrderNumber}`,
                     createdAt: new Date()
                 }, { session });

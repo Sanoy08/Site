@@ -3,15 +3,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
-import { verifyCron } from '@/lib/auth-utils'; // ★ হেল্পার ইমপোর্ট
+import { verifyCron } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // ১. সিকিউরিটি চেক
+    // 1. Security Check
     if (!verifyCron(request)) {
-        return NextResponse.json({ success: false, error: 'Unauthorized access' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized access' }, { status: 401 });
     }
 
     const client = await clientPromise;
@@ -19,69 +19,126 @@ export async function GET(request: NextRequest) {
     const usersCollection = db.collection('users');
     const transactionsCollection = db.collection('coinTransactions');
 
-    // --- লজিক ১: মেয়াদ শেষ (Expire) ---
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const now = new Date();
 
-    const expiredUsers = await usersCollection.find({
-        lastTransactionDate: { $lt: ninetyDaysAgo },
-        "wallet.currentBalance": { $gt: 0 }
+    // ==========================================
+    // STEP 1: EXPIRE COINS (30 Days Validity Ended)
+    // ==========================================
+    // Find all batches where expiresAt has passed and remainingAmount > 0
+    const expiredBatches = await transactionsCollection.find({
+      type: { $in: ['earn', 'refund'] },
+      remainingAmount: { $gt: 0 },
+      expiresAt: { $lte: now }
     }).toArray();
 
-    for (const user of expiredUsers) {
-        const amountToExpire = user.wallet.currentBalance;
+    // Group by user
+    const expiredByUser = new Map<string, { userId: any; totalExpired: number; batchIds: any[] }>();
 
-        // ১. ট্রানজেকশন হিস্ট্রিতে এন্ট্রি যোগ করা
-        if (amountToExpire > 0) {
-            await transactionsCollection.insertOne({
-                userId: user._id,
-                type: 'expire',
-                amount: amountToExpire,
-                description: 'Expired due to inactivity',
-                createdAt: new Date()
-            });
-        }
+    for (const batch of expiredBatches) {
+      const uid = batch.userId.toString();
+      const current = expiredByUser.get(uid) || { userId: batch.userId, totalExpired: 0, batchIds: [] };
+      current.totalExpired += batch.remainingAmount;
+      current.batchIds.push(batch._id);
+      expiredByUser.set(uid, current);
+    }
 
-        // ২. ব্যালেন্স জিরো করা
+    let totalUsersExpired = 0;
+    let totalCoinsExpired = 0;
+
+    for (const [uid, data] of expiredByUser.entries()) {
+      const { userId, totalExpired, batchIds } = data;
+      if (totalExpired <= 0) continue;
+
+      // Mark batch remainingAmount as 0
+      await transactionsCollection.updateMany(
+        { _id: { $in: batchIds } },
+        { $set: { remainingAmount: 0 } }
+      );
+
+      // Check current user wallet balance to avoid dropping below 0
+      const user = await usersCollection.findOne({ _id: userId }, { projection: { wallet: 1 } });
+      const currentBalance = user?.wallet?.currentBalance || 0;
+      const actualDeduct = Math.min(currentBalance, totalExpired);
+
+      if (actualDeduct > 0) {
         await usersCollection.updateOne(
-            { _id: user._id },
-            { $set: { "wallet.currentBalance": 0 } }
+          { _id: userId },
+          { $inc: { "wallet.currentBalance": -actualDeduct } }
         );
-        
-        // ৩. নোটিফিকেশন পাঠানো
+
+        // Record expiration transaction
+        await transactionsCollection.insertOne({
+          userId: userId,
+          type: 'expire',
+          amount: actualDeduct,
+          description: `Expired ${actualDeduct} coins (30 days validity ended)`,
+          createdAt: new Date()
+        });
+
+        // Send push notification to user
         await sendNotificationToUser(
-            client,
-            user._id.toString(),
-            "Coins Expired ⏳",
-            `Your ${amountToExpire} coins have expired due to inactivity.`,
-            "", // Image URL empty
-            '/account/wallet'
+          client,
+          userId.toString(),
+          "Coins Expired ⏳",
+          `Your ${actualDeduct} coins have expired as their 30-day validity has ended.`,
+          "",
+          '/account/wallet'
         );
+
+        totalUsersExpired++;
+        totalCoinsExpired += actualDeduct;
+      }
     }
 
-    // --- লজিক ২: ওয়ার্নিং (Warning) ---
-    const warningDate = new Date();
-    warningDate.setDate(warningDate.getDate() - 83); 
+    // ==========================================
+    // STEP 2: PRE-EXPIRY WARNING (3 Days Notice)
+    // ==========================================
+    const threeDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
-    const warningUsers = await usersCollection.find({
-        lastTransactionDate: { $lt: warningDate, $gt: ninetyDaysAgo }, 
-        "wallet.currentBalance": { $gt: 0 }
+    const expiringSoonBatches = await transactionsCollection.find({
+      type: { $in: ['earn', 'refund'] },
+      remainingAmount: { $gt: 0 },
+      expiresAt: { $gt: now, $lte: threeDaysFromNow },
+      expiryWarningSent: { $ne: true }
     }).toArray();
 
-    for (const user of warningUsers) {
-        await sendNotificationToUser(
-            client,
-            user._id.toString(),
-            "Coins Expiring Soon! ⏳",
-            "Your coins will expire in 7 days. Order now to use them!",
-            "",
-            '/menus'
-        );
+    const warningByUser = new Map<string, { userId: any; totalAmount: number; batchIds: any[] }>();
+
+    for (const batch of expiringSoonBatches) {
+      const uid = batch.userId.toString();
+      const current = warningByUser.get(uid) || { userId: batch.userId, totalAmount: 0, batchIds: [] };
+      current.totalAmount += batch.remainingAmount;
+      current.batchIds.push(batch._id);
+      warningByUser.set(uid, current);
     }
 
-    return NextResponse.json({ 
-        success: true, 
-        message: `Executed Coin Expiry Job. Expired: ${expiredUsers.length}, Warned: ${warningUsers.length}` 
+    let totalUsersWarned = 0;
+
+    for (const [uid, data] of warningByUser.entries()) {
+      const { userId, totalAmount, batchIds } = data;
+      if (totalAmount <= 0) continue;
+
+      // Mark warning sent so we don't repeat notification for these batches
+      await transactionsCollection.updateMany(
+        { _id: { $in: batchIds } },
+        { $set: { expiryWarningSent: true } }
+      );
+
+      await sendNotificationToUser(
+        client,
+        userId.toString(),
+        "Coins Expiring Soon! ⏳",
+        `You have ${totalAmount} coins expiring within 3 days. Order now to use them!`,
+        "",
+        '/menus'
+      );
+
+      totalUsersWarned++;
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Executed 30-day Coin Expiry Job. Expired: ${totalCoinsExpired} coins across ${totalUsersExpired} users. Warned: ${totalUsersWarned} users.`
     });
 
   } catch (error: any) {

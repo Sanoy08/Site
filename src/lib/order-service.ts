@@ -57,11 +57,14 @@ export async function finalizeDelivery(
                     { session }
                 );
 
-                // Transaction Log
+                // Transaction Log (30-day validity with FIFO tracking)
+                const coinExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                 await db.collection(TRANSACTIONS_COLLECTION).insertOne({
                     userId: userId,
                     type: 'earn',
                     amount: coinsEarned,
+                    remainingAmount: coinsEarned,
+                    expiresAt: coinExpiresAt,
                     description: `Earned from Order #${order.OrderNumber}`,
                     createdAt: new Date()
                 }, { session });

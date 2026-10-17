@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     const collection = db.collection(SPECIALS_COLLECTION);
     const { action } = body;
 
-    // ACTION: Bulk Add Dishes with single date & mealType
+    // ACTION: Bulk Add Dishes with duplicate prevention
     if (action === 'bulk-add') {
       const { dishIds, mealType, date } = body;
       if (!Array.isArray(dishIds) || dishIds.length === 0) {
@@ -110,13 +110,31 @@ export async function POST(request: NextRequest) {
       const targetDate = date || new Date().toISOString().split('T')[0];
       const targetMealType = mealType || 'both';
 
-      const newSpecials = sourceDishes.map(d => ({
+      // ★ DUPLICATE PREVENTION: Find what is already added for this targetDate
+      const existingForDate = await collection.find({ date: targetDate }).toArray();
+      const existingDishIds = new Set(existingForDate.map(s => s.dishId).filter(Boolean));
+      const existingNames = new Set(existingForDate.map(s => s.name?.toLowerCase().trim()));
+
+      // Only add dishes that are NOT already in Today's Special for this date!
+      const dishesToAdd = sourceDishes.filter(d => 
+        !existingDishIds.has(d._id.toString()) && 
+        !existingNames.has(d.Name?.toLowerCase().trim())
+      );
+
+      if (dishesToAdd.length === 0) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'The selected dish(es) are already added to Today's Special for this date.' 
+        }, { status: 400 });
+      }
+
+      const newSpecials = dishesToAdd.map(d => ({
         dishId: d._id.toString(),
         name: d.Name,
-        price: d.Price, // Directly use menu price without manual rate editing
+        price: d.Price,
         description: d.Description || '',
         category: d.Category || 'Special',
-        mealType: targetMealType, // 'lunch' | 'dinner' | 'both'
+        mealType: targetMealType,
         date: targetDate,
         imageUrl: d.ImageURLs?.[0] || '',
         images: d.ImageURLs?.[0] ? [{ id: 'img-0', url: d.ImageURLs[0], alt: d.Name }] : [],
@@ -136,9 +154,15 @@ export async function POST(request: NextRequest) {
         type: 'update'
       });
 
+      const skippedCount = sourceDishes.length - dishesToAdd.length;
+      let msg = `Added ${newSpecials.length} dish(es) to Today's Special for ${targetDate}`;
+      if (skippedCount > 0) {
+        msg += ` (${skippedCount} already existed and were skipped)`;
+      }
+
       return NextResponse.json({
         success: true,
-        message: `Added ${newSpecials.length} dishes to Today's Special for ${targetDate} (${targetMealType})`
+        message: msg
       });
     }
 
@@ -161,7 +185,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Special dish removed' });
     }
 
-    // ACTION: Bulk Delete or Clear by Date
+    // ACTION: Bulk Delete
     if (action === 'bulk-delete') {
       const { ids } = body;
       if (!Array.isArray(ids) || ids.length === 0) {

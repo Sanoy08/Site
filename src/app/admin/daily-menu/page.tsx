@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Loader2, Plus, Trash2, UtensilsCrossed, Calendar, 
   Sun, Moon, Sparkles, RefreshCw, Check, Search, 
-  CheckSquare, Square, Layers, X
+  CheckSquare, Square, Layers, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -24,7 +24,6 @@ export default function DailyMenuPage() {
   // 1. Single Available Date: Defaults to Today if before 10 AM, else Tomorrow!
   const getInitialDate = () => {
     const now = new Date();
-    // If before 10 AM, default to today; otherwise default to tomorrow
     if (now.getHours() < 10) {
       return format(now, 'yyyy-MM-dd');
     }
@@ -35,10 +34,11 @@ export default function DailyMenuPage() {
   const [specialDate, setSpecialDate] = useState<string>(getInitialDate);
   const [mealType, setMealType] = useState<'lunch' | 'dinner' | 'both'>('lunch');
 
-  // 2. Multi-Select Dishes State
+  // Multi-Select Dishes State
   const [selectedDishIds, setSelectedDishIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [hideAlreadyAdded, setHideAlreadyAdded] = useState(false);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const tomorrowStr = format(new Date(Date.now() + 86400000), 'yyyy-MM-dd');
@@ -64,23 +64,57 @@ export default function DailyMenuPage() {
     fetchData();
   }, []);
 
-  // Toggle single dish selection
-  const handleToggleDish = (dishId: string) => {
+  // Map of dishes already added for the currently selected specialDate
+  const alreadyAddedMap = useMemo(() => {
+    const map = new Map<string, any>();
+    specials.forEach(s => {
+      if (s.date === specialDate) {
+        if (s.dishId) map.set(s.dishId, s);
+        if (s.name) map.set(s.name.toLowerCase().trim(), s);
+      }
+    });
+    return map;
+  }, [specials, specialDate]);
+
+  // When date changes, automatically remove any selected dishes that are already added for that new date
+  useEffect(() => {
     setSelectedDishIds(prev => 
-      prev.includes(dishId) ? prev.filter(id => id !== dishId) : [...prev, dishId]
+      prev.filter(id => {
+        const dish = availableDishes.find(d => d._id === id);
+        if (!dish) return false;
+        return !alreadyAddedMap.has(id) && !alreadyAddedMap.has(dish.name.toLowerCase().trim());
+      })
+    );
+  }, [specialDate, alreadyAddedMap, availableDishes]);
+
+  // Toggle single dish selection (Prevents selecting already added dish)
+  const handleToggleDish = (dish: any) => {
+    const isAlreadyAdded = alreadyAddedMap.has(dish._id) || alreadyAddedMap.has(dish.name.toLowerCase().trim());
+    if (isAlreadyAdded) {
+      const existing = alreadyAddedMap.get(dish._id) || alreadyAddedMap.get(dish.name.toLowerCase().trim());
+      toast.info(`"${dish.name}" is already in Today's Special for this date (${existing?.mealType || 'added'}).`);
+      return;
+    }
+
+    setSelectedDishIds(prev => 
+      prev.includes(dish._id) ? prev.filter(id => id !== dish._id) : [...prev, dish._id]
     );
   };
 
-  // Select all visible dishes
+  // Select all visible dishes that are NOT already added
   const handleSelectAllVisible = () => {
-    const visibleIds = filteredAvailableDishes.map(d => d._id);
-    const allSelected = visibleIds.every(id => selectedDishIds.includes(id));
+    const selectableDishes = filteredAvailableDishes.filter(d => 
+      !alreadyAddedMap.has(d._id) && !alreadyAddedMap.has(d.name.toLowerCase().trim())
+    );
+    const selectableIds = selectableDishes.map(d => d._id);
+    
+    if (selectableIds.length === 0) return;
+
+    const allSelected = selectableIds.every(id => selectedDishIds.includes(id));
     if (allSelected) {
-      // Deselect visible
-      setSelectedDishIds(prev => prev.filter(id => !visibleIds.includes(id)));
+      setSelectedDishIds(prev => prev.filter(id => !selectableIds.includes(id)));
     } else {
-      // Select all visible
-      setSelectedDishIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+      setSelectedDishIds(prev => Array.from(new Set([...prev, ...selectableIds])));
     }
   };
 
@@ -105,7 +139,7 @@ export default function DailyMenuPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message || `Added ${selectedDishIds.length} dishes to Today's Special!`);
+        toast.success(data.message || `Added dishes to Today's Special!`);
         setSelectedDishIds([]);
         fetchData();
       } else {
@@ -174,9 +208,15 @@ export default function DailyMenuPage() {
         d.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
         d.category?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCat = selectedCategory === 'all' || d.category?.toLowerCase() === selectedCategory.toLowerCase();
+      
+      const isAlreadyAdded = alreadyAddedMap.has(d._id) || alreadyAddedMap.has(d.name.toLowerCase().trim());
+      if (hideAlreadyAdded && isAlreadyAdded) return false;
+
       return matchesSearch && matchesCat;
     });
-  }, [availableDishes, searchQuery, selectedCategory]);
+  }, [availableDishes, searchQuery, selectedCategory, hideAlreadyAdded, alreadyAddedMap]);
+
+  const totalAddedCount = alreadyAddedMap.size;
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
@@ -193,7 +233,7 @@ export default function DailyMenuPage() {
                 <Sparkles className="h-5 w-5 text-amber-500 fill-amber-500" />
               </h1>
               <p className="text-sm text-muted-foreground">
-                Bulk select dishes for Lunch, Dinner, or Both with automatic pricing and date settings.
+                Bulk select dishes for Lunch, Dinner, or Both with automatic duplicate prevention.
               </p>
             </div>
           </div>
@@ -329,29 +369,32 @@ export default function DailyMenuPage() {
                   Select Dishes from Menu
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Tick multiple dishes to add them in bulk for {mealType === 'lunch' ? 'Lunch' : mealType === 'dinner' ? 'Dinner' : 'Lunch & Dinner'} on {specialDate === todayStr ? 'Today' : specialDate === tomorrowStr ? 'Tomorrow' : specialDate}.
+                  Tick dishes to add for {mealType === 'lunch' ? 'Lunch' : mealType === 'dinner' ? 'Dinner' : 'Lunch & Dinner'} on {specialDate === todayStr ? 'Today' : specialDate === tomorrowStr ? 'Tomorrow' : specialDate}.
                 </p>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAllVisible}
-                className="rounded-xl text-xs font-semibold gap-1.5 h-8 shrink-0"
-              >
-                {filteredAvailableDishes.length > 0 && filteredAvailableDishes.every(d => selectedDishIds.includes(d._id)) ? (
-                  <>
-                    <CheckSquare className="h-3.5 w-3.5 text-primary" />
-                    Deselect All
-                  </>
-                ) : (
-                  <>
-                    <Square className="h-3.5 w-3.5 text-muted-foreground" />
-                    Select All Visible
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={hideAlreadyAdded ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setHideAlreadyAdded(!hideAlreadyAdded)}
+                  className="rounded-xl text-xs font-medium h-8"
+                >
+                  {hideAlreadyAdded ? "Showing Unadded" : "Hide Added"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAllVisible}
+                  className="rounded-xl text-xs font-semibold gap-1.5 h-8 shrink-0"
+                >
+                  <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                  Select Unadded
+                </Button>
+              </div>
             </div>
 
             {/* Search & Category Filter */}
@@ -409,16 +452,20 @@ export default function DailyMenuPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[550px] overflow-y-auto pr-1">
                 {filteredAvailableDishes.map((dish) => {
+                  const existingSpecial = alreadyAddedMap.get(dish._id) || alreadyAddedMap.get(dish.name.toLowerCase().trim());
+                  const isAlreadyAdded = !!existingSpecial;
                   const isSelected = selectedDishIds.includes(dish._id);
 
                   return (
                     <div
                       key={dish._id}
-                      onClick={() => handleToggleDish(dish._id)}
-                      className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                        isSelected 
-                          ? 'border-primary bg-primary/5 shadow-sm' 
-                          : 'border-border/60 bg-white hover:border-gray-300'
+                      onClick={() => handleToggleDish(dish)}
+                      className={`p-3 rounded-xl border-2 transition-all flex items-center justify-between gap-3 select-none ${
+                        isAlreadyAdded
+                          ? 'border-green-200 bg-green-50/40 opacity-70 cursor-not-allowed'
+                          : isSelected 
+                          ? 'border-primary bg-primary/5 shadow-sm cursor-pointer' 
+                          : 'border-border/60 bg-white hover:border-gray-300 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -431,17 +478,30 @@ export default function DailyMenuPage() {
                         )}
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 truncate">{dish.name}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span className="text-xs font-black text-primary font-headline">₹{dish.price}</span>
                             <span className="text-[10px] text-muted-foreground">• {dish.category}</span>
+                            {isAlreadyAdded && (
+                              <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.2 rounded-md">
+                                ✓ Added ({existingSpecial.mealType})
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <div className={`w-6 h-6 rounded-lg flex items-center justify-center border shrink-0 transition-colors ${
-                        isSelected ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white'
+                        isAlreadyAdded
+                          ? 'bg-green-600 border-green-600 text-white'
+                          : isSelected 
+                          ? 'bg-primary border-primary text-white' 
+                          : 'border-gray-300 bg-white'
                       }`}>
-                        {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
+                        {isAlreadyAdded ? (
+                          <Check className="h-4 w-4 stroke-[3]" />
+                        ) : isSelected ? (
+                          <Check className="h-4 w-4 stroke-[3]" />
+                        ) : null}
                       </div>
                     </div>
                   );

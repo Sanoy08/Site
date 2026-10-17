@@ -6,7 +6,8 @@ import { revalidatePath } from 'next/cache';
 import { pusherServer } from '@/lib/pusher';
 import { sendNotificationToAllUsers } from '@/lib/notification';
 import { verifyAdmin } from '@/lib/auth-utils';
-import { ObjectId } from 'mongodb'; // ★ ObjectId ইম্পোর্ট করা হলো আইডি চেক করার জন্য
+import { bumpHomeVersion } from '@/lib/version';
+import { ObjectId } from 'mongodb';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'menuItems';
@@ -20,25 +21,31 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // ★ findOne এর বদলে find().toArray() ব্যবহার করা হলো যাতে সব ডেইলি স্পেশাল লিস্ট পাওয়া যায়
-    const specialItems = await db.collection(COLLECTION_NAME).find({ isDailySpecial: true }).toArray();
+    // Fetch all menu items
+    const allItems = await db.collection(COLLECTION_NAME)
+      .find({})
+      .sort({ isDailySpecial: -1, Category: 1, Name: 1 })
+      .toArray();
 
-    if (!specialItems || specialItems.length === 0) {
-        return NextResponse.json({ success: false, data: [], message: "No daily special set yet." });
-    }
-
-    // ফ্রন্টএন্ডের জন্য ডাটা ম্যাপ করে পাঠানো হচ্ছে
-    const formattedData = specialItems.map(item => ({
-        _id: item._id.toString(), // ফ্রন্টএন্ড id হিসেবে এটি ব্যবহার করবে
+    const formattedAll = allItems.map(item => ({
+        _id: item._id.toString(),
         name: item.Name,
         price: item.Price,
-        description: item.Description,
+        description: item.Description || '',
+        category: item.Category || 'Other',
         ImageURLs: item.ImageURLs || [],
         imageUrl: item.ImageURLs?.[1] || item.ImageURLs?.[0] || '',
-        inStock: item.InStock
+        inStock: item.InStock !== false,
+        isDailySpecial: item.isDailySpecial === true || item.isDailySpecial === "true"
     }));
 
-    return NextResponse.json({ success: true, data: formattedData });
+    const specialItems = formattedAll.filter(item => item.isDailySpecial);
+
+    return NextResponse.json({
+      success: true,
+      data: specialItems,
+      allItems: formattedAll
+    });
 
   } catch (error: any) {
     console.error("GET Daily Special Error:", error);
@@ -53,30 +60,97 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    // ★ ফ্রন্টএন্ড থেকে আসা `id` রিসিভ করা হলো
-    const { id, name, price, items, ImageURLs, imageUrl, inStock, notifyUsers } = body;
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const collection = db.collection(COLLECTION_NAME);
 
-    // ★ যদি id না আসে বা ভুল ফরম্যাটের হয়
+    // ACTION 1: Quick toggle single item as Daily Special
+    if (body.action === 'toggle-special') {
+      const { id, isDailySpecial } = body;
+      if (!id || !ObjectId.isValid(id)) {
+        return NextResponse.json({ success: false, error: 'Invalid or missing Menu ID' }, { status: 400 });
+      }
+
+      await collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { isDailySpecial: Boolean(isDailySpecial), UpdatedAt: new Date() } }
+      );
+
+      await bumpHomeVersion();
+      revalidatePath('/menus');
+      revalidatePath('/');
+
+      await pusherServer.trigger('menu-updates', 'product-changed', {
+        message: "Today's Special Updated! ⭐",
+        type: 'update'
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: isDailySpecial ? "Item added to Today's Special" : "Item removed from Today's Special"
+      });
+    }
+
+    // ACTION 2: Batch update active Daily Special items
+    if (body.action === 'batch-set-specials') {
+      const { selectedIds } = body;
+      if (!Array.isArray(selectedIds)) {
+        return NextResponse.json({ success: false, error: 'selectedIds must be an array' }, { status: 400 });
+      }
+
+      const validObjIds = selectedIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+
+      // Mark selected as true
+      if (validObjIds.length > 0) {
+        await collection.updateMany(
+          { _id: { $in: validObjIds } },
+          { $set: { isDailySpecial: true, UpdatedAt: new Date() } }
+        );
+      }
+
+      // Mark unselected as false
+      await collection.updateMany(
+        { _id: { $nin: validObjIds } },
+        { $set: { isDailySpecial: false, UpdatedAt: new Date() } }
+      );
+
+      await bumpHomeVersion();
+      revalidatePath('/menus');
+      revalidatePath('/');
+
+      await pusherServer.trigger('menu-updates', 'product-changed', {
+        message: "Today's Specials Updated! ⭐",
+        type: 'update'
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Updated Today's Specials (" + validObjIds.length + " items active)"
+      });
+    }
+
+    // ACTION 3: Standard Menu Details & Poster Update
+    const { id, name, price, items, ImageURLs, imageUrl, inStock, isDailySpecial, notifyUsers } = body;
+
     if (!id || !ObjectId.isValid(id)) {
         return NextResponse.json({ success: false, error: 'Invalid or missing Menu ID' }, { status: 400 });
     }
 
-    const description = items.map((item: string) => `• ${item}`).join('\n');
-
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTION_NAME);
+    const description = Array.isArray(items) ? items.map((item) => "• " + item).join('\n') : '';
 
     const productData = {
         Name: name,
         Price: parseFloat(price),
         Description: description,
         ImageURLs: ImageURLs || (imageUrl ? [imageUrl] : []),
-        InStock: inStock,
+        InStock: inStock !== false,
         UpdatedAt: new Date()
     };
 
-    // ★ নির্দিষ্ট ID ধরে আপডেট করা হচ্ছে
+    if (isDailySpecial !== undefined) {
+      productData.isDailySpecial = Boolean(isDailySpecial);
+    }
+
     const updateResult = await collection.updateOne(
         { _id: new ObjectId(id) }, 
         { $set: productData }
@@ -86,32 +160,33 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Menu item not found in database' }, { status: 404 });
     }
 
+    // Bump home version for mobile app cache invalidation
+    await bumpHomeVersion();
     revalidatePath('/menus');
     revalidatePath('/');
 
     // Frontend Realtime Trigger
     await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: `${name} Updated! 🍛`, // ডাইনামিক নাম দেওয়া হলো
+        message: name + " Updated! 🍛",
         type: 'update'
     });
 
     // Notification Logic
     if (notifyUsers) {
-        // মেনুর নাম থেকে ডাইনামিক লিংক তৈরি করার চেষ্টা (যেমন: special-veg-thali)
-        const slug = name.toLowerCase().replace(/ /g, '-');
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '');
         
         await sendNotificationToAllUsers(
             client,
             "Today's Special Updated! 🍛",
-            `${name} is ready! Order before it runs out.`,
+            name + " is ready! Order before it runs out.",
             imageUrl || (ImageURLs && ImageURLs[1]) || "", 
-            `/menus/${slug}` // ডাইনামিক লিংক
+            "/menus/" + slug
         ).catch(console.error);
     }
 
     return NextResponse.json({ success: true, message: 'Daily menu updated successfully' });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST Daily Special Error:", error);
     return NextResponse.json({ success: false, error: "Failed to update menu" }, { status: 500 });
   }

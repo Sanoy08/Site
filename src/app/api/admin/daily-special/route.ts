@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       if (dishesToAdd.length === 0) {
         return NextResponse.json({ 
           success: false, 
-          error: 'The selected dish(es) are already added to Today's Special for this date.' 
+          error: "The selected dish(es) are already added to Today's Special for this date." 
         }, { status: 400 });
       }
 

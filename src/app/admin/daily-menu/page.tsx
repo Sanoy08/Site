@@ -9,12 +9,11 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { 
   Loader2, Plus, Trash2, UtensilsCrossed, Calendar, 
-  Sun, Moon, Sparkles, RefreshCw, AlertCircle, 
-  Info, Check, Search, Tag, DollarSign
+  Sun, Moon, Sparkles, RefreshCw, Check, Search, 
+  CheckSquare, Square, Layers, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function DailyMenuPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -22,13 +21,27 @@ export default function DailyMenuPage() {
   const [specials, setSpecials] = useState<any[]>([]);
   const [availableDishes, setAvailableDishes] = useState<any[]>([]);
 
-  // Form States for adding new special
-  const [selectedDishId, setSelectedDishId] = useState<string>("");
-  const [customPrice, setCustomPrice] = useState<string>("");
+  // 1. Single Available Date: Defaults to Today if before 10 AM, else Tomorrow!
+  const getInitialDate = () => {
+    const now = new Date();
+    // If before 10 AM, default to today; otherwise default to tomorrow
+    if (now.getHours() < 10) {
+      return format(now, 'yyyy-MM-dd');
+    }
+    const tomorrow = new Date(now.getTime() + 86400000);
+    return format(tomorrow, 'yyyy-MM-dd');
+  };
+
+  const [specialDate, setSpecialDate] = useState<string>(getInitialDate);
   const [mealType, setMealType] = useState<'lunch' | 'dinner' | 'both'>('lunch');
-  const [specialDate, setSpecialDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [portionStock, setPortionStock] = useState<string>("50");
+
+  // 2. Multi-Select Dishes State
+  const [selectedDishIds, setSelectedDishIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const tomorrowStr = format(new Date(Date.now() + 86400000), 'yyyy-MM-dd');
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -51,26 +64,30 @@ export default function DailyMenuPage() {
     fetchData();
   }, []);
 
-  // When a dish is chosen from dropdown, pre-populate price
-  const handleDishSelect = (dishId: string) => {
-    setSelectedDishId(dishId);
-    const dish = availableDishes.find(d => d._id === dishId);
-    if (dish) {
-      setCustomPrice(dish.price ? String(dish.price) : "");
+  // Toggle single dish selection
+  const handleToggleDish = (dishId: string) => {
+    setSelectedDishIds(prev => 
+      prev.includes(dishId) ? prev.filter(id => id !== dishId) : [...prev, dishId]
+    );
+  };
+
+  // Select all visible dishes
+  const handleSelectAllVisible = () => {
+    const visibleIds = filteredAvailableDishes.map(d => d._id);
+    const allSelected = visibleIds.every(id => selectedDishIds.includes(id));
+    if (allSelected) {
+      // Deselect visible
+      setSelectedDishIds(prev => prev.filter(id => !visibleIds.includes(id)));
+    } else {
+      // Select all visible
+      setSelectedDishIds(prev => Array.from(new Set([...prev, ...visibleIds])));
     }
   };
 
-  // Add new special
-  const handleAddSpecial = async () => {
-    if (!selectedDishId) {
-      toast.error("Please select a dish from the menu");
-      return;
-    }
-    const dish = availableDishes.find(d => d._id === selectedDishId);
-    if (!dish) return;
-
-    if (!customPrice || parseFloat(customPrice) <= 0) {
-      toast.error("Please enter a valid price");
+  // Bulk Add Dishes to Today's Special
+  const handleBulkAdd = async () => {
+    if (selectedDishIds.length === 0) {
+      toast.error("Please select at least one dish");
       return;
     }
 
@@ -80,30 +97,22 @@ export default function DailyMenuPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'add',
-          dishId: dish._id,
-          name: dish.name,
-          price: customPrice,
-          description: dish.description,
-          category: dish.category,
-          mealType: mealType,
+          action: 'bulk-add',
+          dishIds: selectedDishIds,
           date: specialDate,
-          imageUrl: dish.imageUrl,
-          stock: portionStock,
-          inStock: true
+          mealType: mealType
         })
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Added "${dish.name}" to Today's Special!`);
-        setSelectedDishId("");
-        setCustomPrice("");
+        toast.success(data.message || `Added ${selectedDishIds.length} dishes to Today's Special!`);
+        setSelectedDishIds([]);
         fetchData();
       } else {
-        throw new Error(data.error || "Failed to add");
+        throw new Error(data.error || "Failed to add dishes");
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to add special dish");
+      toast.error(err.message || "Failed to add specials");
     } finally {
       setIsSubmitting(false);
     }
@@ -122,14 +131,14 @@ export default function DailyMenuPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(newStock ? "Dish marked In Stock" : "Dish marked Out of Stock");
+        toast.success(newStock ? "Marked In Stock" : "Marked Out of Stock");
       }
     } catch (err) {
       fetchData();
     }
   };
 
-  // Delete Special
+  // Delete single special
   const handleDeleteSpecial = async (id: string, name: string) => {
     if (!confirm(`Remove "${name}" from Today's Specials?`)) return;
 
@@ -149,16 +158,25 @@ export default function DailyMenuPage() {
     }
   };
 
-  // Filtered available dishes for search
-  const filteredAvailableDishes = useMemo(() => {
-    if (!searchQuery) return availableDishes;
-    return availableDishes.filter(d => 
-      d.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      d.category?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [availableDishes, searchQuery]);
+  // Categories list (strictly without Thalis)
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    availableDishes.forEach(d => {
+      if (d.category) set.add(d.category.trim());
+    });
+    return Array.from(set).sort();
+  }, [availableDishes]);
 
-  const selectedDish = availableDishes.find(d => d._id === selectedDishId);
+  // Filtered dishes for selection
+  const filteredAvailableDishes = useMemo(() => {
+    return availableDishes.filter(d => {
+      const matchesSearch = !searchQuery || 
+        d.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        d.category?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCat = selectedCategory === 'all' || d.category?.toLowerCase() === selectedCategory.toLowerCase();
+      return matchesSearch && matchesCat;
+    });
+  }, [availableDishes, searchQuery, selectedCategory]);
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
@@ -175,7 +193,7 @@ export default function DailyMenuPage() {
                 <Sparkles className="h-5 w-5 text-amber-500 fill-amber-500" />
               </h1>
               <p className="text-sm text-muted-foreground">
-                Add special daily dishes with specific dates & meal timings (Lunch, Dinner, or Both).
+                Bulk select dishes for Lunch, Dinner, or Both with automatic pricing and date settings.
               </p>
             </div>
           </div>
@@ -197,188 +215,257 @@ export default function DailyMenuPage() {
         </div>
       </div>
 
-      {/* Notice Banner */}
-      <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-        <div className="text-sm text-blue-900 leading-relaxed">
-          <span className="font-bold">Dedicated Specials Collection:</span> Thalis are excluded from Today's Special and will have a separate dedicated Thali section later. Here you can add special non-thali dishes (Fish, Chicken, Veg, Mutton, Rice delicacies, etc.) for specific dates & meal times.
-        </div>
-      </div>
-
-      {/* Main Grid: Add Form (Left) & Active Specials List (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: Add to Today's Special Form */}
-        <Card className="lg:col-span-5 border shadow-sm rounded-2xl overflow-hidden bg-white">
-          <div className="p-4 sm:p-5 border-b bg-muted/20">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Plus className="h-5 w-5 text-primary" />
-              Add Dish to Today's Special
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Select any menu item, choose date and whether it is for Lunch or Dinner.
-            </p>
-          </div>
-
-          <CardContent className="p-4 sm:p-6 space-y-5">
-            {/* 1. Dish Selector */}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-gray-700">1. Select Menu Dish (No Thalis)</Label>
-              <Select value={selectedDishId} onValueChange={handleDishSelect}>
-                <SelectTrigger className="h-12 rounded-xl bg-background border-primary/20 font-medium">
-                  <SelectValue placeholder="Choose a dish from menu..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {availableDishes.map(d => (
-                    <SelectItem key={d._id} value={d._id}>
-                      {d.name} • ₹{d.price} ({d.category})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Selected Dish Preview */}
-            {selectedDish && (
-              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 flex items-center gap-3">
-                {selectedDish.imageUrl && (
-                  <img src={selectedDish.imageUrl} alt={selectedDish.name} className="w-12 h-12 rounded-lg object-cover" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{selectedDish.name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedDish.category} • Base Price: ₹{selectedDish.price}</p>
-                </div>
-              </div>
-            )}
-
-            {/* 2. Date Selection */}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-primary" />
-                2. Available Date (কোন তারিখে পাওয়া যাবে)
+      {/* Global Control Bar: Available Date & Meal Timing */}
+      <Card className="border shadow-md rounded-2xl overflow-hidden bg-white">
+        <CardContent className="p-4 sm:p-6 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+            {/* 1. Single Available Date Control */}
+            <div className="space-y-2 flex-1 max-w-md">
+              <Label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-primary" />
+                Available Date (কোন তারিখে দেওয়া হবে)
               </Label>
-              <Input
-                type="date"
-                value={specialDate}
-                onChange={(e) => setSpecialDate(e.target.value)}
-                className="h-11 rounded-xl bg-background"
-              />
-              <div className="flex gap-2 pt-1">
-                <button
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={specialDate}
+                  onChange={(e) => setSpecialDate(e.target.value)}
+                  className="h-11 rounded-xl bg-background font-semibold"
+                />
+                <Button
                   type="button"
-                  onClick={() => setSpecialDate(format(new Date(), 'yyyy-MM-dd'))}
-                  className="text-xs px-2.5 py-1 rounded-md bg-muted text-gray-700 hover:bg-gray-200 font-medium"
+                  variant={specialDate === todayStr ? "default" : "outline"}
+                  onClick={() => setSpecialDate(todayStr)}
+                  className="h-11 rounded-xl px-3 text-xs font-bold shrink-0"
                 >
-                  Today ({format(new Date(), 'dd MMM')})
-                </button>
-                <button
+                  Today
+                </Button>
+                <Button
                   type="button"
-                  onClick={() => {
-                    const tmr = new Date();
-                    tmr.setDate(tmr.getDate() + 1);
-                    setSpecialDate(format(tmr, 'yyyy-MM-dd'));
-                  }}
-                  className="text-xs px-2.5 py-1 rounded-md bg-muted text-gray-700 hover:bg-gray-200 font-medium"
+                  variant={specialDate === tomorrowStr ? "default" : "outline"}
+                  onClick={() => setSpecialDate(tomorrowStr)}
+                  className="h-11 rounded-xl px-3 text-xs font-bold shrink-0"
                 >
                   Tomorrow
-                </button>
+                </Button>
               </div>
             </div>
 
-            {/* 3. Meal Timing (Lunch / Dinner / Both) */}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-gray-700">3. Meal Timing (Lunch / Dinner)</Label>
+            {/* 2. Meal Timing Selector (Bulk Timing) */}
+            <div className="space-y-2 flex-1 max-w-md">
+              <Label className="text-xs font-bold text-gray-800">
+                Meal Timing (Lunch, Dinner or Both)
+              </Label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setMealType('lunch')}
-                  className={`h-12 rounded-xl flex flex-col items-center justify-center border font-bold text-xs transition-all ${
+                  className={`h-11 rounded-xl flex items-center justify-center gap-1.5 font-bold text-xs transition-all border ${
                     mealType === 'lunch'
                       ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
                       : 'bg-background hover:bg-muted text-gray-700 border-gray-200'
                   }`}
                 >
-                  <Sun className="h-4 w-4 mb-0.5" />
+                  <Sun className="h-4 w-4" />
                   Lunch Only
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setMealType('dinner')}
-                  className={`h-12 rounded-xl flex flex-col items-center justify-center border font-bold text-xs transition-all ${
+                  className={`h-11 rounded-xl flex items-center justify-center gap-1.5 font-bold text-xs transition-all border ${
                     mealType === 'dinner'
                       ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
                       : 'bg-background hover:bg-muted text-gray-700 border-gray-200'
                   }`}
                 >
-                  <Moon className="h-4 w-4 mb-0.5" />
+                  <Moon className="h-4 w-4" />
                   Dinner Only
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setMealType('both')}
-                  className={`h-12 rounded-xl flex flex-col items-center justify-center border font-bold text-xs transition-all ${
+                  className={`h-11 rounded-xl flex items-center justify-center gap-1.5 font-bold text-xs transition-all border ${
                     mealType === 'both'
                       ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
                       : 'bg-background hover:bg-muted text-gray-700 border-gray-200'
                   }`}
                 >
-                  <UtensilsCrossed className="h-4 w-4 mb-0.5" />
-                  Both (All Day)
+                  <UtensilsCrossed className="h-4 w-4" />
+                  Both
                 </button>
               </div>
             </div>
 
-            {/* 4. Special Price & Portion Limit */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-700">Special Price (₹)</Label>
+            {/* 3. Bulk Add Action Button */}
+            <div className="shrink-0 flex items-center gap-3">
+              <Button
+                onClick={handleBulkAdd}
+                disabled={isSubmitting || selectedDishIds.length === 0}
+                className="h-11 px-6 rounded-xl font-bold text-sm shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 text-white gap-2"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                <span>Add {selectedDishIds.length > 0 ? `(${selectedDishIds.length}) Dishes` : 'Selected Dishes'}</span>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Grid: Select Dishes (Left) & Active Specials (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: Bulk Dish Selection */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
+                  Select Dishes from Menu
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Tick multiple dishes to add them in bulk for {mealType === 'lunch' ? 'Lunch' : mealType === 'dinner' ? 'Dinner' : 'Lunch & Dinner'} on {specialDate === todayStr ? 'Today' : specialDate === tomorrowStr ? 'Tomorrow' : specialDate}.
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAllVisible}
+                className="rounded-xl text-xs font-semibold gap-1.5 h-8 shrink-0"
+              >
+                {filteredAvailableDishes.length > 0 && filteredAvailableDishes.every(d => selectedDishIds.includes(d._id)) ? (
+                  <>
+                    <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                    Deselect All
+                  </>
+                ) : (
+                  <>
+                    <Square className="h-3.5 w-3.5 text-muted-foreground" />
+                    Select All Visible
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Search & Category Filter */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  type="number"
-                  value={customPrice}
-                  onChange={(e) => setCustomPrice(e.target.value)}
-                  placeholder="Price in ₹"
-                  className="h-11 rounded-xl bg-background"
+                  placeholder="Search dishes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-10 rounded-xl bg-muted/30 text-xs"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-700">Daily Portions</Label>
-                <Input
-                  type="number"
-                  value={portionStock}
-                  onChange={(e) => setPortionStock(e.target.value)}
-                  placeholder="e.g. 50"
-                  className="h-11 rounded-xl bg-background"
-                />
+              {/* Category Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    selectedCategory === 'all'
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-muted text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  All ({availableDishes.length})
+                </button>
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      selectedCategory === cat
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-muted text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Submit Button */}
-            <Button
-              onClick={handleAddSpecial}
-              disabled={isSubmitting || !selectedDishId}
-              className="w-full h-12 rounded-xl font-bold text-base shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 mt-2"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              ) : (
-                <Plus className="h-5 w-5 mr-2" />
-              )}
-              Add to Today's Special
-            </Button>
-          </CardContent>
-        </Card>
+            {/* Dishes Selection Grid */}
+            {isLoading ? (
+              <div className="py-16 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">Loading dishes...</p>
+              </div>
+            ) : filteredAvailableDishes.length === 0 ? (
+              <div className="py-12 text-center border border-dashed rounded-xl p-4">
+                <p className="text-sm font-semibold text-gray-600">No dishes found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[550px] overflow-y-auto pr-1">
+                {filteredAvailableDishes.map((dish) => {
+                  const isSelected = selectedDishIds.includes(dish._id);
+
+                  return (
+                    <div
+                      key={dish._id}
+                      onClick={() => handleToggleDish(dish._id)}
+                      className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
+                        isSelected 
+                          ? 'border-primary bg-primary/5 shadow-sm' 
+                          : 'border-border/60 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {dish.imageUrl ? (
+                          <img src={dish.imageUrl} alt={dish.name} className="w-12 h-12 rounded-lg object-cover shrink-0 bg-muted" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-amber-50 flex items-center justify-center shrink-0 border border-amber-200/50">
+                            <UtensilsCrossed className="h-5 w-5 text-amber-600" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">{dish.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs font-black text-primary font-headline">₹{dish.price}</span>
+                            <span className="text-[10px] text-muted-foreground">• {dish.category}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border shrink-0 transition-colors ${
+                        isSelected ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white'
+                      }`}>
+                        {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* RIGHT COLUMN: Active Specials List */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">
-              Active Today's Specials ({specials.length})
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              Directly synced with Mobile App
-            </span>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                Active Specials ({specials.length})
+              </h2>
+              <p className="text-xs text-muted-foreground">Live on Mobile App</p>
+            </div>
+
+            {selectedDishIds.length > 0 && (
+              <Badge className="bg-primary text-white font-bold text-xs px-2.5 py-1">
+                {selectedDishIds.length} Selected to Add
+              </Badge>
+            )}
           </div>
 
           {isLoading ? (
@@ -390,97 +477,85 @@ export default function DailyMenuPage() {
             <div className="py-16 text-center bg-white rounded-2xl border border-dashed p-6">
               <UtensilsCrossed className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-base font-semibold text-gray-700">No Today's Specials Active</p>
-              <p className="text-xs text-muted-foreground mt-1">Use the form on the left to add your first special dish for today!</p>
+              <p className="text-xs text-muted-foreground mt-1">Select dishes from the menu on the left and click Add!</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5 max-h-[650px] overflow-y-auto pr-1">
               {specials.map((item) => {
-                const isToday = item.date === format(new Date(), 'yyyy-MM-dd');
+                const isSpecialToday = item.date === todayStr;
+                const isSpecialTomorrow = item.date === tomorrowStr;
 
                 return (
-                  <Card key={item._id} className="border rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      {/* Left: Image & Info */}
-                      <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                  <Card key={item._id} className="border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-3.5 flex items-center justify-between gap-3">
+                      {/* Left: Thumbnail & Details */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         {item.imageUrl ? (
                           <img 
                             src={item.imageUrl} 
                             alt={item.name} 
-                            className="w-16 h-16 rounded-xl object-cover border shrink-0 bg-muted" 
+                            className="w-13 h-13 rounded-lg object-cover border shrink-0 bg-muted" 
                           />
                         ) : (
-                          <div className="w-16 h-16 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 border border-amber-200">
-                            <UtensilsCrossed className="h-6 w-6 text-amber-700" />
+                          <div className="w-13 h-13 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 border border-amber-200">
+                            <UtensilsCrossed className="h-5 w-5 text-amber-700" />
                           </div>
                         )}
 
                         <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-extrabold text-base text-gray-900 truncate">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-sm text-gray-900 truncate">
                               {item.name}
                             </h3>
-                            <span className="text-base font-black text-primary">
+                            <span className="text-sm font-black text-primary shrink-0">
                               ₹{item.price}
                             </span>
                           </div>
 
                           {/* Badges: Meal Type & Date */}
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {/* Meal Type */}
                             {item.mealType === 'lunch' && (
-                              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-300 text-[11px] font-bold flex items-center gap-1">
-                                <Sun className="h-3 w-3 text-amber-600" />
-                                Lunch Special
+                              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-300 text-[10px] font-bold flex items-center gap-1 px-1.5 py-0.5">
+                                <Sun className="h-2.5 w-2.5 text-amber-600" />
+                                Lunch
                               </Badge>
                             )}
                             {item.mealType === 'dinner' && (
-                              <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100 border-indigo-300 text-[11px] font-bold flex items-center gap-1">
-                                <Moon className="h-3 w-3 text-indigo-600" />
-                                Dinner Special
+                              <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100 border-indigo-300 text-[10px] font-bold flex items-center gap-1 px-1.5 py-0.5">
+                                <Moon className="h-2.5 w-2.5 text-indigo-600" />
+                                Dinner
                               </Badge>
                             )}
                             {item.mealType === 'both' && (
-                              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-300 text-[11px] font-bold flex items-center gap-1">
-                                <UtensilsCrossed className="h-3 w-3 text-emerald-600" />
-                                Lunch & Dinner
+                              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-300 text-[10px] font-bold flex items-center gap-1 px-1.5 py-0.5">
+                                <UtensilsCrossed className="h-2.5 w-2.5 text-emerald-600" />
+                                Both
                               </Badge>
                             )}
 
                             {/* Date Badge */}
-                            <Badge variant="outline" className={`text-[11px] font-semibold flex items-center gap-1 ${isToday ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-gray-50'}`}>
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              {isToday ? 'Today' : item.date}
+                            <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0.5 flex items-center gap-1 ${
+                              isSpecialToday ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-gray-50'
+                            }`}>
+                              <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
+                              {isSpecialToday ? 'Today' : isSpecialTomorrow ? 'Tomorrow' : item.date}
                             </Badge>
-
-                            {/* Category */}
-                            {item.category && (
-                              <span className="text-[11px] text-muted-foreground font-medium">
-                                • {item.category}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Right: Controls */}
-                      <div className="flex items-center gap-3 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-3 sm:pt-0">
-                        {/* Stock Switch */}
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs font-semibold ${item.inStock ? 'text-green-700' : 'text-red-500'}`}>
-                            {item.inStock ? 'In Stock' : 'Sold Out'}
-                          </span>
-                          <Switch
-                            checked={item.inStock}
-                            onCheckedChange={() => handleToggleStock(item._id, item.inStock)}
-                          />
-                        </div>
+                      {/* Right: Stock Switch & Delete */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <Switch
+                          checked={item.inStock}
+                          onCheckedChange={() => handleToggleStock(item._id, item.inStock)}
+                        />
 
-                        {/* Delete Button */}
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDeleteSpecial(item._id, item.name)}
-                          className="h-9 w-9 rounded-xl text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50"
                           title="Remove Special"
                         >
                           <Trash2 className="h-4 w-4" />

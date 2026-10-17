@@ -91,74 +91,58 @@ export async function POST(request: NextRequest) {
     const collection = db.collection(SPECIALS_COLLECTION);
     const { action } = body;
 
-    // ACTION: Add new dish to Today's Specials
-    if (action === 'add') {
-      const { dishId, name, price, description, category, mealType, date, imageUrl, inStock, stock } = body;
-      if (!name || !price) {
-        return NextResponse.json({ success: false, error: 'Name and price are required' }, { status: 400 });
+    // ACTION: Bulk Add Dishes with single date & mealType
+    if (action === 'bulk-add') {
+      const { dishIds, mealType, date } = body;
+      if (!Array.isArray(dishIds) || dishIds.length === 0) {
+        return NextResponse.json({ success: false, error: 'Please select at least one dish' }, { status: 400 });
       }
 
-      const newSpecial = {
-        dishId: dishId || '',
-        name: name.trim(),
-        price: parseFloat(price),
-        description: description || '',
-        category: category || 'Special',
-        mealType: mealType || 'both', // 'lunch' | 'dinner' | 'both'
-        date: date || new Date().toISOString().split('T')[0],
-        imageUrl: imageUrl || '',
-        images: imageUrl ? [{ id: 'img-0', url: imageUrl, alt: name }] : [],
-        inStock: inStock !== false,
-        stock: parseInt(stock) || 100,
+      const validObjIds = dishIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+      const sourceDishes = await db.collection(MENU_COLLECTION)
+        .find({ _id: { $in: validObjIds } })
+        .toArray();
+
+      if (sourceDishes.length === 0) {
+        return NextResponse.json({ success: false, error: 'No matching dishes found' }, { status: 404 });
+      }
+
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      const targetMealType = mealType || 'both';
+
+      const newSpecials = sourceDishes.map(d => ({
+        dishId: d._id.toString(),
+        name: d.Name,
+        price: d.Price, // Directly use menu price without manual rate editing
+        description: d.Description || '',
+        category: d.Category || 'Special',
+        mealType: targetMealType, // 'lunch' | 'dinner' | 'both'
+        date: targetDate,
+        imageUrl: d.ImageURLs?.[0] || '',
+        images: d.ImageURLs?.[0] ? [{ id: 'img-0', url: d.ImageURLs[0], alt: d.Name }] : [],
+        inStock: true,
+        stock: 100,
         active: true,
         createdAt: new Date(),
         updatedAt: new Date()
-      };
+      }));
 
-      const result = await collection.insertOne(newSpecial);
+      await collection.insertMany(newSpecials);
 
       await bumpHomeVersion();
       revalidatePath('/');
       await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: `${name} added to Today's Specials!`,
+        message: `${newSpecials.length} dishes added to Today's Specials!`,
         type: 'update'
       });
 
       return NextResponse.json({
         success: true,
-        message: `Added "${name}" to Today's Special`,
-        insertedId: result.insertedId.toString()
+        message: `Added ${newSpecials.length} dishes to Today's Special for ${targetDate} (${targetMealType})`
       });
     }
 
-    // ACTION: Update existing special item
-    if (action === 'update') {
-      const { id, price, mealType, date, inStock, stock, active } = body;
-      if (!id || !ObjectId.isValid(id)) {
-        return NextResponse.json({ success: false, error: 'Valid Special ID is required' }, { status: 400 });
-      }
-
-      const updateFields: any = { updatedAt: new Date() };
-      if (price !== undefined) updateFields.price = parseFloat(price);
-      if (mealType !== undefined) updateFields.mealType = mealType;
-      if (date !== undefined) updateFields.date = date;
-      if (inStock !== undefined) updateFields.inStock = Boolean(inStock);
-      if (stock !== undefined) updateFields.stock = parseInt(stock) || 100;
-      if (active !== undefined) updateFields.active = Boolean(active);
-
-      await collection.updateOne({ _id: new ObjectId(id) }, { $set: updateFields });
-
-      await bumpHomeVersion();
-      revalidatePath('/');
-      await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: "Today's Special item updated",
-        type: 'update'
-      });
-
-      return NextResponse.json({ success: true, message: 'Special dish updated' });
-    }
-
-    // ACTION: Delete from Today's Specials
+    // ACTION: Delete single special item
     if (action === 'delete') {
       const { id } = body;
       if (!id || !ObjectId.isValid(id)) {
@@ -170,11 +154,31 @@ export async function POST(request: NextRequest) {
       await bumpHomeVersion();
       revalidatePath('/');
       await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: "Special item removed",
+        message: "Special dish removed",
         type: 'update'
       });
 
-      return NextResponse.json({ success: true, message: 'Special item removed' });
+      return NextResponse.json({ success: true, message: 'Special dish removed' });
+    }
+
+    // ACTION: Bulk Delete or Clear by Date
+    if (action === 'bulk-delete') {
+      const { ids } = body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return NextResponse.json({ success: false, error: 'No IDs provided' }, { status: 400 });
+      }
+
+      const validIds = ids.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+      await collection.deleteMany({ _id: { $in: validIds } });
+
+      await bumpHomeVersion();
+      revalidatePath('/');
+      await pusherServer.trigger('menu-updates', 'product-changed', {
+        message: "Selected specials removed",
+        type: 'update'
+      });
+
+      return NextResponse.json({ success: true, message: `Removed ${validIds.length} specials` });
     }
 
     // ACTION: Toggle inStock status

@@ -21,40 +21,55 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // 1. Fetch all items from the dedicated 'todaysSpecials' collection
+    // 1. Fetch all items from todaysSpecials collection
     const specials = await db.collection(SPECIALS_COLLECTION)
       .find({})
-      .sort({ date: -1, createdAt: -1 })
+      .sort({ date: -1, createdAt: 1 })
       .toArray();
 
-    const formattedSpecials = specials.map(s => ({
-        _id: s._id.toString(),
-        dishId: s.dishId || '',
-        name: s.name,
-        price: s.price,
-        description: s.description || '',
-        category: s.category || 'Special',
-        mealType: s.mealType || 'both', // 'lunch' | 'dinner' | 'both'
-        date: s.date || '',
-        imageUrl: s.imageUrl || (s.images?.[0]?.url) || '',
-        images: s.images || [],
-        inStock: s.inStock !== false,
-        stock: s.stock ?? 100,
-        active: s.active !== false
-    }));
-
-    // 2. Fetch available dishes from menuItems, STRICTLY EXCLUDING THALIS
+    // 2. Fetch all menuItems to populate live master details
     const menuItems = await db.collection(MENU_COLLECTION)
-      .find({ InStock: true })
+      .find({})
       .sort({ Category: 1, Name: 1 })
       .toArray();
 
+    const menuMap = new Map();
+    menuItems.forEach(m => {
+      menuMap.set(m._id.toString(), m);
+      if (m.Name) menuMap.set(m.Name.toLowerCase().trim(), m);
+    });
+
+    const formattedSpecials = specials.map(s => {
+      const dish = menuMap.get(s.dishId?.toString()) || menuMap.get((s.dishName || s.name || '').toLowerCase().trim()) || {};
+      const dishName = s.dishName || dish.Name || s.name || 'Special Dish';
+      const dishPrice = dish.Price ?? s.price ?? 0;
+      const imageUrl = dish.ImageURLs?.[0] || s.imageUrl || (s.images?.[0]?.url) || '';
+
+      return {
+        _id: s._id.toString(),
+        dishId: s.dishId?.toString() || dish._id?.toString() || '',
+        name: dishName,
+        price: dishPrice,
+        description: dish.Description || s.description || '',
+        category: dish.Category || s.category || 'Special',
+        mealType: s.mealType || 'both', // 'lunch' | 'dinner' | 'both'
+        date: s.date || '',
+        imageUrl: imageUrl,
+        images: dish.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: dishName })) || s.images || [],
+        inStock: (dish.InStock !== false) && (s.active !== false),
+        stock: 100,
+        active: s.active !== false,
+        createdAt: s.createdAt
+      };
+    });
+
+    // 3. Available dishes from menuItems, STRICTLY EXCLUDING THALIS
     const availableDishes = menuItems
       .filter(m => {
         const cat = (m.Category || '').toLowerCase();
         const name = (m.Name || '').toLowerCase();
         // Strictly exclude Thalis (a separate section will be built for them later)
-        return !name.includes('thali') && cat !== 'thali' && !name.includes('dinner');
+        return m.InStock !== false && !name.includes('thali') && cat !== 'thali' && !name.includes('dinner');
       })
       .map(m => ({
         _id: m._id.toString(),
@@ -74,8 +89,8 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("GET Daily Special Error:", error);
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
+    console.error('GET Daily Special Error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -91,7 +106,7 @@ export async function POST(request: NextRequest) {
     const collection = db.collection(SPECIALS_COLLECTION);
     const { action } = body;
 
-    // ACTION: Bulk Add Dishes with duplicate prevention
+    // ACTION: Bulk Add Dishes with duplicate prevention and lightweight reference storage
     if (action === 'bulk-add') {
       const { dishIds, mealType, date } = body;
       if (!Array.isArray(dishIds) || dishIds.length === 0) {
@@ -110,12 +125,11 @@ export async function POST(request: NextRequest) {
       const targetDate = date || new Date().toISOString().split('T')[0];
       const targetMealType = mealType || 'both';
 
-      // ★ DUPLICATE PREVENTION: Find what is already added for this targetDate
+      // Duplicate prevention for targetDate
       const existingForDate = await collection.find({ date: targetDate }).toArray();
-      const existingDishIds = new Set(existingForDate.map(s => s.dishId).filter(Boolean));
-      const existingNames = new Set(existingForDate.map(s => s.name?.toLowerCase().trim()));
+      const existingDishIds = new Set(existingForDate.map(s => s.dishId?.toString()).filter(Boolean));
+      const existingNames = new Set(existingForDate.map(s => (s.dishName || s.name)?.toLowerCase().trim()));
 
-      // Only add dishes that are NOT already in Today's Special for this date!
       const dishesToAdd = sourceDishes.filter(d => 
         !existingDishIds.has(d._id.toString()) && 
         !existingNames.has(d.Name?.toLowerCase().trim())
@@ -128,18 +142,12 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
+      // Lightweight schema: reference dishId, dishName, date, mealType, active, createdAt, updatedAt
       const newSpecials = dishesToAdd.map(d => ({
         dishId: d._id.toString(),
-        name: d.Name,
-        price: d.Price,
-        description: d.Description || '',
-        category: d.Category || 'Special',
-        mealType: targetMealType,
+        dishName: d.Name,
         date: targetDate,
-        imageUrl: d.ImageURLs?.[0] || '',
-        images: d.ImageURLs?.[0] ? [{ id: 'img-0', url: d.ImageURLs[0], alt: d.Name }] : [],
-        inStock: true,
-        stock: 100,
+        mealType: targetMealType,
         active: true,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -178,7 +186,7 @@ export async function POST(request: NextRequest) {
       await bumpHomeVersion();
       revalidatePath('/');
       await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: "Special dish removed",
+        message: 'Special dish removed',
         type: 'update'
       });
 
@@ -198,39 +206,41 @@ export async function POST(request: NextRequest) {
       await bumpHomeVersion();
       revalidatePath('/');
       await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: "Selected specials removed",
+        message: 'Selected specials removed',
         type: 'update'
       });
 
       return NextResponse.json({ success: true, message: `Removed ${validIds.length} specials` });
     }
 
-    // ACTION: Toggle inStock status
-    if (action === 'toggle-stock') {
-      const { id, inStock } = body;
+    // ACTION: Toggle active status
+    if (action === 'toggle-stock' || action === 'toggle-active') {
+      const { id, inStock, active } = body;
       if (!id || !ObjectId.isValid(id)) {
         return NextResponse.json({ success: false, error: 'Valid Special ID is required' }, { status: 400 });
       }
 
+      const newActive = active !== undefined ? Boolean(active) : (inStock !== undefined ? Boolean(inStock) : true);
+
       await collection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: { inStock: Boolean(inStock), updatedAt: new Date() } }
+        { $set: { active: newActive, updatedAt: new Date() } }
       );
 
       await bumpHomeVersion();
       revalidatePath('/');
       await pusherServer.trigger('menu-updates', 'product-changed', {
-        message: "Stock status changed",
+        message: 'Special status changed',
         type: 'update'
       });
 
-      return NextResponse.json({ success: true, message: 'Stock updated' });
+      return NextResponse.json({ success: true, message: 'Status updated' });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
 
   } catch (error: any) {
-    console.error("POST Daily Special Error:", error);
-    return NextResponse.json({ success: false, error: "Failed to update daily special" }, { status: 500 });
+    console.error('POST Daily Special Error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to update daily special' }, { status: 500 });
   }
 }

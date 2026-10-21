@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
         // --- MEGA CAMPAIGN RESTRICTION ---
-    const megaCampaignCoupons = ['UMAA7', 'MAA4', 'SHAROD2'];
+    const megaCampaignCoupons = ['LAXMI7', 'LAXMI4', 'LAXMI2'];
     if (megaCampaignCoupons.includes(coupon.code.toUpperCase())) {
         if (!currentUserId) {
             return NextResponse.json({ success: false, error: 'You must be logged in to use this special coupon.' }, { status: 401 });

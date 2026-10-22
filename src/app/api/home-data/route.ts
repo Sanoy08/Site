@@ -5,6 +5,9 @@ import { clientPromise } from '@/lib/mongodb';
 
 const DB_NAME = 'BumbasKitchenDB';
 
+const createSlug = (name: string) => 
+  (name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '');
+
 export async function GET(request: NextRequest) {
   try {
     const clientVersion = parseInt(request.nextUrl.searchParams.get('v') || '0');
@@ -55,7 +58,10 @@ export async function GET(request: NextRequest) {
     const menuMap = new Map();
     menuItems.forEach(m => {
       menuMap.set(m._id.toString(), m);
-      if (m.Name) menuMap.set(m.Name.toLowerCase().trim(), m);
+      if (m.Name) {
+        menuMap.set(m.Name.toLowerCase().trim(), m);
+        menuMap.set(createSlug(m.Name), m);
+      }
     });
 
     // Format Today's Specials populated with live menuItems data (Strictly exclude Thalis!)
@@ -66,8 +72,10 @@ export async function GET(request: NextRequest) {
         return true;
       })
       .map(s => {
-        const dish = menuMap.get(s.dishId?.toString()) || menuMap.get((s.dishName || s.name || '').toLowerCase().trim());
-        const dishName = s.dishName || dish?.Name || s.name || '';
+        const dish = menuMap.get(s.dishId?.toString()) || 
+                     menuMap.get((s.dishName || s.name || '').toLowerCase().trim()) ||
+                     menuMap.get(createSlug(s.dishName || s.name || ''));
+        const dishName = (s.dishName || dish?.Name || s.name || '').trim();
         const nameLower = dishName.toLowerCase();
         const catName = dish?.Category || s.category || 'Special';
         const catLower = catName.toLowerCase();
@@ -95,46 +103,33 @@ export async function GET(request: NextRequest) {
           images: imagesList,
           stock: (dish?.InStock !== false && s.active !== false) ? 100 : 0,
           isDailySpecial: true,
-          slug: dishName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, ''),
+          slug: createSlug(dishName),
           rating: dish?.Rating || s.rating || 4.8
         };
       })
       .filter(Boolean);
 
-    // Track active special dish IDs and names to HIDE them from regular catalog & search bar
-    const activeSpecialDishIds = new Set(
-      formattedTodaysSpecials.map((s: any) => s.dishId).filter(Boolean)
-    );
-    const activeSpecialNames = new Set(
-      formattedTodaysSpecials.map((s: any) => s.name?.toLowerCase().trim()).filter(Boolean)
-    );
-
-    // Format Regular Products
-    const formatProduct = (item: any) => ({
+    // Format All Regular Products (normal catalog - all items present, each dish exactly once)
+    const formatProduct = (item: any) => {
+      const cleanName = (item.Name || 'Unknown Dish').trim();
+      return {
         id: item._id.toString(),
-        name: item.Name || 'Unknown Dish',
+        name: cleanName,
         description: item.Description || '',
         price: item.Price || 0,
         category: { id: (item.Category || '').toLowerCase(), name: item.Category || 'Other' },
         type: item.type || 'veg',
-        images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: item.Name })) || [],
+        images: item.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: cleanName })) || [],
         stock: item.InStock ? 100 : 0,
         featured: item.Bestseller === "true" || item.Bestseller === true,
         isDailySpecial: false,
-        slug: (item.Name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, ''),
+        slug: createSlug(cleanName),
         rating: item.rating || item.Rating || 4.5
-    });
+      };
+    };
 
-    // Exclude Today's Special dishes from regular catalog so they NEVER show duplicate in search bar or regular list!
-    const regularCatalogProducts = menuItems
-      .filter(m => {
-        const mId = m._id.toString();
-        const mName = (m.Name || '').toLowerCase().trim();
-        return !activeSpecialDishIds.has(mId) && !activeSpecialNames.has(mName);
-      })
-      .map(formatProduct);
-
-    const bestsellers = regularCatalogProducts.filter(p => p.featured);
+    const allFormattedProducts = menuItems.map(formatProduct);
+    const bestsellers = allFormattedProducts.filter(p => p.featured);
 
     return NextResponse.json({ 
         upToDate: false, 
@@ -154,7 +149,7 @@ export async function GET(request: NextRequest) {
                 mealType: o.mealType || 'lunch'
             })), 
             bestsellers,
-            allProducts: regularCatalogProducts, // Only regular products — Today's Specials are hidden from search!
+            allProducts: allFormattedProducts, // Master catalog: all dishes present and searchable
             todaysSpecials: formattedTodaysSpecials, // Shown exclusively in Homepage Today's Special section!
             megaCampaign: (megaCampaignDoc && megaCampaignDoc.isActive) ? megaCampaignDoc : null
         } 

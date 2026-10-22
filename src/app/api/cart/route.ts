@@ -13,16 +13,19 @@ const COLLECTION_NAME = 'users';
 
 const cartItemSchema = z.object({
   id: z.string(),
+  dishId: z.string().optional(),
   slug: z.string().optional(),
   name: z.string(),
   price: z.number().min(0),
   quantity: z.number().min(1).max(100),
   isSpecialOffer: z.boolean().optional(),
+  isDailySpecial: z.boolean().optional(),
   deliveryDate: z.string().optional(),
+  date: z.string().optional(),
   orderCutoffTime: z.string().optional(),
   mealType: z.string().optional(),
   image: z.any().optional()
-});
+}).passthrough();
 
 const cartSchema = z.object({
   items: z.array(cartItemSchema).max(100, "Too many items in cart")

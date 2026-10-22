@@ -55,7 +55,11 @@ export async function POST(request: NextRequest) {
             const specialOfferItems = items.filter((item: any) => item.isSpecialOffer && !item.id.startsWith('mega_'));
             const megaCampaignItems = items.filter((item: any) => item.isSpecialOffer && item.id.startsWith('mega_'));
 
-            const regularProductIds = regularItems.map((item: any) => new ObjectId(item.id));
+            const regularProductIds: ObjectId[] = [];
+            for (const item of regularItems) {
+                if (ObjectId.isValid(item.id)) regularProductIds.push(new ObjectId(item.id));
+                if (item.dishId && ObjectId.isValid(item.dishId)) regularProductIds.push(new ObjectId(item.dishId));
+            }
             const specialOfferIds = specialOfferItems.map((item: any) => new ObjectId(item.id));
 
             const dbProducts = await db.collection(MENU_COLLECTION)
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
                     throw new Error(`Invalid quantity for item: ${item.name || item.id}`);
                 }
 
-                const dbProduct = dbProducts.find(p => p._id.toString() === item.id);
+                const dbProduct = dbProducts.find(p => p._id.toString() === item.id || (item.dishId && p._id.toString() === item.dishId));
                 if (!dbProduct) throw new Error(`Product not found: ${item.name || item.id}`);
 
                 const itemTotal = (dbProduct.Price || 0) * item.quantity;

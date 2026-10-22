@@ -142,10 +142,11 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Lightweight schema: reference dishId, dishName, date, mealType, active, createdAt, updatedAt
+      // Lightweight schema: reference dishId, dishName, name, date, mealType, active, createdAt, updatedAt
       const newSpecials = dishesToAdd.map(d => ({
         dishId: d._id.toString(),
         dishName: d.Name,
+        name: d.Name,
         date: targetDate,
         mealType: targetMealType,
         active: true,
@@ -241,6 +242,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('POST Daily Special Error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to update daily special' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: error?.message || 'Failed to update daily special' 
+    }, { status: 500 });
   }
 }

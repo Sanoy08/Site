@@ -58,12 +58,13 @@ export async function PUT(
 
     try {
         const notificationImage = finalImages.length > 0 ? finalImages[0] : "";
+        const slug = (body.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '');
         await sendNotificationToAllUsers(
             client,
             "✨ Taste Update! 👨‍🍳", 
             `${body.name} just got refreshed! Check out the new details in our menu. 🍛`, 
             notificationImage,
-            '/menus' 
+            `/menus/${slug}`
         );
     } catch (notifError) {
         console.error("Failed to send update notification:", notifError);

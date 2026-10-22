@@ -84,13 +84,14 @@ export async function POST(request: NextRequest) {
       // ৩. পুশ নোটিফিকেশন ব্রডকাস্ট
       try {
           const mainImage = imgArray.length > 0 ? imgArray[0] : "";
+          const slug = (name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '');
           
           await sendNotificationToAllUsers(
               client,
               "New Arrival! 🍲",
               `Check out our new dish: ${name}. Order now to taste the freshness!`,
-              mainImage, // ★ ইমেজ পাস করা হয়েছে
-              `/menus`
+              mainImage,
+              `/menus/${slug}`
           );
       } catch (notifError) {
           console.error("Failed to broadcast new product notification:", notifError);

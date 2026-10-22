@@ -27,13 +27,13 @@ export async function GET(request: NextRequest) {
     // --- লজিক ১: কাস্টমারদের জন্মদিনের উইশ (আজকের) ---
     const birthdayUsers = await usersCollection.find({ dob: { $regex: dateString + '$' } }).toArray();
     for (const user of birthdayUsers) {
-        await sendNotificationToUser(client, user._id.toString(), `Happy Birthday, ${user.name}! 🎂`, "Wishing you a delicious day! Treat yourself with a special meal from us.", "", '/menus');
+        await sendNotificationToUser(client, user._id.toString(), `Happy Birthday, ${user.name}! 🎂`, "Wishing you a delicious day! Treat yourself with a special meal from us.", "", '/(shop)?scrollTo=explore');
     }
 
     // --- লজিক ২: কাস্টমারদের বিবাহবার্ষিকীর উইশ (আজকের) ---
     const anniversaryUsers = await usersCollection.find({ anniversary: { $regex: dateString + '$' } }).toArray();
     for (const user of anniversaryUsers) {
-        await sendNotificationToUser(client, user._id.toString(), `Happy Anniversary, ${user.name}! 🎉`, "Celebrate your special day with a grand feast. Order now!", "", '/menus');
+        await sendNotificationToUser(client, user._id.toString(), `Happy Anniversary, ${user.name}! 🎉`, "Celebrate your special day with a grand feast. Order now!", "", '/(shop)?scrollTo=explore');
     }
 
     // --- লজিক ৩: অ্যাডমিনকে ১ সপ্তাহ (৭ দিন) আগের রিমাইন্ডার পাঠানো ---
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const inactiveUsers = await usersCollection.find({ _id: { $nin: activeOrders }, role: 'customer' }).limit(5).toArray();
 
     for (const user of inactiveUsers) {
-        await sendNotificationToUser(client, user._id.toString(), "We Miss You! 🥺", "It's been a while since we served you. Come back and check out what's new!", "", '/menus');
+        await sendNotificationToUser(client, user._id.toString(), "We Miss You! 🥺", "It's been a while since we served you. Come back and check out what's new!", "", '/(shop)?scrollTo=explore');
     }
 
     return NextResponse.json({ 

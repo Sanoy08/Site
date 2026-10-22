@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         "Coins Expiring Soon! ⏳",
         `You have ${totalAmount} coins expiring within 3 days. Order now to use them!`,
         "",
-        '/menus'
+        '/(shop)?scrollTo=explore'
       );
 
       totalUsersWarned++;

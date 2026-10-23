@@ -75,7 +75,7 @@ export default function OrderSummaryPage() {
           const res = await fetch('/api/coupons/validate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code: couponCode, cartTotal: totalPrice, items: state.items })
+              body: JSON.stringify({ code: couponCode, cartTotal: totalPrice })
           });
           const data = await res.json();
           

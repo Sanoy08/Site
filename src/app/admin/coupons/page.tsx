@@ -29,7 +29,6 @@ type Coupon = {
   startDate?: string;
   expiryDate: string | null; 
   isActive: boolean;
-  applicableFor?: 'all' | 'mega_campaign';
 };
 
 export default function AdminCouponsPage() {
@@ -53,7 +52,6 @@ export default function AdminCouponsPage() {
     startDate: '',
     expiryDate: '',
     isActive: true,
-    applicableFor: 'all' as 'all' | 'mega_campaign',
   });
 
   const fetchCoupons = async () => {
@@ -96,12 +94,11 @@ export default function AdminCouponsPage() {
         startDate: coupon.startDate ? new Date(coupon.startDate).toISOString().split('T')[0] : '',
         expiryDate: coupon.expiryDate ? new Date(coupon.expiryDate).toISOString().split('T')[0] : '',
         isActive: coupon.isActive,
-        applicableFor: (coupon.applicableFor || 'all') as 'all' | 'mega_campaign',
       });
     } else {
       setEditingCoupon(null);
       const today = new Date().toISOString().split('T')[0];
-      setFormData({ code: '', description: '', discountType: 'percentage', value: '', minOrder: '0', usageLimit: '0', startDate: today, expiryDate: '', isActive: true, applicableFor: 'all' });
+      setFormData({ code: '', description: '', discountType: 'percentage', value: '', minOrder: '0', usageLimit: '0', startDate: today, expiryDate: '', isActive: true });
     }
     setIsDialogOpen(true);
   };
@@ -268,15 +265,8 @@ export default function AdminCouponsPage() {
                         return (
                             <TableRow key={coupon.id} className="hover:bg-muted/20 transition-colors">
                             <TableCell className="pl-6">
-                                <div className="flex flex-col items-start gap-1">
-                                    <div className="font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded inline-block border border-primary/20">
-                                        {coupon.code}
-                                    </div>
-                                    {coupon.applicableFor === 'mega_campaign' ? (
-                                        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-300">⚡ Mega Campaign</Badge>
-                                    ) : (
-                                        <Badge variant="outline" className="text-[10px] text-muted-foreground">🌐 All Menus</Badge>
-                                    )}
+                                <div className="font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded inline-block border border-primary/20">
+                                    {coupon.code}
                                 </div>
                             </TableCell>
                             <TableCell className="font-medium">
@@ -315,20 +305,6 @@ export default function AdminCouponsPage() {
             <div className="space-y-5 py-4">
                 <FloatingInput label="Coupon Code" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} />
                 <FloatingInput label="Description (Optional)" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
-
-                <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground ml-1">Applicable For (Scope)</Label>
-                    <Select 
-                        value={formData.applicableFor} 
-                        onValueChange={(val: any) => setFormData({...formData, applicableFor: val})}
-                    >
-                        <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">🌐 All Menus & Orders</SelectItem>
-                            <SelectItem value="mega_campaign">⚡ Mega Campaign Only</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1">

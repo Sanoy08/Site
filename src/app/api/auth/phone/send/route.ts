@@ -34,19 +34,16 @@ export async function POST(request: NextRequest) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const otpLogsCollection = db.collection('otp_logs');
 
-    // Skip rate limiting for the test number
-    if (phone !== '9876543210') {
-      const ipLogs = await otpLogsCollection.find({ ip, createdAt: { $gte: twentyFourHoursAgo } }).sort({ createdAt: -1 }).toArray();
-      if (ipLogs.length >= 5) {
-        const resetTime = new Date(ipLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
-        return NextResponse.json({ success: false, isBlocked: true, resetTime, error: 'Too many requests from this device.' }, { status: 429 });
-      }
+    const ipLogs = await otpLogsCollection.find({ ip, createdAt: { $gte: twentyFourHoursAgo } }).sort({ createdAt: -1 }).toArray();
+    if (ipLogs.length >= 5) {
+      const resetTime = new Date(ipLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
+      return NextResponse.json({ success: false, isBlocked: true, resetTime, error: 'Too many requests from this device.' }, { status: 429 });
+    }
 
-      const phoneLogs = await otpLogsCollection.find({ phone, createdAt: { $gte: twentyFourHoursAgo } }).sort({ createdAt: -1 }).toArray();
-      if (phoneLogs.length >= 3) {
-        const resetTime = new Date(phoneLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
-        return NextResponse.json({ success: false, isBlocked: true, resetTime, error: `Limit reached for +91 ${phone}.` }, { status: 429 });
-      }
+    const phoneLogs = await otpLogsCollection.find({ phone, createdAt: { $gte: twentyFourHoursAgo } }).sort({ createdAt: -1 }).toArray();
+    if (phoneLogs.length >= 3) {
+      const resetTime = new Date(phoneLogs[0].createdAt.getTime() + 24 * 60 * 60 * 1000);
+      return NextResponse.json({ success: false, isBlocked: true, resetTime, error: `Limit reached for +91 ${phone}.` }, { status: 429 });
     }
 
     const usersCollection = db.collection('users');
@@ -58,10 +55,7 @@ export async function POST(request: NextRequest) {
 
     if (!name && !existingUser) return NextResponse.json({ success: false, error: 'Account not found. Please Register first.' }, { status: 404 });
 
-    let otp = Math.floor(100000 + Math.random() * 900000).toString();
-    if (phone === '9876543210') {
-      otp = '123456';
-    }
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     const otpHash = await bcrypt.hash(otp, 10);
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
@@ -75,16 +69,14 @@ export async function POST(request: NextRequest) {
 
     await usersCollection.updateOne({ phone }, { $set: updateFields, $setOnInsert: setOnInsert }, { upsert: true });
 
-    if (phone !== '9876543210') {
-      await otpLogsCollection.insertOne({ ip, phone, createdAt: new Date() });
+    await otpLogsCollection.insertOne({ ip, phone, createdAt: new Date() });
 
-      const message = `<#> Welcome to Bumba's Kitchen! Your OTP ${otp}.\n\n0Wxls6yBVa/`;
-      try {
-        await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
-          method: 'POST', body: message, headers: { 'Title': phone, 'Priority': 'high', 'Tags': 'sms' }
-        });
-      } catch (e) { }
-    }
+    const message = `<#> Welcome to Bumba's Kitchen! Your OTP ${otp}.\n\n0Wxls6yBVa/`;
+    try {
+      await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+        method: 'POST', body: message, headers: { 'Title': phone, 'Priority': 'high', 'Tags': 'sms' }
+      });
+    } catch (e) { }
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully.' });
 

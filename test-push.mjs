@@ -37,16 +37,22 @@ async function sendTestNotification() {
     return;
   }
 
+  // Fetch latest real order so clicking the notification opens its modal
+  const latestOrder = await db.collection('orders').findOne({}, { sort: { Timestamp: -1 } });
+  const realOrderId = latestOrder?.OrderNumber || latestOrder?._id?.toString() || 'TEST-ORDER-101';
+  console.log(`Targeting real order for modal test: ${realOrderId} (${latestOrder?.Name || 'Customer'})`);
+
   // Send specifically to this token / tokens
   const payload = {
     tokens,
     notification: {
-      title: '🔔 New Admin App Test Alert!',
-      body: 'Testing notification on NEW admin app (com.bumbaskitchenadmin.app) with custom sound!',
+      title: `🔔 New Order #${realOrderId}`,
+      body: `Tap to open order details for ${latestOrder?.Name || 'Customer'}!`,
     },
     data: {
-      url: '/orders',
-      orderId: 'TEST-ORDER-101',
+      url: `https://admin.bumbaskitchen.app/orders?id=${realOrderId}`,
+      orderId: realOrderId,
+      id: realOrderId,
       channelId: 'admin_order_alert_v2',
       android_channel_id: 'admin_order_alert_v2',
       sound: 'my_alert',

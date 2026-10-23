@@ -21,10 +21,30 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    const totalOrders = await db.collection(ORDERS_COLLECTION).countDocuments();
+    const idParam = url.searchParams.get('id') || url.searchParams.get('orderId');
+    let query: any = {};
+    if (idParam) {
+        const cleanId = idParam.replace(/^#/, '').trim();
+        let objectIdQuery: any = null;
+        try {
+            if (ObjectId.isValid(cleanId) && cleanId.length === 24) {
+                objectIdQuery = new ObjectId(cleanId);
+            }
+        } catch (_) {}
+
+        query = {
+            $or: [
+                { OrderNumber: cleanId },
+                { OrderNumber: `#${cleanId}` },
+                ...(objectIdQuery ? [{ _id: objectIdQuery }] : [])
+            ]
+        };
+    }
+
+    const totalOrders = await db.collection(ORDERS_COLLECTION).countDocuments(query);
 
     const orders = await db.collection(ORDERS_COLLECTION)
-      .find({})
+      .find(query)
       .sort({ Timestamp: -1 }) 
       .skip(skip)
       .limit(limit)

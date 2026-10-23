@@ -171,6 +171,14 @@ export async function sendNotificationToAdmins(
     if (tokenDocs.length > 0) {
         const soundName = alertType === 'order' ? 'my_alert' : 'user_alert'; 
 
+        let extractedOrderId = '';
+        if (url) {
+            const match = url.match(/[?&](?:id|orderId)=([^&#]+)/);
+            if (match) {
+                extractedOrderId = decodeURIComponent(match[1]);
+            }
+        }
+
         const newAppTokens = tokenDocs.filter(t => t.appId === 'com.bumbaskitchenadmin.app').map(t => t.token);
         const legacyTokens = tokenDocs.filter(t => t.appId !== 'com.bumbaskitchenadmin.app').map(t => t.token);
 
@@ -183,6 +191,8 @@ export async function sendNotificationToAdmins(
                 notification: { title, body },
                 data: { 
                   url,
+                  orderId: extractedOrderId,
+                  id: extractedOrderId,
                   channelId: channelId,
                   android_channel_id: channelId,
                   sound: soundName
@@ -208,6 +218,8 @@ export async function sendNotificationToAdmins(
                 notification: { title, body },
                 data: { 
                   url,
+                  orderId: extractedOrderId,
+                  id: extractedOrderId,
                   channelId: channelId,
                   android_channel_id: channelId,
                   sound: soundName

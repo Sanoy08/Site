@@ -101,6 +101,22 @@ export async function GET(request: NextRequest) {
         .slice(0, 5)
         .map(([name, quantity]) => ({ name, sales: quantity }));
 
+    // Planning Data for Dashboard: placedToday, deliveryToday, deliveryTomorrow (excluding Cancelled)
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const endOfTomorrow = new Date(startOfTomorrow.getTime() + 24 * 60 * 60 * 1000 - 1);
+
+    const planningOrders = await db.collection(ORDERS_COLLECTION).find({
+      Status: { $ne: 'Cancelled' },
+      $or: [
+        { PreferredDate: { $gte: startOfToday, $lte: endOfTomorrow } },
+        { Timestamp: { $gte: startOfToday, $lte: endOfToday } }
+      ]
+    }).project({ _id: 1, OrderNumber: 1, Status: 1, PreferredDate: 1, Timestamp: 1 }).toArray();
+
+    const placedToday = planningOrders.filter((o: any) => o.Timestamp && new Date(o.Timestamp) >= startOfToday && new Date(o.Timestamp) <= endOfToday);
+    const deliveryToday = planningOrders.filter((o: any) => o.PreferredDate && new Date(o.PreferredDate) >= startOfToday && new Date(o.PreferredDate) <= endOfToday);
+    const deliveryTomorrow = planningOrders.filter((o: any) => o.PreferredDate && new Date(o.PreferredDate) >= startOfTomorrow && new Date(o.PreferredDate) <= endOfTomorrow);
+
     return NextResponse.json({
       success: true,
       stats: {
@@ -113,6 +129,11 @@ export async function GET(request: NextRequest) {
       charts: {
         sales: salesData,
         topItems
+      },
+      planning: {
+        placedToday,
+        deliveryToday,
+        deliveryTomorrow
       }
     });
 

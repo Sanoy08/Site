@@ -35,7 +35,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       usageLimit: usageLimit, 
       startDate: body.startDate,
       expiryDate: expiryDate,
-      isActive: body.isActive
+      isActive: body.isActive,
+      applicableFor: body.applicableFor === 'mega_campaign' ? 'mega_campaign' : 'all'
     };
 
     await db.collection(COLLECTION_NAME).updateOne(

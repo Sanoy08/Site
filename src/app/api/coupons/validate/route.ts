@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 import { getUser } from '@/lib/auth-utils'; 
 
 const DB_NAME = 'BumbasKitchenDB';
@@ -9,7 +10,7 @@ const COLLECTION_NAME = 'coupons';
 
 export async function POST(request: NextRequest) {
   try {
-    const { code, cartTotal } = await request.json();
+    const { code, cartTotal, items } = await request.json();
 
     const currentUser = await getUser(request);
     const currentUserId = currentUser ? (currentUser._id || currentUser.id) : null;
@@ -60,38 +61,35 @@ export async function POST(request: NextRequest) {
         }
     }
 
-        // --- MEGA CAMPAIGN RESTRICTION ---
-    const megaCampaignCoupons = ['LAXMI7', 'LAXMI4', 'LAXMI2'];
-    if (megaCampaignCoupons.includes(coupon.code.toUpperCase())) {
-        if (!currentUserId) {
-            return NextResponse.json({ success: false, error: 'You must be logged in to use this special coupon.' }, { status: 401 });
-        }
-        
-        const { ObjectId } = require('mongodb');
-        let userQueryId;
+    // ★ Check Menu Scope (All Menus vs Mega Campaign)
+    if (coupon.applicableFor === 'mega_campaign') {
+      let cartItems = Array.isArray(items) ? items : [];
+      if (cartItems.length === 0 && currentUserId) {
         try {
-            userQueryId = new ObjectId(currentUserId);
-        } catch(e) {
-            userQueryId = currentUserId;
+          const userDoc = await db.collection('users').findOne(
+            { _id: new ObjectId(currentUserId) },
+            { projection: { cart: 1 } }
+          );
+          if (userDoc?.cart && Array.isArray(userDoc.cart)) {
+            cartItems = userDoc.cart;
+          }
+        } catch (e) {
+          console.error('Error fetching user cart for coupon validation:', e);
         }
+      }
 
-        const userDoc = await db.collection('users').findOne({ _id: userQueryId });
-        if (!userDoc || !userDoc.cart || userDoc.cart.length === 0) {
-            return NextResponse.json({ success: false, error: 'Your cart is empty or not synced.' }, { status: 400 });
-        }
+      const isMegaCart = cartItems.some((item: any) => 
+        item?.id?.toString().startsWith('mega_') || 
+        item?.dishId?.toString().startsWith('mega_')
+      );
 
-        const hasNonMegaItems = userDoc.cart.some((item: any) => {
-  const isMegaCampaignItem =
-    typeof item.id === 'string' &&
-    item.id.startsWith('mega_');
-
-  return !isMegaCampaignItem;
-});
-        if (hasNonMegaItems) {
-            return NextResponse.json({ success: false, error: 'This coupon is only valid for Durga Puja Menus.' }, { status: 400 });
-        }
+      if (!isMegaCart) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'This coupon is valid only for Mega Campaign orders.' 
+        }, { status: 400 });
+      }
     }
-    // ---------------------------------
 
     if (cartTotal < (coupon.minOrder || 0)) {
       return NextResponse.json({

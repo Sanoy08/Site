@@ -179,6 +179,16 @@ export async function POST(request: NextRequest) {
                     }
                 }
 
+                if (coupon.applicableFor === 'mega_campaign') {
+                    const isMegaOrder = items.some((item: any) => 
+                        item?.id?.toString().startsWith('mega_') || 
+                        item?.dishId?.toString().startsWith('mega_')
+                    );
+                    if (!isMegaOrder) {
+                        throw new Error('This coupon is valid only for Mega Campaign orders.');
+                    }
+                }
+
                 if (calculatedSubtotal < (coupon.minOrder || 0)) {
                     throw new Error(`Minimum order of ₹${coupon.minOrder} required for this coupon.`);
                 }

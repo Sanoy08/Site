@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
       expiryDate: c.expiryDate,
       isActive: c.isActive,
       timesUsed: c.timesUsed || 0,
-      isOneTime: c.isOneTime || false // ফ্রন্টএন্ডে দেখানোর জন্য
+      isOneTime: c.isOneTime || false, // ফ্রন্টএন্ডে দেখানোর জন্য
+      applicableFor: c.applicableFor || 'all'
     }));
 
     return NextResponse.json({ success: true, coupons: formattedCoupons }, { status: 200 });
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       startDate: body.startDate,
       expiryDate: expiryDate,
       isActive: body.isActive ?? true,
+      applicableFor: body.applicableFor === 'mega_campaign' ? 'mega_campaign' : 'all',
       
       // ★★★ FIX: isOneTime এবং userId সাপোর্ট যোগ করা হলো
       isOneTime: body.isOneTime || false, 

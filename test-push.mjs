@@ -47,13 +47,14 @@ async function sendTestNotification() {
     data: {
       url: '/orders',
       orderId: 'TEST-ORDER-101',
-      channelId: 'admin_order_alert',
-      android_channel_id: 'admin_order_alert',
+      channelId: 'admin_order_alert_v2',
+      android_channel_id: 'admin_order_alert_v2',
+      sound: 'my_alert',
     },
     android: {
       priority: 'high',
       notification: {
-        channelId: 'admin_order_alert',
+        channelId: 'admin_order_alert_v2',
         sound: 'my_alert',
         color: '#e11d48',
         defaultSound: false,
@@ -68,9 +69,16 @@ async function sendTestNotification() {
   console.log(`Success count: ${response.successCount}`);
   console.log(`Failure count: ${response.failureCount}`);
   if (response.failureCount > 0) {
-    response.responses.forEach((r, i) => {
-      if (!r.success) console.error(`Token ${i + 1} error:`, r.error);
-    });
+    for (let i = 0; i < response.responses.length; i++) {
+      const r = response.responses[i];
+      if (!r.success) {
+        console.error(`Token ${i + 1} error:`, r.error?.message || r.error);
+        if (r.error?.code === 'messaging/registration-token-not-registered') {
+          console.log(`Cleaning up dead token: ${tokens[i]}`);
+          await db.collection('subscriptions').deleteOne({ token: tokens[i] });
+        }
+      }
+    }
   }
 
   await client.close();

@@ -168,31 +168,65 @@ export async function sendNotificationToAdmins(
     
     const tokens = tokenDocs.map(t => t.token);
 
-    if (tokens.length > 0) {
-        
-        const channelId = alertType === 'order' ? 'admin_order_alert' : 'user_notifications';
+    if (tokenDocs.length > 0) {
         const soundName = alertType === 'order' ? 'my_alert' : 'user_alert'; 
 
-        await messaging.sendEachForMulticast({
-            tokens,
-            notification: { title, body },
-            data: { 
-              url,
-              channelId: channelId,
-              android_channel_id: channelId // ডাইনামিক চ্যানেল
-            },
-            android: {
-                priority: 'high',
-                notification: {
-                    icon: 'ic_stat_icon',
-                    color: '#f97316',
-                    channelId: channelId,  // ডাইনামিক চ্যানেল
-                    sound: soundName,      // ডাইনামিক সাউন্ড
-                    defaultSound: false, 
-                    defaultVibrateTimings: true
+        const newAppTokens = tokenDocs.filter(t => t.appId === 'com.bumbaskitchenadmin.app').map(t => t.token);
+        const legacyTokens = tokenDocs.filter(t => t.appId !== 'com.bumbaskitchenadmin.app').map(t => t.token);
+
+        const sends: Promise<any>[] = [];
+
+        if (newAppTokens.length > 0) {
+            const channelId = alertType === 'order' ? 'admin_order_alert_v2' : 'user_notifications';
+            sends.push(messaging.sendEachForMulticast({
+                tokens: newAppTokens,
+                notification: { title, body },
+                data: { 
+                  url,
+                  channelId: channelId,
+                  android_channel_id: channelId,
+                  sound: soundName
+                },
+                android: {
+                    priority: 'high',
+                    notification: {
+                        icon: 'ic_stat_icon',
+                        color: '#f97316',
+                        channelId: channelId,
+                        sound: soundName,
+                        defaultSound: false, 
+                        defaultVibrateTimings: true
+                    }
                 }
-            }
-        });
+            }));
+        }
+
+        if (legacyTokens.length > 0) {
+            const channelId = alertType === 'order' ? 'admin_order_alert' : 'user_notifications';
+            sends.push(messaging.sendEachForMulticast({
+                tokens: legacyTokens,
+                notification: { title, body },
+                data: { 
+                  url,
+                  channelId: channelId,
+                  android_channel_id: channelId,
+                  sound: soundName
+                },
+                android: {
+                    priority: 'high',
+                    notification: {
+                        icon: 'ic_stat_icon',
+                        color: '#f97316',
+                        channelId: channelId,
+                        sound: soundName,
+                        defaultSound: false, 
+                        defaultVibrateTimings: true
+                    }
+                }
+            }));
+        }
+
+        await Promise.all(sends);
     }
   } catch (error) {
     console.error("Error sending admin notification:", error);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { verifyAdmin } from '@/lib/auth-utils';
+import { bumpHomeVersion } from '@/lib/version';
+import { revalidatePath } from 'next/cache';
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION = 'megacampaign';
@@ -56,6 +58,10 @@ export async function POST(request: NextRequest) {
       updateDoc,
       { upsert: true }
     );
+
+    await bumpHomeVersion();
+    revalidatePath('/');
+    revalidatePath('/mega-campaign');
 
     return NextResponse.json({ success: true, message: 'Mega campaign updated successfully' });
   } catch (error) {

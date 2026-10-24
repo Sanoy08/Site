@@ -2,9 +2,22 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
+import { v2 as cloudinary } from 'cloudinary';
 import { revalidatePath } from 'next/cache';
 import { verifyAdmin } from '@/lib/auth-utils'; // ★★★ কুকি চেকার ইম্পোর্ট
 import { bumpHomeVersion } from '@/lib/version';
+
+function extractPublicId(imageUrl: string) {
+  try {
+    const matchWithVersion = imageUrl.match(/\/v\d+\/(.+)\.\w+$/);
+    if (matchWithVersion && matchWithVersion[1]) return matchWithVersion[1];
+    const matchWithoutVersion = imageUrl.match(/\/upload\/(?:[^\/]+\/)?(.+)\.\w+$/);
+    if (matchWithoutVersion && matchWithoutVersion[1]) return matchWithoutVersion[1];
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'offers';
@@ -102,7 +115,37 @@ export async function PUT(request: NextRequest) {
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    const result = await db.collection(COLLECTION_NAME).updateOne(
+    const collection = db.collection(COLLECTION_NAME);
+
+    // If banner image is being updated, clean up old image from Cloudinary
+    if (updateData.imageUrl) {
+      const existingOffer = await collection.findOne({ _id: new ObjectId(id) });
+      if (existingOffer && existingOffer.imageUrl && existingOffer.imageUrl !== updateData.imageUrl) {
+        const oldPublicId = extractPublicId(existingOffer.imageUrl);
+        if (oldPublicId) {
+          try {
+            if (existingOffer.imageUrl.includes(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_DISHES || 'dk1acdtja')) {
+              cloudinary.config({
+                cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_DISHES,
+                api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY_DISHES,
+                api_secret: process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET_DISHES,
+              });
+            } else {
+              cloudinary.config({
+                cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+                api_secret: process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET,
+              });
+            }
+            await cloudinary.uploader.destroy(oldPublicId);
+          } catch (e) {
+            console.error("Failed to delete replaced offer image from Cloudinary:", e);
+          }
+        }
+      }
+    }
+
+    const result = await collection.updateOne(
       { _id: new ObjectId(id) },
       { $set: updateData }
     );

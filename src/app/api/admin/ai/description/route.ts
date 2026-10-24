@@ -295,8 +295,8 @@ export async function POST(request: NextRequest) {
     if (apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Use gemini-1.5-flash or gemini-2.0-flash
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const candidateModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        let parsed: any = null;
 
         const systemInstruction = `You are the lead culinary copywriter and menu engineer for "Bumba's Kitchen", a beloved Bengali restaurant and cloud kitchen known for authentic homestyle Bengali cooking.
 Your task is to take a quick, rough admin dish input (such as "Chatni 30 tomato, khejur, amsotto" or "Jhuro alu vaja 25" or "Macher matha diye dal 30 , katla macher matha, mug daal") and generate:
@@ -331,7 +331,7 @@ Discover what makes our [Dish Name] a [special part of your meal | delicious Ben
 [Final warm 1-2 sentence call to action starting with 'Bring the authentic taste...' or 'Make your everyday meal...' or 'Enjoy the simple pleasure...']
 --------------------------
 
-Always return your output as a STRICT JSON object with keys: "name", "price", "category", "description". Do not wrap in markdown code blocks unless it is valid JSON.`;
+Always return your output as a STRICT JSON object with keys: "name", "price", "category", "description".`;
 
         const userPrompt = `Input: "${rawInput}"
 Existing fields:
@@ -341,16 +341,31 @@ Existing fields:
 
 Generate the JSON object for this dish now.`;
 
-        const result = await model.generateContent([
-          { text: systemInstruction },
-          { text: userPrompt }
-        ]);
+        for (const modelName of candidateModels) {
+          try {
+            const model = genAI.getGenerativeModel({
+              model: modelName,
+              generationConfig: { responseMimeType: 'application/json' }
+            });
 
-        const responseText = result.response.text();
-        const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(cleanedText);
+            const result = await model.generateContent([
+              { text: systemInstruction },
+              { text: userPrompt }
+            ]);
 
-        if (parsed.name && parsed.description) {
+            const responseText = result.response.text();
+            const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const resData = JSON.parse(cleanedText);
+            if (resData && resData.name && resData.description) {
+              parsed = resData;
+              break;
+            }
+          } catch (modelErr: any) {
+            console.warn(`Gemini model ${modelName} failed:`, modelErr?.message);
+          }
+        }
+
+        if (parsed && parsed.name && parsed.description) {
           return NextResponse.json({
             success: true,
             source: 'gemini',
@@ -363,7 +378,7 @@ Generate the JSON object for this dish now.`;
           });
         }
       } catch (geminiError: any) {
-        console.warn("Gemini generation failed or invalid key, using fallback synthesizer:", geminiError.message);
+        console.warn("Gemini generation failed, using fallback synthesizer:", geminiError.message);
       }
     }
 

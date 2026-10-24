@@ -274,6 +274,47 @@ Bring the authentic warmth and culinary heritage of Bengal to your dining table 
   };
 }
 
+// Sanitize description formatting according to strict culinary UI rules:
+// 1. Never allow bold '**' on bullet points (e.g. '• **Title:**' -> '• Title:')
+// 2. Never allow 1st brackets '()' inside '(Top Highlights:- ...)' except the outer brackets, replacing inner '()' with '{}'
+function sanitizeDescription(rawDesc: string): string {
+  if (!rawDesc) return '';
+  let text = rawDesc;
+
+  // 1. Remove '**' bold markers from bullet points
+  text = text.split('\n').map(line => {
+    const trimmed = line.trim();
+    if (/^[•\-\*]/.test(trimmed)) {
+      // Normalize bullet to •
+      let cleanLine = line.replace(/^\s*[•\-\*]\s*/, '• ');
+      // Remove all **
+      cleanLine = cleanLine.replace(/\*\*/g, '');
+      // Fix potential double colons
+      cleanLine = cleanLine.replace(/•\s*([^:\n]+)::\s*/, '• $1: ');
+      return cleanLine;
+    }
+    return line;
+  }).join('\n');
+
+  // 2. Sanitize Top Highlights section:
+  // Inside (Top Highlights:- ...), ensure NO round brackets '(' or ')' exist except the very first '(' and the very last ')'
+  text = text.replace(/^\s*\(?\s*Top Highlights[^\r\n]*/gim, (line) => {
+    let trimmed = line.trim();
+    const hasOpening = trimmed.startsWith('(');
+    const hasClosing = trimmed.endsWith(')');
+
+    let inner = trimmed;
+    if (hasOpening) inner = inner.slice(1);
+    if (hasClosing) inner = inner.slice(0, -1);
+
+    // Replace any inner '(' with '{' and ')' with '}'
+    const cleanInner = inner.replace(/\(/g, '{').replace(/\)/g, '}');
+    return `(${cleanInner})`;
+  });
+
+  return text;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 1. Verify admin
@@ -314,22 +355,26 @@ Experience the [Adjective 1], [Adjective 2], and [Adjective 3] [Flavours/Taste] 
 
 Discover what makes our [Dish Name] a [special part of your meal | delicious Bengali favourite | special addition to your meal]:
 
-• **[Bullet Title 1]:** [2-3 sentences about key ingredient/base]
+• [Bullet Title 1]: [2-3 sentences about key ingredient/base]
 
-• **[Bullet Title 2]:** [2-3 sentences about texture/secondary ingredient]
+• [Bullet Title 2]: [2-3 sentences about texture/secondary ingredient]
 
-• **[Bullet Title 3]:** [2-3 sentences about distinctive Bengali touch/ingredient]
+• [Bullet Title 3]: [2-3 sentences about distinctive Bengali touch/ingredient]
 
-• **[Bullet Title 4]:** [2-3 sentences about balance of flavors/spices]
+• [Bullet Title 4]: [2-3 sentences about balance of flavors/spices]
 
-• **[Bullet Title 5]:** [2-3 sentences about authenticity/homestyle preparation]
+• [Bullet Title 5]: [2-3 sentences about authenticity/homestyle preparation]
 
-• **[Bullet Title 6]:** [2-3 sentences about pairing with Steamed Rice / Dal / Bengali meal]
+• [Bullet Title 6]: [2-3 sentences about pairing with Steamed Rice / Dal / Bengali meal]
 
-• **[Bullet Title 7]:** [2-3 sentences about comfort food appeal / finishing touch]
+• [Bullet Title 7]: [2-3 sentences about comfort food appeal / finishing touch]
 
 [Final warm 1-2 sentence call to action starting with 'Bring the authentic taste...' or 'Make your everyday meal...' or 'Enjoy the simple pleasure...']
 --------------------------
+
+CRITICAL FORMATTING MANDATES:
+1. NEVER USE BOLD MARKDOWN '**' IN BULLETS. Bullet lines MUST be formatted as '• Title: Description' and NEVER '• **Title:** Description'.
+2. NEVER USE ROUND BRACKETS '()' INSIDE '(Top Highlights:- ...)'. Only the outer opening '(' and closing ')' may be round parentheses. Inside the Top Highlights block, if you need brackets for translations or notes, use curly brackets '{}' or square brackets '[]' (e.g. 'Tomato{tometo}', 'Aamshotto[mango leather]').
 
 Always return your output as a STRICT JSON object with keys: "name", "price", "category", "description".`;
 
@@ -373,7 +418,7 @@ Generate the JSON object for this dish now.`;
               name: parsed.name,
               price: parsed.price || currentPrice || 0,
               category: VALID_CATEGORIES.includes(parsed.category) ? parsed.category : 'Veg',
-              description: parsed.description
+              description: sanitizeDescription(parsed.description)
             }
           });
         }
@@ -387,7 +432,10 @@ Generate the JSON object for this dish now.`;
     return NextResponse.json({
       success: true,
       source: 'synthesizer',
-      dish: fallbackResult
+      dish: {
+        ...fallbackResult,
+        description: sanitizeDescription(fallbackResult.description)
+      }
     });
 
   } catch (error: any) {

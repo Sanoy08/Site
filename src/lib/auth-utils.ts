@@ -25,7 +25,14 @@ export const cookieOptions = {
 
 // 2. Verify Admin Helper
 export async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
+  let token = request.cookies.get(COOKIE_NAME)?.value;
+
+  if (!token) {
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
 
   if (!token) return false;
 

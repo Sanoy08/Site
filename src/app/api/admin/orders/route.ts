@@ -32,10 +32,12 @@ export async function GET(request: NextRequest) {
             }
         } catch (_) {}
 
+        const cleanIdEscaped = cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         query = {
             $or: [
                 { OrderNumber: cleanId },
                 { OrderNumber: `#${cleanId}` },
+                { OrderNumber: { $regex: new RegExp(`^#?${cleanIdEscaped}$`, 'i') } },
                 ...(objectIdQuery ? [{ _id: objectIdQuery }] : [])
             ]
         };

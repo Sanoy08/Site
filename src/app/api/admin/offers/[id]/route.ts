@@ -54,7 +54,14 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 });
     }
 
-    // 2. Delete the image from Cloudinary if it exists
+    // 1. Delete the offer document from MongoDB first
+    const deleteResult = await collection.deleteOne({ _id: new ObjectId(id) });
+
+    if (deleteResult.deletedCount === 0) {
+      return NextResponse.json({ success: false, error: 'Could not delete offer' }, { status: 500 });
+    }
+
+    // 2. AFTER delete succeeds, delete the image from Cloudinary
     if (offerToDelete.imageUrl) {
       const publicId = extractPublicId(offerToDelete.imageUrl);
       if (publicId) {
@@ -79,14 +86,11 @@ export async function DELETE(
       }
     }
 
-    // 3. Delete the offer document from MongoDB
-    await collection.deleteOne({ _id: new ObjectId(id) });
-
-    // 4. Update home version & revalidate cache
+    // 3. Update home version & revalidate cache
     await bumpHomeVersion();
     revalidatePath('/');
 
-    return NextResponse.json({ success: true, message: 'Offer and banner deleted successfully' });
+    return NextResponse.json({ success: true, message: 'Offer deleted successfully' });
 
   } catch (error: any) {
     console.error("Delete Offer Error:", error);

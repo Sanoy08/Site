@@ -117,10 +117,20 @@ export async function PUT(request: NextRequest) {
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
 
-    // If banner image is being updated, clean up old image from Cloudinary
-    if (updateData.imageUrl) {
-      const existingOffer = await collection.findOne({ _id: new ObjectId(id) });
-      if (existingOffer && existingOffer.imageUrl && existingOffer.imageUrl !== updateData.imageUrl) {
+    const existingOffer = await collection.findOne({ _id: new ObjectId(id) });
+    if (!existingOffer) {
+      return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 });
+    }
+
+    // 1. Update document in MongoDB first
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount > 0) {
+      // 2. AFTER update succeeds, delete replaced image from Cloudinary
+      if (updateData.imageUrl && existingOffer.imageUrl && existingOffer.imageUrl !== updateData.imageUrl) {
         const oldPublicId = extractPublicId(existingOffer.imageUrl);
         if (oldPublicId) {
           try {
@@ -143,17 +153,10 @@ export async function PUT(request: NextRequest) {
           }
         }
       }
-    }
 
-    const result = await collection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
-
-    if (result.matchedCount > 0) {
       revalidatePath('/');
       await bumpHomeVersion();
-      return NextResponse.json({ success: true, message: 'Offer updated' }, { status: 200 });
+      return NextResponse.json({ success: true, message: 'Offer updated successfully' }, { status: 200 });
     } else {
       return NextResponse.json({ success: false, error: 'Offer not found' }, { status: 404 });
     }

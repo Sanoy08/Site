@@ -14,13 +14,36 @@ export async function GET(request: NextRequest) {
     
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+
+    // IST date formatting
+    const todayDate = new Date();
+    todayDate.setHours(todayDate.getHours() + 5);
+    todayDate.setMinutes(todayDate.getMinutes() + 30);
+    const todayStr = todayDate.toISOString().split('T')[0];
     
     // 1. Check current home version
     const versionDoc = await db.collection('appSettings').findOne({ _id: 'home_version' });
-    const currentDbVersion = versionDoc ? versionDoc.version : 1;
+    let currentDbVersion = versionDoc ? versionDoc.version : 1;
+    const lastDate = versionDoc?.lastDate;
 
-    // 2. Return early if version matches
-    if (clientVersion === currentDbVersion) {
+    // If day has rolled over to tomorrow, auto-bump version so all users get fresh day data
+    if (lastDate && lastDate !== todayStr) {
+      currentDbVersion += 1;
+      await db.collection('appSettings').updateOne(
+        { _id: 'home_version' },
+        { $set: { version: currentDbVersion, lastDate: todayStr } },
+        { upsert: true }
+      );
+    } else if (!lastDate) {
+      await db.collection('appSettings').updateOne(
+        { _id: 'home_version' },
+        { $set: { lastDate: todayStr } },
+        { upsert: true }
+      );
+    }
+
+    // 2. Return early if version matches AND day has not changed
+    if (clientVersion === currentDbVersion && lastDate === todayStr) {
         return NextResponse.json({ upToDate: true, version: currentDbVersion });
     }
 
@@ -33,12 +56,6 @@ export async function GET(request: NextRequest) {
         db.collection('megacampaign').findOne({ _id: 'main' }),
         db.collection('todaysSpecials').find({ active: { $ne: false } }).sort({ date: 1, createdAt: 1 }).toArray()
     ]);
-
-    // IST date formatting
-    const todayDate = new Date();
-    todayDate.setHours(todayDate.getHours() + 5);
-    todayDate.setMinutes(todayDate.getMinutes() + 30);
-    const todayStr = todayDate.toISOString().split('T')[0];
 
     // Lazy cleanup of past special offers
     const expiredOfferIds = offers

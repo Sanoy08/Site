@@ -111,15 +111,33 @@ export async function GET(request: NextRequest) {
         { PreferredDate: { $gte: startOfToday, $lte: endOfTomorrow } },
         { Timestamp: { $gte: startOfToday, $lte: endOfToday } }
       ]
-    }).project({ _id: 1, OrderNumber: 1, Status: 1, PreferredDate: 1, Timestamp: 1 }).toArray();
+    }).project({ _id: 1, OrderNumber: 1, Status: 1, PreferredDate: 1, Timestamp: 1, MealTime: 1 }).toArray();
 
     const isOrderActiveForDelivery = (status: string) => {
       const s = (status || '').toLowerCase().trim();
       return s !== 'cancelled' && s !== 'canceled' && s !== 'pending' && s !== 'pending verification' && s !== 'delivered';
     };
 
+    const isOrderDelivered = (status: string) => (status || '').toLowerCase().trim() === 'delivered';
+
     const placedToday = planningOrders.filter((o: any) => o.Timestamp && new Date(o.Timestamp) >= startOfToday && new Date(o.Timestamp) <= endOfToday);
-    const deliveryToday = planningOrders.filter((o: any) => isOrderActiveForDelivery(o.Status) && o.PreferredDate && new Date(o.PreferredDate) >= startOfToday && new Date(o.PreferredDate) <= endOfToday);
+    
+    // Scheduled for today (excluding cancelled and pending)
+    const todayOrders = planningOrders.filter((o: any) => {
+      const s = (o.Status || '').toLowerCase().trim();
+      if (s === 'cancelled' || s === 'canceled' || s === 'pending' || s === 'pending verification') return false;
+      return o.PreferredDate && new Date(o.PreferredDate) >= startOfToday && new Date(o.PreferredDate) <= endOfToday;
+    });
+
+    const deliveryToday = todayOrders.filter((o: any) => isOrderActiveForDelivery(o.Status));
+    const deliveredToday = todayOrders.filter((o: any) => isOrderDelivered(o.Status));
+
+    const lunchToDeliver = todayOrders.filter((o: any) => (o.MealTime || '').toLowerCase() === 'lunch' && isOrderActiveForDelivery(o.Status)).length;
+    const lunchDone = todayOrders.filter((o: any) => (o.MealTime || '').toLowerCase() === 'lunch' && isOrderDelivered(o.Status)).length;
+
+    const dinnerToDeliver = todayOrders.filter((o: any) => (o.MealTime || '').toLowerCase() === 'dinner' && isOrderActiveForDelivery(o.Status)).length;
+    const dinnerDone = todayOrders.filter((o: any) => (o.MealTime || '').toLowerCase() === 'dinner' && isOrderDelivered(o.Status)).length;
+
     const deliveryTomorrow = planningOrders.filter((o: any) => isOrderActiveForDelivery(o.Status) && o.PreferredDate && new Date(o.PreferredDate) >= startOfTomorrow && new Date(o.PreferredDate) <= endOfTomorrow);
 
     return NextResponse.json({
@@ -138,7 +156,12 @@ export async function GET(request: NextRequest) {
       planning: {
         placedToday,
         deliveryToday,
-        deliveryTomorrow
+        deliveredToday,
+        deliveryTomorrow,
+        lunchToDeliver,
+        lunchDone,
+        dinnerToDeliver,
+        dinnerDone
       }
     });
 

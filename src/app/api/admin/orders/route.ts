@@ -76,7 +76,8 @@ export async function GET(request: NextRequest) {
         if (earned === undefined || earned === null) {
             const subtotal = parseFloat(order.Subtotal) || parseFloat(order.FinalPrice) || 0;
             const couponDiscount = parseFloat(order.CouponDiscount) || 0;
-            const eligible = Math.max(0, subtotal - couponDiscount);
+            const coinDiscount = parseFloat(order.CoinDiscount) || (parseFloat(order.CoinsRedeemed) || 0);
+            const eligible = Math.max(0, subtotal - couponDiscount - coinDiscount);
             earned = Math.floor((eligible * earnRate) / 100);
         }
         return {

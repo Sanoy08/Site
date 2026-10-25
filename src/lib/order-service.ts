@@ -39,9 +39,10 @@ export async function finalizeDelivery(
 
             // Coin Calculate
             const subtotal = parseFloat(order.Subtotal) || 0;
-              const couponDiscount = parseFloat(order.CouponDiscount) || 0;
-              const eligibleCoinAmount = Math.max(0, subtotal - couponDiscount);
-              const coinsEarned = Math.floor((eligibleCoinAmount * earnRate) / 100);
+            const couponDiscount = parseFloat(order.CouponDiscount) || 0;
+            const coinDiscount = parseFloat(order.CoinDiscount) || (parseFloat(order.CoinsRedeemed) || 0);
+            const eligibleCoinAmount = Math.max(0, subtotal - couponDiscount - coinDiscount);
+            const coinsEarned = Math.floor((eligibleCoinAmount * earnRate) / 100);
 
             if (coinsEarned > 0) {
                 // User Update

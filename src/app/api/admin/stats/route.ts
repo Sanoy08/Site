@@ -113,9 +113,14 @@ export async function GET(request: NextRequest) {
       ]
     }).project({ _id: 1, OrderNumber: 1, Status: 1, PreferredDate: 1, Timestamp: 1 }).toArray();
 
+    const isOrderActiveForDelivery = (status: string) => {
+      const s = (status || '').toLowerCase().trim();
+      return s !== 'cancelled' && s !== 'canceled' && s !== 'pending' && s !== 'pending verification' && s !== 'delivered';
+    };
+
     const placedToday = planningOrders.filter((o: any) => o.Timestamp && new Date(o.Timestamp) >= startOfToday && new Date(o.Timestamp) <= endOfToday);
-    const deliveryToday = planningOrders.filter((o: any) => o.PreferredDate && new Date(o.PreferredDate) >= startOfToday && new Date(o.PreferredDate) <= endOfToday);
-    const deliveryTomorrow = planningOrders.filter((o: any) => o.PreferredDate && new Date(o.PreferredDate) >= startOfTomorrow && new Date(o.PreferredDate) <= endOfTomorrow);
+    const deliveryToday = planningOrders.filter((o: any) => isOrderActiveForDelivery(o.Status) && o.PreferredDate && new Date(o.PreferredDate) >= startOfToday && new Date(o.PreferredDate) <= endOfToday);
+    const deliveryTomorrow = planningOrders.filter((o: any) => isOrderActiveForDelivery(o.Status) && o.PreferredDate && new Date(o.PreferredDate) >= startOfTomorrow && new Date(o.PreferredDate) <= endOfTomorrow);
 
     return NextResponse.json({
       success: true,

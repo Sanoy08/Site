@@ -108,12 +108,35 @@ export async function POST(request: NextRequest) {
 
     // ACTION: Bulk Add Dishes with duplicate prevention and lightweight reference storage
     if (action === 'bulk-add') {
-      const { dishIds, mealType, date } = body;
-      if (!Array.isArray(dishIds) || dishIds.length === 0) {
+      const { dishIds, mealType, date, items } = body;
+      const targetDate = date || new Date().toISOString().split('T')[0];
+
+      // Support multi-batch { items: [{ dishIds: string[], mealType: 'lunch' | 'dinner' }] } or legacy { dishIds, mealType }
+      let batches: Array<{ dishIds: string[]; mealType: 'lunch' | 'dinner' }> = [];
+
+      if (Array.isArray(items) && items.length > 0) {
+        batches = items
+          .map((it: any) => ({
+            dishIds: Array.isArray(it.dishIds) ? it.dishIds : [],
+            mealType: (it.mealType === 'dinner' ? 'dinner' : 'lunch') as 'lunch' | 'dinner',
+          }))
+          .filter((b) => b.dishIds.length > 0);
+      } else if (Array.isArray(dishIds) && dishIds.length > 0) {
+        batches = [
+          {
+            dishIds,
+            mealType: (mealType === 'dinner' ? 'dinner' : 'lunch') as 'lunch' | 'dinner',
+          },
+        ];
+      }
+
+      if (batches.length === 0) {
         return NextResponse.json({ success: false, error: 'Please select at least one dish' }, { status: 400 });
       }
 
-      const validObjIds = dishIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+      // Collect all unique dish IDs
+      const allDishIds = Array.from(new Set(batches.flatMap((b) => b.dishIds)));
+      const validObjIds = allDishIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
       const sourceDishes = await db.collection(MENU_COLLECTION)
         .find({ _id: { $in: validObjIds } })
         .toArray();
@@ -122,37 +145,64 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'No matching dishes found' }, { status: 404 });
       }
 
-      const targetDate = date || new Date().toISOString().split('T')[0];
-      const targetMealType = mealType || 'lunch';
+      const dishMap = new Map();
+      sourceDishes.forEach((d) => {
+        dishMap.set(d._id.toString(), d);
+      });
 
-      // Duplicate prevention for targetDate
+      // Existing specials for date
       const existingForDate = await collection.find({ date: targetDate }).toArray();
-      const existingDishIds = new Set(existingForDate.map(s => s.dishId?.toString()).filter(Boolean));
-      const existingNames = new Set(existingForDate.map(s => (s.dishName || s.name)?.toLowerCase().trim()));
 
-      const dishesToAdd = sourceDishes.filter(d => 
-        !existingDishIds.has(d._id.toString()) && 
-        !existingNames.has(d.Name?.toLowerCase().trim())
-      );
+      const newSpecials: any[] = [];
+      let totalSkipped = 0;
 
-      if (dishesToAdd.length === 0) {
-        return NextResponse.json({ 
-          success: false, 
-          error: "The selected dish(es) are already added to Today's Special for this date." 
-        }, { status: 400 });
+      for (const batch of batches) {
+        const bMealType = batch.mealType;
+        // Duplicate prevention is per mealType (dishes can be both in lunch and dinner, but not duplicated inside the same mealType)
+        const existingForMeal = existingForDate.filter(
+          (s) => s.mealType === bMealType || s.mealType === 'both'
+        );
+        const existingDishIds = new Set(existingForMeal.map((s) => s.dishId?.toString()).filter(Boolean));
+        const existingNames = new Set(existingForMeal.map((s) => (s.dishName || s.name)?.toLowerCase().trim()));
+
+        // Also ensure not duplicating within the current request batch
+        const currentBatchAddedIds = new Set(
+          newSpecials.filter((s) => s.mealType === bMealType).map((s) => s.dishId?.toString())
+        );
+
+        for (const id of batch.dishIds) {
+          const d = dishMap.get(id);
+          if (!d) continue;
+
+          const dNameLower = d.Name?.toLowerCase().trim();
+          if (
+            existingDishIds.has(d._id.toString()) ||
+            existingNames.has(dNameLower) ||
+            currentBatchAddedIds.has(d._id.toString())
+          ) {
+            totalSkipped++;
+            continue;
+          }
+
+          newSpecials.push({
+            dishId: d._id.toString(),
+            dishName: d.Name,
+            name: d.Name,
+            date: targetDate,
+            mealType: bMealType,
+            active: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
       }
 
-      // Lightweight schema: reference dishId, dishName, name, date, mealType, active, createdAt, updatedAt
-      const newSpecials = dishesToAdd.map(d => ({
-        dishId: d._id.toString(),
-        dishName: d.Name,
-        name: d.Name,
-        date: targetDate,
-        mealType: targetMealType,
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
+      if (newSpecials.length === 0) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Selected dish(es) are already added to Today's Special for this meal type." 
+        }, { status: 400 });
+      }
 
       await collection.insertMany(newSpecials);
 
@@ -160,18 +210,17 @@ export async function POST(request: NextRequest) {
       revalidatePath('/');
       await pusherServer.trigger('menu-updates', 'product-changed', {
         message: `${newSpecials.length} dishes added to Today's Specials!`,
-        type: 'update'
+        type: 'update',
       });
 
-      const skippedCount = sourceDishes.length - dishesToAdd.length;
       let msg = `Added ${newSpecials.length} dish(es) to Today's Special for ${targetDate}`;
-      if (skippedCount > 0) {
-        msg += ` (${skippedCount} already existed and were skipped)`;
+      if (totalSkipped > 0) {
+        msg += ` (${totalSkipped} already existed in that meal and were skipped)`;
       }
 
       return NextResponse.json({
         success: true,
-        message: msg
+        message: msg,
       });
     }
 

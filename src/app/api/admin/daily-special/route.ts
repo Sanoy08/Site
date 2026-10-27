@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         price: dishPrice,
         description: dish.Description || s.description || '',
         category: dish.Category || s.category || 'Special',
-        mealType: s.mealType || 'both', // 'lunch' | 'dinner' | 'both'
+        mealType: s.mealType || 'lunch', // 'lunch' | 'dinner'
         date: s.date || '',
         imageUrl: imageUrl,
         images: dish.ImageURLs?.map((url: string, i: number) => ({ id: `img-${i}`, url, alt: dishName })) || s.images || [],
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       }
 
       const targetDate = date || new Date().toISOString().split('T')[0];
-      const targetMealType = mealType || 'both';
+      const targetMealType = mealType || 'lunch';
 
       // Duplicate prevention for targetDate
       const existingForDate = await collection.find({ date: targetDate }).toArray();

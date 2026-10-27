@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
           price: dish?.Price ?? s.price ?? 0,
           category: { id: catLower, name: catName },
           type: dish?.type || (catLower.includes('veg') ? 'veg' : 'non-veg'),
-          mealType: s.mealType || 'both', // 'lunch' | 'dinner' | 'both'
+          mealType: s.mealType || 'lunch', // 'lunch' | 'dinner'
           deliveryDate: s.date || todayStr,
           date: s.date || todayStr,
           images: imagesList,

@@ -204,7 +204,17 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      await collection.insertMany(newSpecials);
+      try {
+        await collection.insertMany(newSpecials);
+      } catch (insertErr: any) {
+        if (insertErr?.code === 11000) {
+          return NextResponse.json({
+            success: false,
+            error: "One or more dishes are already added for this meal type on this date."
+          }, { status: 400 });
+        }
+        throw insertErr;
+      }
 
       await bumpHomeVersion();
       revalidatePath('/');

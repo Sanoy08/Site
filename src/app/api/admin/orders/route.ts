@@ -7,6 +7,20 @@ import { verifyAdmin } from '@/lib/auth-utils';
 const DB_NAME = 'BumbasKitchenDB';
 const ORDERS_COLLECTION = 'orders';
 
+// Helper to calculate start and end of day in Asia/Kolkata (IST: UTC+5:30)
+function getDayRangeIST(dateInput?: Date | string) {
+    let istDateStr: string;
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        istDateStr = dateInput;
+    } else {
+        const d = dateInput ? new Date(dateInput) : new Date();
+        istDateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    }
+    const startOfDay = new Date(`${istDateStr}T00:00:00.000+05:30`);
+    const endOfDay = new Date(`${istDateStr}T23:59:59.999+05:30`);
+    return { startOfDay, endOfDay, dateStr: istDateStr };
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!await verifyAdmin(request)) {
@@ -14,15 +28,32 @@ export async function GET(request: NextRequest) {
     }
 
     const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '2000');
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+    // Default limit 30 if not specified; allow up to 500 for legacy/dashboard calls
+    const requestedLimit = url.searchParams.get('limit');
+    const limit = requestedLimit ? Math.min(500, Math.max(1, parseInt(requestedLimit))) : 30;
     const skip = (page - 1) * limit;
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    
+
+    // Ensure lightweight compound indexes exist (idempotent, no-op if present)
+    db.collection(ORDERS_COLLECTION).createIndex({ Timestamp: -1 }).catch(() => {});
+    db.collection(ORDERS_COLLECTION).createIndex({ PreferredDate: -1 }).catch(() => {});
+    db.collection(ORDERS_COLLECTION).createIndex({ Status: 1 }).catch(() => {});
+    db.collection(ORDERS_COLLECTION).createIndex({ OrderNumber: 1 }).catch(() => {});
+    db.collection(ORDERS_COLLECTION).createIndex({ Phone: 1 }).catch(() => {});
+
     const idParam = url.searchParams.get('id') || url.searchParams.get('orderId');
-    let query: any = {};
+    const searchParam = url.searchParams.get('search');
+    const dateFilterParam = url.searchParams.get('dateFilter') || url.searchParams.get('date_filter');
+    const customDateParam = url.searchParams.get('customDate') || url.searchParams.get('date');
+    const mealParam = url.searchParams.get('meal') || url.searchParams.get('mealTime');
+    const statusParam = url.searchParams.get('status');
+    const includeCancelled = url.searchParams.get('includeCancelled') === 'true';
+
+    const conditions: any[] = [];
+
     if (idParam) {
         const cleanId = idParam.replace(/^#/, '').trim();
         let objectIdQuery: any = null;
@@ -33,15 +64,111 @@ export async function GET(request: NextRequest) {
         } catch (_) {}
 
         const cleanIdEscaped = cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        query = {
+        conditions.push({
             $or: [
                 { OrderNumber: cleanId },
                 { OrderNumber: `#${cleanId}` },
                 { OrderNumber: { $regex: new RegExp(`^#?${cleanIdEscaped}$`, 'i') } },
                 ...(objectIdQuery ? [{ _id: objectIdQuery }] : [])
             ]
-        };
+        });
+    } else {
+        // 1. Search Query
+        if (searchParam && searchParam.trim()) {
+            const cleanSearch = searchParam.trim();
+            const cleanSearchEscaped = cleanSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            conditions.push({
+                $or: [
+                    { OrderNumber: { $regex: new RegExp(cleanSearchEscaped, 'i') } },
+                    { Name: { $regex: new RegExp(cleanSearchEscaped, 'i') } },
+                    { Phone: { $regex: new RegExp(cleanSearchEscaped, 'i') } }
+                ]
+            });
+        }
+
+        // 2. Date Filter
+        if (dateFilterParam) {
+            const df = dateFilterParam.trim().toLowerCase();
+            const now = new Date();
+
+            if (df === 'placed today' || df === 'placed_today') {
+                const { startOfDay, endOfDay, dateStr } = getDayRangeIST(now);
+                conditions.push({
+                    $or: [
+                        { Timestamp: { $gte: startOfDay, $lte: endOfDay } },
+                        { Timestamp: { $regex: new RegExp(`^${dateStr}`) } }
+                    ]
+                });
+            } else if (df === 'delivery today' || df === 'delivery_today') {
+                const { startOfDay, endOfDay, dateStr } = getDayRangeIST(now);
+                conditions.push({
+                    $or: [
+                        { PreferredDate: { $gte: startOfDay, $lte: endOfDay } },
+                        { PreferredDate: { $regex: new RegExp(`^${dateStr}`) } },
+                        { 
+                            $and: [
+                                { $or: [{ PreferredDate: { $exists: false } }, { PreferredDate: null }, { PreferredDate: '' }] },
+                                { $or: [{ Timestamp: { $gte: startOfDay, $lte: endOfDay } }, { Timestamp: { $regex: new RegExp(`^${dateStr}`) } }] }
+                            ]
+                        }
+                    ]
+                });
+            } else if (df === 'delivery tomorrow' || df === 'delivery_tomorrow') {
+                const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                const { startOfDay, endOfDay, dateStr } = getDayRangeIST(tomorrow);
+                conditions.push({
+                    $or: [
+                        { PreferredDate: { $gte: startOfDay, $lte: endOfDay } },
+                        { PreferredDate: { $regex: new RegExp(`^${dateStr}`) } },
+                        { 
+                            $and: [
+                                { $or: [{ PreferredDate: { $exists: false } }, { PreferredDate: null }, { PreferredDate: '' }] },
+                                { $or: [{ Timestamp: { $gte: startOfDay, $lte: endOfDay } }, { Timestamp: { $regex: new RegExp(`^${dateStr}`) } }] }
+                            ]
+                        }
+                    ]
+                });
+            } else if ((df === 'custom' || customDateParam) && customDateParam) {
+                const { startOfDay, endOfDay, dateStr } = getDayRangeIST(customDateParam);
+                conditions.push({
+                    $or: [
+                        { PreferredDate: { $gte: startOfDay, $lte: endOfDay } },
+                        { PreferredDate: { $regex: new RegExp(`^${dateStr}`) } },
+                        { 
+                            $and: [
+                                { $or: [{ PreferredDate: { $exists: false } }, { PreferredDate: null }, { PreferredDate: '' }] },
+                                { $or: [{ Timestamp: { $gte: startOfDay, $lte: endOfDay } }, { Timestamp: { $regex: new RegExp(`^${dateStr}`) } }] }
+                            ]
+                        }
+                    ]
+                });
+            }
+        }
+
+        // 3. Meal Filter
+        if (mealParam && mealParam.trim().toLowerCase() !== 'all') {
+            const m = mealParam.trim();
+            conditions.push({ MealTime: { $regex: new RegExp(`^${m}$`, 'i') } });
+        }
+
+        // 4. Status Filter
+        if (statusParam && statusParam.trim().toLowerCase() !== 'all') {
+            const s = statusParam.trim().toLowerCase();
+            if (s === 'pending' || s === 'pending verification') {
+                conditions.push({ Status: { $regex: /^pending( verification)?$/i } });
+            } else {
+                conditions.push({ Status: { $regex: new RegExp(`^${statusParam.trim()}$`, 'i') } });
+            }
+        }
+
+        // 5. Exclude Cancelled (unless statusFilter is explicitly 'Cancelled' or includeCancelled is true)
+        const isCancelledStatus = statusParam && statusParam.trim().toLowerCase() === 'cancelled';
+        if (!includeCancelled && !isCancelledStatus) {
+            conditions.push({ Status: { $not: { $regex: /^cancelled$/i } } });
+        }
     }
+
+    const query = conditions.length > 0 ? (conditions.length === 1 ? conditions[0] : { $and: conditions }) : {};
 
     const totalOrders = await db.collection(ORDERS_COLLECTION).countDocuments(query);
 

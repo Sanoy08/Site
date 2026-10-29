@@ -39,6 +39,12 @@ export async function PUT(
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+
+    // Fetch existing product from DB before updating to compare stock status
+    const existingProduct = await db.collection(COLLECTION_NAME).findOne({ _id: new ObjectId(id) });
+    const prevInStock = existingProduct ? existingProduct.InStock !== false : true;
+    const newInStock = body.inStock !== false;
+    const isStockToggle = Boolean(body.isStockToggle);
     
     await db.collection(COLLECTION_NAME).updateOne(
       { _id: new ObjectId(id) },
@@ -57,15 +63,42 @@ export async function PUT(
     });
 
     try {
-        const notificationImage = finalImages.length > 0 ? finalImages[0] : "";
-        const slug = (body.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '');
-        await sendNotificationToAllUsers(
-            client,
-            "✨ Taste Update! 👨‍🍳", 
-            `${body.name} just got refreshed! Check out the new details in our menu. 🍛`, 
-            notificationImage,
-            `/menus/${slug}`
-        );
+        const notificationImage = finalImages.length > 0 ? finalImages[0] : (existingProduct?.ImageURLs?.[0] || "");
+        const dishName = (body.name || existingProduct?.Name || 'Delicious Dish').trim();
+        const slug = dishName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-*|-*$/g, '');
+
+        if (!newInStock) {
+            // ★ Item is OUT OF STOCK: Absolutely NO notification sent!
+            console.log(`[Notification] Skipped notification because ${dishName} is marked out of stock.`);
+        } else if (newInStock && (!prevInStock || isStockToggle)) {
+            // ★ Item came BACK IN STOCK: Send an eye-catching, attractive notification!
+            await sendNotificationToAllUsers(
+                client,
+                "Back in Stock! 🍲✨", 
+                `Craving satisfied! ${dishName} is back in stock and ready to order. 😋 Grab yours now before it sells out! 🚀`, 
+                notificationImage,
+                `/menus/${slug}`
+            );
+        } else if (newInStock && prevInStock) {
+            // Item was already in stock; check if details actually changed
+            const detailsChanged = existingProduct && (
+                existingProduct.Name !== updateData.Name ||
+                existingProduct.Price !== updateData.Price ||
+                existingProduct.Description !== updateData.Description ||
+                existingProduct.Category !== updateData.Category ||
+                JSON.stringify(existingProduct.ImageURLs || []) !== JSON.stringify(updateData.ImageURLs || [])
+            );
+
+            if (detailsChanged) {
+                await sendNotificationToAllUsers(
+                    client,
+                    "✨ Taste Update! 👨‍🍳", 
+                    `${dishName} just got refreshed! Check out the new details in our menu. 🍛`, 
+                    notificationImage,
+                    `/menus/${slug}`
+                );
+            }
+        }
     } catch (notifError) {
         console.error("Failed to send update notification:", notifError);
     }

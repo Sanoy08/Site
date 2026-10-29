@@ -140,3 +140,62 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    if (!await verifyAdmin(request)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+
+    // Fetch existing document to find images to clean up
+    const existingDoc = await db.collection(COLLECTION).findOne({ _id: 'main' });
+
+    if (existingDoc) {
+      const allImages = collectImageUrls(existingDoc);
+
+      for (const imgUrl of allImages) {
+        const publicId = extractPublicId(imgUrl);
+        if (publicId) {
+          try {
+            if (imgUrl.includes(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_DISHES || 'dk1acdtja')) {
+              cloudinary.config({
+                cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_DISHES,
+                api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY_DISHES,
+                api_secret: process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET_DISHES,
+              });
+            } else {
+              cloudinary.config({
+                cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+                api_secret: process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET,
+              });
+            }
+            await cloudinary.uploader.destroy(publicId);
+          } catch (cloudError) {
+            console.error('MegaCampaign Cloudinary image cleanup error:', cloudError);
+          }
+        }
+      }
+    }
+
+    // Delete the campaign document from MongoDB
+    await db.collection(COLLECTION).deleteOne({ _id: 'main' });
+
+    await bumpHomeVersion();
+    revalidatePath('/');
+    revalidatePath('/mega-campaign');
+
+    return NextResponse.json({
+      success: true,
+      message: 'Mega campaign deleted successfully'
+    });
+  } catch (error: any) {
+    console.error('MegaCampaign delete error:', error);
+    return NextResponse.json({
+      success: false,
+      error: error?.message || 'Failed to delete campaign'
+    }, { status: 500 });
+  }
+}

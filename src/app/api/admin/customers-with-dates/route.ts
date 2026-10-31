@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             { dob: { $exists: true, $ne: "" } },
             { anniversary: { $exists: true, $ne: "" } }
         ]
-    }).project({ name: 1, dob: 1, anniversary: 1, picture: 1 }).toArray();
+    }).project({ name: 1, dob: 1, anniversary: 1, picture: 1, phone: 1 }).toArray();
 
     const today = new Date();
     const currentYear = today.getFullYear();
@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
                 id: `${userId}-birthday`, // ★ FIX: ইউনিক আইডি (User ID + Type)
                 userId: userId,
                 name: user.name,
+                phone: user.phone || '',
                 originalDate: user.dob,
                 nextDate: nextDate,
                 type: 'birthday',
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
                 id: `${userId}-anniversary`, // ★ FIX: ইউনিক আইডি (User ID + Type)
                 userId: userId,
                 name: user.name,
+                phone: user.phone || '',
                 originalDate: user.anniversary,
                 nextDate: nextDate,
                 type: 'anniversary',

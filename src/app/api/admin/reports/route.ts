@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // ১. প্রতিদিনের সেলস রিপোর্ট
+    // ১. প্রতিদিনের সেলস রিপোর্ট (Pending এবং Cancelled বাদে)
     const dailySales = await db.collection(ORDERS_COLLECTION).aggregate([
         {
             $match: {
                 Timestamp: { $gte: start, $lte: end },
-                Status: { $ne: 'Cancelled' }
+                Status: { $nin: ['Cancelled', 'cancelled', 'Pending', 'pending', 'Pending Verification'] }
             }
         },
         {

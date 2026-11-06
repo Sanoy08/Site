@@ -2,6 +2,7 @@
 
 import { MongoClient, ObjectId, ClientSession } from 'mongodb';
 import { sendNotificationToUser } from '@/lib/notification';
+import { processReferralOnDelivery } from '@/lib/referral-service';
 
 const DB_NAME = 'BumbasKitchenDB';
 const USERS_COLLECTION = 'users';
@@ -100,6 +101,13 @@ export async function finalizeDelivery(
             "", 
             "/account/orders"
         );
+    }
+
+    // ৩. Referral Reward Processing (First order >= 499)
+    try {
+        await processReferralOnDelivery(client, db, order, session);
+    } catch (refErr) {
+        console.error("Referral on delivery error:", refErr);
     }
 }
 

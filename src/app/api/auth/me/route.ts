@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { getUser } from '@/lib/auth-utils'; 
+import { ensureUserReferralCode } from '@/lib/referral-service'; 
 
 const DB_NAME = 'BumbasKitchenDB';
 const COLLECTION_NAME = 'users';
@@ -32,6 +33,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, user: null }, { status: 404 });
     }
 
+    let referralCode = user.referralCode;
+    if (!referralCode) {
+      referralCode = await ensureUserReferralCode(db, user._id);
+    }
+
     return NextResponse.json({ 
         success: true, 
         user: {
@@ -45,7 +51,8 @@ export async function GET(request: NextRequest) {
             wallet: user.wallet,
             dob: user.dob,               
             anniversary: user.anniversary,
-            savedAddresses: user.savedAddresses || [] // ★ Added
+            savedAddresses: user.savedAddresses || [], // ★ Added
+            referralCode
         } 
     });
 

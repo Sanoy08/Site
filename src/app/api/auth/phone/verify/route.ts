@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { responseWithCookie } from '@/lib/auth-utils';
 import { pusherServer } from '@/lib/pusher';
+import { ensureUserReferralCode, recordReferralSignup } from '@/lib/referral-service';
 
 const DB_NAME = 'BumbasKitchenDB';
 const USERS_COLLECTION = 'users';
@@ -14,7 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, otp } = body;
+    const { phone, otp, referralCode, deviceId } = body;
 
     // Fix: NoSQL Injection Prevention & Strict Type Validation
     if (!phone || typeof phone !== 'string' || !/^\d{10}$/.test(phone)) {
@@ -57,16 +58,37 @@ export async function POST(request: NextRequest) {
         }
     }
 
+    const wasUnverified = !user.isVerified;
+
     // ৩. ভেরিফাইড মার্ক করা এবং OTP মুছে ফেলা
     const updateResult = await db.collection(USERS_COLLECTION).updateOne(
         { _id: user._id },
         { 
-            $set: { isVerified: true },
+            $set: { 
+                isVerified: true,
+                ...(deviceId && typeof deviceId === 'string' && !user.deviceId ? { deviceId } : {})
+            },
             $unset: { otp: "", otpExpires: "", otpAttempts: "" }
         }
     );
 
-    if (!user.isVerified) {
+    // ৩.১ রেফারেল কোড নিশ্চিত করা
+    const myReferralCode = await ensureUserReferralCode(db, user._id);
+
+    // ৩.২ নতুন রেজিস্ট্রেশনের ক্ষেত্রে রেফারেল অ্যাট্রিবিউশন রেকর্ড
+    if (wasUnverified && referralCode && typeof referralCode === 'string') {
+        const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
+        try {
+            await recordReferralSignup(db, user._id, user.phone, referralCode, {
+                ip: clientIp,
+                deviceId: typeof deviceId === 'string' ? deviceId : undefined
+            });
+        } catch (refErr) {
+            console.error('Referral record error:', refErr);
+        }
+    }
+
+    if (wasUnverified) {
         await pusherServer.trigger('admin-updates', 'new-user', { userId: user._id.toString() }).catch(err => console.error('Pusher Error:', err));
     }
 
@@ -90,7 +112,8 @@ export async function POST(request: NextRequest) {
         dob: user.dob,                                  // ★ Added
         anniversary: user.anniversary,                  // ★ Added
         savedAddresses: user.savedAddresses || [],      // ★ Added
-        isNewUser: user.name === 'New User' 
+        isNewUser: user.name === 'New User',
+        referralCode: myReferralCode
     };
 
     return responseWithCookie(

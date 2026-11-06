@@ -42,9 +42,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      valid: true,
       message: `Referral code applied! You were invited by ${maskedName}.`,
       referrerName: maskedName,
-      code: validation.referrer.referralCode
+      code: validation.referrer.referralCode,
+      referrer: {
+        name: maskedName,
+        referralCode: validation.referrer.referralCode
+      }
     });
   } catch (error: any) {
     console.error('Referral validate error:', error);

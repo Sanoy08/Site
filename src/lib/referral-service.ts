@@ -174,7 +174,7 @@ export async function recordReferralSignup(
   refereeId: ObjectId,
   refereePhone: string,
   referralCode: string,
-  metadata?: { ip?: string }
+  metadata?: { ip?: string; refereeName?: string }
 ): Promise<{ success: boolean; referralId?: ObjectId; error?: string }> {
   const usersCollection = db.collection(USERS_COLLECTION);
   const referralsCollection = db.collection(REFERRALS_COLLECTION);
@@ -193,12 +193,22 @@ export async function recordReferralSignup(
     return { success: false, error: 'You already have an attributed referral.' };
   }
 
+  // Get referee name if available
+  let refereeName = metadata?.refereeName;
+  if (!refereeName) {
+    const refereeUser = await usersCollection.findOne({ _id: refereeId }, { projection: { name: 1 } });
+    if (refereeUser?.name && refereeUser.name !== 'New User') {
+      refereeName = refereeUser.name;
+    }
+  }
+
   const referralDoc = {
     referrerId: referrer._id,
     referrerPhone: referrer.phone,
     referrerName: referrer.name,
     refereeId: refereeId,
     refereePhone: refereePhone,
+    refereeName: refereeName || null,
     referralCode: referralCode.toUpperCase(),
     status: 'pending',
     qualifyingOrderId: null,

@@ -77,7 +77,8 @@ export async function POST(request: NextRequest) {
         const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
         try {
             await recordReferralSignup(db, user._id, user.phone, referralCode, {
-                ip: clientIp
+                ip: clientIp,
+                refereeName: user.name && user.name !== 'New User' ? user.name : undefined
             });
         } catch (refErr) {
             console.error('Referral record error:', refErr);

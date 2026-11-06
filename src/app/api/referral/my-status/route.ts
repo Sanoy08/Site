@@ -19,8 +19,13 @@ const REFERRALS_COLLECTION = 'referrals';
 const USERS_COLLECTION = 'users';
 
 function maskPhone(phone?: string) {
-  if (!phone || phone.length < 10) return 'User';
-  return `+91 ${phone.slice(0, 2)}*** ***${phone.slice(-2)}`;
+  if (!phone) return 'User';
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length >= 10) {
+    const last10 = clean.slice(-10);
+    return `+91 ${last10.slice(0, 2)}*** ***${last10.slice(-2)}`;
+  }
+  return phone;
 }
 
 export async function GET(request: NextRequest) {
@@ -56,17 +61,37 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .toArray();
 
+    // Fetch referee user documents to get their latest names & phones
+    const refereeIds = referrals
+      .map((r) => r.refereeId)
+      .filter(Boolean)
+      .map((id) => (typeof id === 'string' ? new ObjectId(id) : id));
+
+    const refereeUsers = refereeIds.length > 0
+      ? await db
+          .collection(USERS_COLLECTION)
+          .find({ _id: { $in: refereeIds } })
+          .project({ _id: 1, name: 1, phone: 1 })
+          .toArray()
+      : [];
+
+    const userMap = new Map<string, any>(
+      refereeUsers.map((u) => [u._id.toString(), u])
+    );
+
     // Map referral items for user friendly view
     const friends = referrals.map((ref) => {
-      let displayName = ref.refereeName;
-      if (!displayName || displayName === 'New User') {
-        displayName = maskPhone(ref.refereePhone);
-      }
+      const refUser = ref.refereeId ? userMap.get(ref.refereeId.toString()) : null;
+      const rawName = (refUser?.name || ref.refereeName || '').trim();
+      const rawPhone = refUser?.phone || ref.refereePhone || '';
+
+      const displayName = rawName && rawName !== 'New User' ? rawName : 'Friend';
+      const phoneDisplay = maskPhone(rawPhone);
 
       return {
         id: ref._id.toString(),
         name: displayName,
-        phoneMasked: maskPhone(ref.refereePhone),
+        phoneMasked: phoneDisplay,
         status: ref.status, // 'pending' | 'rewarded' | 'under_review' | 'rejected' | 'reversed'
         createdAt: ref.createdAt,
         rewardCreditedAt: ref.rewardCredited?.creditedAt || null,

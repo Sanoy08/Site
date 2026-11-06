@@ -115,7 +115,7 @@ export async function validateReferralCode(
   const usersCollection = db.collection(USERS_COLLECTION);
   const referrer = await usersCollection.findOne(
     { referralCode: normalizedCode },
-    { projection: { _id: 1, name: 1, phone: 1, referralCode: 1, referralCount: 1, deviceId: 1 } }
+    { projection: { _id: 1, name: 1, phone: 1, referralCode: 1, referralCount: 1 } }
   );
 
   if (!referrer) {
@@ -174,7 +174,7 @@ export async function recordReferralSignup(
   refereeId: ObjectId,
   refereePhone: string,
   referralCode: string,
-  metadata: { ip?: string; deviceId?: string }
+  metadata?: { ip?: string }
 ): Promise<{ success: boolean; referralId?: ObjectId; error?: string }> {
   const usersCollection = db.collection(USERS_COLLECTION);
   const referralsCollection = db.collection(REFERRALS_COLLECTION);
@@ -193,30 +193,6 @@ export async function recordReferralSignup(
     return { success: false, error: 'You already have an attributed referral.' };
   }
 
-  // Fraud / Suspicion Analysis
-  const referrerUser = await usersCollection.findOne(
-    { _id: referrer._id },
-    { projection: { deviceId: 1, signupIp: 1 } }
-  );
-
-  const sameDevice = !!(
-    metadata.deviceId &&
-    referrerUser?.deviceId &&
-    metadata.deviceId === referrerUser.deviceId
-  );
-
-  const sameIp = !!(
-    metadata.ip &&
-    referrerUser?.signupIp &&
-    metadata.ip === referrerUser.signupIp &&
-    metadata.ip !== '127.0.0.1'
-  );
-
-  const isSuspicious = sameDevice; // Same physical hardware device is suspicious
-  const suspiciousReason = sameDevice
-    ? 'Same physical device ID detected between referrer and referee'
-    : null;
-
   const referralDoc = {
     referrerId: referrer._id,
     referrerPhone: referrer.phone,
@@ -224,20 +200,10 @@ export async function recordReferralSignup(
     refereeId: refereeId,
     refereePhone: refereePhone,
     referralCode: referralCode.toUpperCase(),
-    status: isSuspicious ? 'under_review' : 'pending',
+    status: 'pending',
     qualifyingOrderId: null,
     orderAmount: null,
     rewardCredited: null,
-    riskFlags: {
-      sameDevice,
-      sameIp,
-      isSuspicious,
-      suspiciousReason
-    },
-    clientMetadata: {
-      ip: metadata.ip || null,
-      deviceId: metadata.deviceId || null
-    },
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -251,8 +217,6 @@ export async function recordReferralSignup(
       $set: {
         referredBy: referrer._id,
         referralAttributionId: insertResult.insertedId,
-        ...(metadata.deviceId ? { deviceId: metadata.deviceId } : {}),
-        ...(metadata.ip ? { signupIp: metadata.ip } : {})
       }
     }
   );
@@ -335,24 +299,7 @@ export async function processReferralOnDelivery(
     return;
   }
 
-  // 5. If flagged as suspicious (e.g. same device), hold under review for Admin approval
-  if (referral.riskFlags?.isSuspicious) {
-    await referralsCollection.updateOne(
-      { _id: referral._id },
-      {
-        $set: {
-          status: 'under_review',
-          qualifyingOrderId: new ObjectId(order._id),
-          orderAmount: finalPrice,
-          updatedAt: new Date()
-        }
-      },
-      { session }
-    );
-    return;
-  }
-
-  // 6. Safe & Legit: Credit Rewards with Idempotency Key
+  // 5. Safe & Legit: Credit Rewards with Idempotency Key
   const idempotencyKey = `ref_reward_${referral._id.toString()}_${order._id.toString()}`;
 
   // Check idempotency in transactions

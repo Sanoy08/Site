@@ -15,7 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, otp, referralCode, deviceId } = body;
+    const { phone, otp, referralCode } = body;
 
     // Fix: NoSQL Injection Prevention & Strict Type Validation
     if (!phone || typeof phone !== 'string' || !/^\d{10}$/.test(phone)) {
@@ -64,10 +64,7 @@ export async function POST(request: NextRequest) {
     const updateResult = await db.collection(USERS_COLLECTION).updateOne(
         { _id: user._id },
         { 
-            $set: { 
-                isVerified: true,
-                ...(deviceId && typeof deviceId === 'string' && !user.deviceId ? { deviceId } : {})
-            },
+            $set: { isVerified: true },
             $unset: { otp: "", otpExpires: "", otpAttempts: "" }
         }
     );
@@ -80,8 +77,7 @@ export async function POST(request: NextRequest) {
         const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
         try {
             await recordReferralSignup(db, user._id, user.phone, referralCode, {
-                ip: clientIp,
-                deviceId: typeof deviceId === 'string' ? deviceId : undefined
+                ip: clientIp
             });
         } catch (refErr) {
             console.error('Referral record error:', refErr);

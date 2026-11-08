@@ -79,6 +79,38 @@ export async function GET(request: NextRequest) {
       refereeUsers.map((u) => [u._id.toString(), u])
     );
 
+    // For pending referrals, fetch delivered orders sum to show real progress towards ₹499
+    const pendingRefereeIds = referrals
+      .filter((r) => r.status === 'pending' && r.refereeId)
+      .map((r) => (typeof r.refereeId === 'string' ? new ObjectId(r.refereeId) : r.refereeId));
+
+    const spentMap = new Map<string, number>();
+    if (pendingRefereeIds.length > 0) {
+      const deliveredStats = await db
+        .collection('orders')
+        .aggregate([
+          {
+            $match: {
+              userId: { $in: pendingRefereeIds },
+              Status: 'Delivered'
+            }
+          },
+          {
+            $group: {
+              _id: '$userId',
+              totalSpent: { $sum: '$FinalPrice' }
+            }
+          }
+        ])
+        .toArray();
+
+      for (const stat of deliveredStats) {
+        if (stat._id) {
+          spentMap.set(stat._id.toString(), Math.round(stat.totalSpent || 0));
+        }
+      }
+    }
+
     // Map referral items for user friendly view
     const friends = referrals.map((ref) => {
       const refUser = ref.refereeId ? userMap.get(ref.refereeId.toString()) : null;
@@ -88,6 +120,10 @@ export async function GET(request: NextRequest) {
       const displayName = rawName && rawName !== 'New User' ? rawName : 'Friend';
       const phoneDisplay = maskPhone(rawPhone);
 
+      const currentSpent = ref.status === 'rewarded'
+        ? (ref.cumulativeSpent || ref.orderAmount || 499)
+        : (ref.refereeId ? (spentMap.get(ref.refereeId.toString()) || ref.cumulativeSpent || 0) : 0);
+
       return {
         id: ref._id.toString(),
         name: displayName,
@@ -96,7 +132,8 @@ export async function GET(request: NextRequest) {
         createdAt: ref.createdAt,
         rewardCreditedAt: ref.rewardCredited?.creditedAt || null,
         coinsEarned: ref.status === 'rewarded' ? (ref.rewardCredited?.referrerCoins || REFERRAL_REWARD_COINS) : 0,
-        qualifyingOrderAmount: ref.orderAmount || null
+        qualifyingOrderAmount: ref.orderAmount || null,
+        cumulativeSpent: currentSpent
       };
     });
 

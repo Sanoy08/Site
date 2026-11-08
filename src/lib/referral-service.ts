@@ -249,17 +249,12 @@ export async function processReferralOnDelivery(
   const refereeId = new ObjectId(order.userId);
   const finalPrice = parseFloat(order.FinalPrice) || 0;
 
-  // 1. Check minimum qualifying order amount (>= 499)
-  if (finalPrice < MIN_QUALIFYING_ORDER_AMOUNT) {
-    return;
-  }
-
   const referralsCollection = db.collection(REFERRALS_COLLECTION);
   const usersCollection = db.collection(USERS_COLLECTION);
   const transactionsCollection = db.collection(TRANSACTIONS_COLLECTION);
   const ordersCollection = db.collection(ORDERS_COLLECTION);
 
-  // 2. Check if this referee has a referral record pending or qualified
+  // 1. Check if this referee has an active referral record pending or qualified
   const referral = await referralsCollection.findOne(
     {
       refereeId,
@@ -270,22 +265,40 @@ export async function processReferralOnDelivery(
 
   if (!referral) return;
 
-  // 3. Verify this is the referee's first delivered order
-  const deliveredOrdersCount = await ordersCollection.countDocuments(
+  // 2. Option 2: Cumulative calculation across all delivered orders for referee
+  const deliveredOrders = await ordersCollection.find(
     {
       userId: refereeId,
-      Status: 'Delivered',
-      _id: { $ne: new ObjectId(order._id) }
+      $or: [
+        { Status: 'Delivered' },
+        { _id: new ObjectId(order._id) }
+      ]
     },
-    { session }
+    { projection: { FinalPrice: 1 }, session }
+  ).toArray();
+
+  const cumulativeSpent = deliveredOrders.reduce(
+    (sum: number, o: any) => sum + (parseFloat(o.FinalPrice) || 0),
+    0
   );
 
-  if (deliveredOrdersCount > 0) {
-    // Not first delivered order - ignore
+  // If cumulative spent hasn't reached MIN_QUALIFYING_ORDER_AMOUNT (499) yet, record progress & wait
+  if (cumulativeSpent < MIN_QUALIFYING_ORDER_AMOUNT) {
+    await referralsCollection.updateOne(
+      { _id: referral._id },
+      {
+        $set: {
+          cumulativeSpent: Math.round(cumulativeSpent),
+          lastOrderId: new ObjectId(order._id),
+          updatedAt: new Date()
+        }
+      },
+      { session }
+    );
     return;
   }
 
-  // 4. Verify Referrer hasn't exceeded max limit (5)
+  // 3. Verify Referrer exists & hasn't exceeded max limit (if set)
   const referrer = await usersCollection.findOne(
     { _id: referral.referrerId },
     { session }
@@ -309,7 +322,7 @@ export async function processReferralOnDelivery(
     return;
   }
 
-  // 5. Safe & Legit: Credit Rewards with Idempotency Key
+  // 4. Safe & Legit: Credit Rewards with Idempotency Key
   const idempotencyKey = `ref_reward_${referral._id.toString()}_${order._id.toString()}`;
 
   // Check idempotency in transactions
@@ -322,7 +335,7 @@ export async function processReferralOnDelivery(
   const now = new Date();
   const coinExpiresAt = new Date(now.getTime() + COIN_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
 
-  // A. Credit Referrer (20 Coins)
+  // A. Credit Referrer (50 Coins)
   await usersCollection.updateOne(
     { _id: referral.referrerId },
     {
@@ -342,7 +355,7 @@ export async function processReferralOnDelivery(
       amount: REFERRAL_REWARD_COINS,
       remainingAmount: REFERRAL_REWARD_COINS,
       expiresAt: coinExpiresAt,
-      description: `Referral Reward (Order #${order.OrderNumber})`,
+      description: `Referral Reward (${referrer.name || 'Friend'} reached ₹499+ orders)`,
       idempotencyKey,
       referralId: referral._id,
       createdAt: now
@@ -350,7 +363,7 @@ export async function processReferralOnDelivery(
     { session }
   );
 
-  // B. Credit Referee (20 Coins)
+  // B. Credit Referee (50 Coins)
   await usersCollection.updateOne(
     { _id: refereeId },
     {
@@ -369,7 +382,7 @@ export async function processReferralOnDelivery(
       amount: REFERRAL_REWARD_COINS,
       remainingAmount: REFERRAL_REWARD_COINS,
       expiresAt: coinExpiresAt,
-      description: `Welcome Bonus (Referred by ${referrer.name || 'Friend'})`,
+      description: `Welcome Bonus (Reached ₹499+ orders with referral code)`,
       idempotencyKey: `${idempotencyKey}_referee`,
       referralId: referral._id,
       createdAt: now
@@ -385,6 +398,7 @@ export async function processReferralOnDelivery(
         status: 'rewarded',
         qualifyingOrderId: new ObjectId(order._id),
         orderAmount: finalPrice,
+        cumulativeSpent: Math.round(cumulativeSpent),
         rewardCredited: {
           referrerCoins: REFERRAL_REWARD_COINS,
           refereeCoins: REFERRAL_REWARD_COINS,
@@ -404,7 +418,7 @@ export async function processReferralOnDelivery(
       client,
       referral.referrerId.toString(),
       'Referral Reward! 🎁',
-      `Your friend completed their first order! ${REFERRAL_REWARD_COINS} coins added to your wallet.`,
+      `Your friend completed orders worth ₹499+! ${REFERRAL_REWARD_COINS} coins added to your wallet.`,
       '',
       '/account/wallet'
     );
@@ -414,7 +428,7 @@ export async function processReferralOnDelivery(
       client,
       refereeId.toString(),
       'Welcome Bonus! 🎉',
-      `Congrats on your first order! ${REFERRAL_REWARD_COINS} coins added to your wallet.`,
+      `Congrats! You reached ₹499+ in total orders! ${REFERRAL_REWARD_COINS} coins added to your wallet.`,
       '',
       '/account/wallet'
     );

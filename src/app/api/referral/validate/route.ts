@@ -32,22 +32,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mask name for privacy (e.g., "Rahul S.")
-    const rawName = validation.referrer.name || 'Friend';
-    const nameParts = rawName.trim().split(' ');
-    const maskedName =
-      nameParts.length > 1
-        ? `${nameParts[0]} ${nameParts[1].charAt(0)}.`
-        : nameParts[0];
+    const fullName = validation.referrer.name || 'Friend';
 
     return NextResponse.json({
       success: true,
       valid: true,
-      message: `Referral code applied! You were invited by ${maskedName}.`,
-      referrerName: maskedName,
+      message: `Referral code applied! You were invited by ${fullName}.`,
+      referrerName: fullName,
       code: validation.referrer.referralCode,
       referrer: {
-        name: maskedName,
+        name: fullName,
         referralCode: validation.referrer.referralCode
       }
     });

@@ -86,18 +86,19 @@ export async function GET(request: NextRequest) {
 
     const spentMap = new Map<string, number>();
     if (pendingRefereeIds.length > 0) {
+      const pendingIdsMatch = pendingRefereeIds.flatMap((id) => [id, id.toString()]);
       const deliveredStats = await db
         .collection('orders')
         .aggregate([
           {
             $match: {
-              userId: { $in: pendingRefereeIds },
+              userId: { $in: pendingIdsMatch },
               Status: 'Delivered'
             }
           },
           {
             $group: {
-              _id: '$userId',
+              _id: { $toString: '$userId' },
               totalSpent: { $sum: '$FinalPrice' }
             }
           }

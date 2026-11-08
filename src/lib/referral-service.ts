@@ -298,7 +298,7 @@ export async function processReferralOnDelivery(
   // 2. Option 2: Cumulative calculation across all delivered orders for referee
   const deliveredOrders = await ordersCollection.find(
     {
-      userId: refereeId,
+      userId: { $in: [refereeId, refereeId.toString()] },
       $or: [
         { Status: 'Delivered' },
         { _id: new ObjectId(order._id) }

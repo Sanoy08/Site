@@ -95,6 +95,8 @@ export async function GET(request: NextRequest) {
       clientMetadata: ref.clientMetadata || {},
       qualifyingOrderId: ref.qualifyingOrderId?.toString() || null,
       orderAmount: ref.orderAmount || null,
+      cumulativeSpent: ref.cumulativeSpent || ref.orderAmount || 0,
+      ip: ref.ip || null,
       rewardCredited: ref.rewardCredited || null,
       rejectionReason: ref.rejectionReason || null,
       reversalReason: ref.reversalReason || null,

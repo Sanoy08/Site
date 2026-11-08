@@ -174,7 +174,7 @@ export async function recordReferralSignup(
   refereeId: ObjectId,
   refereePhone: string,
   referralCode: string,
-  metadata?: { ip?: string; refereeName?: string }
+  metadata?: { ip?: string; refereeName?: string; client?: any }
 ): Promise<{ success: boolean; referralId?: ObjectId; error?: string }> {
   const usersCollection = db.collection(USERS_COLLECTION);
   const referralsCollection = db.collection(REFERRALS_COLLECTION);
@@ -211,8 +211,10 @@ export async function recordReferralSignup(
     refereeName: refereeName || null,
     referralCode: referralCode.toUpperCase(),
     status: 'pending',
+    riskFlags: {},
     qualifyingOrderId: null,
     orderAmount: null,
+    cumulativeSpent: 0,
     rewardCredited: null,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -230,6 +232,34 @@ export async function recordReferralSignup(
       }
     }
   );
+
+  // Send instant notifications if client is provided
+  if (metadata?.client) {
+    try {
+      const displayReferee = refereeName && refereeName !== 'New User' ? refereeName : 'Your friend';
+      // 1. Notify Referrer
+      await sendNotificationToUser(
+        metadata.client,
+        referrer._id.toString(),
+        'New Referral Joined! 🎁',
+        `${displayReferee} joined using your invite code! You will both get ${REFERRAL_REWARD_COINS} Coins once their orders reach ₹${MIN_QUALIFYING_ORDER_AMOUNT}+.`,
+        '',
+        '/account/refer-history'
+      );
+
+      // 2. Notify Referee
+      await sendNotificationToUser(
+        metadata.client,
+        refereeId.toString(),
+        'Welcome Bonus Waiting! 🎉',
+        `You joined with an invite code! Place orders totaling ₹${MIN_QUALIFYING_ORDER_AMOUNT}+ to unlock ${REFERRAL_REWARD_COINS} Coins in your wallet.`,
+        '',
+        '/account/wallet'
+      );
+    } catch (notifErr) {
+      console.error('Referral signup notification error:', notifErr);
+    }
+  }
 
   return { success: true, referralId: insertResult.insertedId };
 }

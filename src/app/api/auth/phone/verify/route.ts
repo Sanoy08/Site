@@ -78,7 +78,8 @@ export async function POST(request: NextRequest) {
         try {
             await recordReferralSignup(db, user._id, user.phone, referralCode, {
                 ip: clientIp,
-                refereeName: user.name && user.name !== 'New User' ? user.name : undefined
+                refereeName: user.name && user.name !== 'New User' ? user.name : undefined,
+                client
             });
         } catch (refErr) {
             console.error('Referral record error:', refErr);

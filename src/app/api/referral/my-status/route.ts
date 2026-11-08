@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       minOrderAmount: MIN_QUALIFYING_ORDER_AMOUNT,
       coinValidityDays: COIN_VALIDITY_DAYS,
       totalCoinsEarned,
-      canInviteMore: successfulCount < MAX_REFERRALS_PER_USER,
+      canInviteMore: MAX_REFERRALS_PER_USER === null ? true : successfulCount < MAX_REFERRALS_PER_USER,
       friends
     });
   } catch (error: any) {

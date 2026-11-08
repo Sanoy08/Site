@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientPromise } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { z } from 'zod';
 
 const DB_NAME = 'BumbasKitchenDB';
@@ -55,7 +56,8 @@ export async function POST(request: NextRequest) {
 
     if (!name && !existingUser) return NextResponse.json({ success: false, error: 'Account not found. Please Register first.' }, { status: 404 });
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Cryptographically secure 6-digit OTP generation
+    const otp = crypto.randomInt(100000, 1000000).toString();
 
     const otpHash = await bcrypt.hash(otp, 10);
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);

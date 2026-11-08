@@ -71,9 +71,9 @@ function ReferContent() {
             <span className="inline-block bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider mb-2">
               🎁 Welcome Bonus
             </span>
-            <h2 className="text-xl font-bold mb-1">Get 20 Free Coins</h2>
+            <h2 className="text-xl font-bold mb-1">Get 50 Free Coins</h2>
             <p className="text-xs text-rose-100 font-medium">
-              Join with this referral code and earn 20 Coins on your 1st order of ₹499 or more!
+              Join with this referral code and earn 50 Coins on your 1st order of ₹499 or more!
             </p>
           </div>
         </div>
@@ -152,7 +152,7 @@ function ReferContent() {
               <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 font-bold flex items-center justify-center mr-2 flex-shrink-0 text-[10px]">
                 3
               </span>
-              <span>Place your 1st order (min ₹499) to get 20 coins instantly upon delivery!</span>
+              <span>Place your 1st order (min ₹499) to get 50 Coins in your wallet instantly upon delivery!</span>
             </div>
           </div>
         </div>

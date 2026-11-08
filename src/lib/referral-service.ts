@@ -12,8 +12,8 @@ const ORDERS_COLLECTION = 'orders';
 // Unambiguous 32-character set (no 0/O, no 1/I)
 const CODE_CHARSET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 export const MIN_QUALIFYING_ORDER_AMOUNT = 499;
-export const REFERRAL_REWARD_COINS = 20;
-export const MAX_REFERRALS_PER_USER = 5;
+export const REFERRAL_REWARD_COINS = 50;
+export const MAX_REFERRALS_PER_USER: number | null = null; // Unlimited referrals
 export const COIN_VALIDITY_DAYS = 30;
 
 /**
@@ -132,12 +132,12 @@ export async function validateReferralCode(
     return { valid: false, error: 'You cannot use your own referral code.' };
   }
 
-  // 3. Max limit check
+  // 3. Max limit check (Disabled for unlimited referrals)
   const successfulCount = referrer.referralCount || 0;
-  if (successfulCount >= MAX_REFERRALS_PER_USER) {
+  if (MAX_REFERRALS_PER_USER !== null && successfulCount >= MAX_REFERRALS_PER_USER) {
     return {
       valid: false,
-      error: 'This referral code has already reached its maximum limit of 5 successful invites.'
+      error: `This referral code has already reached its maximum limit of ${MAX_REFERRALS_PER_USER} successful invites.`
     };
   }
 
@@ -294,13 +294,13 @@ export async function processReferralOnDelivery(
   if (!referrer) return;
 
   const currentReferrals = referrer.referralCount || 0;
-  if (currentReferrals >= MAX_REFERRALS_PER_USER) {
+  if (MAX_REFERRALS_PER_USER !== null && currentReferrals >= MAX_REFERRALS_PER_USER) {
     await referralsCollection.updateOne(
       { _id: referral._id },
       {
         $set: {
           status: 'rejected',
-          rejectionReason: 'Referrer reached max 5 referrals cap',
+          rejectionReason: `Referrer reached max ${MAX_REFERRALS_PER_USER} referrals cap`,
           updatedAt: new Date()
         }
       },
